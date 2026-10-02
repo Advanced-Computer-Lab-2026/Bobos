@@ -45,6 +45,9 @@ const courseSchema = withTimestamps({
   courseType: { type: String, required: true, enum: ["core", "elective", "huma"] },
   facultyMajors: { type: [String], default: [] },
   recommendedSemester: { type: Number, min: 1, max: 10 },
+  lectureHours: { type: Number, min: 0 },
+  tutorialHours: { type: Number, min: 0 },
+  labHours: { type: Number, min: 0 },
   offeringSeasons: { type: [String], enum: ACADEMIC_SEASONS, default: [] },
   prerequisites: { type: [ref("Course")], default: [] },
   isBachelorProject: { type: Boolean, default: false },
@@ -96,6 +99,12 @@ const offeringSlotSchema = new Schema(
   },
   { timestamps: false, toJSON: { virtuals: true }, toObject: { virtuals: true } },
 );
+
+offeringSlotSchema.pre("validate", function () {
+  if (this.capacity < this.assignedStudentCount) {
+    this.invalidate("capacity", "Capacity cannot be lower than assigned student count");
+  }
+});
 
 offeringSlotSchema.virtual("remainingCapacity").get(function () {
   return Math.max(0, this.capacity - this.assignedStudentCount);

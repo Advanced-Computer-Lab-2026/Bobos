@@ -1,4 +1,4 @@
-import { DAYS_OF_WEEK, STUDENT_TYPES, WORKFLOW_STATUSES, ref, registerModel, Schema, withTimestamps } from "./shared.js";
+import { ACADEMIC_STANDINGS, DAYS_OF_WEEK, STUDENT_TYPES, WORKFLOW_STATUSES, ref, registerModel, Schema, withTimestamps } from "./shared.js";
 
 const scheduleSlotSchema = new Schema(
   {
@@ -50,7 +50,7 @@ const studentScheduleSchema = withTimestamps({
   status: {
     type: String,
     required: true,
-    enum: ["draft", "readyForStudentReview", "processed", "reopened"],
+    enum: ["draft", "readyForStudentReview", "processed"],
     default: "draft",
   },
   template: ref("ScheduleTemplate", { default: null }),
@@ -65,6 +65,11 @@ const studentScheduleSchema = withTimestamps({
 
 studentScheduleSchema.index({ student: 1, term: 1, scheduleType: 1 }, { unique: true });
 studentScheduleSchema.index({ term: 1, status: 1, updatedAt: -1 });
+studentScheduleSchema.pre("validate", function () {
+  if (this.reopenedAt && !this.reopenReason?.trim()) {
+    this.invalidate("reopenReason", "A reason is required when reopening a schedule");
+  }
+});
 
 export const StudentSchedule = registerModel("StudentSchedule", studentScheduleSchema);
 
@@ -81,6 +86,21 @@ const courseAttemptSchema = withTimestamps({
 courseAttemptSchema.index({ student: 1, term: 1, course: 1, attemptNumber: 1 }, { unique: true });
 
 export const CourseAttempt = registerModel("CourseAttempt", courseAttemptSchema);
+
+const studentTermStandingSchema = withTimestamps({
+  student: ref("StudentProfile", { required: true }),
+  term: ref("AcademicTerm", { required: true, index: true }),
+  academicStanding: {
+    type: String,
+    required: true,
+    enum: ACADEMIC_STANDINGS,
+  },
+  calculatedAt: { type: Date, required: true, default: Date.now },
+});
+
+studentTermStandingSchema.index({ student: 1, term: 1 }, { unique: true });
+
+export const StudentTermStanding = registerModel("StudentTermStanding", studentTermStandingSchema);
 
 const rankedDaySchema = new Schema(
   {

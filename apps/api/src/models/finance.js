@@ -25,3 +25,19 @@ financialTransactionSchema.index({ student: 1, occurredAt: -1 });
 financialTransactionSchema.index({ kind: 1, status: 1, occurredAt: -1 });
 
 export const FinancialTransaction = registerModel("FinancialTransaction", financialTransactionSchema);
+
+const financialReversalRequestSchema = withTimestamps({
+  student: ref("StudentProfile", { required: true, index: true }),
+  extraHoursRequest: ref("ExtraHoursRequest", { required: true }),
+  originalTransaction: ref("FinancialTransaction", { required: true, unique: true }),
+  requestedBy: ref("User", { required: true }),
+  reversalType: { type: String, required: true, enum: ["refundToWallet", "cancelDeferredCharge"] },
+  status: { type: String, required: true, enum: ["pending", "completed"], default: "pending" },
+  decidedBy: ref("User", { default: null }),
+  decidedAt: { type: Date, default: null },
+});
+
+financialReversalRequestSchema.index({ extraHoursRequest: 1 }, { unique: true });
+financialReversalRequestSchema.index({ status: 1, createdAt: -1 });
+
+export const FinancialReversalRequest = registerModel("FinancialReversalRequest", financialReversalRequestSchema);

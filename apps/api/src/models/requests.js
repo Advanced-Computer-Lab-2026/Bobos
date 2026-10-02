@@ -5,7 +5,14 @@ const wholeScheduleSwapSchema = withTimestamps({
   term: ref("AcademicTerm", { required: true, index: true }),
   currentSchedule: ref("StudentSchedule", { required: true }),
   currentGroup: { type: String, required: true, trim: true },
-  desiredGroups: { type: [String], required: true },
+  desiredGroups: {
+    type: [String],
+    required: true,
+    validate: {
+      validator: (groups) => Array.isArray(groups) && groups.length > 0,
+      message: "Select at least one desired group",
+    },
+  },
   courseCodesSnapshot: { type: [String], required: true },
   status: { type: String, required: true, enum: ["open", "completed", "withdrawn", "expired"], default: "open" },
   completedWith: ref("StudentProfile", { default: null }),
@@ -42,6 +49,11 @@ const slotChangeRequestSchema = withTimestamps({
 
 slotChangeRequestSchema.index({ term: 1, status: 1, createdAt: -1 });
 slotChangeRequestSchema.index({ student: 1, status: 1 });
+slotChangeRequestSchema.pre("validate", function () {
+  if (this.status === "approved" && (!this.replacementOffering || !this.replacementSlotGroupId)) {
+    this.invalidate("replacementSlotGroupId", "An approved request requires a replacement slot");
+  }
+});
 
 export const SlotChangeRequest = registerModel("SlotChangeRequest", slotChangeRequestSchema);
 
@@ -73,9 +85,14 @@ export const MandatoryCourseRemovalRequest = registerModel(
 const extraHoursCourseSchema = new Schema(
   {
     course: ref("Course", { required: true }),
-    hours: { type: Number, required: true, min: 0 },
+    hours: {
+      type: Number,
+      required: true,
+      min: 0,
+      validate: { validator: (hours) => hours > 0, message: "Course hours must be greater than zero" },
+    },
     isRepeated: { type: Boolean, required: true },
-    pricePerHour: { type: Number, required: true, min: 0 },
+    pricePerHour: { type: Number, required: true, enum: [800, 1000] },
     subtotal: { type: Number, required: true, min: 0 },
   },
   { _id: false },
@@ -85,8 +102,17 @@ const extraHoursRequestSchema = withTimestamps({
   student: ref("StudentProfile", { required: true, index: true }),
   advisor: ref("User", { required: true, index: true }),
   term: ref("AcademicTerm", { required: true, index: true }),
-  courses: { type: [extraHoursCourseSchema], required: true },
-  requestedHours: { type: Number, required: true, min: 0 },
+  courses: {
+    type: [extraHoursCourseSchema],
+    required: true,
+    validate: { validator: (courses) => Array.isArray(courses) && courses.length > 0, message: "Add at least one course" },
+  },
+  requestedHours: {
+    type: Number,
+    required: true,
+    min: 0,
+    validate: { validator: (hours) => hours > 0, message: "Requested hours must be greater than zero" },
+  },
   totalCost: { type: Number, required: true, min: 0 },
   currency: { type: String, required: true, default: "EGP", enum: ["EGP"] },
   eligibilitySnapshot: {
@@ -111,6 +137,35 @@ const extraHoursRequestSchema = withTimestamps({
 
 extraHoursRequestSchema.index({ term: 1, decisionStatus: 1, settlementStatus: 1, createdAt: -1 });
 extraHoursRequestSchema.index({ student: 1, createdAt: -1 });
+extraHoursRequestSchema.pre("validate", function () {
+  const courses = this.courses ?? [];
+  const hasCompleteAmounts = courses.every((course) =>
+    Number.isFinite(course.hours) && Number.isFinite(course.pricePerHour) && Number.isFinite(course.subtotal),
+  );
+
+  if (!hasCompleteAmounts) return;
+
+  const expectedHours = courses.reduce((total, course) => total + course.hours, 0);
+  const expectedCost = courses.reduce((total, course) => total + course.subtotal, 0);
+  const matchesMoney = (left, right) => Math.round(left * 100) === Math.round(right * 100);
+
+  courses.forEach((course, index) => {
+    const expectedRate = course.isRepeated ? 1000 : 800;
+    if (course.pricePerHour !== expectedRate) {
+      this.invalidate(`courses.${index}.pricePerHour`, "Price per hour must match whether the course is repeated");
+    }
+    if (!matchesMoney(course.subtotal, course.hours * course.pricePerHour)) {
+      this.invalidate(`courses.${index}.subtotal`, "Course subtotal must equal hours multiplied by price per hour");
+    }
+  });
+
+  if (Math.abs(this.requestedHours - expectedHours) > 1e-9) {
+    this.invalidate("requestedHours", "Requested hours must equal the sum of course hours");
+  }
+  if (Number.isFinite(this.totalCost) && !matchesMoney(this.totalCost, expectedCost)) {
+    this.invalidate("totalCost", "Total cost must equal the sum of course subtotals");
+  }
+});
 
 export const ExtraHoursRequest = registerModel("ExtraHoursRequest", extraHoursRequestSchema);
 

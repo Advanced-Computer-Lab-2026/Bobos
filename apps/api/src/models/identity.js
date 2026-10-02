@@ -1,4 +1,4 @@
-import { USER_ROLES, ref, registerModel, withTimestamps, NOTIFICATION_TYPES } from "./shared.js";
+import { ACADEMIC_STANDINGS, USER_ROLES, ref, registerModel, withTimestamps, NOTIFICATION_TYPES } from "./shared.js";
 
 const userSchema = withTimestamps({
   email: {
@@ -34,7 +34,7 @@ const studentProfileSchema = withTimestamps({
   major: { type: String, trim: true, default: "undeclared" },
   currentSemester: { type: Number, required: true, min: 1, max: 10 },
   gpa: { type: Number, required: true, min: 0 },
-  academicStanding: { type: String, required: true, enum: ["goodAcademicStanding", "probation"] },
+  academicStanding: { type: String, required: true, enum: ACADEMIC_STANDINGS },
   enrollmentStatus: { type: String, enum: ["active", "inactive"], default: "active", index: true },
   studyGroup: { type: String, trim: true },
   advisingReason: {

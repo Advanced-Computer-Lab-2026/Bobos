@@ -23,12 +23,14 @@ export const USER_ROLES = [
 ];
 
 export const STUDENT_TYPES = ["normal", "advising"];
+export const ACADEMIC_STANDINGS = ["goodAcademicStanding", "probation"];
 export const ACADEMIC_SEASONS = ["winter", "spring", "summer", "firstMakeup", "secondMakeup"];
 export const DAYS_OF_WEEK = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 export const NOTIFICATION_TYPES = [
   "advisorAssigned",
   "advisorRemoved",
   "slotChangeSubmitted",
+  "slotChangeWithdrawn",
   "slotChangeDecision",
   "scheduleReadyForReview",
   "scheduleProcessed",
@@ -36,12 +38,14 @@ export const NOTIFICATION_TYPES = [
   "scheduleSwapOpened",
   "scheduleSwapCompleted",
   "extraHoursDecision",
+  "extraHoursRequested",
   "paymentUpdated",
   "deferredChargeUpdated",
   "refundIssued",
   "graduationPlanSubmitted",
   "graduationPlanDecision",
   "exitExamDecision",
+  "exitExamRequested",
   "mandatoryCourseRemovalRequested",
   "financialReversalRequested",
   "advisingDeadlineReminder",

@@ -12,11 +12,12 @@ This is the MongoDB persistence layer for the full 128-item functional requireme
 | `PasswordResetToken` | Stores only a token hash, use time, and expiry; expired tokens are removed by MongoDB's TTL index. |
 | `NotificationPreference` | Per-user in-app/email switches and muted event categories. |
 | `AcademicTerm` | Term dates, registration/advising deadlines, season, and academic year. |
-| `Course` | Catalogue data, credit hours, type, majors, seasons, prerequisite references, and bachelor-project marker. |
+| `Course` | Catalogue data, credit hours, curriculum lecture/tutorial/lab hours when supplied, type, majors, seasons, prerequisite references, and bachelor-project marker. |
 | `CourseOffering` | A course in a term, instructor name/email snapshots, eligible groups, publication state, and lecture/tutorial/lab slots. Slot groups are embedded because their details belong to one offering. |
 | `ScheduleTemplate` | Published standard schedule for a term, major, semester, and study group. |
 | `StudentSchedule` | Normal or advising schedule, its workflow status/version, course selections, and selected offering slot IDs. |
 | `CourseAttempt` | Course history and transcript results, including makeup attempts and attendance state. |
+| `StudentTermStanding` | Per-student academic-standing snapshot for a term, used to evaluate consecutive probation semesters. |
 | `SchedulingPreference` | Ranked preferred/avoided days, time ranges, groups, and days off for a student and term. |
 | `StudentWorkflowState` | Computed per-student/per-term status and blocking step for coordinator dashboards. It is a projection, not an advisor-editable source of truth. |
 | `WholeScheduleSwapRequest` | Group-based swap request, eligible group choices, course-set snapshot, expiry, and completion state. |
@@ -24,6 +25,7 @@ This is the MongoDB persistence layer for the full 128-item functional requireme
 | `MandatoryCourseRemovalRequest` | Advisor request and coordinator decision for removing a mandatory course. |
 | `ExtraHoursRequest` | Requested courses/hours, eligibility snapshot, itemized cost, coordinator decision, and settlement state. |
 | `FinancialTransaction` | Append-only wallet, gateway, deferred-charge, refund, and cancellation ledger. Wallet balance is derived from successful entries. |
+| `FinancialReversalRequest` | Pending refund-to-wallet or deferred-charge-cancellation request linked to its extra-hours request and original financial record. |
 | `GraduationPlan` | Private advisor draft or submitted plan, with courses assigned to future terms and coordinator decision. |
 | `ExitExamRequest` | Request and decision for an exit exam tied to a remaining failed course. |
 | `Notification` | In-app/email event, delivery/read state, and related record pointer. |
@@ -42,11 +44,17 @@ erDiagram
   COURSE_OFFERING ||--o{ STUDENT_SCHEDULE : selected_in
   STUDENT_PROFILE ||--o{ STUDENT_SCHEDULE : owns
   STUDENT_PROFILE ||--o{ COURSE_ATTEMPT : has
+  STUDENT_PROFILE ||--o{ STUDENT_TERM_STANDING : has
+  ACADEMIC_TERM ||--o{ STUDENT_TERM_STANDING : records
   STUDENT_PROFILE ||--o{ SCHEDULING_PREFERENCE : sets
   STUDENT_PROFILE ||--o{ WHOLE_SCHEDULE_SWAP_REQUEST : requests
   STUDENT_PROFILE ||--o{ SLOT_CHANGE_REQUEST : requests
   STUDENT_PROFILE ||--o{ EXTRA_HOURS_REQUEST : requests
+  STUDENT_PROFILE ||--o{ FINANCIAL_REVERSAL_REQUEST : student
   EXTRA_HOURS_REQUEST ||--o{ FINANCIAL_TRANSACTION : settled_by
+  EXTRA_HOURS_REQUEST ||--o| FINANCIAL_REVERSAL_REQUEST : reversal_requested
+  FINANCIAL_TRANSACTION ||--o| FINANCIAL_REVERSAL_REQUEST : original_record
+  USER ||--o{ FINANCIAL_REVERSAL_REQUEST : requested_by
   STUDENT_PROFILE ||--o{ GRADUATION_PLAN : has
   STUDENT_PROFILE ||--o{ EXIT_EXAM_REQUEST : requests
   USER ||--o{ NOTIFICATION : receives
@@ -62,12 +70,14 @@ The model files are grouped by responsibility: `identity.js`, `catalogue.js`, `a
 - Requirements 16-30: academic terms, catalogue courses, offerings/slots, templates, and schedule assignments.
 - Requirements 31-61: student schedules, swaps, slot changes, academic history, preferences, and mandatory-course candidates.
 - Requirements 62-82: advising schedule drafts, review/processing states, and mandatory-course removal decisions.
-- Requirements 83-102: extra-hours requests, wallet/payment/deferred-charge ledger entries, refunds, and financial search indexes.
+- Requirements 83-102: extra-hours requests, wallet/payment/deferred-charge ledger entries, financial reversal requests, refunds, and financial search indexes.
 - Requirements 103-115: graduation plans and exit-exam requests/decisions.
-- Requirements 116-128: calendar connections, notifications, computed workflow dashboard state, and schedule activity history. CSV import remains an all-or-nothing API operation; it does not need a permanent import collection.
+- Requirements 116-128: calendar connections, notifications, computed workflow dashboard state, term-level academic standing, and schedule activity history. CSV import remains an all-or-nothing API operation; it does not need a permanent import collection.
 
 ## Important Boundaries
 
 Mongoose validates individual documents and the indexes prevent selected duplicate records. Cross-document rules still belong in API services and MongoDB transactions: seat-capacity changes, two-sided schedule swaps, role visibility, deadlines, prerequisite/credit-hour decisions, one-time financial reversals, and all-or-nothing CSV imports. Those rules cannot be guaranteed by a schema alone.
+
+Reopening a schedule returns `StudentSchedule.status` to `draft`; the workflow projection may report `reopened`, and the schedule activity record preserves the required reason. Curriculum contact hours are optional because the required CSV columns do not include them; when available, they preserve the lecture/tutorial/lab breakdown from the curriculum sheet.
 
 `StudentWorkflowState` is a dashboard-friendly projection and must be recomputed from source schedules and requests. Calendar tokens must be encrypted before writing these fields; the model does not perform encryption. Store payment-provider references and outcomes only, never card numbers, CVVs, or gateway passwords.

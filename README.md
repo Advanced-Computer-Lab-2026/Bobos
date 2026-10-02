@@ -23,7 +23,7 @@ In another terminal, start the app:
 npm run dev
 ```
 
-The `dev` command starts MongoDB and both development servers:
+The `dev` command starts the React client and Express API. Keep MongoDB running in the first terminal:
 
 - React client: http://localhost:5173
 - Express API: http://localhost:3000/api/health

@@ -10,7 +10,8 @@
   },
   "scripts": {
     "dev": "concurrently -k -n api,web \"npm run dev --workspace @bobos/api\" \"npm run dev --workspace @bobos/web\"",
-    "build": "npm run build --workspace @bobos/web"
+    "build": "npm run build --workspace @bobos/web",
+    "test": "node --test"
   },
   "devDependencies": {
     "concurrently": "^10.0.5"

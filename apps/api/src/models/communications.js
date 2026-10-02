@@ -36,6 +36,12 @@ const scheduleActivitySchema = withTimestamps({
   reason: { type: String, trim: true, maxlength: 2000 },
 });
 
+scheduleActivitySchema.pre("validate", function () {
+  if (this.action === "reopened" && !this.reason?.trim()) {
+    this.invalidate("reason", "A reason is required when reopening a schedule");
+  }
+});
+
 scheduleActivitySchema.index({ term: 1, action: 1, occurredAt: -1 });
 scheduleActivitySchema.index({ student: 1, occurredAt: -1 });
 scheduleActivitySchema.index({ actorEmail: 1, occurredAt: -1 });
