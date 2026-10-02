@@ -1,0 +1,18 @@
+{
+  "name": "bobos",
+  "private": true,
+  "workspaces": [
+    "apps/api",
+    "apps/web"
+  ],
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "concurrently -k -n api,web \"npm run dev --workspace @bobos/api\" \"npm run dev --workspace @bobos/web\"",
+    "build": "npm run build --workspace @bobos/web"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.5"
+  }
+}
