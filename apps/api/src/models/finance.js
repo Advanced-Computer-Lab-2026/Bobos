@@ -1,7 +1,7 @@
 import { ref, registerModel, withTimestamps } from "./shared.js";
 
 const financialTransactionSchema = withTimestamps({
-  student: ref("StudentProfile", { required: true, index: true }),
+  student: ref("StudentProfile", { required: true }),
   extraHoursRequest: ref("ExtraHoursRequest", { default: null, index: true }),
   kind: {
     type: String,
@@ -23,6 +23,7 @@ const financialTransactionSchema = withTimestamps({
 financialTransactionSchema.index({ idempotencyKey: 1 }, { unique: true, partialFilterExpression: { idempotencyKey: { $type: "string" } } });
 financialTransactionSchema.index({ student: 1, occurredAt: -1 });
 financialTransactionSchema.index({ kind: 1, status: 1, occurredAt: -1 });
+financialTransactionSchema.index({ settlementOption: 1, status: 1, occurredAt: -1 });
 
 export const FinancialTransaction = registerModel("FinancialTransaction", financialTransactionSchema);
 

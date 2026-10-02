@@ -76,7 +76,7 @@ The model files are grouped by responsibility: `identity.js`, `catalogue.js`, `a
 
 ## Important Boundaries
 
-Mongoose validates individual documents and the indexes prevent selected duplicate records. Cross-document rules still belong in API services and MongoDB transactions: seat-capacity changes, two-sided schedule swaps, role visibility, deadlines, prerequisite/credit-hour decisions, one-time financial reversals, and all-or-nothing CSV imports. Those rules cannot be guaranteed by a schema alone.
+Mongoose validates individual documents and the indexes prevent selected duplicate records. Document validation hooks do not run for query updates, so write services must validate hydrated documents before saving or enforce the same rule in the service. Cross-document rules still belong in API services and MongoDB transactions: seat-capacity changes, two-sided schedule swaps, role visibility, deadlines, prerequisite/credit-hour decisions, one-time financial reversals, and all-or-nothing CSV imports. Those rules cannot be guaranteed by a schema alone.
 
 Reopening a schedule returns `StudentSchedule.status` to `draft`; the workflow projection may report `reopened`, and the schedule activity record preserves the required reason. Curriculum contact hours are optional because the required CSV columns do not include them; when available, they preserve the lecture/tutorial/lab breakdown from the curriculum sheet.
 

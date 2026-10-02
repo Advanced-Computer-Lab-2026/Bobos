@@ -2,7 +2,7 @@ import { ref, registerModel, Schema, withTimestamps } from "./shared.js";
 
 const wholeScheduleSwapSchema = withTimestamps({
   student: ref("StudentProfile", { required: true, index: true }),
-  term: ref("AcademicTerm", { required: true, index: true }),
+  term: ref("AcademicTerm", { required: true }),
   currentSchedule: ref("StudentSchedule", { required: true }),
   currentGroup: { type: String, required: true, trim: true },
   desiredGroups: {
@@ -30,9 +30,9 @@ wholeScheduleSwapSchema.index({ term: 1, status: 1, createdAt: -1 });
 export const WholeScheduleSwapRequest = registerModel("WholeScheduleSwapRequest", wholeScheduleSwapSchema);
 
 const slotChangeRequestSchema = withTimestamps({
-  student: ref("StudentProfile", { required: true, index: true }),
+  student: ref("StudentProfile", { required: true }),
   schedule: ref("StudentSchedule", { required: true, index: true }),
-  term: ref("AcademicTerm", { required: true, index: true }),
+  term: ref("AcademicTerm", { required: true }),
   course: ref("Course", { required: true }),
   componentType: { type: String, required: true, enum: ["lecture", "tutorial", "lab"] },
   currentOffering: ref("CourseOffering", { required: true }),
@@ -58,10 +58,10 @@ slotChangeRequestSchema.pre("validate", function () {
 export const SlotChangeRequest = registerModel("SlotChangeRequest", slotChangeRequestSchema);
 
 const mandatoryCourseRemovalRequestSchema = withTimestamps({
-  student: ref("StudentProfile", { required: true, index: true }),
+  student: ref("StudentProfile", { required: true }),
   course: ref("Course", { required: true, index: true }),
   advisor: ref("User", { required: true, index: true }),
-  term: ref("AcademicTerm", { required: true, index: true }),
+  term: ref("AcademicTerm", { required: true }),
   reason: {
     type: String,
     required: true,
@@ -99,9 +99,9 @@ const extraHoursCourseSchema = new Schema(
 );
 
 const extraHoursRequestSchema = withTimestamps({
-  student: ref("StudentProfile", { required: true, index: true }),
+  student: ref("StudentProfile", { required: true }),
   advisor: ref("User", { required: true, index: true }),
-  term: ref("AcademicTerm", { required: true, index: true }),
+  term: ref("AcademicTerm", { required: true }),
   courses: {
     type: [extraHoursCourseSchema],
     required: true,
@@ -178,11 +178,11 @@ const graduationTermPlanSchema = new Schema(
 );
 
 const graduationPlanSchema = withTimestamps({
-  student: ref("StudentProfile", { required: true, index: true }),
-  advisor: ref("User", { required: true, index: true }),
+  student: ref("StudentProfile", { required: true }),
+  advisor: ref("User", { required: true }),
   termPlans: { type: [graduationTermPlanSchema], required: true },
   exitExamRequest: ref("ExitExamRequest", { default: null }),
-  status: { type: String, required: true, enum: ["draft", "submitted", "accepted", "rejected"], default: "draft" },
+  status: { type: String, required: true, enum: ["draft", "submitted", "accepted"], default: "draft" },
   responseNote: { type: String, trim: true, maxlength: 2000 },
   decidedBy: ref("User", { default: null }),
   submittedAt: { type: Date, default: null },

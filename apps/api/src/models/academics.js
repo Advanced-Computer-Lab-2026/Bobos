@@ -19,7 +19,7 @@ const templateCourseSchema = new Schema(
 );
 
 const scheduleTemplateSchema = withTimestamps({
-  term: ref("AcademicTerm", { required: true, index: true }),
+  term: ref("AcademicTerm", { required: true }),
   major: { type: String, required: true, trim: true },
   semester: { type: Number, required: true, min: 1, max: 10 },
   studyGroup: { type: String, required: true, trim: true },
@@ -44,8 +44,8 @@ const scheduledCourseSchema = new Schema(
 );
 
 const studentScheduleSchema = withTimestamps({
-  student: ref("StudentProfile", { required: true, index: true }),
-  term: ref("AcademicTerm", { required: true, index: true }),
+  student: ref("StudentProfile", { required: true }),
+  term: ref("AcademicTerm", { required: true }),
   scheduleType: { type: String, required: true, enum: ["normal", "advising"] },
   status: {
     type: String,
@@ -59,22 +59,15 @@ const studentScheduleSchema = withTimestamps({
   createdBy: ref("User", { required: true }),
   processedBy: ref("User", { default: null }),
   processedAt: { type: Date, default: null },
-  reopenedAt: { type: Date, default: null },
-  reopenReason: { type: String, trim: true },
 });
 
 studentScheduleSchema.index({ student: 1, term: 1, scheduleType: 1 }, { unique: true });
 studentScheduleSchema.index({ term: 1, status: 1, updatedAt: -1 });
-studentScheduleSchema.pre("validate", function () {
-  if (this.reopenedAt && !this.reopenReason?.trim()) {
-    this.invalidate("reopenReason", "A reason is required when reopening a schedule");
-  }
-});
 
 export const StudentSchedule = registerModel("StudentSchedule", studentScheduleSchema);
 
 const courseAttemptSchema = withTimestamps({
-  student: ref("StudentProfile", { required: true, index: true }),
+  student: ref("StudentProfile", { required: true }),
   course: ref("Course", { required: true, index: true }),
   term: ref("AcademicTerm", { required: true, index: true }),
   attemptNumber: { type: Number, required: true, min: 1, default: 1 },
@@ -141,7 +134,7 @@ const rankedGroupSchema = new Schema(
 );
 
 const schedulingPreferenceSchema = withTimestamps({
-  student: ref("StudentProfile", { required: true, index: true }),
+  student: ref("StudentProfile", { required: true }),
   term: ref("AcademicTerm", { required: true, index: true }),
   preferredDays: { type: [rankedDaySchema], default: [] },
   avoidedDays: { type: [rankedDaySchema], default: [] },
@@ -157,8 +150,8 @@ schedulingPreferenceSchema.index({ student: 1, term: 1 }, { unique: true });
 export const SchedulingPreference = registerModel("SchedulingPreference", schedulingPreferenceSchema);
 
 const studentWorkflowStateSchema = withTimestamps({
-  student: ref("StudentProfile", { required: true, index: true }),
-  term: ref("AcademicTerm", { required: true, index: true }),
+  student: ref("StudentProfile", { required: true }),
+  term: ref("AcademicTerm", { required: true }),
   studentType: { type: String, required: true, enum: STUDENT_TYPES },
   status: { type: String, required: true, enum: WORKFLOW_STATUSES },
   blockingStep: { type: String, trim: true, default: null },

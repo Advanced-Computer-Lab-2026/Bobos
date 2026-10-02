@@ -39,6 +39,7 @@ const studentProfileSchema = withTimestamps({
   studyGroup: { type: String, trim: true },
   advisingReason: {
     type: String,
+    required: function () { return this.studentType === "advising"; },
     enum: ["probation", "failedCourses", "unattendedCourses", "undeclaredMajor", "transfer"],
   },
   assignedAdvisor: ref("User", { default: null }),
@@ -50,7 +51,7 @@ export const StudentProfile = registerModel("StudentProfile", studentProfileSche
 
 const advisorAssignmentSchema = withTimestamps({
   student: ref("StudentProfile", { required: true }),
-  advisor: ref("User", { required: true, index: true }),
+  advisor: ref("User", { required: true }),
   assignedBy: ref("User", { required: true }),
   endedBy: ref("User", { default: null }),
   endedAt: { type: Date, default: null },

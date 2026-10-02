@@ -1,7 +1,7 @@
 import { NOTIFICATION_TYPES, USER_ROLES, ref, registerModel, withTimestamps } from "./shared.js";
 
 const notificationSchema = withTimestamps({
-  recipient: ref("User", { required: true, index: true }),
+  recipient: ref("User", { required: true }),
   type: { type: String, required: true, enum: NOTIFICATION_TYPES, index: true },
   title: { type: String, required: true, trim: true },
   message: { type: String, required: true, trim: true },
@@ -23,8 +23,8 @@ notificationSchema.index(
 export const Notification = registerModel("Notification", notificationSchema);
 
 const scheduleActivitySchema = withTimestamps({
-  student: ref("StudentProfile", { required: true, index: true }),
-  term: ref("AcademicTerm", { required: true, index: true }),
+  student: ref("StudentProfile", { required: true }),
+  term: ref("AcademicTerm", { required: true }),
   schedule: ref("StudentSchedule", { required: true }),
   action: { type: String, required: true, enum: ["processed", "reopened"] },
   scheduleVersion: { type: Number, required: true, min: 1 },
@@ -43,13 +43,15 @@ scheduleActivitySchema.pre("validate", function () {
 });
 
 scheduleActivitySchema.index({ term: 1, action: 1, occurredAt: -1 });
+scheduleActivitySchema.index({ action: 1, occurredAt: -1 });
 scheduleActivitySchema.index({ student: 1, occurredAt: -1 });
 scheduleActivitySchema.index({ actorEmail: 1, occurredAt: -1 });
+scheduleActivitySchema.index({ actorName: 1, occurredAt: -1 });
 
 export const ScheduleActivity = registerModel("ScheduleActivity", scheduleActivitySchema);
 
 const calendarConnectionSchema = withTimestamps({
-  user: ref("User", { required: true, index: true }),
+  user: ref("User", { required: true }),
   provider: { type: String, required: true, enum: ["google", "microsoft"] },
   providerAccountId: { type: String, required: true, trim: true },
   encryptedAccessToken: { type: String, required: true, select: false },

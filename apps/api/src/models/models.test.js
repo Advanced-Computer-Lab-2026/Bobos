@@ -5,7 +5,8 @@ import { StudentSchedule, StudentTermStanding } from "./academics.js";
 import { Course, CourseOffering } from "./catalogue.js";
 import { Notification, ScheduleActivity } from "./communications.js";
 import { FinancialReversalRequest } from "./finance.js";
-import { ExtraHoursRequest, SlotChangeRequest, WholeScheduleSwapRequest } from "./requests.js";
+import { StudentProfile } from "./identity.js";
+import { ExtraHoursRequest, GraduationPlan, SlotChangeRequest, WholeScheduleSwapRequest } from "./requests.js";
 
 const id = () => new mongoose.Types.ObjectId();
 const invalid = (document) => assert.rejects(document.validate(), mongoose.Error.ValidationError);
@@ -36,6 +37,28 @@ test("student term standings can retain a standing snapshot", async () => {
     term: id(),
     academicStanding: "probation",
   }));
+});
+
+test("advising students require a supported advising reason", async () => {
+  const fields = {
+    user: id(),
+    studentId: "26-12345",
+    studentType: "advising",
+    currentSemester: 1,
+    gpa: 2.5,
+    academicStanding: "goodAcademicStanding",
+  };
+
+  await invalid(new StudentProfile(fields));
+  await valid(new StudentProfile({ ...fields, advisingReason: "probation" }));
+  await valid(new StudentProfile({ ...fields, studentType: "normal" }));
+});
+
+test("graduation plans use draft when a coordinator rejects them", async () => {
+  const fields = { student: id(), advisor: id(), termPlans: [] };
+
+  await invalid(new GraduationPlan({ ...fields, status: "rejected" }));
+  await valid(new GraduationPlan({ ...fields, status: "draft" }));
 });
 
 test("financial reversal requests capture a pending coordinator action", async () => {
@@ -143,17 +166,11 @@ test("approved slot changes require a replacement offering and slot", async () =
   }));
 });
 
-test("reopened schedules return to draft and require a reason", async () => {
+test("reopened schedules use the draft status", async () => {
   const fields = { student: id(), term: id(), scheduleType: "advising", createdBy: id() };
 
   await invalid(new StudentSchedule({ ...fields, status: "reopened" }));
-  await invalid(new StudentSchedule({ ...fields, status: "draft", reopenedAt: new Date() }));
-  await valid(new StudentSchedule({
-    ...fields,
-    status: "draft",
-    reopenedAt: new Date(),
-    reopenReason: "Correcting a course assignment",
-  }));
+  await valid(new StudentSchedule({ ...fields, status: "draft" }));
 });
 
 test("reopened activity records require a reason", async () => {
