@@ -1,8 +1,17 @@
-const express = require('express');
+import express from "express";
+import { getStudents } from "../controllers/admin.controller.js";
+
 const router = express.Router();
+const directoryRoles = ["coordinator", "administrator"];
 
-const adminController = require('../controllers/admin.controller');
+export function requireDirectoryRole(req, res, next) {
+  if (!req.user) return res.status(401).json({ message: "Authentication required" });
+  if (!directoryRoles.includes(req.user.role)) {
+    return res.status(403).json({ message: "Coordinator or Administrator access required" });
+  }
+  next();
+}
 
-// TODO: Team B (B1, B2, B3) adds their routes here
+router.get("/students", requireDirectoryRole, getStudents);
 
-module.exports = router;
+export default router;

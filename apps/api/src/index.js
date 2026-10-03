@@ -2,6 +2,7 @@ import express from "express";
 import mongoose from "mongoose";
 import "./models/index.js";
 
+import adminRoutes from "./routes/admin.routes.js";
 import catalogueRoutes from "./routes/catalogue.routes.js";
 
 const app = express();
@@ -11,6 +12,7 @@ const mongoUri = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/bobos";
 app.use(express.json());
 
 // Group Routes
+app.use("/api/admin", adminRoutes);
 app.use("/api/catalogue", catalogueRoutes);
 
 app.get("/api/health", (_req, res) => {
