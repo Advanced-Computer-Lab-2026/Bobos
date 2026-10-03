@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import mongoose from "mongoose";
-import { StudentSchedule, StudentTermStanding } from "./academics.js";
+import { CourseAttempt, StudentSchedule, StudentTermStanding } from "./academics.js";
 import { Course, CourseOffering } from "./catalogue.js";
 import { Notification, ScheduleActivity } from "./communications.js";
 import { FinancialReversalRequest } from "./finance.js";
@@ -37,6 +37,15 @@ test("student term standings can retain a standing snapshot", async () => {
     term: id(),
     academicStanding: "probation",
   }));
+});
+
+test("completed course attempts require a grade", async () => {
+  const fields = { student: id(), course: id(), term: id(), attendance: "attended" };
+
+  await invalid(new CourseAttempt({ ...fields, result: "passed" }));
+  await invalid(new CourseAttempt({ ...fields, result: "failed" }));
+  await valid(new CourseAttempt({ ...fields, result: "passed", grade: "A" }));
+  await valid(new CourseAttempt({ ...fields, result: "current" }));
 });
 
 test("advising students require a supported advising reason", async () => {
@@ -105,6 +114,27 @@ test("offering capacity cannot be lower than assigned students", async () => {
     ...fields,
     slots: [{ ...fields.slots[0], capacity: 2 }],
   }));
+});
+
+test("published offerings require an instructor, eligible group, and slot", async () => {
+  const fields = { course: id(), term: id(), isPublished: true };
+
+  await invalid(new CourseOffering(fields));
+  await valid(new CourseOffering({
+    ...fields,
+    instructors: [{ fullName: "Instructor" }],
+    eligibleGroups: [{ major: "CS" }],
+    slots: [{
+      componentType: "lecture",
+      groupNumber: "1",
+      day: "Monday",
+      startMinute: 540,
+      endMinute: 600,
+      room: "A1",
+      capacity: 30,
+    }],
+  }));
+  await valid(new CourseOffering({ course: id(), term: id() }));
 });
 
 test("an open swap requires at least one desired group", async () => {
