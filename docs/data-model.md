@@ -2,6 +2,34 @@
 
 This is the MongoDB persistence layer for the full 128-item functional requirements sheet. It defines Mongoose schemas and indexes only; it does not implement pages, API routes, authorization, workflow services, migrations, or seed data.
 
+## Read Order
+
+The sprint labels and requirement numbers below follow the `Sprint` column in the workbook's `Functional Requirements` sheet. Sprint 1 is Req. 1-23, 25-34, 49-58, 61, 89, and 128; Sprint 2 is Req. 24, 35-48, 59-60, 62-88, and 90-127. Schema definitions remain grouped by domain; comments beside each schema identify the requirements it supports in each sprint.
+
+### Sprint 1
+
+1. `identity.js` - Requirements 1-15. For B1 specifically, review `StudentProfile` for Req. 6-8.
+2. `catalogue.js` - Requirements 16-23, 25-27, and 128.
+3. `academics.js` - Requirements 6-8, 28-33, and 49-58, 61.
+4. `requests.js` - No Sprint 1 request schema; Req. 34's eligible group schedules come from `ScheduleTemplate` and `CourseOffering`.
+5. `communications.js` - Requirements 5 and 13.
+6. `finance.js` - Requirement 89.
+
+For B1, start with Requirements 6-8: `StudentProfile` in `identity.js` and `StudentWorkflowState` in `academics.js` provide the directory fields and workflow projection.
+
+### Sprint 2
+
+1. `requests.js` - Requirements 35-48.
+2. `identity.js`, `catalogue.js`, `academics.js`, and `requests.js` - Requirements 59-82, 118, and 122.
+3. `requests.js` and `finance.js` - Requirements 83-102.
+4. `requests.js` - Requirements 103-115.
+5. `communications.js` - Requirements 116-121 and 123-126.
+6. `finance.js` - Requirement 127.
+
+The Sprint 2-only offering-copy operation in Req. 24 reuses `AcademicTerm` and `CourseOffering` from `catalogue.js`; it needs no new schema.
+
+Some models appear in both sprint groups because their fields support requirements from both sprints. The sprint labels are a reading aid, not separate schemas or implementation boundaries.
+
 ## Models
 
 | Model | Purpose |
@@ -10,7 +38,6 @@ This is the MongoDB persistence layer for the full 128-item functional requireme
 | `StudentProfile` | Student ID, type, major, semester, standing, enrollment state, advising reason, and current advisor. Kept separate so staff accounts do not carry student-only fields. |
 | `AdvisorAssignment` | Appendable assignment history; the partial unique index allows only one current advisor assignment per student. |
 | `PasswordResetToken` | Stores only a token hash, use time, and expiry; expired tokens are removed by MongoDB's TTL index. |
-| `NotificationPreference` | Per-user in-app/email switches and muted event categories. |
 | `AcademicTerm` | Term dates, registration/advising deadlines, season, and academic year. |
 | `Course` | Catalogue data, credit hours, curriculum lecture/tutorial/lab hours when supplied, type, majors, seasons, prerequisite references, and bachelor-project marker. |
 | `CourseOffering` | A course in a term, instructor name/email snapshots, eligible groups, publication state, and lecture/tutorial/lab slots. Slot groups are embedded because their details belong to one offering. |

@@ -1,5 +1,8 @@
-import { ACADEMIC_STANDINGS, USER_ROLES, ref, registerModel, withTimestamps, NOTIFICATION_TYPES } from "./shared.js";
+import { ACADEMIC_STANDINGS, USER_ROLES, ref, registerModel, withTimestamps } from "./shared.js";
 
+// ## Sprint 1 schemas
+// User: Req. 1, 3, 10-12; StudentProfile: Req. 4, 6-9, 50-53.
+// AdvisorAssignment: Req. 11-15, 50-53; PasswordResetToken: Req. 2.
 const userSchema = withTimestamps({
   email: {
     type: String,
@@ -26,6 +29,7 @@ userSchema.index({ fullName: 1 });
 
 export const User = registerModel("User", userSchema);
 
+// B1: Req. 6-8 directory identity fields; workflow state is in academics.js.
 const studentProfileSchema = withTimestamps({
   user: ref("User", { required: true, unique: true }),
   studentId: { type: String, required: true, trim: true, unique: true, match: /^\d{2}-\d{5}$/ },
@@ -76,11 +80,5 @@ passwordResetTokenSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 export const PasswordResetToken = registerModel("PasswordResetToken", passwordResetTokenSchema);
 
-const notificationPreferenceSchema = withTimestamps({
-  user: ref("User", { required: true, unique: true }),
-  inAppEnabled: { type: Boolean, default: true },
-  emailEnabled: { type: Boolean, default: true },
-  mutedEvents: { type: [String], enum: NOTIFICATION_TYPES, default: [] },
-});
-
-export const NotificationPreference = registerModel("NotificationPreference", notificationPreferenceSchema);
+// ## Sprint 2 schemas
+// Reuses StudentProfile (Req. 59-60) and AdvisorAssignment (Req. 119); no new schemas in this file.

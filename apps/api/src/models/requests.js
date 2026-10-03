@@ -1,5 +1,12 @@
 import { ref, registerModel, Schema, withTimestamps } from "./shared.js";
 
+// ## Sprint 1 schemas
+// Req. 34 uses ScheduleTemplate and CourseOffering in other model files; no request schema is needed yet.
+
+// ## Sprint 2 schemas
+// WholeScheduleSwapRequest: Req. 35-39; SlotChangeRequest: Req. 40-48.
+// MandatoryCourseRemovalRequest: Req. 64-69; ExtraHoursRequest: Req. 83-88, 90-96.
+// GraduationPlan: Req. 103-107, 110-114; ExitExamRequest: Req. 108-109, 115.
 const wholeScheduleSwapSchema = withTimestamps({
   student: ref("StudentProfile", { required: true, index: true }),
   term: ref("AcademicTerm", { required: true }),
@@ -29,6 +36,7 @@ wholeScheduleSwapSchema.index({ term: 1, status: 1, createdAt: -1 });
 
 export const WholeScheduleSwapRequest = registerModel("WholeScheduleSwapRequest", wholeScheduleSwapSchema);
 
+// Sprint 2 schemas: SlotChangeRequest, MandatoryCourseRemovalRequest, ExtraHoursRequest, GraduationPlan, ExitExamRequest.
 const slotChangeRequestSchema = withTimestamps({
   student: ref("StudentProfile", { required: true }),
   schedule: ref("StudentSchedule", { required: true, index: true }),
