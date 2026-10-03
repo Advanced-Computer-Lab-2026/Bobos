@@ -7,5 +7,10 @@ const router = express.Router();
 router.post('/offerings', createOffering);
 router.get('/offerings', getOfferings);
 router.get('/offerings/:id', getOfferingById);
+//courses managment w 
+router.post('/courses', createCourse);
+router.get('/courses', getCourses);
+router.put('/courses/:id', updateCourse);
+router.delete('/courses/:id', deleteCourse);
 
 export default router;

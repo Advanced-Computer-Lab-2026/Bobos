@@ -1,5 +1,25 @@
 import { CourseOffering, Course, AcademicTerm } from '../models/catalogue.js';
 
+export const createCourse = async (req, res) => {
+  try {
+    const { code, name, creditHours } = req.body;
+    const newCourse = new Course({ code, name, creditHours });
+    await newCourse.save();
+    res.status(201).json(newCourse);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+export const getCourses = async (req, res) => {
+}
+
+export const updateCourse = async (req, res) => {
+}
+
+export const deleteCourse = async (req, res) => {
+}
+
 export const createOffering = async (req, res) => {
   try {
     const { course, term, instructors, eligibleGroups, slots, isPublished } = req.body;
