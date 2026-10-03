@@ -1,5 +1,7 @@
 import { ACADEMIC_SEASONS, DAYS_OF_WEEK, ref, registerModel, Schema, withTimestamps } from "./shared.js";
 
+// ## Sprint 1 schemas
+// AcademicTerm: Req. 16-17; Course: Req. 18-21, 128; CourseOffering: Req. 22-23, 25-27.
 const academicTermSchema = withTimestamps({
   code: { type: String, required: true, trim: true, unique: true },
   academicYear: { type: String, required: true, trim: true },
@@ -123,3 +125,6 @@ courseOfferingSchema.index({ term: 1, course: 1 }, { unique: true });
 courseOfferingSchema.index({ term: 1, isPublished: 1 });
 
 export const CourseOffering = registerModel("CourseOffering", courseOfferingSchema);
+
+// ## Sprint 2 schemas
+// Reuses AcademicTerm/CourseOffering for Req. 24 and Course/CourseOffering for Req. 47, 59-60, 75.

@@ -1,5 +1,8 @@
 import { ACADEMIC_STANDINGS, DAYS_OF_WEEK, STUDENT_TYPES, WORKFLOW_STATUSES, ref, registerModel, Schema, withTimestamps } from "./shared.js";
 
+// ## Sprint 1 schemas
+// ScheduleTemplate: Req. 28-29; StudentSchedule: Req. 30-34, 49; CourseAttempt: Req. 54-56, 61.
+// SchedulingPreference: Req. 57-58; StudentWorkflowState: Req. 6-8, 50-53.
 const scheduleSlotSchema = new Schema(
   {
     componentType: { type: String, required: true, enum: ["lecture", "tutorial", "lab"] },
@@ -80,21 +83,6 @@ courseAttemptSchema.index({ student: 1, term: 1, course: 1, attemptNumber: 1 }, 
 
 export const CourseAttempt = registerModel("CourseAttempt", courseAttemptSchema);
 
-const studentTermStandingSchema = withTimestamps({
-  student: ref("StudentProfile", { required: true }),
-  term: ref("AcademicTerm", { required: true, index: true }),
-  academicStanding: {
-    type: String,
-    required: true,
-    enum: ACADEMIC_STANDINGS,
-  },
-  calculatedAt: { type: Date, required: true, default: Date.now },
-});
-
-studentTermStandingSchema.index({ student: 1, term: 1 }, { unique: true });
-
-export const StudentTermStanding = registerModel("StudentTermStanding", studentTermStandingSchema);
-
 const rankedDaySchema = new Schema(
   {
     day: { type: String, required: true, enum: DAYS_OF_WEEK },
@@ -149,6 +137,7 @@ schedulingPreferenceSchema.index({ student: 1, term: 1 }, { unique: true });
 
 export const SchedulingPreference = registerModel("SchedulingPreference", schedulingPreferenceSchema);
 
+// B1: Req. 6-8 directory status, blocking step, and last update projection.
 const studentWorkflowStateSchema = withTimestamps({
   student: ref("StudentProfile", { required: true }),
   term: ref("AcademicTerm", { required: true }),
@@ -163,3 +152,20 @@ studentWorkflowStateSchema.index({ student: 1, term: 1 }, { unique: true });
 studentWorkflowStateSchema.index({ term: 1, studentType: 1, status: 1, blockingStep: 1, lastActivityAt: -1 });
 
 export const StudentWorkflowState = registerModel("StudentWorkflowState", studentWorkflowStateSchema);
+
+// ## Sprint 2
+// New schema: StudentTermStanding (Req. 118). Shared Sprint 1 schemas above also support Req. 59, 62-82, 108, and 122.
+const studentTermStandingSchema = withTimestamps({
+  student: ref("StudentProfile", { required: true }),
+  term: ref("AcademicTerm", { required: true, index: true }),
+  academicStanding: {
+    type: String,
+    required: true,
+    enum: ACADEMIC_STANDINGS,
+  },
+  calculatedAt: { type: Date, required: true, default: Date.now },
+});
+
+studentTermStandingSchema.index({ student: 1, term: 1 }, { unique: true });
+
+export const StudentTermStanding = registerModel("StudentTermStanding", studentTermStandingSchema);

@@ -1,5 +1,7 @@
 import { NOTIFICATION_TYPES, USER_ROLES, ref, registerModel, withTimestamps } from "./shared.js";
 
+// ## Sprint 1 schemas
+// Notification: Req. 5, 13; also used in Sprint 2 (Req. 117-121).
 const notificationSchema = withTimestamps({
   recipient: ref("User", { required: true }),
   type: { type: String, required: true, enum: NOTIFICATION_TYPES, index: true },
@@ -21,6 +23,24 @@ notificationSchema.index(
 );
 
 export const Notification = registerModel("Notification", notificationSchema);
+
+// ## Sprint 2 schemas
+// CalendarConnection: Req. 116; ScheduleActivity: Req. 123-126.
+const calendarConnectionSchema = withTimestamps({
+  user: ref("User", { required: true }),
+  provider: { type: String, required: true, enum: ["google", "microsoft"] },
+  providerAccountId: { type: String, required: true, trim: true },
+  encryptedAccessToken: { type: String, required: true, select: false },
+  encryptedRefreshToken: { type: String, select: false },
+  tokenExpiresAt: Date,
+  scopes: { type: [String], default: [] },
+  syncEnabled: { type: Boolean, default: true },
+  lastSyncedAt: Date,
+});
+
+calendarConnectionSchema.index({ user: 1, provider: 1 }, { unique: true });
+
+export const CalendarConnection = registerModel("CalendarConnection", calendarConnectionSchema);
 
 const scheduleActivitySchema = withTimestamps({
   student: ref("StudentProfile", { required: true }),
@@ -49,19 +69,3 @@ scheduleActivitySchema.index({ actorEmail: 1, occurredAt: -1 });
 scheduleActivitySchema.index({ actorName: 1, occurredAt: -1 });
 
 export const ScheduleActivity = registerModel("ScheduleActivity", scheduleActivitySchema);
-
-const calendarConnectionSchema = withTimestamps({
-  user: ref("User", { required: true }),
-  provider: { type: String, required: true, enum: ["google", "microsoft"] },
-  providerAccountId: { type: String, required: true, trim: true },
-  encryptedAccessToken: { type: String, required: true, select: false },
-  encryptedRefreshToken: { type: String, select: false },
-  tokenExpiresAt: Date,
-  scopes: { type: [String], default: [] },
-  syncEnabled: { type: Boolean, default: true },
-  lastSyncedAt: Date,
-});
-
-calendarConnectionSchema.index({ user: 1, provider: 1 }, { unique: true });
-
-export const CalendarConnection = registerModel("CalendarConnection", calendarConnectionSchema);

@@ -1,5 +1,7 @@
 import { ref, registerModel, withTimestamps } from "./shared.js";
 
+// ## Sprint 1 schemas
+// FinancialTransaction: Req. 89; also used in Sprint 2 (Req. 90-102, 127).
 const financialTransactionSchema = withTimestamps({
   student: ref("StudentProfile", { required: true }),
   extraHoursRequest: ref("ExtraHoursRequest", { default: null, index: true }),
@@ -27,6 +29,8 @@ financialTransactionSchema.index({ settlementOption: 1, status: 1, occurredAt: -
 
 export const FinancialTransaction = registerModel("FinancialTransaction", financialTransactionSchema);
 
+// ## Sprint 2 schemas
+// FinancialReversalRequest: Req. 102.
 const financialReversalRequestSchema = withTimestamps({
   student: ref("StudentProfile", { required: true, index: true }),
   extraHoursRequest: ref("ExtraHoursRequest", { required: true }),
