@@ -19,6 +19,7 @@ export const generateToken = (user) => {
       id: userId,
       role: user.role,
       email: user.email,
+      authVersion: user.authVersion ?? 0,
     },
     JWT_SECRET,
     { expiresIn: "7d" }
@@ -78,6 +79,13 @@ export const requireAuth = async (req, res, next) => {
       return res.status(401).json({
         success: false,
         message: "User account is inactive.",
+      });
+    }
+
+    if ((decoded.authVersion ?? 0) !== (user.authVersion ?? 0)) {
+      return res.status(401).json({
+        success: false,
+        message: "Your session has ended. Please log in again.",
       });
     }
 

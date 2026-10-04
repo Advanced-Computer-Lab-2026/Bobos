@@ -7,6 +7,7 @@ import identityRoutes from "./routes/identity.routes.js";
 import notificationRoutes from "./routes/notifications.routes.js";
 import { requireAuth } from "./middleware/auth.middleware.js";
 import { getProfile } from "./controllers/identity.controller.js";
+import { apiErrorHandler } from "./middleware/error.middleware.js";
 
 const app = express();
 const port = Number(process.env.PORT || 3000);
@@ -29,6 +30,8 @@ app.get("/api/health", (_req, res) => {
     database: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
   });
 });
+
+app.use(apiErrorHandler);
 
 try {
   await mongoose.connect(mongoUri);
