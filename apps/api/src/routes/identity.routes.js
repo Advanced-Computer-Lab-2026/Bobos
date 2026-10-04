@@ -1,9 +1,17 @@
-const express = require('express');
+import express from "express";
+import { getProfile, login, seedDemoUsers } from "../controllers/identity.controller.js";
+import { requireAuth } from "../middleware/auth.middleware.js";
+
 const router = express.Router();
 
-const identityController = require('../controllers/identity.controller');
+// Sprint 1 - Req 1 (Login dependency)
+router.post("/login", login);
 
-// TODO: Team A (A1, A2, A3) adds their routes here
-// Example: router.post('/login', identityController.login);
+// Sprint 1 - Req 4: View own profile applicable to role
+router.get("/profile", requireAuth, getProfile);
+router.get("/me", requireAuth, getProfile);
 
-module.exports = router;
+// Demo seed helper for interactive testing of all 5 roles
+router.post("/seed-demo", seedDemoUsers);
+
+export default router;
