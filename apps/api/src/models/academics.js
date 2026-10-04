@@ -210,3 +210,19 @@ export const getTranscriptByYear = async (studentId, year) => {
 
   return transcript;
 };
+
+//Added for Req 61: View failed and unattended courses
+export const getFailedAndUnattended = async (studentId) => {
+  const mandatoryCandidates = await CourseAttempt.find({
+     student: studentId,
+    $or: [
+      { result: 'failed' },
+      { attendance: 'unattended' }
+    ]
+  })
+  .populate('course')
+  .populate('term')
+  .exec();
+
+  return mandatoryCandidates;
+};
