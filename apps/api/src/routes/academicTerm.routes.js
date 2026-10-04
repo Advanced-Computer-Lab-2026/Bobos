@@ -3,7 +3,7 @@ import { createAcademicTerm, updateAcademicTerm } from '../controllers/academicT
 
 const router = express.Router();
 
-router.post('/', createAcademicTerm);
-router.put('/:id', updateAcademicTerm);
+router.post('/academicTerm', createAcademicTerm);
+router.put('/academicTerm/:id', updateAcademicTerm);
 
 export default router;

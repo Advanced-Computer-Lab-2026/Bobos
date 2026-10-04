@@ -4,10 +4,12 @@ import "./models/index.js";
 
 import catalogueRoutes from "./routes/catalogue.routes.js";
 import academicTermRoutes from "./routes/academicTerm.routes.js";
+import dotenv from "dotenv";
 
+dotenv.config({ path: "../../.env" });
 const app = express();
 const port = Number(process.env.PORT || 3000);
-const mongoUri = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/bobos";
+const mongoUri = process.env.MONGODB_URI;
 
 app.use(express.json());
 
