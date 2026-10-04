@@ -120,7 +120,7 @@ async function seed() {
 
     const springTerm = await AcademicTerm.create({
       code: "S2026",
-      academicYear: "2025-2026",
+      academicYear: "2026-2027", // was 2025-2026; this term runs Sep 2026 - Jan 2027
       season: "spring",
       termStart: new Date("2026-09-15"),
       termEnd: new Date("2027-01-31"),
@@ -136,6 +136,7 @@ async function seed() {
     // 8. Sample Course Offerings with slots (Req 22 demo data)
     await CourseOffering.create({
       course: insertedCourses[0]._id, // CSEN102
+      academicYear: springTerm.academicYear,
       term: springTerm._id,
       instructors: [
         { fullName: "Dr. Slim Abdennadher", email: "slim.abdennadher@guc.edu.eg" },
@@ -157,6 +158,7 @@ async function seed() {
 
     await CourseOffering.create({
       course: insertedCourses[5]._id, // MATH103
+      academicYear: springTerm.academicYear,
       term: springTerm._id,
       instructors: [
         { fullName: "Dr. Ahmed ElSheikh", email: "ahmed.elsheikh@guc.edu.eg" },
@@ -174,11 +176,29 @@ async function seed() {
       ],
     });
 
+    // Unpublished offering: CSEN202 must NOT be schedulable this term
+    await CourseOffering.create({
+      course: insertedCourses[1]._id, // CSEN202
+      academicYear: springTerm.academicYear,
+      term: springTerm._id,
+      instructors: [
+        { fullName: "Dr. Slim Abdennadher", email: "slim.abdennadher@guc.edu.eg" },
+      ],
+      eligibleGroups: [
+        { major: "CS", semester: 2 },
+        { major: "DMET", semester: 2 },
+      ],
+      isPublished: false,
+      slots: [
+        { componentType: "lecture", groupNumber: "1", day: "Saturday", startMinute: 510, endMinute: 600, room: "C7.302", capacity: 150 },
+      ],
+    });
+
     console.log("Seeding completed successfully!");
     console.log("  - 1 Admin, 1 Coordinator, 5 Advisors, 10 Students");
     console.log("  - 6 Core courses, 10 Electives");
     console.log("  - 2 Academic terms (Winter 2026, Spring 2026)");
-    console.log("  - 2 Sample course offerings with slots");
+    console.log("  - 3 Sample course offerings (2 published, 1 unpublished)");
     process.exit(0);
   } catch (error) {
     console.error("Error during seeding:", error);

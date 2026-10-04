@@ -114,6 +114,7 @@ offeringSlotSchema.virtual("remainingCapacity").get(function () {
 
 const courseOfferingSchema = withTimestamps({
   course: ref("Course", { required: true, index: true }),
+  academicYear: { type: String, required: true, trim: true, index: true },
   term: ref("AcademicTerm", { required: true }),
   instructors: { type: [instructorSchema], default: [] },
   eligibleGroups: { type: [eligibleGroupSchema], default: [] },
