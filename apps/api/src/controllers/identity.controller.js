@@ -109,8 +109,8 @@ export const getProfile = async (req, res) => {
  */
 export const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
-    if (!email || !password) {
+    const { email, password } = req.body ?? {};
+    if (typeof email !== "string" || typeof password !== "string" || !email.trim() || !password.trim()) {
       return res.status(400).json({
         success: false,
         message: "Email and password are required.",
@@ -118,6 +118,13 @@ export const login = async (req, res) => {
     }
 
     const normalizedEmail = email.toLowerCase().trim();
+    if (!/^[^\s@]+@(student\.guc\.edu\.eg|guc\.edu\.eg)$/.test(normalizedEmail)) {
+      return res.status(400).json({
+        success: false,
+        message: "Please use a valid GUC email address.",
+      });
+    }
+
     const user = await User.findOne({ email: normalizedEmail }).select("+passwordHash");
 
     if (!user) {
@@ -127,7 +134,7 @@ export const login = async (req, res) => {
       });
     }
 
-    if (!user.isActive) {
+    if (user.isActive !== true) {
       return res.status(401).json({
         success: false,
         message: "Account is inactive. Please contact an administrator.",
@@ -139,10 +146,6 @@ export const login = async (req, res) => {
       isMatch = await bcrypt.compare(password, user.passwordHash);
     } catch {
       isMatch = false;
-    }
-
-    if (!isMatch && user.passwordHash === password) {
-      isMatch = true;
     }
 
     if (!isMatch) {
@@ -172,7 +175,6 @@ export const login = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Login error.",
-      error: error.message,
     });
   }
 };

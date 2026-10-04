@@ -1,7 +1,13 @@
 import jwt from "jsonwebtoken";
+import { randomBytes } from "node:crypto";
+import mongoose from "mongoose";
 import { User } from "../models/identity.js";
 
-export const JWT_SECRET = process.env.JWT_SECRET || "bobos-development-secret-key-csen704";
+if (process.env.NODE_ENV === "production" && !process.env.JWT_SECRET) {
+  throw new Error("JWT_SECRET is required in production");
+}
+// Set JWT_SECRET in .env to keep development sessions valid across API restarts.
+export const JWT_SECRET = process.env.JWT_SECRET || randomBytes(32).toString("hex");
 
 /**
  * Generate a signed JWT for a given user document or object
@@ -44,7 +50,7 @@ export const requireAuth = async (req, res, next) => {
 
     let decoded;
     try {
-      decoded = jwt.verify(token, JWT_SECRET);
+      decoded = jwt.verify(token, JWT_SECRET, { algorithms: ["HS256"] });
     } catch (err) {
       return res.status(401).json({
         success: false,
@@ -53,7 +59,7 @@ export const requireAuth = async (req, res, next) => {
     }
 
     const userId = decoded.id || decoded.userId;
-    if (!userId) {
+    if (typeof userId !== "string" || !mongoose.isValidObjectId(userId)) {
       return res.status(401).json({
         success: false,
         message: "Invalid token payload.",
@@ -81,7 +87,6 @@ export const requireAuth = async (req, res, next) => {
     return res.status(500).json({
       success: false,
       message: "Internal server error during authentication.",
-      error: error.message,
     });
   }
 };
