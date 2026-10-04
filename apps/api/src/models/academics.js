@@ -173,3 +173,40 @@ const studentTermStandingSchema = withTimestamps({
 studentTermStandingSchema.index({ student: 1, term: 1 }, { unique: true });
 
 export const StudentTermStanding = registerModel("StudentTermStanding", studentTermStandingSchema);
+
+//Added for Req 55: View transcript for a selected academic year
+export const getTranscriptByYear = async (studentId, year) => {
+  const attempts = await CourseAttempt.find({ student: studentId })
+    .populate({
+      path: 'term',
+      match: { year: Number(year) }
+    })
+    .populate('course')
+    .exec();
+
+  const validAttempts = attempts.filter(attempt => attempt.term !== null);
+
+  const transcript = {
+    studentId,
+    year: Number(year),
+    terms: {
+      winter: [],
+      spring: [],
+      summer: [],
+      firstMakeup: [],
+      secondMakeup: []
+    }
+  };
+
+  validAttempts.forEach(attempt => {
+    const season = attempt.term.season ? attempt.term.season.toLowerCase() : '';
+
+    if (season === 'winter') transcript.terms.winter.push(attempt);
+    else if (season === 'spring') transcript.terms.spring.push(attempt);
+    else if (season === 'summer') transcript.terms.summer.push(attempt);
+    else if (season.includes('first') && season.includes('makeup')) transcript.terms.firstMakeup.push(attempt);
+    else if (season.includes('second') && season.includes('makeup')) transcript.terms.secondMakeup.push(attempt);
+  });
+
+  return transcript;
+};
