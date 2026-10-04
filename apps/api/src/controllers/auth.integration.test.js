@@ -11,6 +11,8 @@ import { User } from "../models/identity.js";
 import { USER_ROLES } from "../models/shared.js";
 import { passwordResetEmail } from "../services/password-reset-email.js";
 import { apiErrorHandler } from "../middleware/error.middleware.js";
+import jwt from "jsonwebtoken";
+import { JWT_SECRET } from "../middleware/auth.middleware.js";
 
 let database, smtp, http, baseUrl;
 let requestNumber = 0;
@@ -225,4 +227,55 @@ test("Authentication routes limit repeated requests from one IP", async () => {
 test("The demo-account endpoint is disabled by default", async () => {
   assert.equal((await request("/seed-demo", {})).status, 404);
   assert.equal(await User.countDocuments(), 0);
+});
+
+test("Requirement 3: all five roles can log out, invalidating existing tokens", async (t) => {
+  for (const role of USER_ROLES) {
+    await t.test(role, async () => {
+      const user = await createUser(role);
+      const first = await request("/login", { email: user.email, password });
+      const second = await request("/login", { email: user.email, password });
+      assert.equal(first.status, 200);
+      assert.equal(second.status, 200);
+      assert.equal((await request("/me", undefined, { token: first.body.token })).status, 200);
+      const loggedOut = await request("/logout", {}, { token: first.body.token });
+      assert.equal(loggedOut.status, 200);
+      assert.equal((await User.findById(user._id)).authVersion, 1);
+      assert.equal((await request("/me", undefined, { token: first.body.token })).status, 401);
+      assert.equal((await request("/me", undefined, { token: second.body.token })).status, 401);
+      assert.equal((await request("/logout", {}, { token: first.body.token })).status, 401);
+
+      const fresh = await request("/login", { email: user.email, password });
+      assert.equal(fresh.status, 200);
+      assert.equal((await request("/me", undefined, { token: fresh.body.token })).status, 200);
+    });
+  }
+});
+
+test("Requirement 3: logout cannot invalidate another user's sessions", async () => {
+  const user = await createUser("advisor");
+  const other = await createUser("coordinator");
+  const currentLogin = await request("/login", { email: user.email, password });
+  const otherLogin = await request("/login", { email: other.email, password });
+  assert.equal((await request("/logout", { userId: other._id.toString() }, { token: currentLogin.body.token })).status, 200);
+  assert.equal((await User.findById(other._id)).authVersion, 0);
+  assert.equal((await request("/me", undefined, { token: otherLogin.body.token })).status, 200);
+});
+
+test("Requirement 3: missing, invalid, expired and malformed-identity tokens cannot log out", async () => {
+  const user = await createUser();
+  const expired = jwt.sign({ id: user._id.toString(), authVersion: 0 }, JWT_SECRET, { expiresIn: "-1s" });
+  const malformed = jwt.sign({ id: "not-an-object-id", authVersion: 0 }, JWT_SECRET);
+  for (const token of [undefined, "invalid-token", expired, malformed]) {
+    assert.equal((await request("/logout", {}, { token })).status, 401);
+  }
+  assert.equal((await User.findById(user._id)).authVersion, 0);
+});
+
+test("Requirement 3: inactive accounts are blocked even with a previously valid token", async () => {
+  const user = await createUser();
+  const loggedIn = await request("/login", { email: user.email, password });
+  await User.updateOne({ _id: user._id }, { $set: { isActive: false } });
+  assert.equal((await request("/logout", {}, { token: loggedIn.body.token })).status, 401);
+  assert.equal((await request("/me", undefined, { token: loggedIn.body.token })).status, 401);
 });

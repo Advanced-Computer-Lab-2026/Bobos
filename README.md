@@ -35,4 +35,4 @@ The client proxies `/api` requests to the Express server. The API connects to Mo
 
 See [the data model](docs/data-model.md) for the database schemas and requirement coverage.
 
-See [the authentication backend guide](docs/authentication.md) for login and email OTP password reset, environment configuration, and API examples.
+See [the authentication backend guide](docs/authentication.md) for login, email OTP password reset and logout, environment configuration, and API examples.

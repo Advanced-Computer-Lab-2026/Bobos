@@ -3,6 +3,7 @@ import { getProfile, login, seedDemoUsers } from "../controllers/identity.contro
 import { requireAuth } from "../middleware/auth.middleware.js";
 import { rateLimit } from "express-rate-limit";
 import { requestPasswordReset, resetPassword } from "../controllers/password-reset.controller.js";
+import { logout } from "../controllers/logout.controller.js";
 
 const router = express.Router();
 
@@ -27,6 +28,9 @@ router.post("/login", authLimiter, login);
 // Sprint 1 - Req 2: Request a code by email, then submit it with a new password.
 router.post("/forgot-password", resetRequestLimiter, requestPasswordReset);
 router.post("/reset-password", authLimiter, resetPassword);
+
+// Sprint 1 - Req 3: Invalidate the authenticated account's existing sessions.
+router.post("/logout", requireAuth, logout);
 
 // Sprint 1 - Req 4: View own profile applicable to role
 router.get("/profile", requireAuth, getProfile);

@@ -1,6 +1,6 @@
 # Sprint 1 authentication backend
 
-The routes below implement requirements 1 and 2. All examples use JSON request bodies and existing database accounts. No signup route is provided.
+The routes below implement requirements 1, 2 and 3. All examples use JSON request bodies and existing database accounts. No signup route is provided.
 
 ## Configuration
 
@@ -53,6 +53,14 @@ The user receives a six-digit code by email. The response never contains the cod
 Keep the OTP as a string to preserve leading zeros. Five incorrect attempts invalidate the code. A successful reset atomically replaces the password hash, removes the code and invalidates existing sessions. A used, expired or replaced code cannot change the password again. New passwords require at least eight characters and at most 72 UTF-8 bytes, matching bcrypt's input limit. The user then logs in with the new password.
 
 The embedded state makes the update atomic on standalone local MongoDB; a replica set is not required. The pre-existing `PasswordResetToken` model remains available but is not used by these routes.
+
+## Requirement 3: logout
+
+`POST /api/identity/logout` with `Authorization: Bearer <token>` and an empty JSON body `{}`.
+
+Logout increments the account's persisted authentication version. All existing sessions for that account become invalid, including the supplied token, and protected endpoints return `401` if those tokens are reused. This implementation logs out all devices. The client should also remove its stored token after success. A new login still works and issues a token with the updated version.
+
+The endpoint identifies the user only through the authenticated token; request-body user IDs cannot log out another account. Missing, invalid, expired and already invalidated tokens return `401`.
 
 ## Development accounts and request limits
 
