@@ -354,3 +354,10 @@ table.table td.actions { white-space: nowrap; text-align: right; }
 
 /* requirement 32 - prominent total credit hours */
 .credit-total { font-size: 1.5rem; line-height: 1.1; color: var(--primary-dark); }
+
+/* Team C3 - requirement 33: course details (lecture / tutorial / lab cards) */
+.course-components { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
+.course-components .card { margin-bottom: 0; }
+.course-component { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+.course-component div { display: flex; flex-direction: column; }
+.course-component small { color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; }

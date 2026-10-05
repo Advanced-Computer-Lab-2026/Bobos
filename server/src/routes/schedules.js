@@ -4,6 +4,7 @@ import { requireAuth, requireRole } from '../middleware/auth.js';
 import {
   getMySchedule,
   getMyRegisteredCourses,
+  getMyCourseDetails,
   getStudentSchedule,
   listStudentsWithSchedules
 } from '../controllers/scheduleController.js';
@@ -17,6 +18,8 @@ router.use(requireAuth);
 router.get('/me', getMySchedule);
 // Requirement 32 - registered courses + credit hours (students only).
 router.get('/me/courses', getMyRegisteredCourses);
+// Requirement 33 - one registered course's assigned lecture/tutorial/lab.
+router.get('/me/courses/:courseId', getMyCourseDetails);
 router.get('/students', requireRole('advisor', 'coordinator', 'administrator'), listStudentsWithSchedules);
 // Students may call this too, but scheduleAccess.js limits them to themselves.
 router.get('/student/:studentId', getStudentSchedule);

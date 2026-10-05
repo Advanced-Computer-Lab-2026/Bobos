@@ -2,14 +2,17 @@
 // name, lecture/tutorial/lab times and locations) as a weekly calendar with
 // days off. Read-only. Visibility rules live in utils/scheduleAccess.js and the
 // calendar is built in utils/weeklyCalendar.js so reqs 32/33/49 share them.
+import mongoose from 'mongoose';
 import { User } from '../models/User.js';
 import { Student } from '../models/Student.js';
 import { StudentSchedule } from '../models/StudentSchedule.js';
 import { Course } from '../models/Course.js';
+import { CourseOffering } from '../models/CourseOffering.js';
 import { resolveTerm, resolveStudent } from './groupAssignmentController.js';
 import { checkScheduleAccess } from '../utils/scheduleAccess.js';
 import { buildWeeklyCalendar } from '../utils/weeklyCalendar.js';
 import { buildRegisteredCourses } from '../utils/registeredCourses.js';
+import { findCourseEntry, buildCourseDetails } from '../utils/courseDetails.js';
 
 function termView(term) {
   return { _id: term._id, academicYear: term.academicYear, season: term.season };
@@ -105,6 +108,51 @@ export async function getMyRegisteredCourses(req, res, next) {
       courses,
       totalCreditHours,
       courseCount
+    });
+  } catch (err) { next(err); }
+}
+
+// Requirement 33 - GET /api/schedules/me/courses/:courseId?termId=
+// One registered course with its assigned lecture / tutorial / lab, taken from
+// the student's own VISIBLE schedule snapshot (same rules as reqs 31/32). A
+// course outside that schedule gets one neutral 404, whether or not it exists.
+export const COURSE_NOT_REGISTERED = 'This course is not in your registered courses.';
+
+export async function getMyCourseDetails(req, res, next) {
+  try {
+    const student = await ownStudentOr403(req, res);
+    if (!student) return undefined;
+
+    if (!mongoose.isValidObjectId(req.params.courseId)) {
+      return res.status(400).json({ message: 'Invalid courseId' });
+    }
+
+    const { term, error } = await resolveTerm(req.query.termId);
+    if (error) return res.status(error.status).json({ message: error.message });
+
+    const schedule = await StudentSchedule.findOne({ student: student._id, term: term._id });
+    const access = checkScheduleAccess(req.user, student, schedule);
+    if (access.status !== 200) return res.status(access.status).json({ message: access.message });
+
+    const entry = findCourseEntry(schedule.entries, req.params.courseId);
+    if (!entry) return res.status(404).json({ message: COURSE_NOT_REGISTERED });
+
+    const [course, offering] = await Promise.all([
+      Course.findById(entry.course).select('courseType').lean(),
+      entry.offering ? CourseOffering.findById(entry.offering).select('instructors').lean() : null
+    ]);
+    const details = buildCourseDetails(entry, {
+      courseType: course ? course.courseType : null,
+      instructors: offering ? offering.instructors : []
+    });
+
+    const { _id, studentId, fullName, studentType, major, currentSemester } = studentView(student);
+    return res.json({
+      term: termView(term),
+      student: { _id, studentId, fullName, studentType, major, currentSemester },
+      status: schedule.status,
+      studyGroup: schedule.studyGroup,
+      ...details
     });
   } catch (err) { next(err); }
 }

@@ -17,19 +17,30 @@ const COURSE_TYPE = {
   huma: { label: 'Humanities', kind: 'warn' }
 };
 
-function CourseTypeBadge({ type }) {
+// Exported for requirement 33 (CourseDetails.jsx).
+export function CourseTypeBadge({ type }) {
   const t = COURSE_TYPE[type];
   if (!t) return <span className="badge">{type || 'Unknown'}</span>;
   return <span className={`badge badge--${t.kind}`}>{t.label}</span>;
 }
 
 const columns = [
-  // Extension point for requirement 33 (course details): wrap the code in a
-  // <Link> to the details page using `c.courseId`. Not built here.
-  { key: 'courseCode', header: 'Code', className: 'nowrap', render: (c) => <strong>{c.courseCode}</strong> },
+  // Requirement 33: the code links to the course details page.
+  {
+    key: 'courseCode',
+    header: 'Code',
+    className: 'nowrap',
+    render: (c) => (c.courseId ? <Link to={`/courses/${c.courseId}`}><strong>{c.courseCode}</strong></Link> : <strong>{c.courseCode}</strong>)
+  },
   { key: 'courseName', header: 'Course' },
   { key: 'courseType', header: 'Type', render: (c) => <CourseTypeBadge type={c.courseType} /> },
-  { key: 'creditHours', header: 'Credit hrs', className: 'nowrap' }
+  { key: 'creditHours', header: 'Credit hrs', className: 'nowrap' },
+  {
+    key: 'details',
+    header: '',
+    className: 'nowrap',
+    render: (c) => (c.courseId ? <Link className="btn btn--secondary btn--sm" to={`/courses/${c.courseId}`}>View details</Link> : null)
+  }
 ];
 
 export default function MyCourses() {

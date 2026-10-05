@@ -157,6 +157,19 @@ returns the same neutral 404 as "no schedule"). Staff get 403. Response:
 `{ term, student, status, studyGroup, courses[{courseId, courseCode, courseName, creditHours, courseType}], totalCreditHours, courseCount }`
 — courses sorted by code, `courseType` from the catalogue, total computed server-side.
 
+### Requirement 33 — View a registered course's lecture, tutorial and lab
+
+Front end: click a course code (or "View details") on `/courses` → `/courses/:courseId` (students,
+`client/src/pages/student/CourseDetails.jsx`). Back end: `GET /api/schedules/me/courses/:courseId?termId=`
+(`courseId` = Course `_id`); shaping is the pure `server/src/utils/courseDetails.js`.
+
+Same visibility as requirements 31/32 (staff → 403, hidden draft → the neutral "no schedule" 404).
+Invalid id → 400; a course not in the student's own visible schedule → 404
+"This course is not in your registered courses." (never reveals other schedules). Response:
+`{ term, student, status, studyGroup, course{courseId, courseCode, courseName, creditHours, courseType}, instructors[], components{lecture, tutorial, lab}, sessions[] }`
+— each component is `{type, groupNumber, day, startTime, endTime, room}` from the student's assigned
+snapshot, or `null` (e.g. no lab); `sessions` lists all slots Saturday→Thursday by start time.
+
 <!-- Teammates: append your requirement under its own "### Requirement NN" heading. -->
 
 ## Contributing

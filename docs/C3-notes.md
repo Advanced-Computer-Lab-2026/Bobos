@@ -236,3 +236,17 @@ The other 15 normal students stay unassigned for the requirement-30 demo.
 - Front end `/courses` (`MyCourses.jsx`), nav link + Home card for students. **Req 33 hook:** the
   `courseCode` column in `MyCourses.jsx` is where a link to course details (by `courseId`) goes.
 - Tests: `server/tests/registeredCourses.test.js` (9 tests).
+
+## Requirement 33 — a registered course's lecture / tutorial / lab
+
+- `GET /api/schedules/me/courses/:courseId?termId=` (students only, via `ownStudentOr403`; declared
+  after `/me/courses` and is a distinct path from `/student/:studentId`). Order: 403 staff → 400 bad
+  `courseId` → term (400/404) → `checkScheduleAccess` (neutral 404) → course not in my entries → 404
+  `This course is not in your registered courses.` (same body for unknown ids and other students' courses).
+- `utils/courseDetails.js` → `findCourseEntry`, `buildCourseDetails(entry, {courseType, instructors})`:
+  components come from the **snapshot** (not the live offering); missing type → `null`; extra slots of the
+  same type: component = first, `sessions` = all (sorted Sat→Thu, then start time).
+- `instructors` from the entry's `CourseOffering` (`[]` if missing). Seed already sets one per offering.
+- Front end `/courses/:courseId` (`CourseDetails.jsx`); `MyCourses.jsx` code column links there plus a
+  "View details" button; `CourseTypeBadge` exported from `MyCourses.jsx`.
+- Tests: `server/tests/courseDetails.test.js` (16 tests).
