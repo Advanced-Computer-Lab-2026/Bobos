@@ -14,11 +14,11 @@ const emptyFilters = {
 
 const humanize = (value = "") => (value || "").replace(/([a-z])([A-Z])/g, "$1 $2").replace(/^./, (letter) => letter.toUpperCase());
 
-function SelectFilter({ label, value, onChange, options, placeholder = "All" }) {
+function SelectFilter({ label, value, onChange, options, placeholder = "All", disabled = false }) {
   return (
     <label className="filter-field">
       <span>{label}</span>
-      <select value={value} onChange={onChange}>
+      <select value={value} onChange={onChange} disabled={disabled}>
         <option value="">{placeholder}</option>
         {options.map((option) => {
           const item = typeof option === "string" ? { value: option, label: humanize(option) } : option;
@@ -64,7 +64,12 @@ export default function App() {
   }, [appliedFilters]);
 
   const updateFilter = (key) => (event) => {
-    setFilters((current) => ({ ...current, [key]: event.target.value }));
+    const value = event.target.value;
+    setFilters((current) => ({
+      ...current,
+      [key]: value,
+      ...(key === "studentType" && value === "normal" ? { advisor: "" } : {}),
+    }));
   };
 
   const clearFilters = () => {
@@ -110,6 +115,7 @@ export default function App() {
           value={filters.advisor}
           onChange={updateFilter("advisor")}
           options={(options.advisors || []).map((advisor) => ({ value: advisor.id, label: advisor.fullName }))}
+          disabled={filters.studentType === "normal"}
         />
         <SelectFilter label="Major" value={filters.major} onChange={updateFilter("major")} options={options.majors || []} />
         <SelectFilter

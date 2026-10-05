@@ -103,6 +103,12 @@ h2 {
   outline-offset: 1px;
 }
 
+.filter-field select:disabled {
+  color: #7a8580;
+  background: #e9edeb;
+  cursor: not-allowed;
+}
+
 .filter-actions {
   display: flex;
   align-items: end;
