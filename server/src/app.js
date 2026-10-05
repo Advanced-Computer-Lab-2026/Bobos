@@ -7,6 +7,7 @@ import cors from 'cors';
 import devRoutes from './routes/dev.js';
 import groupAssignmentRoutes from './routes/groupAssignments.js';
 import scheduleRoutes from './routes/schedules.js';
+import swapRoutes from './routes/swaps.js';
 
 const app = express();
 
@@ -24,6 +25,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 app.use('/api/group-assignments', groupAssignmentRoutes); // requirement 30
 app.use('/api/schedules', scheduleRoutes); // requirement 31
+app.use('/api/swaps', swapRoutes); // requirement 34
 
 // Not found
 app.use((req, res) => {

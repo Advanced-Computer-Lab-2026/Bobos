@@ -96,7 +96,8 @@ function studentView(student, schedule) {
 // Turns one template into the flat list of real slot subdocuments it points at.
 // Returns { entries, slots } on success or { error } with the HTTP status and a
 // message that names the offending course.
-function resolveTemplateSlots(template, offeringsById) {
+// Exported for reuse by requirement 34 (utils/swapEligibility.js).
+export function resolveTemplateSlots(template, offeringsById) {
   const entries = [];
   const slots = [];
 

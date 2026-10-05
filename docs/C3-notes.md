@@ -250,3 +250,19 @@ The other 15 normal students stay unassigned for the requirement-30 demo.
 - Front end `/courses/:courseId` (`CourseDetails.jsx`); `MyCourses.jsx` code column links there plus a
   "View details" button; `CourseTypeBadge` exported from `MyCourses.jsx`.
 - Tests: `server/tests/courseDetails.test.js` (16 tests).
+
+## Requirement 34 — eligible destination groups for a whole-schedule swap
+
+- `GET /api/swaps/eligible-groups?termId=` (`routes/swaps.js`, `controllers/swapController.js`). Order: non-student
+  → 403 → no Student → 404 → advising → 403 → term (400/404) → no `processed` schedule → 404 `NO_VISIBLE_SCHEDULE`.
+- Rule (`utils/swapEligibility.js`, pure): published templates of the same term, own template excluded **by id**
+  (group "1" exists in every cohort), course-code set (trimmed, case-insensitive) **exactly** equal to the student's.
+  A template with a missing/unpublished offering or stale slot id is skipped (reuses the now-exported
+  `resolveTemplateSlots` from `groupAssignmentController.js`). Calendar via `buildWeeklyCalendar`.
+- Two queries for all candidates (templates + offerings populated with course), no N+1.
+- Not filtered: capacity (`minRemainingCapacity` informational), `swapDeadline` (returned), major.
+  **Reqs 35/37:** re-run `findEligibleGroups` for the chosen `templateId` server-side, then check deadline/capacity;
+  the "request swap" control goes at the marked comment in `SwapGroups.jsx` `GroupCard`, routes in `routes/swaps.js`.
+- Seed: no decoy templates (they would show up as assignable groups in the req-30 list); the near-miss cases are
+  built inside the tests. Aliaa (52-0001, CS7 group 1) sees groups 2 and 3 only.
+- Tests: `server/tests/swapEligibleGroups.test.js` (16 tests).

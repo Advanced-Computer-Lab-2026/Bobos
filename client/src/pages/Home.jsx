@@ -35,6 +35,12 @@ export default function Home() {
           <Link className="btn" to="/courses">View my courses</Link>
         </Card>
       ) : null}
+      {/* requirement 34 */}
+      {user.role === 'student' ? (
+        <Card title="Swap schedule" subtitle="Requirement 34 - groups whose subjects exactly match yours, with their full weekly schedules.">
+          <Link className="btn" to="/swap">View eligible groups</Link>
+        </Card>
+      ) : null}
       {['advisor', 'coordinator', 'administrator'].includes(user.role) ? (
         <Card title="Student schedules" subtitle="Requirement 31 - view a student's current weekly schedule.">
           <Link className="btn" to="/schedules">Open student schedules</Link>

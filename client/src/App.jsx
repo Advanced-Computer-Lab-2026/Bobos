@@ -7,6 +7,7 @@ import AssignScheduleGroups from './pages/coordinator/AssignScheduleGroups.jsx';
 import MySchedule from './pages/student/MySchedule.jsx';
 import MyCourses from './pages/student/MyCourses.jsx';
 import CourseDetails from './pages/student/CourseDetails.jsx';
+import SwapGroups from './pages/student/SwapGroups.jsx';
 import StudentSchedules from './pages/staff/StudentSchedules.jsx';
 import StudentSchedule from './pages/staff/StudentSchedule.jsx';
 
@@ -70,6 +71,15 @@ export default function App() {
           element={
             <ProtectedRoute roles={['student']}>
               <CourseDetails />
+            </ProtectedRoute>
+          }
+        />
+        {/* Team C3 - requirement 34: eligible groups for a whole-schedule swap */}
+        <Route
+          path="/swap"
+          element={
+            <ProtectedRoute roles={['student']}>
+              <SwapGroups />
             </ProtectedRoute>
           }
         />

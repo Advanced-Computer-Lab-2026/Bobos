@@ -31,6 +31,8 @@ export default function Layout() {
           {user?.role === 'student' ? <NavLink to="/schedule">My schedule</NavLink> : null}
           {/* requirement 32 */}
           {user?.role === 'student' ? <NavLink to="/courses">My courses</NavLink> : null}
+          {/* requirement 34 - shown to every student; the page explains that advising students cannot swap */}
+          {user?.role === 'student' ? <NavLink to="/swap">Swap schedule</NavLink> : null}
           {['advisor', 'coordinator', 'administrator'].includes(user?.role) ? (
             <NavLink to="/schedules">Student schedules</NavLink>
           ) : null}

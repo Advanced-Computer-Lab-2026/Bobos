@@ -172,6 +172,21 @@ snapshot, or `null` (e.g. no lab); `sessions` lists all slots Saturday→Thursda
 
 <!-- Teammates: append your requirement under its own "### Requirement NN" heading. -->
 
+### Requirement 34 — View eligible destination groups for a whole-schedule swap
+
+> *Show only standard schedule groups for the same term whose registered course-code set exactly matches the student's subjects, with no additional or missing subject.*
+
+Front end: `/swap` (`client/src/pages/student/SwapGroups.jsx`). Back end: `GET /api/swaps/eligible-groups?termId=`
+(`server/src/controllers/swapController.js`, rule in `server/src/utils/swapEligibility.js`).
+
+Normal students only (advising students and staff → 403, no token → 401). The student's subjects are the course
+codes of their own **processed** schedule for the term (none → 404). Candidates are all **published** templates of the
+same term, any cohort, excluding the student's own template; a candidate is eligible only when its course-code set
+equals the student's exactly. Each group is returned with `courses` / `week` / `daysOff` / `totalCreditHours` (same
+shape as requirement 31) plus an informational `minRemainingCapacity`; the term's `swapDeadline` is included.
+Capacity and deadline are not filtered here — requirements 35/37 validate them. The exact-match filter's negative
+cases (extra course, missing course, unpublished, other term, other major) are covered by the Jest tests.
+
 ## Contributing
 
 See [`agents.md`](./agents.md) for branching, commit and pull-request rules. Team notes live in
