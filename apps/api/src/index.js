@@ -7,10 +7,13 @@ import identityRoutes from "./routes/identity.routes.js";
 import notificationRoutes from "./routes/notifications.routes.js";
 import { requireAuth } from "./middleware/auth.middleware.js";
 import { getProfile } from "./controllers/identity.controller.js";
+import academicTermRoutes from "./routes/academicTerm.routes.js";
+import dotenv from "dotenv";
 
+dotenv.config({ path: "../../.env" });
 const app = express();
 const port = Number(process.env.PORT || 3000);
-const mongoUri = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/bobos";
+const mongoUri = process.env.MONGODB_URI;
 
 app.use(express.json());
 
@@ -22,6 +25,7 @@ app.use("/api/communications/notifications", notificationRoutes);
 
 // Direct profile endpoint alias
 app.get("/api/profile", requireAuth, getProfile);
+app.use("/api/academic-terms", academicTermRoutes);
 
 app.get("/api/health", (_req, res) => {
   res.json({

@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "dev": "node --watch --env-file-if-exists=../../.env src/index.js",
-    "start": "node --env-file-if-exists=../../.env src/index.js"
+    "start": "node --env-file-if-exists=../../.env src/index.js",
+    "import:courses": "node src/scripts/importCourses.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

@@ -15,3 +15,21 @@ router.get("/me", requireAuth, getProfile);
 router.post("/seed-demo", seedDemoUsers);
 
 export default router;
+const identityController = require('../controllers/identity.controller');
+
+//Req 54:
+router.get('/students/:studentId/history', identityController.getAcademicHistory);
+
+//Req 55:
+router.get('/students/:studentId/transcript', identityController.getTranscript);
+
+// Req 56:
+router.get('/students/:studentId/transcript/download', identityController.downloadTranscriptPDF);
+
+// Req 61:
+router.get('/students/:studentId/failed-courses', identityController.getFailedCourses);
+
+//Req 89:
+router.get('/students/:studentId/wallet', identityController.getWallet);
+
+module.exports = router;

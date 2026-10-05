@@ -1,4 +1,5 @@
 import { ACADEMIC_STANDINGS, DAYS_OF_WEEK, STUDENT_TYPES, WORKFLOW_STATUSES, ref, registerModel, Schema, withTimestamps } from "./shared.js";
+import mongoose from 'mongoose';
 
 // ## Sprint 1 schemas
 // ScheduleTemplate: Req. 28-29; StudentSchedule: Req. 30-34, 49; CourseAttempt: Req. 54-56, 61.
@@ -173,3 +174,135 @@ const studentTermStandingSchema = withTimestamps({
 studentTermStandingSchema.index({ student: 1, term: 1 }, { unique: true });
 
 export const StudentTermStanding = registerModel("StudentTermStanding", studentTermStandingSchema);
+
+//Added for Req 54: View academic history
+export const getAcademicHistory = async (studentId) => {
+// mongoose is needed to access other models if they aren't explicitly imported here
+  const StudentProfile = mongoose.model('StudentProfile');
+  const Course = mongoose.model('Course');
+
+  const profile = await StudentProfile.findById(studentId).populate('advisor').lean();
+  if(!profile){
+    return null;
+  }
+
+  const attempts = await CourseAttempt.find({ student: studentId }).populate('course').lean();
+
+
+  const completedCourses = [];
+  const currentCourses = [];
+  const takenCourseIds = new Set(); //this will help figuring out the remaining courses
+
+  attempts.forEach(attempt => {
+    if(attempt.course){
+      takenCourseIds.add(attempt.course._id.toString());
+
+      if(attempt.result === 'current'){
+        currentCourses.push(attempt);
+      }else{
+        completedCourses.push(attempt);
+      }
+    }
+  });
+
+  const remainingCourses = await Course.find({ _id: { $nin: Array.from(takenCourseIds) } }).select('name creditHours prerequisites offeringSeason').lean();
+
+  return{
+    studentProfile: {
+      advisor: profile.advisor ? `${profile.advisor.firstName} ${profile.advisor.lastName}` : 'Unassigned',
+      major: profile.major,
+      gpa: profile.gpa,
+      completedHours: profile.completedHours,
+      currentSemester: profile.currentSemester
+    },
+    completedCourses,
+    currentCourses,
+    remainingCourses
+  };
+};
+
+
+//Added for Req 55: View transcript for a selected academic year
+export const getTranscriptByYear = async (studentId, year) => {
+  const attempts = await CourseAttempt.find({ student: studentId })
+    .populate({
+      path: 'term',
+      match: { year: Number(year) }
+    })
+    .populate('course')
+    .exec();
+
+  const validAttempts = attempts.filter(attempt => attempt.term !== null);
+
+  const transcript = {
+    studentId,
+    year: Number(year),
+    terms: {
+      winter: [],
+      spring: [],
+      summer: [],
+      firstMakeup: [],
+      secondMakeup: []
+    }
+  };
+
+  validAttempts.forEach(attempt => {
+    const season = attempt.term.season ? attempt.term.season.toLowerCase() : '';
+
+    if (season === 'winter') transcript.terms.winter.push(attempt);
+    else if (season === 'spring') transcript.terms.spring.push(attempt);
+    else if (season === 'summer') transcript.terms.summer.push(attempt);
+    else if (season.includes('first') && season.includes('makeup')) transcript.terms.firstMakeup.push(attempt);
+    else if (season.includes('second') && season.includes('makeup')) transcript.terms.secondMakeup.push(attempt);
+  });
+
+  return transcript;
+};
+
+//Added for Req 61: View failed and unattended courses
+export const getFailedAndUnattended = async (studentId) => {
+  const mandatoryCandidates = await CourseAttempt.find({
+     student: studentId,
+    $or: [
+      { result: 'failed' },
+      { attendance: 'unattended' }
+    ]
+  })
+  .populate('course')
+  .populate('term')
+  .exec();
+
+  return mandatoryCandidates;
+};
+
+//Added for Req 89: View wallet
+export const getWallet = async (studentId) => {
+  const FinancialTransaction = mongoose.model('FinancialTransaction');
+
+  const transactions = await FinancialTransaction.find({ student: studentId })
+    .sort({ occurredAt: -1 })
+    .lean();
+
+  if (!transactions) {
+    return null;
+  }
+
+  let balance = 0;
+  
+  transactions.forEach(txn => {
+    if (txn.status === 'succeeded') {
+      if (txn.kind === 'walletTopUp' || txn.kind === 'refund') {
+        balance += txn.amount;
+      } else if (txn.kind === 'extraHoursWalletPayment') {
+        balance -= txn.amount;
+      }
+    }
+  });
+
+  return {
+    studentId,
+    balance,
+    currency: "EGP",
+    transactions
+  };
+};
