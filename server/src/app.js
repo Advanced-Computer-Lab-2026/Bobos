@@ -6,6 +6,7 @@ import cors from 'cors';
 // remove another team's line, this file is shared by the whole team.
 import devRoutes from './routes/dev.js';
 import groupAssignmentRoutes from './routes/groupAssignments.js';
+import scheduleRoutes from './routes/schedules.js';
 
 const app = express();
 
@@ -22,6 +23,7 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 app.use('/api/group-assignments', groupAssignmentRoutes); // requirement 30
+app.use('/api/schedules', scheduleRoutes); // requirement 31
 
 // Not found
 app.use((req, res) => {

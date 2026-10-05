@@ -323,3 +323,31 @@ table.table td.actions { white-space: nowrap; text-align: right; }
   font-weight: 600;
 }
 .login-wrap { max-width: 34rem; margin: 3rem auto; padding: 0 1rem; }
+
+/* ------------------------------------- requirement 31: weekly calendar */
+.wcal__legend { display: flex; gap: 1rem; flex-wrap: wrap; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.6rem; }
+.wcal__legend-item { display: inline-flex; align-items: center; gap: 0.35rem; }
+.wcal__swatch { width: 0.85rem; height: 0.85rem; border-radius: 3px; display: inline-block; }
+.wcal__swatch--lecture, .wcal__block--lecture { background: #e3ebff; border-left: 3px solid #1f4ed8; }
+.wcal__swatch--tutorial, .wcal__block--tutorial { background: #e1f5ea; border-left: 3px solid #15724b; }
+.wcal__swatch--lab, .wcal__block--lab { background: #fdf0d8; border-left: 3px solid #b26b00; }
+.wcal__swatch--off { background: repeating-linear-gradient(45deg, #eef1f7, #eef1f7 3px, #f8fafc 3px, #f8fafc 6px); border: 1px solid var(--border); }
+.wcal__scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.wcal__grid { display: grid; grid-template-columns: 3.5rem repeat(7, minmax(7.5rem, 1fr)); min-width: 56rem; }
+.wcal__corner, .wcal__day-head { background: var(--surface-alt); border-bottom: 1px solid var(--border); padding: 0.4rem; }
+.wcal__day-head { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); text-align: center; border-left: 1px solid var(--border); }
+.wcal__day-head small { display: block; font-weight: 600; text-transform: none; color: var(--warning); }
+.wcal__times { position: relative; font-size: 0.7rem; color: var(--text-muted); }
+.wcal__times span { position: absolute; right: 0.35rem; transform: translateY(-50%); }
+.wcal__times span:first-child { transform: none; }
+.wcal__col { position: relative; border-left: 1px solid var(--border); }
+.wcal__col--off { background: repeating-linear-gradient(45deg, #f4f6fa, #f4f6fa 6px, #fbfcfe 6px, #fbfcfe 12px); }
+.wcal__line { position: absolute; left: 0; right: 0; border-top: 1px dashed var(--border); }
+.wcal__off-label { position: absolute; top: 45%; left: 0; right: 0; text-align: center; font-weight: 600; color: var(--text-muted); font-size: 0.85rem; }
+.wcal__block { position: absolute; left: 3px; right: 3px; border-radius: 4px; padding: 0.2rem 0.35rem; font-size: 0.72rem; line-height: 1.25; overflow: hidden; display: flex; flex-direction: column; color: var(--text); }
+.wcal__block strong { font-size: 0.78rem; }
+.wcal__block small { color: var(--text-muted); }
+.wcal__name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sched-meta { display: flex; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 0.25rem; }
+.sched-meta div { display: flex; flex-direction: column; }
+.sched-meta small { color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; }

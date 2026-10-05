@@ -1,0 +1,21 @@
+// Requirement 31 - /api/schedules (namespace reserved for C3: reqs 31/32/33/49)
+import { Router } from 'express';
+import { requireAuth, requireRole } from '../middleware/auth.js';
+import {
+  getMySchedule,
+  getStudentSchedule,
+  listStudentsWithSchedules
+} from '../controllers/scheduleController.js';
+
+const router = Router();
+
+router.use(requireAuth);
+
+// Literal paths before '/student/:studentId'. Every route is GET: the
+// Administrator's access is read-only by construction.
+router.get('/me', getMySchedule);
+router.get('/students', requireRole('advisor', 'coordinator', 'administrator'), listStudentsWithSchedules);
+// Students may call this too, but scheduleAccess.js limits them to themselves.
+router.get('/student/:studentId', getStudentSchedule);
+
+export default router;

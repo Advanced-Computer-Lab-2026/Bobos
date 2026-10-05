@@ -49,7 +49,17 @@ const studentScheduleSchema = new mongoose.Schema(
     term: { type: mongoose.Schema.Types.ObjectId, ref: 'AcademicTerm', required: true },
     studyGroup: { type: String, required: true, trim: true },
     template: { type: mongoose.Schema.Types.ObjectId, ref: 'ScheduleTemplate' },
-    status: { type: String, enum: ['processed'], default: 'processed' },
+    // Requirement 31 extended the lifecycle (additive, default unchanged):
+    //   'draft'                    - advising draft being built; HIDDEN from the student
+    //   'ready_for_student_review' - an Advisor/Coordinator marked a COMPLETED draft
+    //                                ready; the advising student may now view it
+    //   'processed'                - final schedule
+    // The advising workflow (reqs 62+) creates and transitions drafts.
+    status: {
+      type: String,
+      enum: ['draft', 'ready_for_student_review', 'processed'],
+      default: 'processed'
+    },
     entries: [scheduleEntrySchema],
     assignedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     assignedAt: { type: Date },

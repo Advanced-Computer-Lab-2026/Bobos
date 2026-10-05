@@ -38,7 +38,8 @@ const assignSchema = Joi.object({
 
 // `termId` is optional everywhere: when it is omitted we fall back to the term
 // flagged isCurrent (requirement 16 guarantees exactly one).
-async function resolveTerm(termId) {
+// Exported for reuse by requirement 31 (scheduleController.js).
+export async function resolveTerm(termId) {
   if (termId) {
     if (!mongoose.isValidObjectId(termId)) return { error: { status: 400, message: 'Invalid termId' } };
     const term = await AcademicTerm.findById(termId);
@@ -55,7 +56,7 @@ async function resolveTerm(termId) {
 // The contract is the Mongo _id of the Student document, but the human
 // XX-XXXX student id is accepted too because that is what a Coordinator reads
 // off the screen.
-async function resolveStudent(id) {
+export async function resolveStudent(id) {
   if (mongoose.isValidObjectId(id)) {
     const byMongoId = await Student.findById(id).populate('user', 'fullName email role isActive');
     if (byMongoId) return byMongoId;

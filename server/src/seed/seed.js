@@ -219,8 +219,10 @@ async function main() {
     { fullName: 'Salma Ashraf', major: 'DMET', semester: 10, gpa: 2.8, standing: 'Probation' },
     { fullName: 'Omar Zaki', major: 'CS', semester: 10, gpa: 1.5, standing: 'Good Academic Standing' },
     { fullName: 'Nour Khaled', major: 'DMET', semester: 9, gpa: 2.1, standing: 'Good Academic Standing' },
-    { fullName: 'Laila Mostafa', major: 'CS', semester: 6, gpa: 3.1, standing: 'Probation' },
-    { fullName: 'Ahmed Fathy', major: 'DMET', semester: 6, gpa: 1.9, standing: 'Good Academic Standing' },
+    // semester 6 -> 5 (requirement 31): seeded templates only exist for semesters 5 and 7
+    { fullName: 'Laila Mostafa', major: 'CS', semester: 5, gpa: 3.1, standing: 'Probation' },
+    // semester 6 -> 5 (requirement 31), same reason
+    { fullName: 'Ahmed Fathy', major: 'DMET', semester: 5, gpa: 1.9, standing: 'Good Academic Standing' },
     { fullName: 'Farida Sameh', major: 'CS', semester: 7, gpa: 2.6, standing: 'Probation' }
   ];
 
@@ -436,6 +438,66 @@ async function main() {
   }
   const templates = await ScheduleTemplate.insertMany(templateDocs);
 
+  /* ------------------------------------- requirement 31: demo student schedules */
+  // So every visibility rule of requirement 31 can be demoed without the
+  // advising workflow (reqs 62+): three ADVISING students get a schedule in each
+  // status, and ONE normal student is assigned (the other 15 stay unassigned for
+  // the requirement-30 demo). Snapshots are built from the published templates
+  // and every slot's assignedCount is incremented so capacity stays true.
+  const offeringById = new Map(offerings.map((o) => [String(o._id), o]));
+  const courseById = new Map(courseDocs.map((c) => [String(c._id), c]));
+
+  function snapshotFromTemplate(template) {
+    return template.entries.map((entry) => {
+      const offering = offeringById.get(String(entry.offering));
+      const course = courseById.get(String(offering.course));
+      const slots = COMPONENTS.map((component) => entry[`${component}SlotId`])
+        .filter(Boolean)
+        .map((slotId) => {
+          const s = offering.slots.find((x) => String(x._id) === String(slotId));
+          return { slotId: s._id, type: s.type, groupNumber: s.groupNumber, day: s.day, startTime: s.startTime, endTime: s.endTime, room: s.room };
+        });
+      return { course: course._id, courseCode: course.code, courseName: course.name, creditHours: course.creditHours, offering: offering._id, slots };
+    });
+  }
+
+  const demoSchedules = [
+    { student: advisingStudents[9], group: '1', status: 'processed', by: advisors[9 % advisors.length] }, // Farida, CS 7
+    { student: advisingStudents[7], group: '2', status: 'ready_for_student_review', by: advisors[7 % advisors.length] }, // Laila, CS 5
+    { student: advisingStudents[8], group: '1', status: 'draft', by: advisors[8 % advisors.length] }, // Ahmed, DMET 5
+    { student: normalStudents[0], group: '1', status: 'processed', by: coordinator } // Aliaa, CS 7
+  ];
+  const scheduleDocs = [];
+  for (const demo of demoSchedules) {
+    const template = templates.find(
+      (t) => t.isPublished && t.major === demo.student.major && t.semester === demo.student.currentSemester && t.studyGroup === demo.group
+    );
+    if (!template) throw new Error(`Seed bug: no published template for ${demo.student.studentId}`);
+    const entries = snapshotFromTemplate(template);
+    for (const entry of entries) {
+      for (const slot of entry.slots) {
+        await CourseOffering.updateOne(
+          { _id: entry.offering, 'slots._id': slot.slotId },
+          { $inc: { 'slots.$.assignedCount': 1 } }
+        );
+      }
+    }
+    const now = new Date();
+    scheduleDocs.push({
+      student: demo.student._id,
+      term: currentTerm._id,
+      studyGroup: template.studyGroup,
+      template: template._id,
+      status: demo.status,
+      entries,
+      assignedBy: demo.by._id,
+      assignedAt: now,
+      history: [{ action: 'assigned', fromGroup: null, toGroup: template.studyGroup, by: demo.by._id, at: now }]
+    });
+  }
+  const studentSchedules = await StudentSchedule.insertMany(scheduleDocs);
+  const userById = new Map([...advisingUsers, ...normalUsers].map((u) => [String(u._id), u]));
+
   /* ----------------------------------------------------------------- summary */
   const publishedTemplates = templates.filter((t) => t.isPublished);
   const slotCount = offerings.reduce((n, o) => n + o.slots.length, 0);
@@ -449,12 +511,16 @@ async function main() {
   console.log(`Coordinators           : 1  -> ${coordinator.email}`);
   console.log(`Administrators         : 1  -> ${administrator.email}`);
   console.log(`Advising students      : ${advisingStudents.length}`);
-  console.log(`Normal students        : ${normalStudents.length} (all deliberately UNASSIGNED)`);
+  console.log(`Normal students        : ${normalStudents.length} (${normalStudents.length - 1} deliberately UNASSIGNED, 1 assigned for requirement 31)`);
   console.log(`Course offerings       : ${offerings.length} (all published), ${slotCount} slots, capacity ${SLOT_CAPACITY} each`);
   console.log(`Schedule templates     : ${templates.length} => ${publishedTemplates.length} published, ${templates.length - publishedTemplates.length} unpublished`);
   console.log(`  cohorts              : ${cohorts.map((c) => `${c.major} sem ${c.semester}`).join(', ')}`);
   console.log(`  published groups     : ${PUBLISHED_GROUPS.join(', ')}   unpublished group: ${UNPUBLISHED_GROUP}`);
-  console.log(`Student schedules      : 0`);
+  console.log(`Student schedules      : ${studentSchedules.length} (requirement 31 demo)`);
+  demoSchedules.forEach((demo) => {
+    const u = userById.get(String(demo.student.user));
+    console.log(`  ${demo.student.studentId} ${demo.student.studentType.padEnd(8)} ${demo.status.padEnd(24)} ${u.email}`);
+  });
   console.log(`\nShared dev password for EVERY seeded account: ${DEV_PASSWORD}`);
   console.log(`Coordinator login      : ${coordinator.email} / ${DEV_PASSWORD}`);
   console.log('Requirement 1 (login) is not implemented yet - use POST /api/dev/token { email } to mint a token.');

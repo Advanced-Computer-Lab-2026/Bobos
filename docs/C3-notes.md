@@ -177,3 +177,51 @@ for Sprint 1. **Do not reword the comment in the controller to claim atomicity w
   requirement needs per-major curriculum placement, that belongs in a separate curriculum model.
 - Unassigning does not persist an audit record (see above).
 - No reconciliation job for `assignedCount`.
+
+
+# Requirement 31 — view a student's current weekly schedule
+
+**Files:** `server/src/controllers/scheduleController.js`, `server/src/routes/schedules.js` (mounted at
+`/api/schedules`), `server/src/utils/scheduleAccess.js`, `server/src/utils/weeklyCalendar.js`,
+`server/tests/schedules.test.js`, `server/tests/scheduleUtils.test.js`; client
+`components/WeeklyCalendar.jsx`, `components/ScheduleView.jsx`, `pages/student/MySchedule.jsx`,
+`pages/staff/StudentSchedules.jsx`, `pages/staff/StudentSchedule.jsx`. `resolveTerm` / `resolveStudent`
+are now exported from `groupAssignmentController.js` and reused.
+
+**`StudentSchedule.status` enum extended** (same model, default still `'processed'`):
+`'draft'` → `'ready_for_student_review'` → `'processed'`. The advising workflow (reqs 62+) owns creating
+drafts and moving them between states — including deciding that a draft is *complete* (every required
+course and slot assigned, no blocking validation issue) before marking it ready. Requirement 31 only
+reads the status.
+
+**Visibility matrix** (`checkScheduleAccess(viewer, student, schedule)` in `utils/scheduleAccess.js`):
+
+| Viewer | Whose schedule | Visible statuses | Otherwise |
+| ------ | -------------- | ---------------- | --------- |
+| student (normal) | own only (`Student.user === req.user.id`) | `processed` | other student → 403; else 404 |
+| student (advising) | own only | `ready_for_student_review`, `processed` | `draft` → 404 with the same neutral "No schedule is available to view yet." (no leak) |
+| advisor | advising students only (any advisor, per req 50) | all | normal student → 403 |
+| coordinator | anyone | all | — |
+| administrator | anyone | all, `readOnly: true` | — (endpoints are GET only) |
+
+**Response shape:** `{ term, student, schedule: { _id, status, studyGroup, assignedAt, totalCreditHours,
+courses[{courseCode, courseName, creditHours, slots[{type, groupNumber, day, startTime, endTime, room}]}],
+week{Saturday..Thursday: [{courseCode, courseName, type, groupNumber, startTime, endTime, room}] sorted by
+startTime}, daysOff[Friday + empty teaching days, week order] }, readOnly }`.
+
+**For reqs 32/33/49:** reuse `buildWeeklyCalendar(entries)` (credit-hour total, per-day grouping) and
+`checkScheduleAccess` so the same rules apply; add new routes in `routes/schedules.js`.
+
+**Seed changes:** advising students Laila Mostafa (CS) and Ahmed Fathy (DMET) moved from semester 6
+to 5, because seeded templates only exist for semesters 5 and 7. Four demo schedules are created from
+published templates, with `assignedCount` incremented for every slot (drafts hold seats too — the
+advising workflow may decide otherwise):
+
+| Student | Email | Status | Demonstrates |
+| ------- | ----- | ------ | ------------ |
+| 52-0001 Aliaa Faramawy (normal, CS 7, group 1) | `aliaa.faramawy.n1@student.guc.edu.eg` | processed | normal student sees own schedule |
+| 49-0010 Farida Sameh (advising, CS 7, group 1) | `farida.sameh.a10@student.guc.edu.eg` | processed | advising student sees final schedule |
+| 49-0008 Laila Mostafa (advising, CS 5, group 2) | `laila.mostafa.a8@student.guc.edu.eg` | ready_for_student_review | review-ready draft visible |
+| 49-0009 Ahmed Fathy (advising, DMET 5, group 1) | `ahmed.fathy.a9@student.guc.edu.eg` | draft | hidden from student, visible to advisors/coordinator/admin |
+
+The other 15 normal students stay unassigned for the requirement-30 demo.

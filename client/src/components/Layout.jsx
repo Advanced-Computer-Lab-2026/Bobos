@@ -27,6 +27,11 @@ export default function Layout() {
           {user?.role === 'coordinator' || user?.role === 'administrator' ? (
             <NavLink to="/coordinator/assign-groups">Assign schedule groups</NavLink>
           ) : null}
+          {/* requirement 31 */}
+          {user?.role === 'student' ? <NavLink to="/schedule">My schedule</NavLink> : null}
+          {['advisor', 'coordinator', 'administrator'].includes(user?.role) ? (
+            <NavLink to="/schedules">Student schedules</NavLink>
+          ) : null}
         </nav>
         <div className="app-header__spacer" />
         {isAuthenticated ? (

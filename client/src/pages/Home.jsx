@@ -23,6 +23,18 @@ export default function Home() {
         <p>You are signed in as a {user.role}. Pick a task below.</p>
       </div>
 
+      {/* requirement 31 */}
+      {user.role === 'student' ? (
+        <Card title="My schedule" subtitle="Requirement 31 - your weekly calendar, rooms and days off.">
+          <Link className="btn" to="/schedule">View my schedule</Link>
+        </Card>
+      ) : null}
+      {['advisor', 'coordinator', 'administrator'].includes(user.role) ? (
+        <Card title="Student schedules" subtitle="Requirement 31 - view a student's current weekly schedule.">
+          <Link className="btn" to="/schedules">Open student schedules</Link>
+        </Card>
+      ) : null}
+
       {user.role === 'coordinator' || user.role === 'administrator' ? (
         <Card
           title="Standard schedule groups"
@@ -35,7 +47,7 @@ export default function Home() {
             Open assign schedule groups
           </Link>
         </Card>
-      ) : (
+      ) : user.role === 'student' || user.role === 'advisor' ? null : (
         <Card title="Nothing for your role yet">
           <p className="muted">
             Your role&apos;s screens are being built by the rest of the team. Requirement 30 (group

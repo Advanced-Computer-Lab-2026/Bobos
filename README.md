@@ -125,6 +125,26 @@ be **published** (409); every referenced course offering must be published (409)
 id must resolve (409); no slot may be at capacity (409); the resolved slots must not clash (409).
 On success it returns `201` for a first assignment and `200` for a reassignment.
 
+### Requirement 31 — View a student's current weekly schedule
+
+Front end: `/schedule` (students, `pages/student/MySchedule.jsx`), `/schedules` and
+`/students/:studentId/schedule` (advisor / coordinator / administrator, `pages/staff/`), calendar in
+`components/WeeklyCalendar.jsx`. Back end: `server/src/controllers/scheduleController.js`, mounted at
+`/api/schedules`; rules in `utils/scheduleAccess.js`, calendar in `utils/weeklyCalendar.js`.
+
+| Method | Path | Purpose |
+| ------ | ---- | ------- |
+| `GET` | `/api/schedules/me?termId=` | the signed-in student's own visible schedule (students only) |
+| `GET` | `/api/schedules/student/:studentId?termId=` | one student's schedule (`_id` or `XX-XXXX`), subject to the visibility rules |
+| `GET` | `/api/schedules/students?search=&termId=` | staff picker: students with their schedule status (advisors see advising students only) |
+
+Visibility: a normal student sees only their own `processed` schedule; an advising student sees their
+own `ready_for_student_review` or `processed` schedule (a `draft` returns the same neutral 404 as "no
+schedule"); advisors see advising students in any status (normal students → 403); coordinators see
+everyone; administrators see everyone with `readOnly: true`. The response carries `courses`, a
+Saturday–Thursday `week` sorted by start time, `daysOff` (Friday plus empty teaching days) and
+`totalCreditHours`.
+
 <!-- Teammates: append your requirement under its own "### Requirement NN" heading. -->
 
 ## Contributing

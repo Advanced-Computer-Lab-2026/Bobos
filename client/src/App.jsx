@@ -4,6 +4,9 @@ import ProtectedRoute from './components/ProtectedRoute.jsx';
 import DevLogin from './pages/DevLogin.jsx';
 import Home from './pages/Home.jsx';
 import AssignScheduleGroups from './pages/coordinator/AssignScheduleGroups.jsx';
+import MySchedule from './pages/student/MySchedule.jsx';
+import StudentSchedules from './pages/staff/StudentSchedules.jsx';
+import StudentSchedule from './pages/staff/StudentSchedule.jsx';
 
 // Keep this file small and ADDITIVE: add your own <Route> below the comment of
 // your feature area and do not reorder anybody else's lines.
@@ -22,6 +25,31 @@ export default function App() {
           element={
             <ProtectedRoute roles={['coordinator', 'administrator']}>
               <AssignScheduleGroups />
+            </ProtectedRoute>
+          }
+        />
+        {/* Team C3 - requirement 31: view a student's weekly schedule */}
+        <Route
+          path="/schedule"
+          element={
+            <ProtectedRoute roles={['student']}>
+              <MySchedule />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/schedules"
+          element={
+            <ProtectedRoute roles={['advisor', 'coordinator', 'administrator']}>
+              <StudentSchedules />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/students/:studentId/schedule"
+          element={
+            <ProtectedRoute roles={['advisor', 'coordinator', 'administrator']}>
+              <StudentSchedule />
             </ProtectedRoute>
           }
         />
