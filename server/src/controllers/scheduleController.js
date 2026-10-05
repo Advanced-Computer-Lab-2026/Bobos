@@ -9,7 +9,8 @@ import { StudentSchedule } from '../models/StudentSchedule.js';
 import { Course } from '../models/Course.js';
 import { CourseOffering } from '../models/CourseOffering.js';
 import { resolveTerm, resolveStudent } from './groupAssignmentController.js';
-import { checkScheduleAccess } from '../utils/scheduleAccess.js';
+import { checkScheduleAccess, NO_VISIBLE_SCHEDULE } from '../utils/scheduleAccess.js';
+import { buildPdfModel, renderSchedulePdf } from '../utils/schedulePdf.js';
 import { buildWeeklyCalendar } from '../utils/weeklyCalendar.js';
 import { buildRegisteredCourses } from '../utils/registeredCourses.js';
 import { findCourseEntry, buildCourseDetails } from '../utils/courseDetails.js';
@@ -154,6 +155,45 @@ export async function getMyCourseDetails(req, res, next) {
       studyGroup: schedule.studyGroup,
       ...details
     });
+  } catch (err) { next(err); }
+}
+
+// Requirement 49 - GET /api/schedules/me/download?termId=
+// The student's own PROCESSED schedule as a PDF (built in memory). Visibility
+// is the req-31 matrix (checkScheduleAccess); on top of it only 'processed' may
+// be downloaded: an advising student's 'ready_for_student_review' -> 409, and
+// a draft / no schedule keeps the neutral 404 so a draft is never revealed.
+export const NOT_FINAL_YET = 'Your schedule is not final yet. You can download it once it has been processed.';
+
+export async function downloadMySchedule(req, res, next) {
+  try {
+    const student = await ownStudentOr403(req, res);
+    if (!student) return undefined;
+
+    const { term, error } = await resolveTerm(req.query.termId);
+    if (error) return res.status(error.status).json({ message: error.message });
+
+    const schedule = await StudentSchedule.findOne({ student: student._id, term: term._id });
+    const access = checkScheduleAccess(req.user, student, schedule);
+    if (access.status !== 200) return res.status(access.status).json({ message: access.message });
+    if (schedule.status === 'ready_for_student_review') return res.status(409).json({ message: NOT_FINAL_YET });
+    if (schedule.status !== 'processed') return res.status(404).json({ message: NO_VISIBLE_SCHEDULE });
+
+    const model = buildPdfModel({
+      student: studentView(student),
+      term: termView(term),
+      schedule: { status: schedule.status, studyGroup: schedule.studyGroup },
+      calendar: buildWeeklyCalendar(schedule.entries)
+    });
+    const pdf = await renderSchedulePdf({ model });
+
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="${model.fileName}"`,
+      'Content-Length': pdf.length,
+      'Cache-Control': 'no-store'
+    });
+    return res.status(200).end(pdf);
   } catch (err) { next(err); }
 }
 

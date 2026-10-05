@@ -187,6 +187,20 @@ shape as requirement 31) plus an informational `minRemainingCapacity`; the term'
 Capacity and deadline are not filtered here — requirements 35/37 validate them. The exact-match filter's negative
 cases (extra course, missing course, unpublished, other term, other major) are covered by the Jest tests.
 
+### Requirement 49 — Download or print my processed schedule
+
+> *As a Normal Student / Advising Student, I should be able to download or print my processed schedule.*
+
+Front end: **Download PDF** and **Print** buttons on `/my-schedule` (`client/src/pages/student/MySchedule.jsx`).
+Back end: `GET /api/schedules/me/download?termId=` → `application/pdf` attachment
+`schedule-<studentId>-<year>-<season>.pdf`, rendered in memory with `pdfkit` (`server/src/utils/schedulePdf.js`,
+A4 landscape: student header, Sat–Thu timetable grid, days off, registered courses with sessions, total credit hours,
+page numbers). Only a **processed** schedule can be downloaded: an advising student's `ready_for_student_review`
+schedule → 409, draft / no schedule → the neutral 404 of requirement 31, staff → 403, no token → 401, bad
+`termId` → 400 / 404. Printing uses `window.print()` with an `@media print` stylesheet in `client/src/index.css`
+(hides navigation and buttons, keeps calendar colours, A4 landscape). Both buttons are disabled until the schedule
+is processed.
+
 ## Contributing
 
 See [`agents.md`](./agents.md) for branching, commit and pull-request rules. Team notes live in

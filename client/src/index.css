@@ -361,3 +361,25 @@ table.table td.actions { white-space: nowrap; text-align: right; }
 .course-component { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
 .course-component div { display: flex; flex-direction: column; }
 .course-component small { color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; }
+
+/* Team C3 - requirement 49: download / print the processed schedule */
+.schedule-actions { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.print-only { display: none; }
+
+@page { size: A4 landscape; margin: 12mm; }
+
+@media print {
+  html, body { background: #fff !important; color: #000 !important; }
+  .dev-banner, .app-header, .page__header, .toast-stack, .no-print, .btn, .alert { display: none !important; }
+  .print-only { display: block !important; }
+  .print-heading { margin-bottom: 0.5rem; }
+  .print-heading h1 { font-size: 16pt; margin: 0 0 0.15rem; }
+  .print-heading p { margin: 0; font-size: 10pt; }
+  .page { max-width: none; margin: 0; padding: 0; }
+  .card { box-shadow: none !important; border: 1px solid #999 !important; background: #fff !important; margin-bottom: 0.6rem; padding: 0.6rem; }
+  .card, .wcal, .wcal__grid, table tr { break-inside: avoid; page-break-inside: avoid; }
+  .wcal__scroll, .table-wrap { overflow: visible !important; border-color: #999; }
+  .wcal__grid { min-width: 0; }
+  .wcal, .wcal *, .badge { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  a { color: #000; text-decoration: none; }
+}

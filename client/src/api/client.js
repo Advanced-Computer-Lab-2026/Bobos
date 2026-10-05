@@ -62,4 +62,36 @@ export const api = {
   del: (path, options) => request(path, { ...options, method: 'DELETE' })
 };
 
+// Requirement 49 - authenticated binary download (e.g. the schedule PDF).
+// Resolves to { blob, fileName } using the server's Content-Disposition name;
+// a non-2xx JSON body becomes an ApiError with the server's message.
+export async function download(path, { token, fallbackName = 'download' } = {}) {
+  const headers = { Accept: 'application/pdf, application/json' };
+  const auth = token || getToken();
+  if (auth) headers.Authorization = `Bearer ${auth}`;
+
+  let response;
+  try {
+    response = await fetch(`/api${path}`, { headers });
+  } catch (err) {
+    throw new ApiError('Cannot reach the server. Is it running on port 4000?', 0);
+  }
+
+  if (!response.ok) {
+    let message = `Request failed (${response.status})`;
+    try {
+      const data = JSON.parse(await response.text());
+      if (data && data.message) message = data.message;
+    } catch (err) {
+      // non-JSON error body: keep the generic message
+    }
+    throw new ApiError(message, response.status);
+  }
+
+  const disposition = response.headers.get('Content-Disposition') || '';
+  const match = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(disposition);
+  const fileName = match ? decodeURIComponent(match[1].trim()) : fallbackName;
+  return { blob: await response.blob(), fileName };
+}
+
 export const TOKEN_STORAGE_KEY = TOKEN_KEY;

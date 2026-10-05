@@ -266,3 +266,17 @@ The other 15 normal students stay unassigned for the requirement-30 demo.
 - Seed: no decoy templates (they would show up as assignable groups in the req-30 list); the near-miss cases are
   built inside the tests. Aliaa (52-0001, CS7 group 1) sees groups 2 and 3 only.
 - Tests: `server/tests/swapEligibleGroups.test.js` (16 tests).
+
+## Requirement 49 — download / print the processed schedule
+
+- `GET /api/schedules/me/download?termId=` (`downloadMySchedule` in `scheduleController.js`, route declared next to
+  the other `/me/*` routes, before `/student/:studentId`). Order: `ownStudentOr403` → term (400/404) →
+  `checkScheduleAccess` (neutral 404) → `ready_for_student_review` → 409 `NOT_FINAL_YET` → not `processed` → 404.
+- `utils/schedulePdf.js`: `buildPdfModel(...)` (pure; every string/row the PDF is drawn from, fed by
+  `buildWeeklyCalendar` so totals match req 31) + `renderSchedulePdf({model}|{student,term,schedule,calendar})`
+  → `Promise<Buffer>` (pdfkit, A4 landscape, nothing written to disk). Course names clipped to 160 chars,
+  overlapping sessions laid out side by side, course table paginates, footer "Page i of n".
+- Client: `download(path)` in `api/client.js` (Bearer fetch → `{blob, fileName}` from Content-Disposition);
+  `MySchedule.jsx` action bar (Download PDF / Print, disabled with a hint unless `processed`), print-only heading;
+  `@media print` + `@page { size: A4 landscape }` appended to `index.css`.
+- Tests: `server/tests/scheduleDownload.test.js` (13 tests).

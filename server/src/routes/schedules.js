@@ -5,6 +5,7 @@ import {
   getMySchedule,
   getMyRegisteredCourses,
   getMyCourseDetails,
+  downloadMySchedule,
   getStudentSchedule,
   listStudentsWithSchedules
 } from '../controllers/scheduleController.js';
@@ -18,6 +19,8 @@ router.use(requireAuth);
 router.get('/me', getMySchedule);
 // Requirement 32 - registered courses + credit hours (students only).
 router.get('/me/courses', getMyRegisteredCourses);
+// Requirement 49 - download the processed schedule as a PDF (students only).
+router.get('/me/download', downloadMySchedule);
 // Requirement 33 - one registered course's assigned lecture/tutorial/lab.
 router.get('/me/courses/:courseId', getMyCourseDetails);
 router.get('/students', requireRole('advisor', 'coordinator', 'administrator'), listStudentsWithSchedules);
