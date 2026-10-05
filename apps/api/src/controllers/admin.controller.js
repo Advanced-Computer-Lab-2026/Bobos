@@ -141,6 +141,9 @@ export const addAdvisor = async (req, res) => {
   }
 };
 
+// Removing an advisor ends all active AdvisorAssignment rows but never
+// deletes the historical records — this preserves schedule activity history
+// as required by Req 12.
 // ============================================================
 // Req 12 + Req 13: DELETE /api/admin/advisors/:email
 // Ends all active assignments (preserves history) and sends
