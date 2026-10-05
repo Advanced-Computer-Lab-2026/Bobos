@@ -1,8 +1,25 @@
-const express = require('express');
+import express from "express";
+import {
+  getStudentDetails,
+  setUserStatus,
+  lookupAdvisor,
+  addAdvisor,
+  removeAdvisor,
+} from "../controllers/admin.controller.js";
+
 const router = express.Router();
 
-const adminController = require('../controllers/admin.controller');
+// Req 9 — student details
+router.get("/students/:id", getStudentDetails);
 
-// TODO: Team B (B1, B2, B3) adds their routes here
+// Req 10 — account activation toggle
+router.patch("/users/:id/status", setUserStatus);
 
-module.exports = router;
+// Req 11 — advisor lookup + add
+router.get("/advisors/lookup", lookupAdvisor);
+router.post("/advisors", addAdvisor);
+
+// Req 12 — advisor removal
+router.delete("/advisors/:email", removeAdvisor);
+
+export default router;
