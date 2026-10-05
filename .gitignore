@@ -24,3 +24,8 @@ yarn-error.log*
 .DS_Store
 .idea/
 .vscode/
+node_modules/
+dist/
+.env
+.mongodb-data/
+.DS_Store
