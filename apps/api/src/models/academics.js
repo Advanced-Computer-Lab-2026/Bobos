@@ -1,4 +1,5 @@
 import { ACADEMIC_STANDINGS, DAYS_OF_WEEK, STUDENT_TYPES, WORKFLOW_STATUSES, ref, registerModel, Schema, withTimestamps } from "./shared.js";
+import mongoose from 'mongoose';
 
 // ## Sprint 1 schemas
 // ScheduleTemplate: Req. 28-29; StudentSchedule: Req. 30-34, 49; CourseAttempt: Req. 54-56, 61.
@@ -173,6 +174,53 @@ const studentTermStandingSchema = withTimestamps({
 studentTermStandingSchema.index({ student: 1, term: 1 }, { unique: true });
 
 export const StudentTermStanding = registerModel("StudentTermStanding", studentTermStandingSchema);
+
+//Added for Req 54: View academic history
+export const getAcademicHistory = async (studentId) => {
+// mongoose is needed to access other models if they aren't explicitly imported here
+  const StudentProfile = mongoose.model('StudentProfile');
+  const Course = mongoose.model('Course');
+
+  const profile = await StudentProfile.findById(studentId).populate('advisor').lean();
+  if(!profile){
+    return null;
+  }
+
+  const attempts = await CourseAttempt.find({ student: studentId }).populate('course').lean();
+
+
+  const completedCourses = [];
+  const currentCourses = [];
+  const takenCourseIds = new Set(); //this will help figuring out the remaining courses
+
+  attempts.forEach(attempt => {
+    if(attempt.course){
+      takenCourseIds.add(attempt.course._id.toString());
+
+      if(attempt.result === 'current'){
+        currentCourses.push(attempt);
+      }else{
+        completedCourses.push(attempt);
+      }
+    }
+  });
+
+  const remainingCourses = await Course.find({ _id: { $nin: Array.from(takenCourseIds) } }).select('name creditHours prerequisites offeringSeason').lean();
+
+  return{
+    studentProfile: {
+      advisor: profile.advisor ? `${profile.advisor.firstName} ${profile.advisor.lastName}` : 'Unassigned',
+      major: profile.major,
+      gpa: profile.gpa,
+      completedHours: profile.completedHours,
+      currentSemester: profile.currentSemester
+    },
+    completedCourses,
+    currentCourses,
+    remainingCourses
+  };
+};
+
 
 //Added for Req 55: View transcript for a selected academic year
 export const getTranscriptByYear = async (studentId, year) => {
