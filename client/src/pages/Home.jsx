@@ -1,0 +1,48 @@
+import { Link } from 'react-router-dom';
+import Card from '../components/Card.jsx';
+import EmptyState from '../components/EmptyState.jsx';
+import { useAuth } from '../context/AuthContext.jsx';
+
+export default function Home() {
+  const { isAuthenticated, user } = useAuth();
+
+  if (!isAuthenticated) {
+    return (
+      <EmptyState
+        title="Welcome to Bobos"
+        message="The GUC schedule management system. Sign in to continue."
+        action={<Link className="btn" to="/dev-login">Sign in</Link>}
+      />
+    );
+  }
+
+  return (
+    <>
+      <div className="page__header">
+        <h1>Welcome, {user.fullName}</h1>
+        <p>You are signed in as a {user.role}. Pick a task below.</p>
+      </div>
+
+      {user.role === 'coordinator' || user.role === 'administrator' ? (
+        <Card
+          title="Standard schedule groups"
+          subtitle="Requirement 30 - assign or reassign normal students to a standard schedule group."
+        >
+          <p className="muted">
+            A student&apos;s processed schedule is created from the assigned group&apos;s published template.
+          </p>
+          <Link className="btn" to="/coordinator/assign-groups">
+            Open assign schedule groups
+          </Link>
+        </Card>
+      ) : (
+        <Card title="Nothing for your role yet">
+          <p className="muted">
+            Your role&apos;s screens are being built by the rest of the team. Requirement 30 (group
+            assignment) is available to Coordinators.
+          </p>
+        </Card>
+      )}
+    </>
+  );
+}
