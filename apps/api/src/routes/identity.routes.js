@@ -14,4 +14,7 @@ router.get('/students/:studentId/transcript/download', identityController.downlo
 // Req 61:
 router.get('/students/:studentId/failed-courses', identityController.getFailedCourses);
 
+//Req 89:
+router.get('/students/:studentId/wallet', identityController.getWallet);
+
 module.exports = router;

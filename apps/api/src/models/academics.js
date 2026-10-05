@@ -274,3 +274,35 @@ export const getFailedAndUnattended = async (studentId) => {
 
   return mandatoryCandidates;
 };
+
+//Added for Req 89: View wallet
+export const getWallet = async (studentId) => {
+  const FinancialTransaction = mongoose.model('FinancialTransaction');
+
+  const transactions = await FinancialTransaction.find({ student: studentId })
+    .sort({ occurredAt: -1 })
+    .lean();
+
+  if (!transactions) {
+    return null;
+  }
+
+  let balance = 0;
+  
+  transactions.forEach(txn => {
+    if (txn.status === 'succeeded') {
+      if (txn.kind === 'walletTopUp' || txn.kind === 'refund') {
+        balance += txn.amount;
+      } else if (txn.kind === 'extraHoursWalletPayment') {
+        balance -= txn.amount;
+      }
+    }
+  });
+
+  return {
+    studentId,
+    balance,
+    currency: "EGP",
+    transactions
+  };
+};

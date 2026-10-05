@@ -121,3 +121,20 @@ export const getFailedCourses = async (req, res) => {
     res.status(500).json({error: error.message});
 }
 };
+
+//Req 89: View wallet
+export const getWallet = async (req, res) => {
+    try {
+        const { studentId } = req.params;
+
+        const walletData = await academicsModel.getWallet(studentId);
+        
+        if (!walletData) {
+            return res.status(404).json({ message: "Wallet not found for this student." });
+        }
+
+        res.status(200).json(walletData);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
