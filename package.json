@@ -3,13 +3,6 @@
   "private": true,
   "version": "0.1.0",
   "description": "Bobos - University Schedule Management System (CSEN704 Sprint 1)",
-  "scripts": {
-    "dev": "concurrently -n server,client -c blue,magenta \"npm --prefix server run dev\" \"npm --prefix client run dev\"",
-    "seed": "npm --prefix server run seed",
-    "test": "npm --prefix server test"
-  },
-  "devDependencies": {
-    "concurrently": "^9.0.1"
   "workspaces": [
     "apps/api",
     "apps/web"
