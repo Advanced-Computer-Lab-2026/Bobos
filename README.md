@@ -145,6 +145,18 @@ everyone; administrators see everyone with `readOnly: true`. The response carrie
 Saturday–Thursday `week` sorted by start time, `daysOff` (Friday plus empty teaching days) and
 `totalCreditHours`.
 
+### Requirement 32 — View my registered courses and credit hours
+
+Front end: `/courses` (students, `client/src/pages/student/MyCourses.jsx`). Back end:
+`GET /api/schedules/me/courses?termId=` in `server/src/controllers/scheduleController.js`; the
+aggregation is the pure `server/src/utils/registeredCourses.js`.
+
+Registered courses are the entries of the student's own **visible** schedule (same rules as
+requirement 31: normal → `processed`; advising → `ready_for_student_review` or `processed`; a draft
+returns the same neutral 404 as "no schedule"). Staff get 403. Response:
+`{ term, student, status, studyGroup, courses[{courseId, courseCode, courseName, creditHours, courseType}], totalCreditHours, courseCount }`
+— courses sorted by code, `courseType` from the catalogue, total computed server-side.
+
 <!-- Teammates: append your requirement under its own "### Requirement NN" heading. -->
 
 ## Contributing

@@ -5,9 +5,11 @@
 import { User } from '../models/User.js';
 import { Student } from '../models/Student.js';
 import { StudentSchedule } from '../models/StudentSchedule.js';
+import { Course } from '../models/Course.js';
 import { resolveTerm, resolveStudent } from './groupAssignmentController.js';
 import { checkScheduleAccess } from '../utils/scheduleAccess.js';
 import { buildWeeklyCalendar } from '../utils/weeklyCalendar.js';
+import { buildRegisteredCourses } from '../utils/registeredCourses.js';
 
 function termView(term) {
   return { _id: term._id, academicYear: term.academicYear, season: term.season };
@@ -48,17 +50,62 @@ async function sendSchedule(req, res, student) {
   });
 }
 
+// Shared by the student-only "/me" endpoints (reqs 31, 32): 403 for staff,
+// 404 when no Student is linked. Returns the student or null (response sent).
+async function ownStudentOr403(req, res) {
+  if (req.user.role !== 'student') {
+    res.status(403).json({
+      message: 'Only students have their own schedule. Use GET /api/schedules/student/:studentId to view a student.'
+    });
+    return null;
+  }
+  const student = await Student.findOne({ user: req.user.id }).populate('user', 'fullName email');
+  if (!student) {
+    res.status(404).json({ message: 'No student record is linked to this account.' });
+    return null;
+  }
+  return student;
+}
+
 // GET /api/schedules/me?termId=
 export async function getMySchedule(req, res, next) {
   try {
-    if (req.user.role !== 'student') {
-      return res.status(403).json({
-        message: 'Only students have their own schedule. Use GET /api/schedules/student/:studentId to view a student.'
-      });
-    }
-    const student = await Student.findOne({ user: req.user.id }).populate('user', 'fullName email');
-    if (!student) return res.status(404).json({ message: 'No student record is linked to this account.' });
+    const student = await ownStudentOr403(req, res);
+    if (!student) return undefined;
     return await sendSchedule(req, res, student);
+  } catch (err) { next(err); }
+}
+
+// Requirement 32 - GET /api/schedules/me/courses?termId=
+// The student's registered courses = the entries of their own VISIBLE
+// schedule (same checkScheduleAccess rules and neutral 404 as req 31).
+export async function getMyRegisteredCourses(req, res, next) {
+  try {
+    const student = await ownStudentOr403(req, res);
+    if (!student) return undefined;
+
+    const { term, error } = await resolveTerm(req.query.termId);
+    if (error) return res.status(error.status).json({ message: error.message });
+
+    const schedule = await StudentSchedule.findOne({ student: student._id, term: term._id });
+    const access = checkScheduleAccess(req.user, student, schedule);
+    if (access.status !== 200) return res.status(access.status).json({ message: access.message });
+
+    const courseIds = schedule.entries.map((e) => e.course).filter(Boolean);
+    const catalogue = await Course.find({ _id: { $in: courseIds } }).select('courseType').lean();
+    const courseTypeById = new Map(catalogue.map((c) => [String(c._id), c.courseType]));
+    const { courses, totalCreditHours, courseCount } = buildRegisteredCourses(schedule.entries, courseTypeById);
+
+    const { _id, studentId, fullName, studentType, major, currentSemester } = studentView(student);
+    return res.json({
+      term: termView(term),
+      student: { _id, studentId, fullName, studentType, major, currentSemester },
+      status: schedule.status,
+      studyGroup: schedule.studyGroup,
+      courses,
+      totalCreditHours,
+      courseCount
+    });
   } catch (err) { next(err); }
 }
 

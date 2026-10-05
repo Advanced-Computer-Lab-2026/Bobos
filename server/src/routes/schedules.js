@@ -3,6 +3,7 @@ import { Router } from 'express';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import {
   getMySchedule,
+  getMyRegisteredCourses,
   getStudentSchedule,
   listStudentsWithSchedules
 } from '../controllers/scheduleController.js';
@@ -14,6 +15,8 @@ router.use(requireAuth);
 // Literal paths before '/student/:studentId'. Every route is GET: the
 // Administrator's access is read-only by construction.
 router.get('/me', getMySchedule);
+// Requirement 32 - registered courses + credit hours (students only).
+router.get('/me/courses', getMyRegisteredCourses);
 router.get('/students', requireRole('advisor', 'coordinator', 'administrator'), listStudentsWithSchedules);
 // Students may call this too, but scheduleAccess.js limits them to themselves.
 router.get('/student/:studentId', getStudentSchedule);

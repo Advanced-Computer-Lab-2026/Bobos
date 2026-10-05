@@ -29,6 +29,8 @@ export default function Layout() {
           ) : null}
           {/* requirement 31 */}
           {user?.role === 'student' ? <NavLink to="/schedule">My schedule</NavLink> : null}
+          {/* requirement 32 */}
+          {user?.role === 'student' ? <NavLink to="/courses">My courses</NavLink> : null}
           {['advisor', 'coordinator', 'administrator'].includes(user?.role) ? (
             <NavLink to="/schedules">Student schedules</NavLink>
           ) : null}

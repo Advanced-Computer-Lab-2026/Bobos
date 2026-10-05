@@ -351,3 +351,6 @@ table.table td.actions { white-space: nowrap; text-align: right; }
 .sched-meta { display: flex; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 0.25rem; }
 .sched-meta div { display: flex; flex-direction: column; }
 .sched-meta small { color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; }
+
+/* requirement 32 - prominent total credit hours */
+.credit-total { font-size: 1.5rem; line-height: 1.1; color: var(--primary-dark); }

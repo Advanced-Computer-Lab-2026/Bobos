@@ -225,3 +225,14 @@ advising workflow may decide otherwise):
 | 49-0009 Ahmed Fathy (advising, DMET 5, group 1) | `ahmed.fathy.a9@student.guc.edu.eg` | draft | hidden from student, visible to advisors/coordinator/admin |
 
 The other 15 normal students stay unassigned for the requirement-30 demo.
+
+## Requirement 32 — registered courses and credit hours
+
+- `GET /api/schedules/me/courses?termId=` (students only; staff → 403, same message as `/me`). Reuses
+  `checkScheduleAccess` / `NO_VISIBLE_SCHEDULE`, so a hidden draft is indistinguishable from "no schedule".
+- `utils/registeredCourses.js` → `buildRegisteredCourses(entries, courseTypeById)`: maps `course` →
+  `courseId`, sorts by code, sums credit hours (empty → 0). `courseType` comes from one `Course.find`.
+- `ownStudentOr403` in `scheduleController.js` is shared by `/me` and `/me/courses`.
+- Front end `/courses` (`MyCourses.jsx`), nav link + Home card for students. **Req 33 hook:** the
+  `courseCode` column in `MyCourses.jsx` is where a link to course details (by `courseId`) goes.
+- Tests: `server/tests/registeredCourses.test.js` (9 tests).

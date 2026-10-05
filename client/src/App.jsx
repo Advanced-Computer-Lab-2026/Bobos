@@ -5,6 +5,7 @@ import DevLogin from './pages/DevLogin.jsx';
 import Home from './pages/Home.jsx';
 import AssignScheduleGroups from './pages/coordinator/AssignScheduleGroups.jsx';
 import MySchedule from './pages/student/MySchedule.jsx';
+import MyCourses from './pages/student/MyCourses.jsx';
 import StudentSchedules from './pages/staff/StudentSchedules.jsx';
 import StudentSchedule from './pages/staff/StudentSchedule.jsx';
 
@@ -50,6 +51,15 @@ export default function App() {
           element={
             <ProtectedRoute roles={['advisor', 'coordinator', 'administrator']}>
               <StudentSchedule />
+            </ProtectedRoute>
+          }
+        />
+        {/* Team C3 - requirement 32: registered courses and credit hours */}
+        <Route
+          path="/courses"
+          element={
+            <ProtectedRoute roles={['student']}>
+              <MyCourses />
             </ProtectedRoute>
           }
         />
