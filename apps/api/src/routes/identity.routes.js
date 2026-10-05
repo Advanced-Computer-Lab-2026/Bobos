@@ -8,6 +8,9 @@ router.get('/students/:studentId/history', identityController.getAcademicHistory
 //Req 55:
 router.get('/students/:studentId/transcript', identityController.getTranscript);
 
+// Req 56:
+router.get('/students/:studentId/transcript/download', identityController.downloadTranscriptPDF);
+
 // Req 61:
 router.get('/students/:studentId/failed-courses', identityController.getFailedCourses);
 
