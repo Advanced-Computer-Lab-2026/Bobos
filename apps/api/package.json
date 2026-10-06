@@ -1,0 +1,14 @@
+{
+  "name": "@bobos/api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch --env-file-if-exists=../../.env src/index.js",
+    "start": "node --env-file-if-exists=../../.env src/index.js"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "mongoose": "^9.10.3",
+    "nodemailer": "^10.0.15"
+  }
+}
