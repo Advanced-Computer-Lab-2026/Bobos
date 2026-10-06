@@ -2,18 +2,28 @@ import { NOTIFICATION_TYPES, USER_ROLES, ref, registerModel, withTimestamps } fr
 
 // ## Sprint 1 schemas
 // Notification: Req. 5, 13; also used in Sprint 2 (Req. 117-121).
-const notificationSchema = withTimestamps({
-  recipient: ref("User", { required: true }),
-  type: { type: String, required: true, enum: NOTIFICATION_TYPES, index: true },
-  title: { type: String, required: true, trim: true },
-  message: { type: String, required: true, trim: true },
-  channels: { type: [String], enum: ["inApp", "email"], default: ["inApp"] },
-  deliveryStatus: { type: String, enum: ["pending", "sent", "failed"], default: "pending" },
-  readAt: { type: Date, default: null },
-  sentAt: { type: Date, default: null },
-  relatedModel: { type: String, trim: true },
-  relatedId: { type: String, trim: true },
-  deduplicationKey: { type: String, trim: true, select: false },
+const notificationSchema = withTimestamps(
+  {
+    recipient: ref("User", { required: true }),
+    type: { type: String, required: true, enum: NOTIFICATION_TYPES, index: true },
+    title: { type: String, required: true, trim: true },
+    message: { type: String, required: true, trim: true },
+    channels: { type: [String], enum: ["inApp", "email"], default: ["inApp"] },
+    deliveryStatus: { type: String, enum: ["pending", "sent", "failed"], default: "pending" },
+    readAt: { type: Date, default: null },
+    sentAt: { type: Date, default: null },
+    relatedModel: { type: String, trim: true },
+    relatedId: { type: String, trim: true },
+    deduplicationKey: { type: String, trim: true, select: false },
+  },
+  {
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+  }
+);
+
+notificationSchema.virtual("isRead").get(function () {
+  return this.readAt !== null && this.readAt !== undefined;
 });
 
 notificationSchema.index({ recipient: 1, readAt: 1, createdAt: -1 });

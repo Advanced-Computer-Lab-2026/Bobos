@@ -1,33 +1,18 @@
-import express from "express";
 import mongoose from "mongoose";
-import "./models/index.js";
-
-import catalogueRoutes from "./routes/catalogue.routes.js";
-import academicTermRoutes from "./routes/academicTerm.routes.js";
-import dotenv from "dotenv";
-import academicsRoutes from "./routes/academics.routes.js";
-
-dotenv.config({ path: "../../.env" });
-const app = express();
+import app from "./app.js";
 const port = Number(process.env.PORT || 3000);
-const mongoUri = process.env.MONGODB_URI;
+const mongoUri = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/bobos";
 
-app.use(express.json());
-
-// Group Routes
-app.use("/api/catalogue", catalogueRoutes);
-app.use("/api/academic-terms", academicTermRoutes);
-app.use("/api/academics", academicsRoutes);
-
-app.get("/api/health", (_req, res) => {
-  res.json({
-    status: "ok",
-    database: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
-  });
-});
-
-await mongoose.connect(mongoUri);
+try {
+  await mongoose.connect(mongoUri);
+  console.log("Connected to MongoDB");
+} catch {
+  console.error("Could not connect to MongoDB. Check MONGODB_URI and that the database server is running.");
+  process.exit(1);
+}
 
 app.listen(port, () => {
   console.log(`API listening at http://localhost:${port}`);
 });
+
+export default app;

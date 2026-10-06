@@ -4,7 +4,7 @@ import {
   getCourseById, 
   getCourses, 
   updateCourse,
-  deleteCourse
+  deleteCourse,
   createOffering,
   getOfferings,
   getOfferingById,

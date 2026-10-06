@@ -239,3 +239,5 @@ Stop each process with `Ctrl+C`. MongoDB data stays in the ignored `.mongodb-dat
 The client proxies `/api` requests to the Express server. The API connects to MongoDB through Mongoose.
 
 See [the data model](docs/data-model.md) for the database schemas and requirement coverage.
+
+See [the authentication backend guide](docs/authentication.md) for login, email OTP password reset and logout, environment configuration, and API examples.
