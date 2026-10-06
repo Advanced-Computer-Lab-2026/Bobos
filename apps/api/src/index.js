@@ -8,7 +8,7 @@ import advisorRoutes from "./routes/advisor.routes.js";
 
 const app = express();
 const port = Number(process.env.PORT || 3000);
-const mongoUri = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/bobos";
+const mongoUri = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/bobos?replicaSet=rs0";
 
 app.use(express.json());
 

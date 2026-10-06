@@ -9,11 +9,12 @@ import {
   MandatoryCourseRemovalRequest
 } from './src/models/index.js';
 
-const mongoUri = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/bobos";
+const mongoUri = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/bobos?replicaSet=rs0";
 
 const ADVISING_REASONS = ["probation", "failedCourses", "unattendedCourses", "undeclaredMajor", "transfer"];
-const MAJORS = ["CS", "IS", "IT", "undeclared"];
+const MAJORS = ["CS", "DMET"];
 const STATUSES = ["notStarted", "draft", "readyForStudentReview", "processed", "changeRequestPending"];
+const STUDY_GROUPS = ["1st", "2nd", "3rd", "4th"];
 
 async function seed() {
   try {
@@ -69,25 +70,34 @@ async function seed() {
       isActive: true,
     });
 
-    // 4. Create 3 Advisors
+    const administrator = await User.create({
+      fullName: 'System Administrator',
+      email: 'administrator@guc.edu.eg',
+      passwordHash: 'dummy_hash',
+      role: 'administrator',
+      isActive: true,
+    });
+
+    // 4. Create 5 Advisors
     console.log('Creating Advisors...');
     const advisors = [];
-    for (let i = 1; i <= 3; i++) {
+    for (let i = 1; i <= 5; i++) {
       const adv = await User.create({
         fullName: `Advisor ${i} Name`,
         email: `advisor${i}@guc.edu.eg`,
         passwordHash: 'dummy_hash',
         role: 'advisor',
         isActive: true,
+        isAdvisorInSystem: true,
       });
       advisors.push(adv);
     }
 
-    // 5. Create 15 Advising Students
+    // 5. Create 10 Advising Students
     console.log('Creating Advising Students...');
     const studentsCreated = [];
 
-    for (let i = 1; i <= 15; i++) {
+    for (let i = 1; i <= 10; i++) {
       // Create User
       const studentUser = await User.create({
         fullName: `Advising Student ${i}`,
@@ -97,9 +107,9 @@ async function seed() {
         isActive: true,
       });
 
-      // Decide assignment: first 10 get an advisor, last 5 unassigned
-      const isAssigned = i <= 10;
-      const assignedAdvisor = isAssigned ? advisors[i % 3] : null;
+      // Leave three students unassigned so B3 assignment can be tested.
+      const isAssigned = i <= 7;
+      const assignedAdvisor = isAssigned ? advisors[i % advisors.length] : null;
 
       // Create StudentProfile
       const profile = await StudentProfile.create({
@@ -108,8 +118,10 @@ async function seed() {
         studentType: 'advising',
         major: MAJORS[i % MAJORS.length],
         currentSemester: (i % 10) + 1,
+        studyGroup: STUDY_GROUPS[i % STUDY_GROUPS.length],
         gpa: Number((Math.random() * 4).toFixed(2)),
         academicStanding: i % 4 === 0 ? 'probation' : 'goodAcademicStanding',
+        enrollmentStatus: i % 5 === 0 ? 'inactive' : 'active',
         advisingReason: ADVISING_REASONS[i % ADVISING_REASONS.length],
         assignedAdvisor: assignedAdvisor ? assignedAdvisor._id : null,
       });
@@ -156,10 +168,42 @@ async function seed() {
       });
     }
 
+    console.log('Creating normal-student directory examples...');
+    for (let i = 1; i <= 2; i++) {
+      const user = await User.create({
+        fullName: `Normal Student ${i}`,
+        email: `normal${i}@student.guc.edu.eg`,
+        passwordHash: 'dummy_hash',
+        role: 'normalStudent',
+        isActive: i === 1,
+      });
+      const profile = await StudentProfile.create({
+        user: user._id,
+        studentId: `64-${String(10000 + i).padStart(5, '0')}`,
+        studentType: 'normal',
+        major: MAJORS[i % MAJORS.length],
+        currentSemester: i + 1,
+        studyGroup: STUDY_GROUPS[i],
+        gpa: 3.2,
+        academicStanding: 'goodAcademicStanding',
+        enrollmentStatus: 'active',
+      });
+      await StudentWorkflowState.create({
+        student: profile._id,
+        term: term._id,
+        studentType: 'normal',
+        status: 'scheduleAssigned',
+        lastActivityAt: now,
+      });
+    }
+
     console.log('\n--- Seeding Complete ---\n');
     
     console.log('Coordinator:');
     console.log(`- ID: ${coordinator._id} | Email: ${coordinator.email}\n`);
+
+    console.log('Administrator:');
+    console.log(`- ID: ${administrator._id} | Email: ${administrator.email}\n`);
 
     console.log('Advisors:');
     advisors.forEach(a => {
@@ -167,7 +211,7 @@ async function seed() {
     });
     console.log('');
 
-    console.log('Advising Students (15 total, 10 assigned, 5 unassigned):');
+    console.log('Advising Students (10 total, 7 assigned, 3 unassigned):');
     studentsCreated.forEach(s => {
       console.log(`- Profile ID: ${s.id} | ${s.studentId} | ${s.email} | Advisor: ${s.advisor}`);
     });

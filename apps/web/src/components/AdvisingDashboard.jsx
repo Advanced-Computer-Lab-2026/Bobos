@@ -38,8 +38,10 @@ const PENDING_REQUEST_TYPES = [
 const cellStyle = { padding: '0.5rem', border: '1px solid #ccc' };
 const headStyle = { ...cellStyle, background: '#e8eded', textAlign: 'left' };
 
-export default function AdvisingDashboard({ currentUserId }) {
+export default function AdvisingDashboard({ canAssign = false }) {
   const [students, setStudents] = useState([]);
+  const [currentUserId, setCurrentUserId] = useState(null);
+  const [currentUserRole, setCurrentUserRole] = useState(null);
   const [pagination, setPagination] = useState({ total: 0, page: 1, pages: 1 });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -63,7 +65,7 @@ export default function AdvisingDashboard({ currentUserId }) {
       .then((r) => r.json())
       .then(setAdvisors)
       .catch(() => {});
-  }, []);
+  }, [canAssign]);
 
   const buildQuery = useCallback(() => {
     const params = new URLSearchParams();
@@ -85,7 +87,9 @@ export default function AdvisingDashboard({ currentUserId }) {
       const res = await fetch(`/api/advisor/students?${buildQuery()}`);
       const body = await res.json();
       if (!res.ok) throw new Error(body.message || 'Failed to load students');
-      setStudents(body.data);
+      setStudents(body.data || []);
+      setCurrentUserId(body.currentUserId);
+      setCurrentUserRole(body.currentUserRole);
       setPagination(body.pagination);
     } catch (err) {
       setError(err.message);
@@ -103,10 +107,19 @@ export default function AdvisingDashboard({ currentUserId }) {
     setPage(1);
   };
 
+  const canManageAssignments = canAssign && currentUserRole === 'coordinator';
+
+  const clearFilters = () => {
+    setSearch('');
+    setFilters({ advisorId: '', major: '', advisingReason: '', scheduleStatus: '', pendingRequestType: '' });
+    setPage(1);
+  };
+
   if (selectedProfileId) {
     return (
       <StudentDetails
         profileId={selectedProfileId}
+        canAssign={canManageAssignments}
         onBack={() => setSelectedProfileId(null)}
       />
     );
@@ -120,6 +133,7 @@ export default function AdvisingDashboard({ currentUserId }) {
         <input
           type="text"
           placeholder="Search by ID, name, or email"
+          maxLength={100}
           value={search}
           onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           style={{ padding: '0.4rem 0.6rem', minWidth: '220px', borderRadius: '4px', border: '1px solid #ccc' }}
@@ -131,7 +145,7 @@ export default function AdvisingDashboard({ currentUserId }) {
           style={{ padding: '0.4rem 0.6rem', borderRadius: '4px', border: '1px solid #ccc' }}
         >
           <option value="">All Advisors</option>
-          {currentUserId && (
+          {currentUserRole === 'advisor' && currentUserId && (
             <option value={currentUserId}>My assigned students</option>
           )}
           {advisors
@@ -181,6 +195,7 @@ export default function AdvisingDashboard({ currentUserId }) {
             <option key={t} value={t}>{t}</option>
           ))}
         </select>
+        <button type="button" onClick={clearFilters}>Clear filters</button>
       </div>
 
       {error && <p style={{ color: '#c0392b', margin: '0 0 1rem' }}>{error}</p>}
@@ -201,13 +216,13 @@ export default function AdvisingDashboard({ currentUserId }) {
                   <th style={headStyle}>Workflow Status</th>
                   <th style={headStyle}>Blocking Step</th>
                   <th style={headStyle}>Last Update</th>
-                  <th style={headStyle}>Actions</th>
+                  {canManageAssignments && <th style={headStyle}>Actions</th>}
                 </tr>
               </thead>
               <tbody>
                 {students.length === 0 ? (
                   <tr>
-                    <td colSpan={9} style={{ ...cellStyle, textAlign: 'center', color: '#526261' }}>
+                    <td colSpan={canManageAssignments ? 9 : 8} style={{ ...cellStyle, textAlign: 'center', color: '#526261' }}>
                       No students found
                     </td>
                   </tr>
@@ -234,17 +249,16 @@ export default function AdvisingDashboard({ currentUserId }) {
                           ? new Date(s.lastActivityAt).toLocaleString()
                           : '—'}
                       </td>
-                      <td
-                        style={cellStyle}
-                        onClick={(e) => e.stopPropagation()}
-                      >
+                      {canManageAssignments && (
+                        <td style={cellStyle} onClick={(e) => e.stopPropagation()}>
                         <button
                           onClick={() => setAssignTarget(s)}
                           style={{ padding: '0.25rem 0.6rem', cursor: 'pointer' }}
                         >
                           {s.assignedAdvisor?._id ? 'Reassign' : 'Assign'} Advisor
                         </button>
-                      </td>
+                        </td>
+                      )}
                     </tr>
                   ))
                 )}
@@ -262,7 +276,7 @@ export default function AdvisingDashboard({ currentUserId }) {
         </>
       )}
 
-      {assignTarget && (
+      {canManageAssignments && assignTarget && (
         <AssignAdvisorModal
           student={assignTarget}
           onClose={() => setAssignTarget(null)}
@@ -272,4 +286,3 @@ export default function AdvisingDashboard({ currentUserId }) {
     </div>
   );
 }
-

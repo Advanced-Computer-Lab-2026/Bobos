@@ -11,6 +11,7 @@ import {
 } from '../models/index.js';
 
 const { Types } = mongoose;
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const PENDING_REQUEST_MAP = {
   slotChange: {
@@ -38,7 +39,7 @@ const PENDING_REQUEST_MAP = {
 export const listAdvisors = async (req, res) => {
   try {
     const advisors = await User.find(
-      { role: 'advisor', isActive: true },
+      { role: 'advisor', isActive: true, isAdvisorInSystem: true },
       'fullName email',
     );
     return res.json(advisors);
@@ -73,7 +74,7 @@ export const assignAdvisor = async (req, res) => {
     }
 
     const advisor = await User.findOne(
-      { _id: advisorId, role: 'advisor' },
+      { _id: advisorId, role: 'advisor', isActive: true, isAdvisorInSystem: true },
       null,
       { session },
     );
@@ -152,12 +153,27 @@ export const listAdvisingStudents = async (req, res) => {
       limit = '20',
     } = req.query;
 
+    for (const key of ['search', 'advisorId', 'major', 'advisingReason', 'scheduleStatus', 'pendingRequestType', 'page', 'limit']) {
+      if (req.query[key] !== undefined && typeof req.query[key] !== 'string') {
+        return res.status(400).json({ message: `Invalid ${key} filter` });
+      }
+    }
+    if (search && search.length > 100) {
+      return res.status(400).json({ message: 'Search must be 100 characters or fewer' });
+    }
+    if (advisorId && !Types.ObjectId.isValid(advisorId)) {
+      return res.status(400).json({ message: 'Invalid advisor' });
+    }
+    if (pendingRequestType && !PENDING_REQUEST_MAP[pendingRequestType]) {
+      return res.status(400).json({ message: 'Invalid pending request type' });
+    }
+
     const pageNum = Math.max(1, parseInt(page, 10) || 1);
     const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
     const skip = (pageNum - 1) * limitNum;
 
     const baseMatch = { studentType: 'advising' };
-    if (advisorId && Types.ObjectId.isValid(advisorId)) {
+    if (advisorId) {
       baseMatch.assignedAdvisor = new Types.ObjectId(advisorId);
     }
     if (major) baseMatch.major = major;
@@ -177,7 +193,7 @@ export const listAdvisingStudents = async (req, res) => {
     ];
 
     if (search) {
-      const re = { $regex: search, $options: 'i' };
+      const re = { $regex: escapeRegex(search), $options: 'i' };
       pipeline.push({
         $match: {
           $or: [
@@ -211,7 +227,7 @@ export const listAdvisingStudents = async (req, res) => {
       pipeline.push({ $match: { 'workflowState.status': scheduleStatus } });
     }
 
-    if (pendingRequestType && PENDING_REQUEST_MAP[pendingRequestType]) {
+    if (pendingRequestType) {
       const { getCollection, statusField, statusValue } = PENDING_REQUEST_MAP[pendingRequestType];
       pipeline.push(
         {
@@ -286,6 +302,8 @@ export const listAdvisingStudents = async (req, res) => {
     const total = countResult[0]?.total ?? 0;
 
     return res.json({
+      currentUserId: String(req.user._id),
+      currentUserRole: req.user.role,
       data: students,
       pagination: {
         total,
@@ -335,4 +353,3 @@ export const getAdvisingStudent = async (req, res) => {
     return res.status(500).json({ message: err.message });
   }
 };
-

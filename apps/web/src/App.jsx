@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import AdvisingDashboard from "./components/AdvisingDashboard.jsx";
+import MyAdvisor from "./components/MyAdvisor.jsx";
 
 const emptyFilters = {
   search: "",
@@ -37,6 +39,29 @@ function SelectFilter({ label, value, onChange, options, placeholder = "All", di
 }
 
 export default function App() {
+  const path = window.location.pathname;
+  const page = path === "/advising/manage"
+    ? <AdvisingDashboard canAssign />
+    : path === "/advising/students"
+      ? <AdvisingDashboard />
+      : path === "/advising/my-advisor"
+        ? <MyAdvisor />
+        : <StudentDirectory />;
+
+  return (
+    <>
+      <nav className="group-nav" aria-label="Group B">
+        <a href="/">Student directory</a>
+        <a href="/advising/students">Advising students</a>
+        <a href="/advising/manage">Assign advisors</a>
+        <a href="/advising/my-advisor">My advisor</a>
+      </nav>
+      {page}
+    </>
+  );
+}
+
+function StudentDirectory() {
   const [filters, setFilters] = useState(emptyFilters);
   const [appliedFilters, setAppliedFilters] = useState(emptyFilters);
   const [directory, setDirectory] = useState({ students: [], filters: {} });

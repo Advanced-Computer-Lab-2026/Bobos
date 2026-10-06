@@ -6,7 +6,7 @@ MERN development starter for the University Schedule Management System.
 
 - Node.js 22.12 or newer
 - npm
-- MongoDB 8.x running locally
+- MongoDB 8.x running locally as a single-node replica set (needed for advisor reassignment)
 
 ## Run locally
 
@@ -14,7 +14,13 @@ MERN development starter for the University Schedule Management System.
 cp .env.example .env
 npm install
 mkdir -p .mongodb-data
-mongod --dbpath .mongodb-data --bind_ip 127.0.0.1
+mongod --replSet rs0 --dbpath .mongodb-data --bind_ip 127.0.0.1
+```
+
+On the first run only, initialize the replica set in a third terminal:
+
+```sh
+mongosh --host 127.0.0.1 --eval "rs.initiate()"
 ```
 
 In another terminal, start the app:
@@ -31,7 +37,7 @@ The `dev` command starts the React client and Express API. Keep MongoDB running 
 
 Stop each process with `Ctrl+C`. MongoDB data stays in the ignored `.mongodb-data/` directory.
 
-The client proxies `/api` requests to the Express server. The API connects to MongoDB through Mongoose.
+The client proxies `/api` requests to the Express server. The API connects to MongoDB through Mongoose. Seed local demo records using `npm run seed --workspace @bobos/api`. This clears the collections listed in `apps/api/seed.js` first. The sample accounts use placeholder password hashes and are for directory and workflow testing, not login.
 
 See [the data model](docs/data-model.md) for the database schemas and requirement coverage.
 
@@ -48,5 +54,9 @@ Covers requirements 9–13 of the University Schedule Management System.
 | DELETE | `/api/admin/advisors/:email` | Remove an advisor without deleting schedule activity history | 12, 13 |
 
 These routes require authentication middleware to set `req.user`; the current API startup does not attach it yet, so the A1 login work must do that before these screens can be used through the normal app. Student details are available to coordinators and administrators; account status is administrator-only; advisor management is coordinator-only.
+
+## Advisor API (Team B — B3)
+
+Open `/advising/students` for the advisor student list, `/advising/manage` for coordinator assignment, and `/advising/my-advisor` for an advising student's assigned advisor. These routes also require A1 authentication to set `req.user`; role checks are in place, but the screens will return an authentication error until that middleware is integrated. Advisor assignments use a MongoDB transaction, which is why local MongoDB must run as a replica set.
 
 Email delivery uses `SMTP_URL` and `EMAIL_FROM` from `.env`. Until these are configured, notifications remain pending; failed SMTP deliveries are recorded as failed.
