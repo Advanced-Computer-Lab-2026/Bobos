@@ -122,6 +122,14 @@ const courseOfferingSchema = withTimestamps({
   slots: { type: [offeringSlotSchema], default: [] },
 });
 
+courseOfferingSchema.pre("validate", function () {
+  if (!this.isPublished) return;
+
+  if (!this.instructors?.length) this.invalidate("instructors", "A published offering needs an instructor");
+  if (!this.eligibleGroups?.length) this.invalidate("eligibleGroups", "A published offering needs an eligible group");
+  if (!this.slots?.length) this.invalidate("slots", "A published offering needs at least one slot");
+});
+
 courseOfferingSchema.index({ term: 1, course: 1 }, { unique: true });
 courseOfferingSchema.index({ term: 1, isPublished: 1 });
 

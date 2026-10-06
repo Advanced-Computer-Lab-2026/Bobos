@@ -5,9 +5,11 @@
   "scripts": {
     "dev": "node --watch --env-file-if-exists=../../.env src/index.js",
     "start": "node --env-file-if-exists=../../.env src/index.js",
+    "import:courses": "node src/scripts/importCourses.js"
     "seed": "node --env-file-if-exists=../../.env src/seed/index.js"
   },
   "dependencies": {
+    "dotenv": "^18.0.5",
     "express": "^5.2.1",
     "mongoose": "^9.10.3"
   }

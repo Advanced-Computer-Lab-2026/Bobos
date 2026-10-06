@@ -1,5 +1,10 @@
 import express from 'express';
 import {
+  createCourse, 
+  getCourseById, 
+  getCourses, 
+  updateCourse,
+  deleteCourse
   createOffering,
   getOfferings,
   getOfferingById,
@@ -21,6 +26,12 @@ router.get('/offerings', getOfferings);
 // Req 23: Select an offering to view all of its details and slots
 router.get('/offerings/:id', getOfferingById);
 
+// Courses managment
+router.post('/courses', createCourse);
+router.get('/courses/:id', getCourseById);
+router.get('/courses', getCourses);
+router.put('/courses/:id', updateCourse);
+router.delete('/courses/:id', deleteCourse);
 // Req 25: Update a course offering (top-level fields)
 router.put('/offerings/:id', updateOffering);
 

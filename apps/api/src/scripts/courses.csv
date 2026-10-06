@@ -1,0 +1,129 @@
+"Note that 2 hours = 1 lecture or 1 tutorial or 1 lab. E.g. MATH 103 has 4 lecture hours and 4 tutorial hours which means it has 2 lectures and 2 tutorials.
+ The 8th semester is by default for the bachelor projects for non-Advising students.",,,,,,,,,
+1st Semester,,,,,,,,,
+Course Code,,Course Title,Lecture Hours,Tutorial Hours,Lab Hours,Total Hours,Prerequisite 1,Prerequisite 2,Prerequisite 3
+CSEN,102,Introduction to Computer Science ,2,2,2,6,X,X,X
+MATH,103,Maths,4,4,0,8,X,X,X
+CHEMp,102,Chemistry ,0,0,2,2,X,X,X
+CHEMt,102,Chemistry,2,2,0,4,X,X,X
+PHYS,101,Physics ,3,2,0,5,X,X,X
+EDPT,201,Production Technology,1,2,0,3,X,X,X
+,,,,,,,,,
+,,,,,,,,,
+2nd Semester ,,,,,,,,,
+Course Code,,Course,Lecture Hours,Tutorial Hours,Lab Hours,Total Hours,Prerequisite 1,Prerequisite 2,Prerequisite 3
+MATH,203,Mathematics I,4,4,0,8,MATH 103,X,X
+PHYS,202,Physics II,3,2,0,5,PHYS 101,X,X
+CSEN,202,Introduction to Computer Programming,2,2,2,6,CSEN 102,X,X
+ENGD,301,Engineering Drawing & Design,1,2,0,3,X,X,X
+ELCT,201,Digital Logic Design,2,2,0,4,X,X,X
+,,,,,,,,,
+,,,,,,,,,
+3rd Semester,,,,,,,,,
+Course Code,,Course,Lecture Hours,Tutorial Hours,Lab Hours,Total Hours,Prerequisite 1,Prerequisite 2,Prerequisite 3
+MATH,301,Mathematics III,4,4,0,8,MATH 103,MATH 203,X
+PHYSp,301,Physics III (p),0,0,2,2,X,X,X
+PHYSt,301,Physics III (t),3,2,0,5,PHYS 101,PHYS 202,X
+ELCT,301,Electric Circuits I,2,2,2,6,X,X,X
+CSEN,301,Data Structures and Algorithms,2,2,2,6,CSEN 102,CSEN 202,X
+,,,,,,,,,
+,,,,,,,,,
+4th Semester,,,,,,,,,
+Course Code,,Course,Lecture Hours,Tutorial Hours,Lab Hours,Total Hours,Prerequisite 1,Prerequisite 2,Prerequisite 3
+MATH,401,Mathematics IV Probability and Statistics,2,2,0,4,MATH 103,MATH 203,MATH 301
+CSEN,403,Concepts of Programming Languages,2,2,0,4,CSEN 202,X,X
+CSIS,402,Computer Organization and System Programming ,2,2,0,4,ELCT 201,X,X
+CSEN,401,Computer Programming Lab,2,0,2,4,CSEN 202,CSEN 301,X
+ELCT,401,Electric Circuits II ,2,2,2,6,ELCT 301,X,X
+COMM,401,Signal and System Theory,2,2,2,6,MATH 103,X,X
+,,,,,,,,,
+,,,,,,,,,
+5th Semester,,,,,,,,,
+Course Code,,Course,Lecture Hours,Tutorial Hours,Lab Hours,Total Hours,Prerequisite 1,Prerequisite 2,Prerequisite 3
+MATH,501,Mathematics V (Discrete Math),2,2,0,4,X,X,X
+DMET,501,Introduction to Media Engineering,2,2,0,4,CSEN 202,X,X
+CSEN,501,Data Base I,2,2,2,6,X,X,X
+CSEN,503,Introduction to Communication Networks,2,2,0,4,CSEN 301,X,X
+CSEN,605,Digital System Design,2,2,0,4,X,X,X
+,,For CSEN Major:,,,,,,,
+CSEN,502,Theory of Computation ,4,2,0,6,CSEN 202,X,X
+,,For DMET Major:,,,,,,,
+DMET,502,Computer Graphics,2,2,2,0,CSEN 202,CSEN 301,X
+,,,,,,,,,
+,,,,,,,,,
+6th Semester,,,,,,,,,
+Course Code,,Course,Lecture Hours,Tutorial Hours,Lab Hours,Total Hours,Prerequisite 1,Prerequisite 2,Prerequisite 3
+CSEN,601,Computer System Architecture,2,2,2,6,ELCT 201,CSIS 402,X
+CSEN,602,Operating Systems,2,2,0,4,CSEN 301,X,X
+MNGT,601,Introduction to Management,2,0,0,2,X,X,X
+DMET,602,Network and Media lab  ,2,0,2,4,CSEN 503,X,X
+,,For CSEN Major:,,,,,,,
+CSEN,603,Software Engineering,2,0,2,4,X,X,X
+CSEN,604,Data Bases II,2,0,2,4,CSEN 501,X,X
+,,For DMET Major:,,,,,,,
+DMET,601,Web Technologies and Usability,2,0,2,4,CSEN 202,X,X
+DMET,603,Digital Signal Processing,2,2,0,4,COMM 401,X,X
+,,,,,,,,,
+,,,,,,,,,
+,,,,,,,,,
+7th Semester,,,,,,,,,
+Course Code,,Course,Lecture Hours,Tutorial Hours,Lab Hours,Total Hours,Prerequisite 1,Prerequisite 2,Prerequisite 3
+CSEN,701,Embedded System Architecture,3,2,0,5,X,X,X
+,,For CSEN Major:,,,,,,,
+DMET,502,Computer Graphics,2,2,2,6,CSEN 202,CSEN 301,X
+CSEN ,703,Analysis and Design of Algorithms,2,2,0,4,X,X,X
+CSEN,702,Microprocessors,3,2,0,5,CSEN 601,X,X
+CSEN,704,Advanced Computer Lab,0,0,4,4,X,X,X
+,,For DMET Major,,,,,,,
+DMET,702,Visualization and Animation,3,2,2,7,CSEN 202,CSEN 301,DMET 502
+DMET,703,Video and Audio Technology,2,2,0,4,DMET603,X,X
+DMET,704,Multimedia & Networking ,2,2,0,4,CSEN 503,X,X
+DMET,706,Advanced Media Lab,0,0,4,4,X,X,X
+,,,,,,,,,
+,,,,,,,,,
+,,,,,,,,,
+9th Semester,,,,,,,,,
+Course Code,,Course,Lecture Hours,Tutorial Hours,Lab Hours,Total Hours,Prerequisite 1,Prerequisite 2,Prerequisite 3
+DMET,901,Computer Vision,2,2,0,4,DMET 502,X,X
+,,For CSEN Major:,,,,,,,
+CSEN,901,Artificial Intelligence ,2,2,0,4,CSEN 301,X,X
+CSEN,903,Advanced Computer Lab,0,0,4,4,X,X,X
+CSEN/ DMET,xxxx,Elective I,2,2,0,4,X,X,X
+CSEN/ DMET,xxxx,Elective II,2,2,0,4,X,X,X
+,,For DMET Major,,,,,,,
+DMET,902,Advanced Video Processing,2,2,0,4,DMET 603,DMET 703,X
+DMET,904,Advanced Media Lab,0,0,4,4,X,X,X
+CSEN/ DMET,xxxx,Elective I,2,2,0,4,X,X,X
+CSEN/ DMET,xxxx,Elective II,2,2,0,4,X,X,X
+,,,,,,,,,
+,,,,,,,,,
+,,,,,,,,,
+10th Semester,,,,,,,,,
+Course Code,,Course,Lecture Hours,Tutorial Hours,Lab Hours,Total Hours,Prerequisite 1,Prerequisite 2,Prerequisite 3
+HUMA,1001,Project Management,2,2,0,4,X,X,X
+CSEN/ DMET,xxxx,Seminar,2,0,0,2,X,X,X
+,,For CSEN Major:,,,,,,,
+CSEN,1001,Computer and Network Security,2,2,0,4,X,X,X
+CSEN,1002,Advanced Computer Lab,0,0,4,4,X,X,X
+CSEN,1003,Compiler,2,2,0,4,CSEN 502,X,X
+DMET/ CSEN,xxxx,Elective I,2,2,0,4,X,X,X
+DMET/ CSEN,xxxx,Elective II,2,2,0,4,X,X,X
+,,For DMET Major,,,,,,,
+DMET,1001,Image Processing,2,2,0,4,DMET 603,X,X
+DMET,1002,Advanced Media Lab,0,0,4,4,X,X,X
+DMET,1003,Audio and Acoustics,2,2,0,4,DMET 603,COMM 401,X
+DMET/ CSEN,xxxx,Elective I,2,2,0,4,X,X,X
+DMET/ CSEN,xxxx,Elective II,2,2,0,4,X,X,X
+,,,,,,,,,
+,,,,,,,,,
+English courses (usually assigned from semesters 1-4),,,,,,,,,
+AS,102,English for Academic Pruposes,2 Hours,,,,,,
+SM,101,Scientific Methods,2 Hours,,,,,,
+CPS,402,Communication and Presentation Skills,2 Hours,,,,,,
+RPW,401,Research Paper Writing,2 Hours,,,,,,
+,,,,,,,,,
+German courses (usually assigned from semesters 1-4),,,,,,,,,
+DE,101,German 1,4 Hours,,,,,,
+DE,202,German 2,4 Hours,,,,,,
+DE,303,German 3,4 Hours,,,,,,
+DE,404,German 4,4 Hours,,,,,,

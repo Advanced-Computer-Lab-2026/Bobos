@@ -1,8 +1,8 @@
 import { ACADEMIC_STANDINGS, USER_ROLES, ref, registerModel, withTimestamps } from "./shared.js";
 
 // ## Sprint 1 schemas
-// User: Req. 1, 3, 10-12; StudentProfile: Req. 4, 6-9, 50-53.
-// AdvisorAssignment: Req. 11-15, 50-53; PasswordResetToken: Req. 2.
+// User: Req. 1, 3, 10-12; StudentProfile: Req. 4, 6-9, 14-15, 50-53.
+// AdvisorAssignment: Req. 14 (assignment history); PasswordResetToken: Req. 2.
 const userSchema = withTimestamps({
   email: {
     type: String,
