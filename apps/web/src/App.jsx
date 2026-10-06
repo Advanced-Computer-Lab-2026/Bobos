@@ -40,28 +40,29 @@ function SelectFilter({ label, value, onChange, options, placeholder = "All", di
 
 export default function App() {
   const path = window.location.pathname;
+  const [currentUserRole, setCurrentUserRole] = useState(null);
   const page = path === "/advising/manage"
-    ? <AdvisingDashboard canAssign />
+    ? <AdvisingDashboard canAssign onRoleLoaded={setCurrentUserRole} />
     : path === "/advising/students"
-      ? <AdvisingDashboard />
+      ? <AdvisingDashboard onRoleLoaded={setCurrentUserRole} />
       : path === "/advising/my-advisor"
-        ? <MyAdvisor />
-        : <StudentDirectory />;
+        ? <MyAdvisor onRoleLoaded={setCurrentUserRole} />
+        : <StudentDirectory onRoleLoaded={setCurrentUserRole} />;
 
   return (
     <>
       <nav className="group-nav" aria-label="Group B">
-        <a href="/">Student directory</a>
-        <a href="/advising/students">Advising students</a>
-        <a href="/advising/manage">Assign advisors</a>
-        <a href="/advising/my-advisor">My advisor</a>
+        {(currentUserRole === "coordinator" || currentUserRole === "administrator") && <a href="/">Student directory</a>}
+        {(currentUserRole === "coordinator" || currentUserRole === "advisor") && <a href="/advising/students">Advising students</a>}
+        {currentUserRole === "coordinator" && <a href="/advising/manage">Assign advisors</a>}
+        {currentUserRole === "advisingStudent" && <a href="/advising/my-advisor">My advisor</a>}
       </nav>
       {page}
     </>
   );
 }
 
-function StudentDirectory() {
+function StudentDirectory({ onRoleLoaded }) {
   const [filters, setFilters] = useState(emptyFilters);
   const [appliedFilters, setAppliedFilters] = useState(emptyFilters);
   const [directory, setDirectory] = useState({ students: [], filters: {} });
@@ -90,6 +91,7 @@ function StudentDirectory() {
         if (!response.ok) throw new Error(body?.message || "Could not load students");
         if (!body) throw new Error("Could not load students");
         setDirectory(body);
+        onRoleLoaded(body.currentUserRole);
       })
       .catch((requestError) => {
         if (requestError.name !== "AbortError") {
@@ -101,7 +103,7 @@ function StudentDirectory() {
       });
 
     return () => controller.abort();
-  }, [appliedFilters]);
+  }, [appliedFilters, onRoleLoaded]);
 
   const updateFilter = (key) => (event) => {
     const value = event.target.value;

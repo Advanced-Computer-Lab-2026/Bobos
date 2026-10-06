@@ -38,7 +38,7 @@ const PENDING_REQUEST_TYPES = [
 const cellStyle = { padding: '0.5rem', border: '1px solid #ccc' };
 const headStyle = { ...cellStyle, background: '#e8eded', textAlign: 'left' };
 
-export default function AdvisingDashboard({ canAssign = false }) {
+export default function AdvisingDashboard({ canAssign = false, onRoleLoaded }) {
   const [students, setStudents] = useState([]);
   const [currentUserId, setCurrentUserId] = useState(null);
   const [currentUserRole, setCurrentUserRole] = useState(null);
@@ -90,13 +90,14 @@ export default function AdvisingDashboard({ canAssign = false }) {
       setStudents(body.data || []);
       setCurrentUserId(body.currentUserId);
       setCurrentUserRole(body.currentUserRole);
+      onRoleLoaded?.(body.currentUserRole);
       setPagination(body.pagination);
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, [buildQuery]);
+  }, [buildQuery, onRoleLoaded]);
 
   useEffect(() => {
     fetchStudents();
