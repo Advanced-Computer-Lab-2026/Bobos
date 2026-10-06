@@ -42,4 +42,3 @@ Record URL `studentId` values are MongoDB StudentProfile IDs, not display studen
 ## Limits of this verification
 
 Tests demonstrate the covered API behavior and database persistence; they do not prove every possible input or deployment condition. Live GUC email delivery requires working SMTP settings and remains unverified against a real mailbox. The course PDF requires frontend, backend and populated database for full project grading; this API-only task cannot certify the complete submission. Group A frontend screens, requirements 57/58, evaluation seed data and unrelated Group B/C suites were not implemented or certified here.
-
