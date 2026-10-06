@@ -164,3 +164,18 @@ test("Requirement 1: a database failure does not expose internal error details",
   assert.equal(res.statusCode, 500);
   assert.deepEqual(res.body, { success: false, message: "Login error." });
 });
+
+test("Requirement 1: bcrypt's 72-byte boundary cannot accept an appended password", async (t) => {
+  const boundary = "x".repeat(72);
+  const user = account({ passwordHash: await bcrypt.hash(boundary, 4) });
+  mockAccount(t, user);
+  const valid = response();
+  await login({ body: { email: user.email, password: boundary } }, valid);
+  assert.equal(valid.statusCode, 200);
+  for (const password of [boundary + "wrong", "é".repeat(37)]) {
+    const res = response();
+    await login({ body: { email: user.email, password } }, res);
+    assert.equal(res.statusCode, 400);
+    assert.equal(res.body.token, undefined);
+  }
+});

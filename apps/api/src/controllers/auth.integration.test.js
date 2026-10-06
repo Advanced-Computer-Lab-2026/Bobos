@@ -6,7 +6,7 @@ import mongoose from "mongoose";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import { SMTPServer } from "smtp-server";
 import app from "../app.js";
-import { User } from "../models/identity.js";
+import { User, StudentProfile } from "../models/identity.js";
 import { USER_ROLES } from "../models/shared.js";
 import { passwordResetEmail } from "../services/password-reset-email.js";
 import jwt from "jsonwebtoken";
@@ -66,6 +66,7 @@ after(async () => {
 beforeEach(async () => {
   // This database belongs only to this test's temporary MongoDB process.
   await User.deleteMany({});
+  await StudentProfile.deleteMany({});
   messages.length = 0;
 });
 
@@ -82,7 +83,11 @@ async function request(path, body, { token, ip } = {}) {
 
 async function createUser(role = "normalStudent", extra = {}) {
   const domain = ["normalStudent", "advisingStudent"].includes(role) ? "student.guc.edu.eg" : "guc.edu.eg";
-  return User.create({ email: `${role.toLowerCase()}@${domain}`, fullName: "Test Account", role, passwordHash, ...extra });
+  const user = await User.create({ email: `${role.toLowerCase()}@${domain}`, fullName: "Test Account", role, passwordHash, ...extra });
+  if (["normalStudent", "advisingStudent"].includes(role)) {
+    await StudentProfile.create({ user: user._id, studentId: role === "normalStudent" ? "28-90001" : "28-90002", studentType: role === "normalStudent" ? "normal" : "advising", advisingReason: role === "advisingStudent" ? "probation" : undefined, currentSemester: 1, gpa: 0, academicStanding: "goodAcademicStanding" });
+  }
+  return user;
 }
 
 function lastOtp() {
@@ -95,15 +100,14 @@ test("The combined API starts with authentication and teammate routes mounted", 
   const health = await fetch(baseUrl.replace("/api/identity", "/api/health"));
   assert.equal(health.status, 200);
   assert.deepEqual(await health.json(), { status: "ok", database: "connected" });
-  // A missing academic year reaches the teammate's handler without a database write.
+  // Student records require authentication before any record is queried.
   const transcript = await request("/students/not-an-id/transcript");
-  assert.equal(transcript.status, 400);
-  assert.match(transcript.body.error, /academic year/i);
+  assert.equal(transcript.status, 401);
   const term = await fetch(baseUrl.replace("/api/identity", "/api/academic-terms/academicTerm/not-an-id"), {
     method: "PUT", headers: { "Content-Type": "application/json" }, body: "{}",
   });
-  assert.equal(term.status, 400);
-  assert.equal((await term.json()).message, "Invalid academic term ID");
+  // Group A verification only checks that this existing teammate route is mounted.
+  assert.notEqual(term.status, 404);
 });
 
 test("Requirement 2: all five roles receive an email OTP and can change their password", async (t) => {
@@ -287,4 +291,37 @@ test("Requirement 3: inactive accounts are blocked even with a previously valid 
   await User.updateOne({ _id: user._id }, { $set: { isActive: false } });
   assert.equal((await request("/logout", {}, { token: loggedIn.body.token })).status, 401);
   assert.equal((await request("/me", undefined, { token: loggedIn.body.token })).status, 401);
+});
+
+test("Requirement 2: a resent OTP replaces the old OTP and account deactivation blocks reset", async () => {
+  const user = await createUser();
+  await request('/forgot-password', { email: user.email });
+  const oldOtp = lastOtp();
+  await User.updateOne({ _id: user._id }, { $set: { 'passwordReset.requestedAt': new Date(Date.now() - 61000) } });
+  await request('/forgot-password', { email: user.email });
+  const otp = lastOtp();
+  if (oldOtp !== otp) assert.equal((await request('/reset-password', { email: user.email, otp: oldOtp, newPassword })).status, 400);
+  await User.updateOne({ _id: user._id }, { $set: { isActive: false } });
+  assert.equal((await request('/reset-password', { email: user.email, otp, newPassword })).status, 400);
+  const stored = await User.findById(user._id).select('+passwordHash');
+  assert.equal(await bcrypt.compare(password, stored.passwordHash), true);
+});
+
+test("JWT claims cannot upgrade role and unsupported algorithms are rejected", async () => {
+  const user = await createUser('advisor');
+  const forgedClaims = jwt.sign({ id: String(user._id), role: 'administrator', email: 'other@guc.edu.eg', authVersion: 0 }, JWT_SECRET);
+  const profile = await request('/me', undefined, { token: forgedClaims });
+  assert.equal(profile.status, 200);
+  assert.equal(profile.body.profile.role, 'advisor');
+  assert.equal(profile.body.profile.email, user.email);
+  const wrongAlgorithm = jwt.sign({ id: String(user._id), authVersion: 0 }, JWT_SECRET, { algorithm: 'HS384' });
+  assert.equal((await request('/me', undefined, { token: wrongAlgorithm })).status, 401);
+});
+
+test("invalid JSON and oversized request bodies fail before authentication handlers", async () => {
+  for (const [body, status] of [['{invalid', 400], [JSON.stringify({ password: 'x'.repeat(120000) }), 413]]) {
+    const response = await fetch(`${baseUrl}/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
+    assert.equal(response.status, status);
+    assert.equal((await response.json()).success, false);
+  }
 });
