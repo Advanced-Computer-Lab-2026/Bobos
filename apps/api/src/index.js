@@ -11,7 +11,6 @@ const mongoUri = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/bobos";
 
 app.use(express.json());
 
-// Group Routes
 app.use("/api/admin", adminRoutes);
 app.use("/api/catalogue", catalogueRoutes);
 

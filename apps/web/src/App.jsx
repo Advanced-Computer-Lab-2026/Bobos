@@ -14,6 +14,13 @@ const emptyFilters = {
 
 const humanize = (value = "") => (value || "").replace(/([a-z])([A-Z])/g, "$1 $2").replace(/^./, (letter) => letter.toUpperCase());
 
+async function apiRequest(url, options) {
+  const response = await fetch(url, options);
+  const body = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(body?.message || "Request failed");
+  return body;
+}
+
 function SelectFilter({ label, value, onChange, options, placeholder = "All", disabled = false }) {
   return (
     <label className="filter-field">
@@ -35,6 +42,14 @@ export default function App() {
   const [directory, setDirectory] = useState({ students: [], filters: {} });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [studentDetails, setStudentDetails] = useState(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [detailsError, setDetailsError] = useState("");
+  const [advisorEmail, setAdvisorEmail] = useState("");
+  const [advisor, setAdvisor] = useState(null);
+  const [advisorError, setAdvisorError] = useState("");
+  const [advisorMessage, setAdvisorMessage] = useState("");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -75,6 +90,68 @@ export default function App() {
   const clearFilters = () => {
     setFilters(emptyFilters);
     setAppliedFilters(emptyFilters);
+  };
+
+  const openStudent = async (id) => {
+    setDetailsOpen(true);
+    setDetailsLoading(true);
+    setStudentDetails(null);
+    setDetailsError("");
+    try {
+      setStudentDetails(await apiRequest(`/api/admin/students/${id}`));
+    } catch (requestError) {
+      setDetailsError(requestError.message);
+    } finally {
+      setDetailsLoading(false);
+    }
+  };
+
+  const updateAccount = async () => {
+    const user = studentDetails.user;
+    try {
+      const updatedUser = await apiRequest(`/api/admin/users/${user._id}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: !user.isActive }),
+      });
+      setStudentDetails((current) => ({ ...current, user: { ...current.user, isActive: updatedUser.isActive } }));
+      setDirectory((current) => ({
+        ...current,
+        students: current.students.map((student) => student.id === String(studentDetails._id)
+          ? { ...student, accountStatus: updatedUser.isActive ? "active" : "inactive" }
+          : student),
+      }));
+    } catch (requestError) {
+      setDetailsError(requestError.message);
+    }
+  };
+
+  const lookupAdvisor = async (event) => {
+    event.preventDefault();
+    setAdvisor(null);
+    setAdvisorError("");
+    setAdvisorMessage("");
+    try {
+      setAdvisor(await apiRequest(`/api/admin/advisors/lookup?email=${encodeURIComponent(advisorEmail)}`));
+    } catch (requestError) {
+      setAdvisorError(requestError.message);
+    }
+  };
+
+  const changeAdvisor = async (add) => {
+    setAdvisorError("");
+    setAdvisorMessage("");
+    try {
+      const result = await apiRequest(add ? "/api/admin/advisors" : `/api/admin/advisors/${encodeURIComponent(advisor.email)}`, {
+        method: add ? "POST" : "DELETE",
+        ...(add ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: advisor.email }) } : {}),
+      });
+      setAdvisor((current) => ({ ...current, isAdvisorInSystem: add }));
+      setAdvisorMessage(add ? `Advisor added. Email status: ${result.emailStatus}.` : `Advisor removed. Email status: ${result.emailStatus}.`);
+      setAppliedFilters((current) => ({ ...current }));
+    } catch (requestError) {
+      setAdvisorError(requestError.message);
+    }
   };
 
   const students = directory.students || [];
@@ -171,7 +248,7 @@ export default function App() {
               <tbody>
                 {students.map((student) => (
                   <tr key={student.id}>
-                    <td className="student-id">{student.studentId}</td>
+                    <td className="student-id"><button className="text-button" type="button" onClick={() => openStudent(student.id)}>{student.studentId}</button></td>
                     <td><strong>{student.fullName || "—"}</strong><span className="secondary-text">{student.email}</span></td>
                     <td>{humanize(student.studentType)}</td>
                     <td>{student.major || "—"}</td>
@@ -189,6 +266,63 @@ export default function App() {
           </div>
         )}
       </section>
+
+      {directory.currentUserRole === "coordinator" && (
+        <section className="advisor-management" aria-labelledby="advisor-heading">
+          <h2 id="advisor-heading">Advisors</h2>
+          <form className="advisor-lookup" onSubmit={lookupAdvisor}>
+            <label className="filter-field">
+              <span>Advisor GUC email</span>
+              <input type="email" required value={advisorEmail} onChange={(event) => setAdvisorEmail(event.target.value)} />
+            </label>
+            <button className="primary-button" type="submit">Look up advisor</button>
+          </form>
+          {advisorError && <p className="feedback error" role="alert">{advisorError}</p>}
+          {advisorMessage && <p className="feedback" role="status">{advisorMessage}</p>}
+          {advisor && (
+            <div className="advisor-result">
+              <p><strong>{advisor.fullName}</strong><span className="secondary-text">{advisor.email}</span></p>
+              <span>{advisor.isAdvisorInSystem ? "In advising system" : "Not in advising system"}</span>
+              <button className="primary-button" type="button" onClick={() => changeAdvisor(!advisor.isAdvisorInSystem)}>
+                {advisor.isAdvisorInSystem ? "Remove advisor" : "Add advisor"}
+              </button>
+            </div>
+          )}
+          <p className="secondary-text">Email delivery requires SMTP settings in `.env`.</p>
+        </section>
+      )}
+
+      {detailsOpen && (
+        <div className="details-backdrop">
+          <section className="student-details" role="dialog" aria-modal="true" aria-labelledby="details-heading">
+            <div className="details-heading">
+              <h2 id="details-heading">Student details</h2>
+              <button className="text-button" type="button" onClick={() => setDetailsOpen(false)}>Close</button>
+            </div>
+            {detailsError && <p className="feedback error" role="alert">{detailsError}</p>}
+            {detailsLoading ? <p className="feedback">Loading student…</p> : studentDetails && (
+              <dl className="details-list">
+                <dt>Student ID</dt><dd>{studentDetails.studentId}</dd>
+                <dt>Name</dt><dd>{studentDetails.user?.fullName}</dd>
+                <dt>Email</dt><dd>{studentDetails.user?.email}</dd>
+                <dt>Student type</dt><dd>{humanize(studentDetails.studentType)}</dd>
+                <dt>Major</dt><dd>{studentDetails.major}</dd>
+                <dt>Semester</dt><dd>{studentDetails.currentSemester}</dd>
+                <dt>Academic standing</dt><dd>{humanize(studentDetails.academicStanding)}</dd>
+                <dt>GPA</dt><dd>{studentDetails.gpa}</dd>
+                <dt>Enrollment</dt><dd>{humanize(studentDetails.enrollmentStatus)}</dd>
+                <dt>Advisor</dt><dd>{studentDetails.assignedAdvisor?.fullName || "—"}</dd>
+                <dt>Account</dt><dd>{studentDetails.user?.isActive ? "Active" : "Inactive"}</dd>
+              </dl>
+            )}
+            {!detailsLoading && studentDetails?.user && directory.currentUserRole === "administrator" && (
+              <button className="primary-button" type="button" onClick={updateAccount}>
+                {studentDetails.user?.isActive ? "Deactivate account" : "Activate account"}
+              </button>
+            )}
+          </section>
+        </div>
+      )}
     </main>
   );
 }

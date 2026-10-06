@@ -22,6 +22,7 @@ const userSchema = withTimestamps({
   passwordHash: { type: String, required: true, select: false },
   role: { type: String, required: true, enum: USER_ROLES },
   isActive: { type: Boolean, default: true, index: true },
+  isAdvisorInSystem: { type: Boolean, default: false },
   lastLoginAt: Date,
 });
 
