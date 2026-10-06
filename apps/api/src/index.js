@@ -5,6 +5,7 @@ import "./models/index.js";
 import catalogueRoutes from "./routes/catalogue.routes.js";
 import academicTermRoutes from "./routes/academicTerm.routes.js";
 import dotenv from "dotenv";
+import academicsRoutes from "./routes/academics.routes.js";
 
 dotenv.config({ path: "../../.env" });
 const app = express();
@@ -16,6 +17,7 @@ app.use(express.json());
 // Group Routes
 app.use("/api/catalogue", catalogueRoutes);
 app.use("/api/academic-terms", academicTermRoutes);
+app.use("/api/academics", academicsRoutes);
 
 app.get("/api/health", (_req, res) => {
   res.json({
