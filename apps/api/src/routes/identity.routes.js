@@ -5,6 +5,7 @@ import { rateLimit } from "express-rate-limit";
 import { requestPasswordReset, resetPassword } from "../controllers/password-reset.controller.js";
 import { logout } from "../controllers/logout.controller.js";
 import { studentRecordAccess } from "../middleware/student-records.middleware.js";
+import { getPreferences, savePreferences } from "../controllers/preferences.controller.js";
 
 const router = express.Router();
 
@@ -48,6 +49,9 @@ router.post("/seed-demo", (req, res, next) => {
 //Req 54:
 router.use('/students/:studentId', requireAuth);
 const advisingRecords = studentRecordAccess(['advisingStudent', 'advisor', 'coordinator']);
+// Req 57/58: students update their own hints; advising staff read them.
+router.get('/students/:studentId/preferences', advisingRecords, getPreferences);
+router.put('/students/:studentId/preferences', studentRecordAccess(['advisingStudent']), savePreferences);
 router.get('/students/:studentId/history', advisingRecords, getAcademicHistory);
 
 //Req 55:
