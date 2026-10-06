@@ -1,16 +1,14 @@
 import assert from "node:assert/strict";
 import test, { before, after, beforeEach } from "node:test";
 import { once } from "node:events";
-import express from "express";
 import bcrypt from "bcryptjs";
 import mongoose from "mongoose";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import { SMTPServer } from "smtp-server";
-import identityRoutes from "../routes/identity.routes.js";
+import app from "../app.js";
 import { User } from "../models/identity.js";
 import { USER_ROLES } from "../models/shared.js";
 import { passwordResetEmail } from "../services/password-reset-email.js";
-import { apiErrorHandler } from "../middleware/error.middleware.js";
 import jwt from "jsonwebtoken";
 import { JWT_SECRET } from "../middleware/auth.middleware.js";
 
@@ -51,12 +49,8 @@ before(async () => {
   delete process.env.SMTP_PASS;
   delete process.env.ALLOW_DEMO_SEED;
 
-  const app = express();
   // Trust only the local test client so each simulated IP has its own rate limit.
   app.set("trust proxy", "loopback");
-  app.use(express.json());
-  app.use("/api/identity", identityRoutes);
-  app.use(apiErrorHandler);
   http = app.listen(0, "127.0.0.1");
   await once(http, "listening");
   baseUrl = `http://127.0.0.1:${http.address().port}/api/identity`;
@@ -96,6 +90,21 @@ function lastOtp() {
   assert.ok(match, "The local SMTP server must receive a six-digit OTP");
   return match[1];
 }
+
+test("The combined API starts with authentication and teammate routes mounted", async () => {
+  const health = await fetch(baseUrl.replace("/api/identity", "/api/health"));
+  assert.equal(health.status, 200);
+  assert.deepEqual(await health.json(), { status: "ok", database: "connected" });
+  // A missing academic year reaches the teammate's handler without a database write.
+  const transcript = await request("/students/not-an-id/transcript");
+  assert.equal(transcript.status, 400);
+  assert.match(transcript.body.error, /academic year/i);
+  const term = await fetch(baseUrl.replace("/api/identity", "/api/academic-terms/academicTerm/not-an-id"), {
+    method: "PUT", headers: { "Content-Type": "application/json" }, body: "{}",
+  });
+  assert.equal(term.status, 400);
+  assert.equal((await term.json()).message, "Invalid academic term ID");
+});
 
 test("Requirement 2: all five roles receive an email OTP and can change their password", async (t) => {
   for (const role of USER_ROLES) {

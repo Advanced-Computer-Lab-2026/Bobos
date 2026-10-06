@@ -1,5 +1,5 @@
 import express from "express";
-import { getProfile, login, seedDemoUsers } from "../controllers/identity.controller.js";
+import { getProfile, login, seedDemoUsers, getAcademicHistory, getTranscript, downloadTranscriptPDF, getFailedCourses, getWallet } from "../controllers/identity.controller.js";
 import { requireAuth } from "../middleware/auth.middleware.js";
 import { rateLimit } from "express-rate-limit";
 import { requestPasswordReset, resetPassword } from "../controllers/password-reset.controller.js";
@@ -43,5 +43,20 @@ router.post("/seed-demo", (req, res, next) => {
   }
   next();
 }, seedDemoUsers);
+
+//Req 54:
+router.get('/students/:studentId/history', getAcademicHistory);
+
+//Req 55:
+router.get('/students/:studentId/transcript', getTranscript);
+
+// Req 56:
+router.get('/students/:studentId/transcript/download', downloadTranscriptPDF);
+
+// Req 61:
+router.get('/students/:studentId/failed-courses', getFailedCourses);
+
+//Req 89:
+router.get('/students/:studentId/wallet', getWallet);
 
 export default router;

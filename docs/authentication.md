@@ -22,6 +22,8 @@ Start the backend with:
 npm run dev --workspace @bobos/api
 ```
 
+The npm startup command loads the root `.env` using Node's built-in environment-file support. The API exits with a configuration message if MongoDB cannot be reached. Existing team catalogue, academic-term, profile, notification and student-record routes remain mounted alongside authentication.
+
 ## Requirement 1: login
 
 `POST /api/identity/login`
@@ -74,6 +76,6 @@ Authentication verification is limited to 30 requests per IP per 15 minutes; for
 npm test
 ```
 
-The integration tests start a temporary real MongoDB process and a local SMTP server, and exercise the Express endpoints over HTTP. They do not send mail to real inboxes or modify your `bobos` database. The MongoDB test binary may download on the first run; there is no system MongoDB installation requirement for these tests. Real inbox delivery still needs your team's SMTP configuration.
+The integration tests start a temporary real MongoDB process and a local SMTP server, and exercise the combined Express app's endpoints over HTTP. They do not send mail to real inboxes or modify your `bobos` database. The MongoDB test binary may download on the first run; there is no system MongoDB installation requirement for these tests. Real inbox delivery still needs your team's SMTP configuration.
 
 Implementation references: [Nodemailer SMTP](https://nodemailer.com/smtp), [express-rate-limit usage](https://express-rate-limit.mintlify.app/quickstart/usage), [MongoDB test server](https://typegoose.github.io/mongodb-memory-server/docs/guides/quick-start-guide/).
