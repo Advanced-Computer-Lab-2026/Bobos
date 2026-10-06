@@ -1,6 +1,6 @@
 # Group A API requirements and edge-case verification
 
-Verified on a branch based directly on `Group-A`. Scope is existing Group A backend APIs; preferences (57/58) and frontend work remain excluded by the user's instruction. This change does not import development's Group B/C work.
+Verified on a branch based directly on `Group-A`. Scope is Group A backend APIs, including scheduling preferences (57/58). Frontend work remains outside the user's API-only scope. This change does not import development's Group B/C work.
 
 The authoritative source is **CSEN704 - University Scheduling System Requirements (Project) (1).xlsx**, sheet **Functional Requirements**. Requirements 1-5 occupy rows 2-6; 54-58 occupy rows 55-59; 61 is row 62; 89 is row 90. The screenshot was used initially, but this audit uses the workbook's stakeholder and extra-comment columns as well as its action column.
 
@@ -16,11 +16,12 @@ The authoritative source is **CSEN704 - University Scheduling System Requirement
 | 56 | Authorized roles download the same transcript as PDF. The attachment uses the actual student number, academic year and Cairo date. A 150-result transcript is parsed to verify all results, and first/last pages are visually reviewed. Course and grade rows stay together across pages. |
 | 61 | Only Advisors and Coordinators see advising students' failed/unattended mandatory-course candidates. Approved removals for the selected term are excluded; pending/rejected removals and approvals in another term do not remove candidates. Retakes are deduplicated and successfully completed courses are excluded. Optional `?term=<AcademicTerm ObjectId>` selects context; otherwise the active term is used. Empty responses are arrays. |
 | 89 | Only an Advising Student sees their own wallet. Wallet entries exclude gateway/deferred-charge records, distinguish credit/debit, and retain amount/date/request/payment references and per-entry resulting balance. Successful entries affect balance; pending/failed/cancelled entries do not. Money is accumulated in integer cents and returned newest first. |
-| 57/58 | Not implemented; excluded by the user. |
+| 57 | Advising Students submit/replace their own term-specific ranked preferences before the advising deadline. All preference categories, optional priorities, clearing, ownership, deadline boundaries and changes, valid published groups, concurrent submissions and unchanged schedules/payments/capacity are verified. |
+| 58 | Advisors and Coordinators read any advising student's latest preferences in priority order with their update timestamp. No submission returns a successful null result and cannot itself block a draft workflow. See `scheduling-preferences.md` for API integration details. |
 
 ## Validation
 
-- `npm run test:group-a`: **97 tests passed, zero failures**, on the Group-A-based branch, using real temporary MongoDB and a local SMTP server.
+- `npm run test:group-a`: **145 tests passed, zero failures**, on the Group-A-based branch, using real temporary MongoDB and a local SMTP server.
 - `npm run build`: passed.
 - Dependency audit: zero vulnerabilities after patching shell-quote.
 - `git diff --check`: passed.
@@ -36,9 +37,11 @@ Additional checks cover malformed JSON, oversized bodies, database-error sanitiz
 | History / transcript / years / PDF | Denied | Own | Any advising student | Any advising student | Denied |
 | Failed/unattended candidates | Denied | Denied | Any advising student | Any advising student | Denied |
 | Wallet | Denied | Own | Denied | Denied | Denied |
+| Read scheduling preferences | Denied | Own | Any advising student | Any advising student | Denied |
+| Submit/update scheduling preferences | Denied | Own | Denied | Denied | Denied |
 
 Record URL `studentId` values are MongoDB StudentProfile IDs, not display student numbers. Transcript query years use the exact AcademicTerm academicYear value (for example `2025/2026`).
 
 ## Limits of this verification
 
-Tests demonstrate the covered API behavior and database persistence; they do not prove every possible input or deployment condition. Live GUC email delivery requires working SMTP settings and remains unverified against a real mailbox. The course PDF requires frontend, backend and populated database for full project grading; this API-only task cannot certify the complete submission. Group A frontend screens, requirements 57/58, evaluation seed data and unrelated Group B/C suites were not implemented or certified here.
+Tests demonstrate the covered API behavior and database persistence; they do not prove every possible input or deployment condition. Live GUC email delivery requires working SMTP settings and remains unverified against a real mailbox. The course PDF requires frontend, backend and populated database for full project grading; this API-only task cannot certify the complete submission. Group A frontend screens, evaluation seed data and unrelated Group B/C suites were not implemented or certified here. Draft editors must fetch preferences and enforce the academic/scheduling rules when using these optional hints.
