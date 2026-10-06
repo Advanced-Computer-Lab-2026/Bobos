@@ -146,7 +146,7 @@ function StudentDirectory({ onRoleLoaded }) {
         ...current,
         students: current.students.map((student) => student.id === String(studentDetails._id)
           ? { ...student, accountStatus: updatedUser.isActive ? "active" : "inactive" }
-          : student),
+          : student).filter((student) => !appliedFilters.accountStatus || student.accountStatus === appliedFilters.accountStatus),
       }));
     } catch (requestError) {
       setDetailsError(requestError.message);
@@ -309,7 +309,7 @@ function StudentDirectory({ onRoleLoaded }) {
           {advisor && (
             <div className="advisor-result">
               <p><strong>{advisor.fullName}</strong><span className="secondary-text">{advisor.email}</span></p>
-              <span>{advisor.isAdvisorInSystem ? "In advising system" : "Not in advising system"}</span>
+              <span><strong>System status:</strong> {advisor.isAdvisorInSystem ? "In advising system" : "Not in advising system"}</span>
               <button className="primary-button" type="button" onClick={() => changeAdvisor(!advisor.isAdvisorInSystem)}>
                 {advisor.isAdvisorInSystem ? "Remove advisor" : "Add advisor"}
               </button>
