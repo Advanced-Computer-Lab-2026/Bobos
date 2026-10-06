@@ -21,11 +21,6 @@ const WORKFLOW_STATUSES = [
   'readyToProcess',
   'processed',
   'reopened',
-  'scheduleAssigned',
-  'swapRequestOpen',
-  'swapCompleted',
-  'swapWithdrawn',
-  'swapExpired',
 ];
 
 const PENDING_REQUEST_TYPES = [

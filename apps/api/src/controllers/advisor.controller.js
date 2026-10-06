@@ -9,6 +9,7 @@ import {
   MandatoryCourseRemovalRequest,
   WholeScheduleSwapRequest,
 } from '../models/index.js';
+import { AcademicTerm } from '../models/catalogue.js';
 
 const { Types } = mongoose;
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -142,6 +143,10 @@ export const getMyAdvisor = async (req, res) => {
 
 export const listAdvisingStudents = async (req, res) => {
   try {
+    const activeTerm = await AcademicTerm.findOne({ isActive: true })
+      .sort({ termStart: -1 })
+      .select('_id')
+      .lean();
     const {
       search,
       advisorId,
@@ -211,7 +216,16 @@ export const listAdvisingStudents = async (req, res) => {
           from: StudentWorkflowState.collection.name,
           let: { sid: '$_id' },
           pipeline: [
-            { $match: { $expr: { $eq: ['$student', '$$sid'] } } },
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ['$student', '$$sid'] },
+                    { $eq: ['$term', activeTerm?._id ?? null] },
+                  ],
+                },
+              },
+            },
             { $sort: { lastActivityAt: -1 } },
             { $limit: 1 },
           ],
@@ -240,6 +254,7 @@ export const listAdvisingStudents = async (req, res) => {
                   $expr: {
                     $and: [
                       { $eq: ['$student', '$$sid'] },
+                      { $eq: ['$term', activeTerm?._id ?? null] },
                       { $eq: [`$${statusField}`, statusValue] },
                     ],
                   },
@@ -335,8 +350,14 @@ export const getAdvisingStudent = async (req, res) => {
       return res.status(404).json({ message: 'Advising student profile not found' });
     }
 
+    const activeTerm = await AcademicTerm.findOne({ isActive: true })
+      .sort({ termStart: -1 })
+      .select('_id')
+      .lean();
     const [workflowState, assignmentHistory] = await Promise.all([
-      StudentWorkflowState.findOne({ student: profileId }).sort({ lastActivityAt: -1 }),
+      activeTerm
+        ? StudentWorkflowState.findOne({ student: profileId, term: activeTerm._id })
+        : null,
       AdvisorAssignment.find({ student: profileId })
         .sort({ createdAt: -1 })
         .populate('advisor', 'fullName email')

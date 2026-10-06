@@ -175,7 +175,7 @@ async function seed() {
         email: `normal${i}@student.guc.edu.eg`,
         passwordHash: 'dummy_hash',
         role: 'normalStudent',
-        isActive: i === 1,
+        isActive: i === 2,
       });
       const profile = await StudentProfile.create({
         user: user._id,
