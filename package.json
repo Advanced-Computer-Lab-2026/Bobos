@@ -1,6 +1,8 @@
 {
   "name": "bobos",
   "private": true,
+  "version": "0.1.0",
+  "description": "Bobos - University Schedule Management System (CSEN704 Sprint 1)",
   "workspaces": [
     "apps/api",
     "apps/web"
