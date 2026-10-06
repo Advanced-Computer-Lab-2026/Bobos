@@ -4,7 +4,8 @@ import { AcademicTerm } from '../models/catalogue.js';
 const termFields = [
   'code', 'academicYear', 'season', 'termStart', 'termEnd',
   'teachingStart', 'teachingEnd', 'registrationStart', 'registrationEnd',
-  'advisingDeadline', 'wholeScheduleSwapDeadline', 'isActive',
+  'advisingDeadline', 'wholeScheduleSwapDeadline',
+   'isActive',
 ];
 
 export const  createAcademicTerm = async (req, res) => {
@@ -51,5 +52,6 @@ export const updateAcademicTerm = async (req, res) => {
       return res.status(400).json({ message: error.message });
     }
     res.status(500).json({ message: error.message });
+  
   }
 };
