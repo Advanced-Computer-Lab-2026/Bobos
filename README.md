@@ -45,16 +45,8 @@ Covers requirements 9–13 of the University Schedule Management System.
 | PATCH | `/api/admin/users/:id/status` | Activate / deactivate a user account | 10 |
 | GET | `/api/admin/advisors/lookup?email=` | Look up an advisor by GUC email — returns full name | 11 |
 | POST | `/api/admin/advisors` | Add an advisor to the advising system (sends email notification) | 11, 13 |
-| DELETE | `/api/admin/advisors/:email` | Remove an advisor (ends active assignments, preserves history, sends notification) | 12, 13 |
+| DELETE | `/api/admin/advisors/:email` | Remove an advisor without deleting schedule activity history | 12, 13 |
 
-### Tested with Postman
+These routes require authentication middleware to set `req.user`; the current API startup does not attach it yet, so the A1 login work must do that before these screens can be used through the normal app. Student details are available to coordinators and administrators; account status is administrator-only; advisor management is coordinator-only.
 
-- ✅ GET `/api/admin/students/:id` → 200 with profile
-- ✅ PATCH `/api/admin/users/:id/status` → 200 toggles `isActive`
-- ✅ GET `/api/admin/advisors/lookup` → 200 with advisor
-- ✅ POST `/api/admin/advisors` → 201 with message + advisor
-- ✅ DELETE `/api/admin/advisors/:email` → 200 with assignmentsEnded count
-
-### Notifications
-
-Both add and remove actions create a `Notification` record with `channels: ["email"]` and `deliveryStatus: "sent"` (Req 13).
+Email delivery uses `SMTP_URL` and `EMAIL_FROM` from `.env`. Until these are configured, notifications remain pending; failed SMTP deliveries are recorded as failed.

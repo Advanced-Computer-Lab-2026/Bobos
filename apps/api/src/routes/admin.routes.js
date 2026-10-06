@@ -1,25 +1,30 @@
 import express from "express";
 import {
-  getStudentDetails,
-  setUserStatus,
-  lookupAdvisor,
   addAdvisor,
+  getStudentDetails,
+  getStudents,
+  lookupAdvisor,
   removeAdvisor,
+  setUserStatus,
 } from "../controllers/admin.controller.js";
 
 const router = express.Router();
 
-// Req 9 — student details
-router.get("/students/:id", getStudentDetails);
+export function requireRole(...roles) {
+  return (req, res, next) => {
+    if (!req.user) return res.status(401).json({ message: "Authentication required" });
+    if (!roles.includes(req.user.role)) return res.status(403).json({ message: "Insufficient permissions" });
+    next();
+  };
+}
 
-// Req 10 — account activation toggle
-router.patch("/users/:id/status", setUserStatus);
+export const requireDirectoryRole = requireRole("coordinator", "administrator");
 
-// Req 11 — advisor lookup + add
-router.get("/advisors/lookup", lookupAdvisor);
-router.post("/advisors", addAdvisor);
-
-// Req 12 — advisor removal
-router.delete("/advisors/:email", removeAdvisor);
+router.get("/students", requireDirectoryRole, getStudents);
+router.get("/students/:id", requireDirectoryRole, getStudentDetails);
+router.patch("/users/:id/status", requireRole("administrator"), setUserStatus);
+router.get("/advisors/lookup", requireRole("coordinator"), lookupAdvisor);
+router.post("/advisors", requireRole("coordinator"), addAdvisor);
+router.delete("/advisors/:email", requireRole("coordinator"), removeAdvisor);
 
 export default router;
