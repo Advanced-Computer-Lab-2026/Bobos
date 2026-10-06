@@ -8,7 +8,7 @@ The sprint labels and requirement numbers below follow the `Sprint` column in th
 
 ### Sprint 1
 
-1. `identity.js` - Requirements 1-15. For B1 specifically, review `StudentProfile` for Req. 6-8.
+1. `identity.js` - Requirements 1-4, 6-12, 14-15, and 50-53. For B1 specifically, review `StudentProfile` for Req. 6-8.
 2. `catalogue.js` - Requirements 16-23, 25-27, and 128.
 3. `academics.js` - Requirements 6-8, 28-33, and 49-58, 61.
 4. `requests.js` - No Sprint 1 request schema; Req. 34's eligible group schedules come from `ScheduleTemplate` and `CourseOffering`.
@@ -93,7 +93,7 @@ The model files are grouped by responsibility: `identity.js`, `catalogue.js`, `a
 
 ## Requirement Coverage
 
-- Requirements 1-15: users, student profiles, advisor assignments, reset tokens, and student-directory indexes.
+- Requirements 1-15: user accounts, student profiles, advisor assignments, reset tokens, notifications, and student-directory indexes.
 - Requirements 16-30: academic terms, catalogue courses, offerings/slots, templates, and schedule assignments.
 - Requirements 31-61: student schedules, swaps, slot changes, academic history, preferences, and mandatory-course candidates.
 - Requirements 62-82: advising schedule drafts, review/processing states, and mandatory-course removal decisions.

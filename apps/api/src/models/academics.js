@@ -76,7 +76,11 @@ const courseAttemptSchema = withTimestamps({
   attemptNumber: { type: Number, required: true, min: 1, default: 1 },
   attendance: { type: String, required: true, enum: ["attended", "unattended"] },
   result: { type: String, required: true, enum: ["current", "passed", "failed"] },
-  grade: { type: String, trim: true },
+  grade: {
+    type: String,
+    trim: true,
+    required: function () { return this.result === "passed" || this.result === "failed"; },
+  },
 });
 
 courseAttemptSchema.index({ student: 1, term: 1, course: 1, attemptNumber: 1 }, { unique: true });

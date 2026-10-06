@@ -4,6 +4,7 @@ import "./models/index.js";
 
 import adminRoutes from "./routes/admin.routes.js";
 import catalogueRoutes from "./routes/catalogue.routes.js";
+import advisorRoutes from "./routes/advisor.routes.js";
 
 const app = express();
 const port = Number(process.env.PORT || 3000);
@@ -13,6 +14,7 @@ app.use(express.json());
 
 app.use("/api/admin", adminRoutes);
 app.use("/api/catalogue", catalogueRoutes);
+app.use("/api/advisor", advisorRoutes);
 
 app.get("/api/health", (_req, res) => {
   res.json({
