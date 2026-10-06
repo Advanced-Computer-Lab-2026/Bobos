@@ -95,6 +95,7 @@ test("required notification events are valid notification types", async () => {
 
 test("offering capacity cannot be lower than assigned students", async () => {
   const fields = {
+    academicYear: "2025/2026",
     course: id(),
     term: id(),
     slots: [{
@@ -117,7 +118,7 @@ test("offering capacity cannot be lower than assigned students", async () => {
 });
 
 test("published offerings require an instructor, eligible group, and slot", async () => {
-  const fields = { course: id(), term: id(), isPublished: true };
+  const fields = { course: id(), term: id(), academicYear: "2025/2026", isPublished: true };
 
   await invalid(new CourseOffering(fields));
   await valid(new CourseOffering({
@@ -134,7 +135,7 @@ test("published offerings require an instructor, eligible group, and slot", asyn
       capacity: 30,
     }],
   }));
-  await valid(new CourseOffering({ course: id(), term: id() }));
+  await valid(new CourseOffering({ course: id(), term: id(), academicYear: "2025/2026" }));
 });
 
 test("an open swap requires at least one desired group", async () => {
