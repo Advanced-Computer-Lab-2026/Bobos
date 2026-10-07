@@ -9,9 +9,14 @@ import academicsRoutes from "./routes/academics.routes.js";
 import { requireAuth } from "./middleware/auth.middleware.js";
 import { getProfile } from "./controllers/identity.controller.js";
 import { apiErrorHandler } from "./middleware/error.middleware.js";
-
+import adminRoutes from "./routes/admin.routes.js";
+import advisorRoutes from "./routes/advisor.routes.js";
 // Keep app wiring separate from database startup so tests use the real routes.
 const app = express();
+app.use("/api/academics", academicsRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/advisor", advisorRoutes);
+app.get("/api/profile", requireAuth, getProfile);
 app.use(express.json());
 app.use("/api/catalogue", catalogueRoutes);
 app.use("/api/identity", identityRoutes);
