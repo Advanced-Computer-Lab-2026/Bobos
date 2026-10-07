@@ -34,7 +34,7 @@ Some models appear in both sprint groups because their fields support requiremen
 
 | Model | Purpose |
 | --- | --- |
-| `User` | Login identity, role, active state, password hash, authentication version and hidden email OTP reset state. Email domain is validated against role; signup is not part of the requirements. |
+| `User` | Login identity, role, active state, advisor-roster membership, password hash, authentication version and hidden email OTP reset state. Email domain is validated against role; signup is not part of the requirements. |
 | `StudentProfile` | Student ID, type, major, semester, standing, enrollment state, advising reason, and current advisor. Kept separate so staff accounts do not carry student-only fields. |
 | `AdvisorAssignment` | Appendable assignment history; the partial unique index allows only one current advisor assignment per student. |
 | `PasswordResetToken` | Original reset-token schema retained for compatibility. The implemented email OTP flow uses hidden reset state on `User` so consuming a code and changing a password is one atomic operation on standalone MongoDB. |

@@ -5,7 +5,7 @@ import { CourseAttempt, StudentSchedule, StudentTermStanding } from "./academics
 import { Course, CourseOffering } from "./catalogue.js";
 import { Notification, ScheduleActivity } from "./communications.js";
 import { FinancialReversalRequest } from "./finance.js";
-import { StudentProfile } from "./identity.js";
+import { StudentProfile, User } from "./identity.js";
 import { ExtraHoursRequest, GraduationPlan, SlotChangeRequest, WholeScheduleSwapRequest } from "./requests.js";
 
 const id = () => new mongoose.Types.ObjectId();
@@ -63,6 +63,13 @@ test("advising students require a supported advising reason", async () => {
   await valid(new StudentProfile({ ...fields, studentType: "normal" }));
 });
 
+test("advisor roster membership does not change account activity", async () => {
+  const advisor = new User({ email: "advisor@guc.edu.eg", fullName: "Advisor", passwordHash: "hash", role: "advisor" });
+  assert.equal(advisor.isAdvisorInSystem, false);
+  assert.equal(advisor.isActive, true);
+  await valid(advisor);
+});
+
 test("graduation plans use draft when a coordinator rejects them", async () => {
   const fields = { student: id(), advisor: id(), termPlans: [] };
 
@@ -95,6 +102,7 @@ test("required notification events are valid notification types", async () => {
 
 test("offering capacity cannot be lower than assigned students", async () => {
   const fields = {
+    academicYear: "2025/2026",
     course: id(),
     term: id(),
     slots: [{
@@ -117,7 +125,7 @@ test("offering capacity cannot be lower than assigned students", async () => {
 });
 
 test("published offerings require an instructor, eligible group, and slot", async () => {
-  const fields = { course: id(), term: id(), isPublished: true };
+  const fields = { course: id(), term: id(), academicYear: "2025/2026", isPublished: true };
 
   await invalid(new CourseOffering(fields));
   await valid(new CourseOffering({
@@ -134,7 +142,7 @@ test("published offerings require an instructor, eligible group, and slot", asyn
       capacity: 30,
     }],
   }));
-  await valid(new CourseOffering({ course: id(), term: id() }));
+  await valid(new CourseOffering({ course: id(), term: id(), academicYear: "2025/2026" }));
 });
 
 test("an open swap requires at least one desired group", async () => {

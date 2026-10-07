@@ -304,3 +304,4 @@ test("notifications reject invalid IDs, preserve read timestamps and return empt
   await Promise.all(Array.from({ length: 5 }, () => update(notification._id)));
   assert.equal((await Notification.findById(notification._id)).readAt.getTime(), first.getTime());
 });
+
