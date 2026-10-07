@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import AdvisingDashboard from "./components/AdvisingDashboard.jsx";
+import MyAdvisor from "./components/MyAdvisor.jsx";
 
 const emptyFilters = {
   search: "",
@@ -37,6 +39,30 @@ function SelectFilter({ label, value, onChange, options, placeholder = "All", di
 }
 
 export default function App() {
+  const path = window.location.pathname;
+  const [currentUserRole, setCurrentUserRole] = useState(null);
+  const page = path === "/advising/manage"
+    ? <AdvisingDashboard canAssign onRoleLoaded={setCurrentUserRole} />
+    : path === "/advising/students"
+      ? <AdvisingDashboard onRoleLoaded={setCurrentUserRole} />
+      : path === "/advising/my-advisor"
+        ? <MyAdvisor onRoleLoaded={setCurrentUserRole} />
+        : <StudentDirectory onRoleLoaded={setCurrentUserRole} />;
+
+  return (
+    <>
+      <nav className="group-nav" aria-label="Group B">
+        {(currentUserRole === "coordinator" || currentUserRole === "administrator") && <a href="/">Student directory</a>}
+        {(currentUserRole === "coordinator" || currentUserRole === "advisor") && <a href="/advising/students">Advising students</a>}
+        {currentUserRole === "coordinator" && <a href="/advising/manage">Assign advisors</a>}
+        {currentUserRole === "advisingStudent" && <a href="/advising/my-advisor">My advisor</a>}
+      </nav>
+      {page}
+    </>
+  );
+}
+
+function StudentDirectory({ onRoleLoaded }) {
   const [filters, setFilters] = useState(emptyFilters);
   const [appliedFilters, setAppliedFilters] = useState(emptyFilters);
   const [directory, setDirectory] = useState({ students: [], filters: {} });
@@ -65,6 +91,7 @@ export default function App() {
         if (!response.ok) throw new Error(body?.message || "Could not load students");
         if (!body) throw new Error("Could not load students");
         setDirectory(body);
+        onRoleLoaded(body.currentUserRole);
       })
       .catch((requestError) => {
         if (requestError.name !== "AbortError") {
@@ -76,7 +103,7 @@ export default function App() {
       });
 
     return () => controller.abort();
-  }, [appliedFilters]);
+  }, [appliedFilters, onRoleLoaded]);
 
   const updateFilter = (key) => (event) => {
     const value = event.target.value;
@@ -119,7 +146,7 @@ export default function App() {
         ...current,
         students: current.students.map((student) => student.id === String(studentDetails._id)
           ? { ...student, accountStatus: updatedUser.isActive ? "active" : "inactive" }
-          : student),
+          : student).filter((student) => !appliedFilters.accountStatus || student.accountStatus === appliedFilters.accountStatus),
       }));
     } catch (requestError) {
       setDetailsError(requestError.message);
@@ -282,7 +309,7 @@ export default function App() {
           {advisor && (
             <div className="advisor-result">
               <p><strong>{advisor.fullName}</strong><span className="secondary-text">{advisor.email}</span></p>
-              <span>{advisor.isAdvisorInSystem ? "In advising system" : "Not in advising system"}</span>
+              <span><strong>System status:</strong> {advisor.isAdvisorInSystem ? "In advising system" : "Not in advising system"}</span>
               <button className="primary-button" type="button" onClick={() => changeAdvisor(!advisor.isAdvisorInSystem)}>
                 {advisor.isAdvisorInSystem ? "Remove advisor" : "Add advisor"}
               </button>

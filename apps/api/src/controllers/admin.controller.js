@@ -20,6 +20,28 @@ const filterKeys = [
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+export function buildStudentSearchFilter(searchPattern, searchUserIds, accountUserIds) {
+  const filter = {};
+  if (accountUserIds) filter.user = { $in: accountUserIds };
+  if (searchPattern) {
+    filter.$or = [
+      { studentId: searchPattern },
+      { user: { $in: searchUserIds } },
+    ];
+  }
+  return filter;
+}
+
+export function buildAdvisorFilter(assignedAdvisorIds) {
+  return {
+    role: "advisor",
+    $or: [
+      { _id: { $in: assignedAdvisorIds } },
+      { isAdvisorInSystem: true },
+    ],
+  };
+}
+
 export async function getStudents(req, res) {
   try {
     for (const key of filterKeys) {
@@ -79,21 +101,13 @@ export async function getStudents(req, res) {
     if (currentSemester) profileFilter.currentSemester = Number(currentSemester);
     if (academicStanding) profileFilter.academicStanding = academicStanding;
 
-    const userFilter = {};
-    if (search) {
-      userFilter.$or = [{ fullName: searchPattern }, { email: searchPattern }];
-    }
-    if (accountStatus) userFilter.isActive = accountStatus === "active";
-
-    let matchingUserIds;
-    if (search || accountStatus) matchingUserIds = await User.distinct("_id", userFilter);
-    if (accountStatus) profileFilter.user = { $in: matchingUserIds };
-    if (search) {
-      profileFilter.$or = [
-        { studentId: searchPattern },
-        { user: { $in: matchingUserIds } },
-      ];
-    }
+    const searchUserIds = search
+      ? await User.distinct("_id", { $or: [{ fullName: searchPattern }, { email: searchPattern }] })
+      : [];
+    const accountUserIds = accountStatus
+      ? await User.distinct("_id", { isActive: accountStatus === "active" })
+      : null;
+    Object.assign(profileFilter, buildStudentSearchFilter(searchPattern, searchUserIds, accountUserIds));
 
     if (workflowStatus || blockingStep) {
       const workflowFilter = { term: activeTerm?._id };
@@ -111,7 +125,7 @@ export async function getStudents(req, res) {
         .populate("assignedAdvisor", "fullName email")
         .sort({ studentId: 1 })
         .lean(),
-      User.find({ role: "advisor", _id: { $in: assignedAdvisorIds } })
+      User.find(buildAdvisorFilter(assignedAdvisorIds))
         .select("fullName email")
         .sort({ fullName: 1 })
         .lean(),
@@ -235,17 +249,40 @@ export async function addAdvisor(req, res) {
 export async function removeAdvisor(req, res) {
   const email = advisorEmail(req.params.email);
   if (!email) return res.status(400).json({ message: "Enter a valid GUC email" });
-  const advisor = await User.findOne({ email, role: "advisor" });
-  if (!advisor) return res.status(404).json({ message: "Advisor not found" });
-  if (!advisor.isAdvisorInSystem) return res.status(409).json({ message: "Advisor is not in the advising system" });
-  const endedAt = new Date();
-  const result = await AdvisorAssignment.updateMany(
-    { advisor: advisor._id, endedAt: null },
-    { $set: { endedAt, endedBy: req.user._id } },
-  );
-  await StudentProfile.updateMany({ assignedAdvisor: advisor._id }, { $set: { assignedAdvisor: null } });
-  advisor.isAdvisorInSystem = false;
-  await advisor.save();
+  const session = await mongoose.startSession();
+  let advisor;
+  let result;
+  try {
+    session.startTransaction();
+    advisor = await User.findOne({ email, role: "advisor" }, null, { session });
+    if (!advisor) {
+      await session.abortTransaction();
+      return res.status(404).json({ message: "Advisor not found" });
+    }
+    if (!advisor.isAdvisorInSystem) {
+      await session.abortTransaction();
+      return res.status(409).json({ message: "Advisor is not in the advising system" });
+    }
+    const endedAt = new Date();
+    result = await AdvisorAssignment.updateMany(
+      { advisor: advisor._id, endedAt: null },
+      { $set: { endedAt, endedBy: req.user._id } },
+      { session },
+    );
+    await StudentProfile.updateMany(
+      { assignedAdvisor: advisor._id },
+      { $set: { assignedAdvisor: null } },
+      { session },
+    );
+    advisor.isAdvisorInSystem = false;
+    await advisor.save({ session });
+    await session.commitTransaction();
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
+  }
   const notification = await emailAdvisor(advisor, "advisorRemoved", "You have been removed from the advising system", "You have been removed from the advising system. Your previous schedule activity history has been preserved.");
   res.json({ assignmentsEnded: result.modifiedCount, emailStatus: notification.deliveryStatus });
 }

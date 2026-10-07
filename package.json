@@ -1,6 +1,8 @@
 {
   "name": "bobos",
   "private": true,
+  "version": "0.1.0",
+  "description": "Bobos - University Schedule Management System (CSEN704 Sprint 1)",
   "workspaces": [
     "apps/api",
     "apps/web"
@@ -11,9 +13,18 @@
   "scripts": {
     "dev": "concurrently -k -n api,web \"npm run dev --workspace @bobos/api\" \"npm run dev --workspace @bobos/web\"",
     "build": "npm run build --workspace @bobos/web",
-    "test": "node --test"
+    "test": "node --test",
+    "test:group-a": "node --test apps/api/src/controllers/login.test.js apps/api/src/controllers/identity.test.js apps/api/src/controllers/notifications.test.js apps/api/src/controllers/auth.integration.test.js apps/api/src/controllers/records.integration.test.js apps/api/src/controllers/preferences.integration.test.js apps/api/src/models/models.test.js"
+    "test:group-a": "node --test apps/api/src/controllers/login.test.js apps/api/src/controllers/identity.test.js apps/api/src/controllers/notifications.test.js apps/api/src/controllers/auth.integration.test.js apps/api/src/controllers/records.integration.test.js apps/api/src/models/models.test.js"
   },
   "devDependencies": {
     "concurrently": "^10.0.5"
+  },
+  "overrides": {
+    "shell-quote": "^1.12.0"
+  },
+  "dependencies": {
+    "mongoose": "^9.10.4",
+    "pdfkit": "^0.20.2"
   }
 }
