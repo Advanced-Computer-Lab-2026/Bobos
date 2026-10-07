@@ -47,6 +47,9 @@ export const getProfile = async (req, res) => {
     // Student roles: Normal Student, Advising Student
     const studentProfile = await StudentProfile.findOne({ user: user._id })
       .populate("assignedAdvisor", "fullName email role");
+    if (!studentProfile) {
+      return res.status(404).json({ success: false, message: "Student profile not found. Please contact your administrator." });
+    }
 
     let studentData = {
       studentId: studentProfile?.studentId ?? null,
@@ -98,7 +101,6 @@ export const getProfile = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Failed to retrieve profile.",
-      error: error.message,
     });
   }
 };
@@ -118,6 +120,9 @@ export const login = async (req, res) => {
     }
 
     const normalizedEmail = email.toLowerCase().trim();
+    if (Buffer.byteLength(password, "utf8") > 72) {
+      return res.status(400).json({ success: false, message: "Password must not exceed 72 UTF-8 bytes." });
+    }
     if (!/^[^\s@]+@(student\.guc\.edu\.eg|guc\.edu\.eg)$/.test(normalizedEmail)) {
       return res.status(400).json({
         success: false,
@@ -346,7 +351,6 @@ export const seedDemoUsers = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Failed to seed demo users.",
-      error: error.message,
     });
   }
 };
@@ -366,7 +370,7 @@ export const getAcademicHistory = async (req, res) => {
 
         res.status(200).json(history);
     }catch(error){
-        res.status(500).json({error: error.message});
+        res.status(500).json({message: "Could not retrieve academic history."});
     }
 };
 
@@ -386,10 +390,10 @@ export const getTranscript = async (req, res) => {
         return res.status(404).json({ message: "No transcript found for this academic year." });
     }
 
-    res.status(200).json(transcript);
+    res.status(200).json({ ...transcript, studentNumber: req.studentProfile.studentId });
 
 }catch (error) {
-    res.status(500).json({error: error.message});
+    res.status(500).json({message: "Could not retrieve transcript."});
 }
 };
 
@@ -412,23 +416,23 @@ export const downloadTranscriptPDF = async (req, res) => {
         const doc = new PDFDocument({margin: 50});
 
        res.setHeader('Content-Type', 'application/pdf');
-       res.setHeader('Content-Disposition', `attachment; filename="transcript_${studentId}_${year.replace('/', '-')}.pdf"`);
+       res.setHeader('Content-Disposition', `attachment; filename="transcript_${req.studentProfile.studentId}_${year.replace('/', '-')}.pdf"`);
 
          doc.pipe(res);// Pipe the PDF to the response
 
         //Building the PDF content
         doc.fontSize(20).text('University Academic Transcript', { align: 'center' });
         doc.moveDown();
-        doc.fontSize(12).text(`Student ID: ${studentId}`);
+        doc.fontSize(12).text(`Student ID: ${req.studentProfile.studentId}`);
         doc.text(`Academic Year: ${year}`);
-        doc.text(`Generated On: ${new Date().toLocaleDateString()}`);
+        doc.text(`Generated On: ${new Date().toLocaleDateString('en-GB', { timeZone: 'Africa/Cairo' })}`);
         doc.moveDown(2);
 
         const terms = transcript.terms;
         for (const [termName, courses] of Object.entries(terms)) {
             if (courses.length > 0) {
                 // Capitalize the first letter of the term
-                const formattedTerm = termName.charAt(0).toUpperCase() + termName.slice(1);
+                const formattedTerm = ({ firstMakeup: 'First Makeup', secondMakeup: 'Second Makeup' })[termName] ?? termName.charAt(0).toUpperCase() + termName.slice(1);
 
                 doc.fontSize(14).text(`${formattedTerm} Term`, { underline: true });
                 doc.moveDown(0.5);
@@ -438,7 +442,17 @@ export const downloadTranscriptPDF = async (req, res) => {
                     const courseCode = attempt.course ? attempt.course.code : 'N/A';
                     const grade = attempt.grade || 'Pending';
 
-                    doc.fontSize(10).text(`${courseCode} - ${courseName} | Grade: ${grade}`);
+                    const row = `${courseCode} - ${courseName} | Grade: ${grade}`;
+                    doc.fontSize(10);
+                    if (doc.y + doc.heightOfString(row) > doc.page.height - doc.page.margins.bottom) {
+                        doc.addPage();
+                        doc.fontSize(12).text(`Student ID: ${req.studentProfile.studentId} | Academic Year: ${year}`);
+                        doc.moveDown();
+                        doc.fontSize(14).text(`${formattedTerm} Term (continued)`, { underline: true });
+                        doc.moveDown(0.5);
+                        doc.fontSize(10);
+                    }
+                    doc.text(row);
                 });
                 doc.moveDown();
             }
@@ -448,7 +462,8 @@ export const downloadTranscriptPDF = async (req, res) => {
         doc.end();
 
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        if (res.headersSent) return res.destroy();
+        res.status(500).json({ message: "Could not download transcript." });
     }
 };
 
@@ -456,17 +471,28 @@ export const downloadTranscriptPDF = async (req, res) => {
 export const getFailedCourses = async (req, res) => {
     try{
         const { studentId } = req.params;
-
-        const failedCourses = await academicsModel.getFailedAndUnattended(studentId);
-
-        if(!failedCourses || failedCourses.length === 0){
-            return res.status(200).json({message: "No failed or unattended courses found."});
+        const { term } = req.query;
+        if (term !== undefined && (typeof term !== 'string' || !mongoose.isValidObjectId(term))) {
+          return res.status(400).json({ message: 'Invalid academic term ID.' });
         }
+        if (term && !await AcademicTerm.exists({ _id: term })) {
+          return res.status(404).json({ message: 'Academic term not found.' });
+        }
+        const failedCourses = await academicsModel.getFailedAndUnattended(studentId, term);
 
-    res.status(200).json(failedCourses);
+    res.status(200).json(failedCourses ?? []);
 }catch (error) {
-    res.status(500).json({error: error.message});
+    res.status(500).json({message: "Could not retrieve mandatory-course candidates."});
 }
+};
+
+export const getAcademicYears = async (req, res) => {
+  try {
+    const academicYears = await academicsModel.getAttendedAcademicYears(req.params.studentId);
+    res.status(200).json({ academicYears });
+  } catch {
+    res.status(500).json({ message: 'Could not retrieve attended academic years.' });
+  }
 };
 
 //Req 89: View wallet
@@ -482,6 +508,6 @@ export const getWallet = async (req, res) => {
 
         res.status(200).json(walletData);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: "Could not retrieve wallet." });
     }
 };

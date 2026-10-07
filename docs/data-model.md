@@ -33,6 +33,7 @@ Some models appear in both sprint groups because their fields support requiremen
 ## Models
 
 | Model | Purpose |
+| --- | --- |
 | `User` | Login identity, role, active state, advisor-roster membership, password hash, authentication version and hidden email OTP reset state. Email domain is validated against role; signup is not part of the requirements. |
 | `StudentProfile` | Student ID, type, major, semester, standing, enrollment state, advising reason, and current advisor. Kept separate so staff accounts do not carry student-only fields. |
 | `AdvisorAssignment` | Appendable assignment history; the partial unique index allows only one current advisor assignment per student. |

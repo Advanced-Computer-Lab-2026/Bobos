@@ -49,7 +49,6 @@ export const getMyNotifications = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Failed to retrieve notifications.",
-      error: error.message,
     });
   }
 };
@@ -79,7 +78,7 @@ export const markNotificationAsRead = async (req, res) => {
       });
     }
 
-    const notification = await Notification.findById(id);
+    let notification = await Notification.findById(id);
     if (!notification) {
       return res.status(404).json({
         success: false,
@@ -101,8 +100,13 @@ export const markNotificationAsRead = async (req, res) => {
 
     // Idempotent update: if not yet read, record read timestamp
     if (!notification.readAt) {
-      notification.readAt = new Date();
-      await notification.save();
+      const updated = await Notification.findOneAndUpdate(
+        { _id: id, recipient: user._id, readAt: null },
+        { $set: { readAt: new Date() } },
+        { returnDocument: 'after' },
+      );
+      notification = updated ?? await Notification.findById(id);
+      if (!notification) return res.status(404).json({ success: false, message: "Notification not found." });
     }
 
     const doc = notification.toObject ? notification.toObject() : { ...notification };
@@ -128,7 +132,6 @@ export const markNotificationAsRead = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Failed to mark notification as read.",
-      error: error.message,
     });
   }
 };

@@ -246,6 +246,9 @@ The client proxies `/api` requests to the Express server. The API connects to Mo
 
 See [the data model](docs/data-model.md) for the database schemas and requirement coverage.
 
+See [the authentication backend guide](docs/authentication.md) for login, email OTP password reset and logout, environment configuration, and API examples.
+
+See [scheduling preferences](docs/scheduling-preferences.md) for requirements 57/58: students submit ranked term-specific hints before the advising deadline, and Advisors/Coordinators read the latest hints without making them mandatory. Run `npm run test:group-a` for the Group A API integration and edge-case checks.
 ## Admin API (Team B — B2)
 
 Covers requirements 9–13 of the University Schedule Management System.
