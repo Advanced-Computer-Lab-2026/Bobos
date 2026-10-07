@@ -22,6 +22,7 @@ const userSchema = withTimestamps({
   passwordHash: { type: String, required: true, select: false },
   role: { type: String, required: true, enum: USER_ROLES },
   isActive: { type: Boolean, default: true, index: true },
+  isAdvisorInSystem: { type: Boolean, default: false },
   authVersion: { type: Number, default: 0, min: 0 },
   // Embedded state lets MongoDB consume the OTP and change the password atomically.
   passwordReset: {

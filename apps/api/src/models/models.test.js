@@ -5,7 +5,7 @@ import { CourseAttempt, StudentSchedule, StudentTermStanding } from "./academics
 import { Course, CourseOffering } from "./catalogue.js";
 import { Notification, ScheduleActivity } from "./communications.js";
 import { FinancialReversalRequest } from "./finance.js";
-import { StudentProfile } from "./identity.js";
+import { StudentProfile, User } from "./identity.js";
 import { ExtraHoursRequest, GraduationPlan, SlotChangeRequest, WholeScheduleSwapRequest } from "./requests.js";
 
 const id = () => new mongoose.Types.ObjectId();
@@ -61,6 +61,13 @@ test("advising students require a supported advising reason", async () => {
   await invalid(new StudentProfile(fields));
   await valid(new StudentProfile({ ...fields, advisingReason: "probation" }));
   await valid(new StudentProfile({ ...fields, studentType: "normal" }));
+});
+
+test("advisor roster membership does not change account activity", async () => {
+  const advisor = new User({ email: "advisor@guc.edu.eg", fullName: "Advisor", passwordHash: "hash", role: "advisor" });
+  assert.equal(advisor.isAdvisorInSystem, false);
+  assert.equal(advisor.isActive, true);
+  await valid(advisor);
 });
 
 test("graduation plans use draft when a coordinator rejects them", async () => {

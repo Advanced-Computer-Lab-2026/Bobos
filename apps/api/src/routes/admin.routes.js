@@ -1,8 +1,23 @@
-const express = require('express');
+import express from "express";
+import {
+  addAdvisor,
+  getStudentDetails,
+  getStudents,
+  lookupAdvisor,
+  removeAdvisor,
+  setUserStatus,
+} from "../controllers/admin.controller.js";
+import { requireDirectoryRole, requireRole } from "../middleware/require-role.js";
+
 const router = express.Router();
 
-const adminController = require('../controllers/admin.controller');
+export { requireDirectoryRole, requireRole };
 
-// TODO: Team B (B1, B2, B3) adds their routes here
+router.get("/students", requireDirectoryRole, getStudents);
+router.get("/students/:id", requireDirectoryRole, getStudentDetails);
+router.patch("/users/:id/status", requireRole("administrator"), setUserStatus);
+router.get("/advisors/lookup", requireRole("coordinator"), lookupAdvisor);
+router.post("/advisors", requireRole("coordinator"), addAdvisor);
+router.delete("/advisors/:email", requireRole("coordinator"), removeAdvisor);
 
-module.exports = router;
+export default router;

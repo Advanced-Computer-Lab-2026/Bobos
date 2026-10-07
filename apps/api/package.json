@@ -5,12 +5,15 @@
   "scripts": {
     "dev": "node --watch --env-file-if-exists=../../.env src/index.js",
     "start": "node --env-file-if-exists=../../.env src/index.js",
+    "seed": "node --env-file-if-exists=../../.env seed.js"
     "import:courses": "node src/scripts/importCourses.js",
     "seed": "node --env-file-if-exists=../../.env src/seed/index.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
     "express": "^5.2.1",
+    "mongoose": "^9.10.3",
+    "nodemailer": "^10.0.15"
     "express-rate-limit": "^8.7.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.10.3",
