@@ -78,7 +78,6 @@ test("failed courses and wallet report persisted records", async () => {
   assert.equal(wallet.balance, 80);
   assert.equal(wallet.transactions.length, 4);
 });
-
 test("profile and notifications use authenticated identity with persisted data", async () => {
   const origin = base.split('/api/identity/students')[0];
   const headers = { Authorization: `Bearer ${token}` };

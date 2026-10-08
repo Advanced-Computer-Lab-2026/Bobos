@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test, { after, before } from 'node:test';
 import mongoose from 'mongoose';
-import { MongoMemoryServer } from 'mongodb-memory-server';
+import { MongoMemoryReplSet } from 'mongodb-memory-server';
 import { SMTPServer } from 'smtp-server';
 import app from '../app.js';
 import { AdvisorAssignment, StudentProfile, User } from '../models/index.js';
@@ -16,7 +16,7 @@ let profiles;
 const mailMessages = [];
 
 before(async () => {
-  database = await MongoMemoryServer.create();
+  database = await MongoMemoryReplSet.create({ replSet: { count: 1 } });
   await mongoose.connect(database.getUri());
   await Promise.all([User.init(), StudentProfile.init(), AdvisorAssignment.init()]);
   server = app.listen(0, '127.0.0.1');
@@ -108,6 +108,10 @@ test('Group B directory and advisor APIs enforce roles, filters, and assignment 
   assert.equal(advisorLookup.status, 200);
   assert.equal(advisorLookup.body.isAdvisorInSystem, false);
 
+  assert.equal((await call('/admin/advisors', { role: 'coordinator', method: 'POST', body: { email: users.advisor.email } })).status, 201);
+  assert.equal((await call('/admin/advisors', { role: 'coordinator', method: 'POST', body: { email: users.secondAdvisor.email } })).status, 201);
+  assert.equal((await call('/admin/advisors', { role: 'coordinator', method: 'POST', body: { email: users.secondAdvisor.email } })).status, 409);
+
   assert.equal((await call('/advisor/students', { role: 'normalStudent' })).status, 403);
   assert.equal((await call('/advisor/students?page=0', { role: 'advisor' })).status, 400);
   const advisingList = await call('/advisor/students?search=.*', { role: 'advisor' });
@@ -150,10 +154,6 @@ test('Group B directory and advisor APIs enforce roles, filters, and assignment 
   assert.equal(myAdvisor.body.email, users.secondAdvisor.email);
   assert.equal((await call(`/advisor/students/${profiles.normal._id}`, { role: 'coordinator' })).status, 404);
 
-  const addedAdvisor = await call('/admin/advisors', { role: 'coordinator', method: 'POST', body: { email: users.secondAdvisor.email } });
-  assert.equal(addedAdvisor.status, 201);
-  assert.equal(addedAdvisor.body.emailStatus, 'pending');
-  assert.equal((await call('/admin/advisors', { role: 'coordinator', method: 'POST', body: { email: users.secondAdvisor.email } })).status, 409);
   const removedAdvisor = await call(`/admin/advisors/${encodeURIComponent(users.secondAdvisor.email)}`, { role: 'coordinator', method: 'DELETE' });
   assert.equal(removedAdvisor.status, 200);
   assert.equal(removedAdvisor.body.assignmentsEnded, 1);

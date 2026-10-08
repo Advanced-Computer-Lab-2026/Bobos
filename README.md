@@ -6,15 +6,21 @@ MERN development starter for the University Schedule Management System.
 
 - Node.js 22.12 or newer
 - npm
-- MongoDB 8.x running locally
+- MongoDB 8.x running locally as a single-node replica set
 
 ## Run locally
 
 ```sh
 cp .env.example .env
 npm install
-mkdir -p .mongodb-data
-mongod --dbpath .mongodb-data --bind_ip 127.0.0.1
+New-Item -ItemType Directory -Force .mongodb-data | Out-Null
+mongod --replSet rs0 --dbpath .mongodb-data --bind_ip 127.0.0.1
+```
+
+Initialize the replica set once in a second terminal:
+
+```sh
+mongosh --host 127.0.0.1 --eval "rs.initiate()"
 ```
 
 In another terminal, start the app:
@@ -27,7 +33,7 @@ The `dev` command starts the React client and Express API. Keep MongoDB running 
 
 - React client: http://localhost:5173
 - Express API: http://localhost:3000/api/health
-- MongoDB: `mongodb://127.0.0.1:27017/bobos`
+- MongoDB: `mongodb://127.0.0.1:27017/bobos?replicaSet=rs0`
 
 Stop each process with `Ctrl+C`. MongoDB data stays in the ignored `.mongodb-data/` directory.
 

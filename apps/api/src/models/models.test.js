@@ -63,7 +63,7 @@ test("advising students require a supported advising reason", async () => {
   await valid(new StudentProfile({ ...fields, studentType: "normal" }));
 });
 
-test("advisor roster membership is separate from account activity", async () => {
+test("advisor roster membership does not change account activity", async () => {
   const advisor = new User({ email: "advisor@guc.edu.eg", fullName: "Advisor", passwordHash: "hash", role: "advisor" });
   assert.equal(advisor.isAdvisorInSystem, false);
   assert.equal(advisor.isActive, true);
