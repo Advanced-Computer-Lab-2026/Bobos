@@ -11,6 +11,7 @@ import {
 import StudentDirectoryPage from "./components/StudentDirectoryPage.jsx";
 import AdvisingPage, { MyAdvisorPage } from "./components/AdvisingPage.jsx";
 import AcademicWorkspace from "./components/AcademicWorkspace.jsx";
+import { GroupAssignmentsPage, StaffSchedulesPage, StudentSchedulingPage } from "./components/SchedulingPages.jsx";
 
 const roleNames = {
   normalStudent: "Normal student",
@@ -27,6 +28,9 @@ const navGroups = (role) => {
     { title: "Workspace", items: [{ id: "overview", label: "Overview", icon: "⌂" }, { id: "profile", label: "My profile", icon: "◉" }, { id: "notifications", label: "Notifications", icon: "◌" }] },
     ...(student ? [{ title: "Student services", items: [
       { id: "records", label: "Academic records", icon: "▤" },
+      { id: "my-schedule", label: "My schedule", icon: "◷" },
+      { id: "my-courses", label: "Registered courses", icon: "▦" },
+      ...(role === "normalStudent" ? [{ id: "schedule-swap", label: "Eligible swap groups", icon: "⇄" }] : []),
       ...(role === "advisingStudent" ? [{ id: "preferences", label: "Schedule preferences", icon: "☷" }] : []),
       { id: "my-advisor", label: "My advisor", icon: "♧" },
     ] }] : []),
@@ -34,12 +38,14 @@ const navGroups = (role) => {
       ...(["coordinator", "administrator"].includes(role) ? [{ id: "directory", label: "Student directory", icon: "♙" }] : []),
       ...(role === "advisor" || role === "coordinator" ? [{ id: "advising", label: "Advising students", icon: "♧" }] : []),
       ...(role === "advisor" || role === "coordinator" ? [{ id: "preferences", label: "Student preferences", icon: "☷" }] : []),
+      { id: "student-schedules", label: "Student schedules", icon: "◷" },
     ] }] : []),
     ...(["coordinator", "administrator"].includes(role) ? [{ title: "Academic setup", items: [
       { id: "courses", label: "Course catalogue", icon: "▦" },
       { id: "terms", label: "Academic terms", icon: "◷" },
       { id: "offerings", label: "Course offerings", icon: "▤" },
       { id: "templates", label: "Schedule templates", icon: "▧" },
+      { id: "group-assignments", label: "Schedule group assignments", icon: "⇄" },
     ] }] : []),
   ];
 };
@@ -49,6 +55,8 @@ const titleByScreen = {
   records: "Academic records", preferences: "Schedule preferences", directory: "Student directory",
   advising: "Advising students", "my-advisor": "My advisor", courses: "Course catalogue",
   terms: "Academic terms", offerings: "Course offerings", templates: "Schedule templates",
+  "my-schedule": "My schedule", "my-courses": "Registered courses", "schedule-swap": "Eligible swap groups",
+  "student-schedules": "Student schedules", "group-assignments": "Schedule group assignments",
 };
 
 export default function App() {
@@ -162,6 +170,9 @@ export default function App() {
           {activeScreen === "directory" && <StudentDirectoryPage token={token} role={profile.role} notify={notify} />}
           {activeScreen === "advising" && <AdvisingPage token={token} role={profile.role} onOpenPreferences={(student) => openScreen("preferences", student)} />}
           {activeScreen === "my-advisor" && <MyAdvisorPage token={token} />}
+          {activeScreen === "group-assignments" && <GroupAssignmentsPage token={token} canAssign={profile.role === "coordinator"} notify={notify} />}
+          {activeScreen === "student-schedules" && <StaffSchedulesPage token={token} notify={notify} />}
+          {["my-schedule", "my-courses", "schedule-swap"].includes(activeScreen) && <StudentSchedulingPage token={token} section={activeScreen} />}
           {["courses", "terms", "offerings", "templates"].includes(activeScreen) && <AcademicWorkspace token={token} section={activeScreen} onNavigate={openScreen} notify={notify} />}
           {!allNavItems.some((item) => item.id === activeScreen) && <OverviewPage profile={profile} onOpen={openScreen} />}
         </div>
