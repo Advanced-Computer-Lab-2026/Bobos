@@ -185,7 +185,7 @@ test("Requirement 5: Only the authenticated user's notifications are returned", 
   }
 });
 
-test("Requirement 5: Authenticated user can mark their own notification as read", async () => {
+test("Requirement 5: Authenticated user can mark their own notification as read", async (t) => {
   const userId = new mongoose.Types.ObjectId();
   const notificationId = new mongoose.Types.ObjectId();
 
@@ -219,6 +219,13 @@ test("Requirement 5: Authenticated user can mark their own notification as read"
     if (id.toString() === notificationId.toString()) return mockNotification;
     return null;
   };
+  t.mock.method(Notification, "findOneAndUpdate", async (filter, update) => {
+    assert.equal(String(filter.recipient), String(userId));
+    assert.equal(filter.readAt, null);
+    mockNotification.readAt = update.$set.readAt;
+    saved = true;
+    return mockNotification;
+  });
 
   try {
     const { req, res } = createMockReqRes({

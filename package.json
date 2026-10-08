@@ -14,7 +14,7 @@
     "dev": "concurrently -k -n api,web \"npm run dev --workspace @bobos/api\" \"npm run dev --workspace @bobos/web\"",
     "build": "npm run build --workspace @bobos/web",
     "test": "node --test",
-    "test:group-a": "node --test apps/api/src/controllers/login.test.js apps/api/src/controllers/identity.test.js apps/api/src/controllers/notifications.test.js apps/api/src/controllers/auth.integration.test.js apps/api/src/controllers/records.integration.test.js apps/api/src/models/models.test.js"
+    "test:group-a": "node --test apps/api/src/controllers/login.test.js apps/api/src/controllers/identity.test.js apps/api/src/controllers/notifications.test.js apps/api/src/controllers/auth.integration.test.js apps/api/src/controllers/records.integration.test.js apps/api/src/controllers/preferences.integration.test.js apps/api/src/models/models.test.js"
   },
   "devDependencies": {
     "concurrently": "^10.0.5"

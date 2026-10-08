@@ -261,7 +261,14 @@ export const getTranscriptByYear = async (studentId, year) => {
 };
 
 //Added for Req 61: View failed and unattended courses
-export const getFailedAndUnattended = async (studentId) => {
+export const getFailedAndUnattended = async (studentId, termId) => {
+  const RemovalRequest = mongoose.model('MandatoryCourseRemovalRequest');
+  const AcademicTerm = mongoose.model('AcademicTerm');
+  const currentTerm = termId ? { _id: termId } : await AcademicTerm.findOne({ isActive: true }).sort({ termStart: -1 });
+  const removed = currentTerm ? await RemovalRequest.find({ student: studentId, term: currentTerm._id, status: 'approved' }).select('course').lean() : [];
+  const excluded = new Set(removed.map(request => String(request.course)));
+  const passed = await CourseAttempt.distinct('course', { student: studentId, result: 'passed' });
+  for (const courseId of passed) excluded.add(String(courseId));
   const mandatoryCandidates = await CourseAttempt.find({
      student: studentId,
     $or: [
@@ -273,7 +280,22 @@ export const getFailedAndUnattended = async (studentId) => {
   .populate('term')
   .exec();
 
-  return mandatoryCandidates;
+  mandatoryCandidates.sort((a, b) => new Date(b.term?.termStart ?? b.createdAt) - new Date(a.term?.termStart ?? a.createdAt) || b.attemptNumber - a.attemptNumber);
+  const seen = new Set();
+  return mandatoryCandidates.filter(attempt => {
+    const courseId = String(attempt.course?._id ?? attempt._id);
+    if (excluded.has(courseId) || seen.has(courseId)) return false;
+    seen.add(courseId);
+    return true;
+  })
+    .map(attempt => ({ ...attempt.toObject(), isMandatory: true }));
+};
+
+export const getAttendedAcademicYears = async (studentId) => {
+  const AcademicTerm = mongoose.model('AcademicTerm');
+  const termIds = await CourseAttempt.distinct('term', { student: studentId });
+  const terms = await AcademicTerm.find({ _id: { $in: termIds } }).sort({ termStart: -1 }).select('academicYear').lean();
+  return [...new Set(terms.map(term => term.academicYear))];
 };
 
 //Added for Req 89: View wallet
@@ -281,29 +303,32 @@ export const getWallet = async (studentId) => {
   const FinancialTransaction = mongoose.model('FinancialTransaction');
 
   const transactions = await FinancialTransaction.find({ student: studentId })
-    .sort({ occurredAt: -1 })
+    .where('kind').in(['walletTopUp', 'refund', 'extraHoursWalletPayment'])
+    .sort({ occurredAt: 1, _id: 1 })
     .lean();
 
   if (!transactions) {
     return null;
   }
 
-  let balance = 0;
+  let balanceCents = 0;
 
   transactions.forEach(txn => {
     if (txn.status === 'succeeded') {
       if (txn.kind === 'walletTopUp' || txn.kind === 'refund') {
-        balance += txn.amount;
+        balanceCents += Math.round(txn.amount * 100);
       } else if (txn.kind === 'extraHoursWalletPayment') {
-        balance -= txn.amount;
+        balanceCents -= Math.round(txn.amount * 100);
       }
     }
+    txn.resultingBalance = balanceCents / 100;
+    txn.direction = txn.kind === 'extraHoursWalletPayment' ? 'debit' : 'credit';
   });
 
   return {
     studentId,
-    balance,
+    balance: balanceCents / 100,
     currency: "EGP",
-    transactions
+    transactions: transactions.reverse()
   };
 };

@@ -1,10 +1,11 @@
 import express from "express";
-import { getProfile, login, seedDemoUsers, getAcademicHistory, getTranscript, downloadTranscriptPDF, getFailedCourses, getWallet } from "../controllers/identity.controller.js";
+import { getProfile, login, seedDemoUsers, getAcademicHistory, getTranscript, downloadTranscriptPDF, getFailedCourses, getWallet, getAcademicYears } from "../controllers/identity.controller.js";
 import { requireAuth } from "../middleware/auth.middleware.js";
 import { rateLimit } from "express-rate-limit";
 import { requestPasswordReset, resetPassword } from "../controllers/password-reset.controller.js";
 import { logout } from "../controllers/logout.controller.js";
-import { requireOwnStudentRecords } from "../middleware/student-records.middleware.js";
+import { studentRecordAccess } from "../middleware/student-records.middleware.js";
+import { getPreferences, savePreferences } from "../controllers/preferences.controller.js";
 
 const router = express.Router();
 
@@ -46,19 +47,24 @@ router.post("/seed-demo", (req, res, next) => {
 }, seedDemoUsers);
 
 //Req 54:
-router.use('/students/:studentId', requireAuth, requireOwnStudentRecords);
-router.get('/students/:studentId/history', getAcademicHistory);
+router.use('/students/:studentId', requireAuth);
+const advisingRecords = studentRecordAccess(['advisingStudent', 'advisor', 'coordinator']);
+// Req 57/58: students update their own hints; advising staff read them.
+router.get('/students/:studentId/preferences', advisingRecords, getPreferences);
+router.put('/students/:studentId/preferences', studentRecordAccess(['advisingStudent']), savePreferences);
+router.get('/students/:studentId/history', advisingRecords, getAcademicHistory);
 
 //Req 55:
-router.get('/students/:studentId/transcript', getTranscript);
+router.get('/students/:studentId/transcript', advisingRecords, getTranscript);
+router.get('/students/:studentId/transcript/years', advisingRecords, getAcademicYears);
 
 // Req 56:
-router.get('/students/:studentId/transcript/download', downloadTranscriptPDF);
+router.get('/students/:studentId/transcript/download', advisingRecords, downloadTranscriptPDF);
 
 // Req 61:
-router.get('/students/:studentId/failed-courses', getFailedCourses);
+router.get('/students/:studentId/failed-courses', studentRecordAccess(['advisor', 'coordinator']), getFailedCourses);
 
 //Req 89:
-router.get('/students/:studentId/wallet', getWallet);
+router.get('/students/:studentId/wallet', studentRecordAccess(['advisingStudent']), getWallet);
 
 export default router;

@@ -30,3 +30,4 @@ dist/
 .env
 .mongodb-data/
 .DS_Store
+.cache/
