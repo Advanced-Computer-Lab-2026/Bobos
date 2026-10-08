@@ -49,6 +49,7 @@ export const getProfile = async (req, res) => {
       .populate("assignedAdvisor", "fullName email role");
 
     let studentData = {
+      studentProfileId: studentProfile?._id ?? null,
       studentId: studentProfile?.studentId ?? null,
       studentType: studentProfile?.studentType ?? (user.role === "advisingStudent" ? "advising" : "normal"),
       major: studentProfile?.major ?? "undeclared",
