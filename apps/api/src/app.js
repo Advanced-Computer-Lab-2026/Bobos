@@ -6,6 +6,8 @@ import identityRoutes from "./routes/identity.routes.js";
 import notificationRoutes from "./routes/notifications.routes.js";
 import academicTermRoutes from "./routes/academicTerm.routes.js";
 import academicsRoutes from "./routes/academics.routes.js";
+import adminRoutes from "./routes/admin.routes.js";
+import advisorRoutes from "./routes/advisor.routes.js";
 import { requireAuth } from "./middleware/auth.middleware.js";
 import { getProfile } from "./controllers/identity.controller.js";
 import { apiErrorHandler } from "./middleware/error.middleware.js";
@@ -19,6 +21,8 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/communications/notifications", notificationRoutes);
 app.use("/api/academic-terms", academicTermRoutes);
 app.use("/api/academics", academicsRoutes);
+app.use("/api/admin", requireAuth, adminRoutes);
+app.use("/api/advisor", requireAuth, advisorRoutes);
 app.get("/api/profile", requireAuth, getProfile);
 app.get("/api/health", (_req, res) => {
   res.json({
