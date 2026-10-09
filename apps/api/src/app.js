@@ -17,7 +17,11 @@ import { apiErrorHandler } from "./middleware/error.middleware.js";
 
 // Keep app wiring separate from database startup so tests use the real routes.
 const app = express();
-app.use(express.json());
+const jsonParser = express.json();
+app.use((req, res, next) => {
+  if (req.method === "POST" && req.path === "/api/catalogue/courses/import") return next();
+  return jsonParser(req, res, next);
+});
 app.use("/api/catalogue", catalogueRoutes);
 app.use("/api/identity", identityRoutes);
 app.use("/api/notifications", notificationRoutes);

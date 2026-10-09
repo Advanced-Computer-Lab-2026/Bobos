@@ -1,9 +1,10 @@
 export class ApiError extends Error {
-  constructor(message, status, path) {
+  constructor(message, status, path, data = null) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.path = path;
+    this.data = data;
   }
 }
 
@@ -28,14 +29,14 @@ export async function api(path, { token, method = "GET", body, signal, responseT
   if (responseType === "blob") {
     if (!response.ok) {
       const data = await response.json().catch(() => null);
-      throw new ApiError(data?.message || `Request failed (${response.status}).`, response.status, path);
+      throw new ApiError(data?.message || `Request failed (${response.status}).`, response.status, path, data);
     }
     return { data: await response.blob(), response };
   }
 
   const data = await response.json().catch(() => null);
   if (!response.ok) {
-    throw new ApiError(data?.message || `Request failed (${response.status}).`, response.status, path);
+    throw new ApiError(data?.message || `Request failed (${response.status}).`, response.status, path, data);
   }
   return data;
 }

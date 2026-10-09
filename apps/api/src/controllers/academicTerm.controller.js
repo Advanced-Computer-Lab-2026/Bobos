@@ -6,6 +6,8 @@ const termFields = [
   'teachingStart', 'teachingEnd', 'registrationStart', 'registrationEnd',
   'advisingDeadline', 'wholeScheduleSwapDeadline',
    'isActive',
+
+   
 ];
 
 export const  createAcademicTerm = async (req, res) => {

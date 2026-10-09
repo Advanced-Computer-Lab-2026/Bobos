@@ -173,7 +173,7 @@ export default function App() {
           {activeScreen === "group-assignments" && <GroupAssignmentsPage token={token} canAssign={profile.role === "coordinator"} notify={notify} />}
           {activeScreen === "student-schedules" && <StaffSchedulesPage token={token} notify={notify} />}
           {["my-schedule", "my-courses", "schedule-swap"].includes(activeScreen) && <StudentSchedulingPage token={token} section={activeScreen} />}
-          {["courses", "terms", "offerings", "templates"].includes(activeScreen) && <AcademicWorkspace token={token} section={activeScreen} onNavigate={openScreen} notify={notify} />}
+          {["courses", "terms", "offerings", "templates"].includes(activeScreen) && <AcademicWorkspace token={token} role={profile.role} section={activeScreen} onNavigate={openScreen} notify={notify} />}
           {!allNavItems.some((item) => item.id === activeScreen) && <OverviewPage profile={profile} onOpen={openScreen} />}
         </div>
       </main>
