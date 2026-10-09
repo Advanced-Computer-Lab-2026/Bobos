@@ -97,6 +97,9 @@ beforeEach(async () => {
   profiles = {};
   profiles.normal = await StudentProfile.create({ user: users.normalStudent._id, studentId: "52-00001", studentType: "normal", major: "CS", currentSemester: 5, gpa: 3, academicStanding: "goodAcademicStanding" });
   profiles.advising = await StudentProfile.create({ user: users.advisingStudent._id, studentId: "49-00001", studentType: "advising", advisingReason: "probation", major: "CS", currentSemester: 5, gpa: 2, academicStanding: "probation", assignedAdvisor: users.advisor._id });
+  users.otherAdvisor = await User.create({ email: "other-advisor@guc.edu.eg", fullName: "Other Advisor", passwordHash: "test-hash", role: "advisor" });
+  users.otherAdvisingStudent = await User.create({ email: "other-advising@student.guc.edu.eg", fullName: "Other Advising Student", passwordHash: "test-hash", role: "advisingStudent" });
+  profiles.otherAdvising = await StudentProfile.create({ user: users.otherAdvisingStudent._id, studentId: "49-00002", studentType: "advising", advisingReason: "failedCourses", major: "CS", currentSemester: 5, gpa: 1.8, academicStanding: "probation", assignedAdvisor: users.otherAdvisor._id });
 });
 
 async function call(path, { role, method = "GET", body } = {}) {
@@ -157,9 +160,10 @@ test("Group C schedule requirements use the active Development API and shared mo
 
   const staffList = await call(`/schedules/students?termId=${term._id}`, { role: "advisor" });
   assert.equal(staffList.status, 200);
-  assert.equal(staffList.body.count, 1, "advisors only see their own advising roster");
+  assert.equal(staffList.body.count, 2, "advisors can view the full advising roster");
   assert.equal((await call(`/schedules/student/${profiles.normal._id}?termId=${term._id}`, { role: "advisor" })).status, 403);
   assert.equal((await call(`/schedules/student/${profiles.normal._id}?termId=${term._id}`, { role: "administrator" })).status, 200);
+  assert.equal((await call(`/schedules/student/${profiles.otherAdvising._id}?termId=${term._id}`, { role: "advisor" })).status, 404, "another advisor can view an advising student's record even when no schedule exists yet");
 
   const unassigned = await call(`/group-assignments/${profiles.normal._id}?termId=${term._id}`, { role: "coordinator", method: "DELETE" });
   assert.equal(unassigned.status, 200);
@@ -170,8 +174,14 @@ test("Group C schedule requirements use the active Development API and shared mo
 
 test("advising schedule visibility and download status follow the student workflow", async () => {
   await StudentSchedule.create({ student: profiles.advising._id, term: term._id, scheduleType: "advising", status: "draft", courses: [], createdBy: users.coordinator._id });
+  await StudentSchedule.create({ student: profiles.otherAdvising._id, term: term._id, scheduleType: "advising", status: "draft", courses: [], createdBy: users.coordinator._id });
   assert.equal((await call(`/schedules/me?termId=${term._id}`, { role: "advisingStudent" })).status, 404);
-  assert.equal((await call(`/schedules/students?termId=${term._id}`, { role: "advisor" })).body.students[0].scheduleStatus, "draft");
+  const advisorView = await call(`/schedules/student/${profiles.otherAdvising._id}?termId=${term._id}`, { role: "advisor" });
+  assert.equal(advisorView.status, 200, "advisors can view a draft schedule across advisor assignments");
+  assert.equal(advisorView.body.schedule.status, "draft");
+  const advisorRoster = await call(`/schedules/students?termId=${term._id}`, { role: "advisor" });
+  assert.equal(advisorRoster.body.count, 2);
+  assert.ok(advisorRoster.body.students.every(({ scheduleStatus }) => scheduleStatus === "draft"));
   await StudentSchedule.updateOne({ student: profiles.advising._id, term: term._id }, { $set: { status: "readyForStudentReview" } });
   assert.equal((await call(`/schedules/me?termId=${term._id}`, { role: "advisingStudent" })).status, 200);
   const download = await call(`/schedules/me/download?termId=${term._id}`, { role: "advisingStudent" });
@@ -184,13 +194,16 @@ test("assignment rejects inactive/non-normal students, unpublished templates, fu
   const baseBody = { termId: String(term._id), studyGroup: "1" };
   assert.equal((await call("/group-assignments", { role: "coordinator", method: "POST", body: { ...baseBody, studentId: String(inactive._id) } })).status, 400);
   assert.equal((await call("/group-assignments", { role: "coordinator", method: "POST", body: { ...baseBody, studentId: String(profiles.advising._id) } })).status, 400);
-  assert.equal((await call("/group-assignments", { role: "coordinator", method: "POST", body: { ...baseBody, studentId: String(profiles.normal._id), termId: "bad" } })).status, 400);
+  assert.equal((await call("/group-assignments", { role: "coordinator", method: "POST", body: { ...baseBody, studentId: String(profiles.normal._id), termId: "bad" } })).status, 404);
   await ScheduleTemplate.updateOne({ _id: templates["1"]._id }, { $set: { isPublished: false } });
   assert.equal((await call("/group-assignments", { role: "coordinator", method: "POST", body: { ...baseBody, studentId: String(profiles.normal._id) } })).status, 409);
   await ScheduleTemplate.updateOne({ _id: templates["1"]._id }, { $set: { isPublished: true } });
   await CourseOffering.updateOne({ _id: offerings[0]._id, "slots.groupNumber": "1" }, { $set: { "slots.$.assignedStudentCount": 2 } });
   const full = await call("/group-assignments", { role: "coordinator", method: "POST", body: { ...baseBody, studentId: String(profiles.normal._id) } });
   assert.equal(full.status, 409);
+  await CourseOffering.updateOne({ _id: offerings[0]._id, "slots.groupNumber": "1" }, { $set: { "slots.$.assignedStudentCount": 0 } });
+  const codeLookup = await call("/group-assignments", { role: "coordinator", method: "POST", body: { studentId: String(profiles.normal._id), termId: term.code, studyGroup: "1" } });
+  assert.equal(codeLookup.status, 201, "term codes are accepted alongside database IDs");
 });
 
 test("assignment rejects stale slot references and timetable clashes", async () => {

@@ -1,8 +1,8 @@
 import mongoose from 'mongoose';
 import { CourseOffering, Course, AcademicTerm } from '../models/catalogue.js';
 import { ACADEMIC_SEASONS, DAYS_OF_WEEK } from '../models/shared.js';
-import { ScheduleTemplate, StudentSchedule } from '../models/academics.js';
-import { GraduationPlan, SlotChangeRequest } from '../models/requests.js';
+import { CourseAttempt, ScheduleTemplate, SchedulingPreference, StudentSchedule } from '../models/academics.js';
+import { ExitExamRequest, ExtraHoursRequest, GraduationPlan, MandatoryCourseRemovalRequest, SlotChangeRequest } from '../models/requests.js';
 
 const overlaps = (first, second) =>
   first.day === second.day && first.startMinute < second.endMinute && first.endMinute > second.startMinute;
@@ -226,6 +226,7 @@ export const createCourse = async (req, res) => {
 
 export const getCourseById = async (req, res) => {
   try {
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ message: 'Invalid course ID' });
     const course = await Course.findById(req.params.id).populate('prerequisites');
     if (!course) return res.status(404).json({ message: 'Course not found' });
     res.json(course);
@@ -250,6 +251,9 @@ export const updateCourse = async (req, res) => {
     // 1. Validate ID
     if (!mongoose.isValidObjectId(id)) {
       return res.status(400).json({ message: "Invalid course ID" });
+    }
+    if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+      return res.status(400).json({ message: 'Request body must be a JSON object' });
     }
     // 2. Make sure there is something to update
     if (!Object.keys(req.body).length) {
@@ -338,8 +342,21 @@ export const deleteCourse = async (req, res) => {
     if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: 'Invalid course ID' });
     const course = await Course.findById(id);
     if (!course) return res.status(404).json({ message: 'Course not found' });
-    const usedAsPrerequisite = await Course.exists({ prerequisites: id });
-    if (usedAsPrerequisite) return res.status(409).json({ message: 'Cannot delete this course because another course uses it as a prerequisite' });
+    const [usedAsPrerequisite, offering, template, schedule, attempt, preference, removalRequest, extraHoursRequest, graduationPlan, exitExamRequest] = await Promise.all([
+      Course.exists({ prerequisites: id }),
+      CourseOffering.exists({ course: id }),
+      ScheduleTemplate.exists({ 'courses.course': id }),
+      StudentSchedule.exists({ 'courses.course': id }),
+      CourseAttempt.exists({ course: id }),
+      SchedulingPreference.exists({ 'preferredGroups.course': id }),
+      MandatoryCourseRemovalRequest.exists({ course: id }),
+      ExtraHoursRequest.exists({ 'courses.course': id }),
+      GraduationPlan.exists({ 'termPlans.courses': id }),
+      ExitExamRequest.exists({ course: id }),
+    ]);
+    if (usedAsPrerequisite || offering || template || schedule || attempt || preference || removalRequest || extraHoursRequest || graduationPlan || exitExamRequest) {
+      return res.status(409).json({ message: 'Cannot delete this course because academic records or schedules reference it. Mark it inactive instead.' });
+    }
     await course.deleteOne();
     res.json({ message: 'Course deleted successfully' });
   } catch (error) {

@@ -275,8 +275,8 @@ function accessToSchedule(viewer, student, schedule) {
     return { status: 200, readOnly: true };
   }
   if (viewer.role === "advisor") {
-    if (student.studentType !== "advising" || idOf(student.assignedAdvisor) !== idOf(viewer._id)) {
-      return { status: 403, message: "Advisors may view schedules only for their assigned advising students." };
+    if (student.studentType !== "advising") {
+      return { status: 403, message: "Advisors may view schedules only for advising students." };
     }
   } else if (!STAFF_ROLES.includes(viewer.role)) {
     return { status: 403, message: "Insufficient permissions" };
@@ -700,7 +700,7 @@ export async function listStudentsWithSchedules(req, res, next) {
     const { term, error } = await resolveTerm(req.query.termId);
     if (error) return res.status(error.status).json({ message: error.message });
     const filter = {};
-    if (req.user.role === "advisor") Object.assign(filter, { studentType: "advising", assignedAdvisor: req.user._id });
+    if (req.user.role === "advisor") filter.studentType = "advising";
     const search = typeof req.query.search === "string" ? req.query.search.trim() : "";
     if (search.length > 100) return res.status(400).json({ message: "search must be at most 100 characters" });
     if (search) {
