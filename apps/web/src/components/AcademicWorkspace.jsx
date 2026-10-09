@@ -120,6 +120,7 @@ function TemplatesWorkspace({ token, notify }) {
   const [loading, setLoading] = useState(false); const [error, setError] = useState("");
   const [form, setForm] = useState(blankForm); const [selectedOffers, setSelectedOffers] = useState([]);
   const [slotSelections, setSlotSelections] = useState({}); const [editingTemplate, setEditingTemplate] = useState(null); const [saving, setSaving] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(null); const [deleting, setDeleting] = useState(false); const [deleteError, setDeleteError] = useState("");
 
   const load = async (event) => {
     event?.preventDefault();
@@ -204,6 +205,19 @@ function TemplatesWorkspace({ token, notify }) {
     } catch (e) { setError(e.message); }
   };
 
+  const deleteTemplate = async () => {
+    if (!confirmingDelete) return;
+    setDeleting(true); setDeleteError("");
+    try {
+      await api(`/api/academics/schedule-templates/${confirmingDelete._id}`, { token, method: "DELETE" });
+      notify("success", "Schedule template deleted.");
+      if (editingTemplate?._id === confirmingDelete._id) clearEditor();
+      setConfirmingDelete(null);
+      await load();
+    } catch (e) { setDeleteError(e.message); }
+    finally { setDeleting(false); }
+  };
+
   const selected = selectedOffers.map((id) => offerings.find((item) => item._id === id)).filter(Boolean);
   return <div className="page-stack">
     <PageTitle eyebrow="GROUP C · SCHEDULE TEMPLATES" title="Schedule templates" description="Build standard course plans for a major, semester, and study group." />
@@ -232,8 +246,13 @@ function TemplatesWorkspace({ token, notify }) {
           <div className="form-footer"><span className="helper-text">{selected.length ? "Choose exactly one group for each available component." : "Load a term and add at least one published course offering."}</span><div className="table-actions">{editingTemplate && <button className="outline-button" type="button" onClick={clearEditor} disabled={saving}>Cancel edit</button>}<button className="primary-button" disabled={saving || !termId.trim()}>{saving ? "Saving…" : editingTemplate ? "Save changes" : "Create template"}<span>→</span></button></div></div>
         </form>
       </section>
-      <section className="panel"><div className="panel-heading"><div><p className="eyebrow">SAVED PLANS</p><h2>Current templates</h2></div><span className="panel-count">{templates.length.toString().padStart(2, "0")}</span></div>{loading ? <Loading /> : templates.length ? <div className="template-list">{templates.map((template) => <article className="template-card" key={template._id}><div className="template-card-title"><span className="template-icon">▧</span><div><strong>{template.major}</strong><small>Semester {template.semester} · Group {template.studyGroup}</small></div><span className={`status-pill ${template.isPublished ? "good" : "muted"}`}>{template.isPublished ? "Published" : "Draft"}</span></div><p>{template.courses?.length || 0} courses <span>·</span> {template.term?.code || "Academic term"}</p><div className="table-actions"><button className="text-button" type="button" onClick={() => editTemplate(template)}>Edit</button><button className="text-button" type="button" onClick={() => togglePublished(template)}>{template.isPublished ? "Unpublish template" : "Publish template"}</button></div></article>)}</div> : <EmptyState title="No templates loaded" text="Load a term to see its schedule templates, or create the first one." icon="▧" />}</section>
+      <section className="panel"><div className="panel-heading"><div><p className="eyebrow">SAVED PLANS</p><h2>Current templates</h2></div><span className="panel-count">{templates.length.toString().padStart(2, "0")}</span></div>{loading ? <Loading /> : templates.length ? <div className="template-list">{templates.map((template) => <article className="template-card" key={template._id}><div className="template-card-title"><span className="template-icon">▧</span><div><strong>{template.major}</strong><small>Semester {template.semester} · Group {template.studyGroup}</small></div><span className={`status-pill ${template.isPublished ? "good" : "muted"}`}>{template.isPublished ? "Published" : "Draft"}</span></div><p>{template.courses?.length || 0} courses <span>·</span> {template.term?.code || "Academic term"}</p><div className="table-actions"><button className="text-button" type="button" onClick={() => editTemplate(template)}>Edit</button><button className="text-button" type="button" onClick={() => togglePublished(template)}>{template.isPublished ? "Unpublish template" : "Publish template"}</button><button className="text-button danger-text" type="button" onClick={() => { setConfirmingDelete(template); setDeleteError(""); }}>Delete</button></div></article>)}</div> : <EmptyState title="No templates loaded" text="Load a term to see its schedule templates, or create the first one." icon="▧" />}</section>
     </div>
+    {confirmingDelete && <Modal title="Delete schedule template?" eyebrow="REMOVE STANDARD PLAN" onClose={() => !deleting && setConfirmingDelete(null)}>
+      <div className="confirmation-content"><span className="confirmation-icon" aria-hidden="true">!</span><div><p>Delete the template for <strong>{confirmingDelete.major}</strong>, semester <strong>{confirmingDelete.semester}</strong>, group <strong>{confirmingDelete.studyGroup}</strong>?</p><p className="helper-text">Templates assigned to student schedules cannot be deleted. Reassign those students first.</p></div></div>
+      {deleteError && <div className="feedback error" role="alert">{deleteError}</div>}
+      <div className="form-footer"><button type="button" className="outline-button" disabled={deleting} onClick={() => setConfirmingDelete(null)}>Cancel</button><button type="button" className="primary-button destructive-action" disabled={deleting} onClick={deleteTemplate}>{deleting ? "Deleting…" : "Delete template"}</button></div>
+    </Modal>}
   </div>;
 }
 

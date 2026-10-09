@@ -4,6 +4,7 @@ import {
   updateScheduleTemplate,
   getScheduleTemplates,
   getScheduleTemplateById,
+  deleteScheduleTemplate,
 } from '../controllers/academics.controller.js';
 import { requireAuth } from '../middleware/auth.middleware.js';
 import { requireRole } from '../middleware/require-role.js';
@@ -21,5 +22,6 @@ router.get('/schedule-templates/:id', requireAuth, requireRole('coordinator'), g
 
 // Req 29: Update a standard schedule template
 router.put('/schedule-templates/:id', requireAuth, requireRole('coordinator'), updateScheduleTemplate);
+router.delete('/schedule-templates/:id', requireAuth, requireRole('coordinator'), deleteScheduleTemplate);
 
 export default router;
