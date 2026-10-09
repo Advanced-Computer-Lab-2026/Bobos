@@ -34,10 +34,10 @@ Some models appear in both sprint groups because their fields support requiremen
 
 | Model | Purpose |
 | --- | --- |
-| `User` | Login identity, role, active state, and password hash. Email domain is validated against role; signup is not part of the requirements. |
+| `User` | Login identity, role, active state, advisor-roster membership, password hash, authentication version and hidden email OTP reset state. Email domain is validated against role; signup is not part of the requirements. |
 | `StudentProfile` | Student ID, type, major, semester, standing, enrollment state, advising reason, and current advisor. Kept separate so staff accounts do not carry student-only fields. |
 | `AdvisorAssignment` | Appendable assignment history; the partial unique index allows only one current advisor assignment per student. |
-| `PasswordResetToken` | Stores only a token hash, use time, and expiry; expired tokens are removed by MongoDB's TTL index. |
+| `PasswordResetToken` | Original reset-token schema retained for compatibility. The implemented email OTP flow uses hidden reset state on `User` so consuming a code and changing a password is one atomic operation on standalone MongoDB. |
 | `AcademicTerm` | Term dates, registration/advising deadlines, season, and academic year. |
 | `Course` | Catalogue data, credit hours, curriculum lecture/tutorial/lab hours when supplied, type, majors, seasons, prerequisite references, and bachelor-project marker. |
 | `CourseOffering` | A course in a term, instructor name/email snapshots, eligible groups, publication state, and lecture/tutorial/lab slots. Slot groups are embedded because their details belong to one offering. |

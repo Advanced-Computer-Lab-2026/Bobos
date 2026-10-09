@@ -11,6 +11,7 @@ dist/
 build/
 
 # tests & tooling
+.cache/
 coverage/
 .nyc_output/
 
@@ -28,4 +29,7 @@ node_modules/
 dist/
 .env
 .mongodb-data/
+.mongodb-test-cache/
+.mongo-test-temp/
 .DS_Store
+.cache/

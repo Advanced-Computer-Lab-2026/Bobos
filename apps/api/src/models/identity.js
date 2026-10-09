@@ -1,8 +1,8 @@
-import { ACADEMIC_STANDINGS, USER_ROLES, ref, registerModel, withTimestamps } from "./shared.js";
+import { ACADEMIC_STANDINGS, USER_ROLES, Schema, ref, registerModel, withTimestamps } from "./shared.js";
 
 // ## Sprint 1 schemas
-// User: Req. 1, 3, 10-12; StudentProfile: Req. 4, 6-9, 14-15, 50-53.
-// AdvisorAssignment: Req. 14 (assignment history); PasswordResetToken: Req. 2.
+// User: Req. 1-3, 10-12; StudentProfile: Req. 4, 6-9, 14-15, 50-53.
+// AdvisorAssignment: Req. 14 (assignment history). PasswordResetToken is retained for compatibility.
 const userSchema = withTimestamps({
   email: {
     type: String,
@@ -22,6 +22,18 @@ const userSchema = withTimestamps({
   passwordHash: { type: String, required: true, select: false },
   role: { type: String, required: true, enum: USER_ROLES },
   isActive: { type: Boolean, default: true, index: true },
+  isAdvisorInSystem: { type: Boolean, default: false },
+  authVersion: { type: Number, default: 0, min: 0 },
+  // Embedded state lets MongoDB consume the OTP and change the password atomically.
+  passwordReset: {
+    type: new Schema({
+      otpHash: { type: String, required: true },
+      expiresAt: { type: Date, required: true },
+      requestedAt: { type: Date, required: true },
+      attempts: { type: Number, default: 0, min: 0 },
+    }, { _id: false }),
+    select: false,
+  },
   lastLoginAt: Date,
 });
 

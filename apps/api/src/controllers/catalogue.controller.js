@@ -261,6 +261,7 @@ export const createOffering = async (req, res) => {
 
     const newOffering = new CourseOffering({
       course,
+      academicYear: existingTerm.academicYear,
       term,
       instructors: instructors || [],
       eligibleGroups: eligibleGroups || [],
