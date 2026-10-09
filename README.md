@@ -39,6 +39,8 @@ Stop each process with `Ctrl+C`. MongoDB data stays in the ignored `.mongodb-dat
 
 The client proxies `/api` requests to the Express server. The API connects to MongoDB through Mongoose.
 
+For separate production hosting, set `VITE_API_BASE_URL` in the frontend build environment to the API's public origin (for example, `https://api.example.edu`, without a trailing slash). Set `WEB_ORIGIN` in the API environment to the frontend's full origin (for example, `https://portal.example.edu`). These settings make browser API requests reach the backend and allow the frontend origin through CORS. Keep the API and MongoDB running; a `502`, `503`, or `504` means the configured API service or its gateway is unavailable. Rebuild the frontend after changing `VITE_API_BASE_URL`.
+
 See [the data model](docs/data-model.md) for the database schemas and requirement coverage.
 
 See [the authentication backend guide](docs/authentication.md) for login, email OTP password reset and logout, environment configuration, and API examples.

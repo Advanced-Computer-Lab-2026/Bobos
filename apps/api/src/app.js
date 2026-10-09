@@ -18,6 +18,27 @@ import { apiErrorHandler } from "./middleware/error.middleware.js";
 // Keep app wiring separate from database startup so tests use the real routes.
 const app = express();
 const jsonParser = express.json();
+const allowedOrigins = (process.env.WEB_ORIGIN || "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+app.use((req, res, next) => {
+  const origin = req.get("Origin");
+  const localDevelopmentOrigin = process.env.NODE_ENV !== "production"
+    && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin || "");
+
+  if (origin && (allowedOrigins.includes(origin) || localDevelopmentOrigin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Vary", "Origin");
+    res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Authorization,Content-Type");
+  }
+
+  if (req.method === "OPTIONS") return res.sendStatus(204);
+  next();
+});
+
 app.use((req, res, next) => {
   if (req.method === "POST" && req.path === "/api/catalogue/courses/import") return next();
   return jsonParser(req, res, next);

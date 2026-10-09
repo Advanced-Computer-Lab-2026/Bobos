@@ -8,6 +8,16 @@ export class ApiError extends Error {
   }
 }
 
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "");
+
+function requestFailureMessage(status, data) {
+  if (data?.message) return data.message;
+  if ([502, 503, 504].includes(status)) {
+    return `The API service is unavailable (${status}). Check the configured API URL and that the backend is running.`;
+  }
+  return `Request failed (${status}).`;
+}
+
 export async function api(path, { token, method = "GET", body, signal, responseType = "json" } = {}) {
   const headers = new Headers();
   if (token) headers.set("Authorization", `Bearer ${token}`);
@@ -15,7 +25,7 @@ export async function api(path, { token, method = "GET", body, signal, responseT
 
   let response;
   try {
-    response = await fetch(path, {
+    response = await fetch(`${API_BASE_URL}${path}`, {
       method,
       headers,
       ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
@@ -29,14 +39,14 @@ export async function api(path, { token, method = "GET", body, signal, responseT
   if (responseType === "blob") {
     if (!response.ok) {
       const data = await response.json().catch(() => null);
-      throw new ApiError(data?.message || `Request failed (${response.status}).`, response.status, path, data);
+      throw new ApiError(requestFailureMessage(response.status, data), response.status, path, data);
     }
     return { data: await response.blob(), response };
   }
 
   const data = await response.json().catch(() => null);
   if (!response.ok) {
-    throw new ApiError(data?.message || `Request failed (${response.status}).`, response.status, path, data);
+    throw new ApiError(requestFailureMessage(response.status, data), response.status, path, data);
   }
   return data;
 }

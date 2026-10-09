@@ -31,6 +31,10 @@ const scheduleTemplateSchema = withTimestamps({
   isPublished: { type: Boolean, default: false, index: true },
 });
 
+scheduleTemplateSchema.pre("validate", function () {
+  if (!this.courses?.length) this.invalidate("courses", "A schedule template must include at least one course.");
+});
+
 scheduleTemplateSchema.index({ term: 1, major: 1, semester: 1, studyGroup: 1 }, { unique: true });
 
 export const ScheduleTemplate = registerModel("ScheduleTemplate", scheduleTemplateSchema);

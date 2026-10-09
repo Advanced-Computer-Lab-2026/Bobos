@@ -38,7 +38,7 @@ function normalizeCode(value) {
   return value.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
 }
 
-function parseCurriculumCsv(text) {
+export function parseCurriculumCsv(text) {
   const rows = readCsv(text);
   const courses = new Map();
   let mergedListings = 0;
@@ -181,8 +181,10 @@ async function main() {
   }
 }
 
-main().catch(error => {
-  console.error(`Course import failed: ${error.message}`);
-  if (mongoose.connection.readyState !== 0) mongoose.disconnect().finally(() => process.exitCode = 1);
-  else process.exitCode = 1;
-});
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main().catch(error => {
+    console.error(`Course import failed: ${error.message}`);
+    if (mongoose.connection.readyState !== 0) mongoose.disconnect().finally(() => process.exitCode = 1);
+    else process.exitCode = 1;
+  });
+}
