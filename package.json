@@ -19,7 +19,7 @@
     "test:group-c": "node --test apps/api/src/controllers/scheduling.integration.test.js"
   },
   "devDependencies": {
-    "concurrently": "^10.0.5"
+    "concurrently": "^10.0.6"
   },
   "overrides": {
     "shell-quote": "^1.12.0"

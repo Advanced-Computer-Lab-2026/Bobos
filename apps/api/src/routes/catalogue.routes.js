@@ -21,13 +21,13 @@ import { requireRole } from "../middleware/require-role.js";
 const router = express.Router();
 
 // Req 22: Create a course offering with its slots
-router.post('/offerings', createOffering);
+router.post('/offerings', requireAuth, requireRole('administrator'), createOffering);
 
 // Req 23: View course offerings for an academic term
-router.get('/offerings', getOfferings);
+router.get('/offerings', requireAuth, requireRole('administrator', 'coordinator'), getOfferings);
 
 // Req 23: Select an offering to view all of its details and slots
-router.get('/offerings/:id', getOfferingById);
+router.get('/offerings/:id', requireAuth, requireRole('administrator', 'coordinator'), getOfferingById);
 
 // Courses managment
 router.post('/courses/import', express.json({ limit: "2mb" }), requireAuth, requireRole('administrator'), importCoursesCsv);
@@ -37,18 +37,18 @@ router.get('/courses', getCourses);
 router.put('/courses/:id', updateCourse);
 router.delete('/courses/:id', deleteCourse);
 // Req 25: Update a course offering (top-level fields)
-router.put('/offerings/:id', updateOffering);
+router.put('/offerings/:id', requireAuth, requireRole('administrator'), updateOffering);
 
 // Req 25: Update a specific slot within a course offering
-router.put('/offerings/:id/slots/:slotId', updateOfferingSlot);
+router.put('/offerings/:id/slots/:slotId', requireAuth, requireRole('administrator'), updateOfferingSlot);
 
 // Req 26: Delete a course offering
-router.delete('/offerings/:id', deleteOffering);
+router.delete('/offerings/:id', requireAuth, requireRole('administrator'), deleteOffering);
 
 // Req 26: Delete a specific slot from a course offering
-router.delete('/offerings/:id/slots/:slotId', deleteOfferingSlot);
+router.delete('/offerings/:id/slots/:slotId', requireAuth, requireRole('administrator'), deleteOfferingSlot);
 
 // Req 27: Publish or unpublish a course offering
-router.patch('/offerings/:id/publish', togglePublishOffering);
+router.patch('/offerings/:id/publish', requireAuth, requireRole('administrator'), togglePublishOffering);
 
 export default router;

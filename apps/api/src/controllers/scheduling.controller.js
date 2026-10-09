@@ -27,8 +27,11 @@ const escapedRegex = (value) => [...value].map((character) =>
 
 async function resolveTerm(termId) {
   if (termId) {
-    if (!isId(termId)) return { error: { status: 400, message: "Invalid termId" } };
-    const term = await AcademicTerm.findById(termId);
+    if (typeof termId !== "string" || !termId.trim()) return { error: { status: 400, message: "Invalid termId" } };
+    const identifier = termId.trim();
+    const term = isId(identifier)
+      ? await AcademicTerm.findById(identifier)
+      : await AcademicTerm.findOne({ code: identifier });
     return term ? { term } : { error: { status: 404, message: "Academic term not found" } };
   }
   const term = await AcademicTerm.findOne({ isActive: true }).sort({ termStart: -1 });
@@ -93,7 +96,7 @@ function slotView(slot, courseCode) {
 
 function eligibleOffering(offering, major, semester, studyGroup) {
   return (offering.eligibleGroups || []).some((group) =>
-    group.major === major && Number(group.semester) === Number(semester) &&
+    group.major === major && (group.semester == null || Number(group.semester) === Number(semester)) &&
     (!group.studyGroup || String(group.studyGroup) === String(studyGroup))
   );
 }
@@ -470,7 +473,7 @@ export async function assignStudentToGroup(req, res, next) {
     if (typeof studentId !== "string" || !studentId.trim() || (studyGroup == null && templateId == null)) {
       return res.status(400).json({ message: "studentId and either studyGroup or templateId are required" });
     }
-    if (termId != null && termId !== "" && !isId(termId)) return res.status(400).json({ message: "Invalid termId" });
+    if (termId != null && termId !== "" && typeof termId !== "string") return res.status(400).json({ message: "Invalid termId" });
     if (templateId != null && !isId(templateId)) return res.status(400).json({ message: "Invalid templateId" });
     const student = await resolveStudent(studentId.trim());
     if (!student) return res.status(404).json({ message: "Student not found" });

@@ -265,6 +265,14 @@ td strong, td .secondary-text { display: block; }
 .offering-detail-head { display: flex; align-items: center; justify-content: space-between; margin: 0 0 16px; padding: 12px; border-radius: 8px; background: #f5f8f6; }
 .offering-detail-head h3 { margin: 0; font-size: 13px; }
 .offering-detail-head p { margin: 4px 0 0; color: #849089; font-size: 9px; }
+.offering-status { display: grid; justify-items: end; gap: 5px; }
+.offering-status .eyebrow { margin: 0; }
+.offering-term-year { margin-top: 4px !important; color: #75827b !important; }
+.slot-capacity-summary { display: flex; align-items: center; gap: 22px; margin-top: 11px; padding-top: 9px; border-top: 1px solid #edf0ee; }
+.slot-capacity-summary > div:not(.slot-actions) { display: grid; gap: 3px; }
+.slot-capacity-summary span { color: #849089; font-size: 8px; }
+.slot-capacity-summary strong { color: #47544e; font-size: 11px; }
+.slot-capacity-summary .slot-actions { margin: 0 0 0 auto; }
 .offering-meta-form { margin-bottom: 22px; padding-bottom: 17px; border-bottom: 1px solid #edf0ee; }
 .offering-card { padding: 15px; border: 1px solid #e7ece9; border-radius: 9px; background: #fff; }
 .offering-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; }
@@ -292,7 +300,9 @@ td strong, td .secondary-text { display: block; }
 .template-grid { grid-template-columns: minmax(0,1.1fr) minmax(280px,.9fr); }
 .selected-offerings { display: grid; gap: 7px; padding: 12px; border: 1px solid #e8edeb; border-radius: 8px; background: #fbfcfb; }
 .selected-offerings > .eyebrow { margin: 0; }
-.selected-offering { display: flex; justify-content: space-between; gap: 9px; padding-top: 8px; border-top: 1px solid #edf0ee; color: #59665f; font-size: 9px; }
+.selected-offering { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 9px; padding-top: 8px; border-top: 1px solid #edf0ee; color: #59665f; font-size: 9px; }
+.selected-offering > .form-grid { flex: 1 0 100%; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.template-course-title { flex: 1; }
 .selected-offering span { display: block; }
 .selected-offering small { display: block; margin-top: 3px; color: #89958e; font-size: 8px; }
 .template-list { display: grid; gap: 9px; }
@@ -432,6 +442,7 @@ td strong, td .secondary-text { display: block; }
   .preference-groups, .preference-grid .form-footer { grid-column: auto; }
   .form-grid { grid-template-columns: minmax(0,1fr); }
   .form-grid .span-two { grid-column: auto; }
+  .selected-offering > .form-grid { grid-template-columns: minmax(0,1fr); }
   .form-actions { flex-wrap: wrap; }
   .term-active { min-height: 28px; }
   .term-picker .inline-controls { align-items: stretch; }
