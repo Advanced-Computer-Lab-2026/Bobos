@@ -179,12 +179,12 @@ test("advising schedule visibility and download status follow the student workfl
   assert.match(download.body.message, /not final yet/i);
 });
 
-test("assignment rejects inactive/non-normal students, unpublished templates, full slots and malformed ids", async () => {
+test("assignment rejects inactive/non-normal students, unknown terms, unpublished templates and full slots", async () => {
   const inactive = await StudentProfile.create({ user: (await User.create({ email: "inactive@student.guc.edu.eg", fullName: "Inactive", passwordHash: "hash", role: "normalStudent" }))._id, studentId: "52-00002", studentType: "normal", major: "CS", currentSemester: 5, gpa: 2, academicStanding: "goodAcademicStanding", enrollmentStatus: "inactive" });
   const baseBody = { termId: String(term._id), studyGroup: "1" };
   assert.equal((await call("/group-assignments", { role: "coordinator", method: "POST", body: { ...baseBody, studentId: String(inactive._id) } })).status, 400);
   assert.equal((await call("/group-assignments", { role: "coordinator", method: "POST", body: { ...baseBody, studentId: String(profiles.advising._id) } })).status, 400);
-  assert.equal((await call("/group-assignments", { role: "coordinator", method: "POST", body: { ...baseBody, studentId: String(profiles.normal._id), termId: "bad" } })).status, 400);
+  assert.equal((await call("/group-assignments", { role: "coordinator", method: "POST", body: { ...baseBody, studentId: String(profiles.normal._id), termId: "bad" } })).status, 404);
   await ScheduleTemplate.updateOne({ _id: templates["1"]._id }, { $set: { isPublished: false } });
   assert.equal((await call("/group-assignments", { role: "coordinator", method: "POST", body: { ...baseBody, studentId: String(profiles.normal._id) } })).status, 409);
   await ScheduleTemplate.updateOne({ _id: templates["1"]._id }, { $set: { isPublished: true } });

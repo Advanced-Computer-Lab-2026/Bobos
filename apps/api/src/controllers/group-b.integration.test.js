@@ -87,8 +87,8 @@ test('Group B directory and advisor APIs enforce roles, filters, and assignment 
     user: users.normalStudent._id,
     studentId: '28-10001',
     studentType: 'normal',
-    major: 'CS',
-    currentSemester: 4,
+    major: 'DMET',
+    currentSemester: 3,
     gpa: 3,
     academicStanding: 'goodAcademicStanding',
   });
@@ -121,9 +121,14 @@ test('Group B directory and advisor APIs enforce roles, filters, and assignment 
   assert.equal((await call('/admin/students', { role: 'advisor' })).status, 403);
   const initialDirectory = await call('/admin/students', { role: 'coordinator' });
   assert.equal(initialDirectory.body.students.length, 2);
+  assert.deepEqual(new Set(initialDirectory.body.students.map((student) => student.studentType)), new Set(['normal', 'advising']));
   const unstarted = initialDirectory.body.students.find((student) => student.studentId === '28-10002');
   assert.equal(unstarted.workflowStatus, 'notStarted');
   assert.equal(unstarted.blockingStep, 'Create advising schedule');
+  const studentDetails = await call(`/admin/students/${profiles.normal._id}`, { role: 'administrator' });
+  assert.equal(studentDetails.status, 200);
+  assert.equal(studentDetails.body.studentId, '28-10001');
+  assert.equal(studentDetails.body.user.fullName, 'normalStudent Account');
   const directory = await call('/admin/students?studentType=advising&major=CS', { role: 'coordinator' });
   assert.equal(directory.status, 200);
   assert.deepEqual(directory.body.students.map((student) => student.studentId), ['28-10002']);
@@ -340,6 +345,16 @@ test('Group B directory and advisor APIs enforce roles, filters, and assignment 
   await StudentSchedule.updateOne({ _id: advisingSchedule._id }, { $set: { status: 'draft' } });
   const combinedFilters = await call(`/admin/students?studentType=advising&advisor=${users.secondAdvisor._id}&major=CS&currentSemester=4&academicStanding=probation&workflowStatus=draft&accountStatus=active`, { role: 'coordinator' });
   assert.deepEqual(combinedFilters.body.students.map((student) => student.studentId), ['28-10002']);
+  for (const [filter, expectedStudentId] of [
+    ['studentType=normal', '28-10001'],
+    ['advisor=' + users.secondAdvisor._id, '28-10002'],
+    ['major=DMET', '28-10001'],
+    ['currentSemester=3', '28-10001'],
+    ['academicStanding=goodAcademicStanding', '28-10001'],
+  ]) {
+    const filtered = await call(`/admin/students?${filter}`, { role: 'coordinator' });
+    assert.deepEqual(filtered.body.students.map((student) => student.studentId), [expectedStudentId], filter);
+  }
   const assignmentHistory = await AdvisorAssignment.find({ student: profiles.advising._id }).sort({ createdAt: 1 });
   assert.equal(assignmentHistory.length, 2);
   assert.ok(assignmentHistory[0].endedAt);
@@ -386,6 +401,8 @@ test('Group B directory and advisor APIs enforce roles, filters, and assignment 
   assert.equal((await call('/identity/profile', { role: 'normalStudent' })).status, 401);
   assert.equal((await call('/admin/students?search=28-10001&accountStatus=inactive', { role: 'coordinator' })).body.students.length, 1);
   assert.equal((await call('/admin/students?search=28-10001&accountStatus=active', { role: 'coordinator' })).body.students.length, 0);
+  assert.deepEqual((await call('/admin/students?accountStatus=inactive', { role: 'coordinator' })).body.students.map((student) => student.studentId), ['28-10001']);
+  assert.deepEqual((await call('/admin/students?accountStatus=active', { role: 'coordinator' })).body.students.map((student) => student.studentId), ['28-10002']);
   const reactivation = await call(`/admin/users/${users.normalStudent._id}/status`, {
     role: 'administrator', method: 'PATCH', body: { isActive: true },
   });

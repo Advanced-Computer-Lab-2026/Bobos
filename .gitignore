@@ -31,5 +31,6 @@ dist/
 .mongodb-data/
 .mongodb-test-cache/
 .mongo-test-temp/
+/.private-requirements/
 .DS_Store
 .cache/
