@@ -16,7 +16,16 @@ const HEADER_ALIASES = {
   prerequisites: ["prerequisite", "prerequisites", "prerequisite course codes"],
 };
 
+function detectDelimiter(text) {
+  const firstLine = text.split(/\r?\n/).find((line) => line.trim()) || "";
+  const commaCount = (firstLine.match(/,/g) || []).length;
+  const semicolonCount = (firstLine.match(/;/g) || []).length;
+  // If semicolon is the primary column separator in the header line
+  return semicolonCount > commaCount ? ";" : ",";
+}
+
 function parseCsv(text) {
+  const delimiter = detectDelimiter(text);
   const rows = [];
   let row = [];
   let field = "";
@@ -31,7 +40,7 @@ function parseCsv(text) {
       } else if (char === '"') quoted = false;
       else field += char;
     } else if (char === '"' && field.length === 0) quoted = true;
-    else if (char === ",") {
+    else if (char === delimiter) {
       row.push(field);
       field = "";
     } else if (char === "\n" || char === "\r") {

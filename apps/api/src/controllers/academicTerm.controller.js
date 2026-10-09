@@ -28,6 +28,7 @@ export const  createAcademicTerm = async (req, res) => {
     }
     res.status(500).json({ message: error.message });
   }
+  
 };
 
 export const updateAcademicTerm = async (req, res) => {
@@ -54,6 +55,26 @@ export const updateAcademicTerm = async (req, res) => {
       return res.status(400).json({ message: error.message });
     }
     res.status(500).json({ message: error.message });
-  
+  }
+};
+
+export const listAcademicTerms = async (req, res) => {
+  try {
+    const terms = await AcademicTerm.find().sort({ termStart: -1 });
+    res.json(terms);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const getAcademicTermById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: 'Invalid academic term ID' });
+    const term = await AcademicTerm.findById(id);
+    if (!term) return res.status(404).json({ message: 'Academic term not found' });
+    res.json(term);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };

@@ -38,6 +38,7 @@ function CoursesWorkspace({ token, role, notify }) {
     try { await api(`/api/catalogue/courses/${course._id}`, { token, method: "DELETE" }); notify("success", `${course.code} deleted.`); load(); }
     catch (e) { setError(e.message); }
   };
+  const [viewing, setViewing] = useState(null);
   const visible = courses.filter((course) => `${course.code} ${course.name} ${course.courseType} ${(course.facultyMajors || []).join(" ")}`.toLowerCase().includes(query.toLowerCase()));
   const saveCourse = async (event) => {
     event.preventDefault(); setSaving(true); setError("");
@@ -61,7 +62,8 @@ function CoursesWorkspace({ token, role, notify }) {
   return <div className="page-stack"><PageTitle eyebrow="GROUP C · COURSE CATALOGUE" title="Course catalogue" description="Create, search, and maintain the university course catalogue." action={<button className="primary-button" type="button" onClick={() => setEditing({})}>＋ Add course</button>} />
     {error && <div className="feedback error" role="alert">{error}</div>}
     {role === "administrator" && <section className="panel course-import-panel"><div className="results-heading"><div><p className="eyebrow">ADMINISTRATOR</p><h2>Import courses from CSV</h2></div></div><p className="helper-text">Required columns: Course Code, Course Name, Credit Hours, Course Type, Faculty/Major, Recommended Semester, Offering Season, Prerequisites. Separate multiple majors, seasons, and prerequisite codes with semicolons. If any row is invalid, nothing is imported.</p><form className="inline-controls" onSubmit={importCsv}><label className="field"><span>CSV file</span><input type="file" accept=".csv,text/csv" onChange={(event) => { setCsvFile(event.target.files?.[0] || null); setImportErrors([]); }} required /></label><button className="primary-button" disabled={importing || !csvFile}>{importing ? "Validating and importing…" : "Validate and import"}</button><a className="text-button" download="course-import-template.csv" href={`data:text/csv;charset=utf-8,${encodeURIComponent("Course Code,Course Name,Credit Hours,Course Type,Faculty/Major,Recommended Semester,Offering Season,Prerequisites\n")}`}>Download CSV template</a></form>{importErrors.length > 0 && <div className="course-import-errors" role="alert"><h3>Fix these CSV errors</h3><div className="table-scroll"><table><thead><tr><th>Row</th><th>Column</th><th>Error</th></tr></thead><tbody>{importErrors.map((item, index) => <tr key={`${item.row}-${item.field}-${index}`}><td>{item.row}</td><td>{item.field}</td><td>{item.message}</td></tr>)}</tbody></table></div></div>}</section>}
-    <section className="panel"><div className="results-heading"><div><p className="eyebrow">CATALOGUE</p><h2>Courses</h2></div><span className="result-count">{courses.length} total</span></div><label className="search-control"><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search by course code, name, or major" /></label>{loading ? <Loading /> : visible.length ? <div className="table-scroll"><table><thead><tr><th>Course</th><th>Credits</th><th>Type</th><th>Majors</th><th>Semester</th><th>Status</th><th>Actions</th></tr></thead><tbody>{visible.map((course) => <tr key={course._id}><td><strong>{course.code}</strong><span className="secondary-text">{course.name}</span></td><td>{course.creditHours}</td><td>{pretty(course.courseType)}</td><td>{(course.facultyMajors || []).join(", ") || "All"}</td><td>{course.recommendedSemester || "—"}</td><td><span className={`status-pill ${course.isActive ? "good" : "muted"}`}>{course.isActive ? "Active" : "Inactive"}</span></td><td><div className="table-actions"><button className="text-button" type="button" onClick={() => setEditing(course)}>Edit</button><button className="text-button danger-text" type="button" onClick={() => removeCourse(course)}>Delete</button></div></td></tr>)}</tbody></table></div> : <EmptyState title="No courses found" text={query ? "Try another search." : "Add a course to start building the catalogue."} />}</section>
+    <section className="panel"><div className="results-heading"><div><p className="eyebrow">CATALOGUE</p><h2>Courses</h2></div><span className="result-count">{courses.length} total</span></div><label className="search-control"><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search by course code, name, or major" /></label>{loading ? <Loading /> : visible.length ? <div className="table-scroll"><table><thead><tr><th>Course</th><th>Credits</th><th>Type</th><th>Majors</th><th>Semester</th><th>Status</th><th>Actions</th></tr></thead><tbody>{visible.map((course) => <tr key={course._id}><td><button type="button" className="text-button" style={{ textAlign: "left", padding: 0, textDecoration: "none" }} onClick={() => setViewing(course)}><strong>{course.code}</strong><span className="secondary-text" style={{ display: "block", textDecoration: "underline" }}>{course.name}</span></button></td><td>{course.creditHours}</td><td>{pretty(course.courseType)}</td><td>{(course.facultyMajors || []).join(", ") || "All"}</td><td>{course.recommendedSemester || "—"}</td><td><span className={`status-pill ${course.isActive ? "good" : "muted"}`}>{course.isActive ? "Active" : "Inactive"}</span></td><td><div className="table-actions"><button className="text-button" type="button" onClick={() => setViewing(course)}>View</button><button className="text-button" type="button" onClick={() => setEditing(course)}>Edit</button><button className="text-button danger-text" type="button" onClick={() => removeCourse(course)}>Delete</button></div></td></tr>)}</tbody></table></div> : <EmptyState title="No courses found" text={query ? "Try another search." : "Add a course to start building the catalogue."} />}</section>
+    {viewing && <CourseDetailsModal course={viewing} allCourses={courses} onClose={() => setViewing(null)} onEdit={() => { const target = viewing; setViewing(null); setEditing(target); }} />}
     {editing && <Modal title={editing._id ? "Edit course" : "Add a course"} eyebrow="COURSE CATALOGUE" onClose={() => setEditing(null)}><form className="form-stack" onSubmit={saveCourse}><div className="form-grid"><Field label="Course code"><input name="code" required maxLength={24} defaultValue={editing.code || ""} placeholder="CSEN704" /></Field><Field label="Course name"><input name="name" required defaultValue={editing.name || ""} placeholder="Course title" /></Field><Field label="Credit hours"><input name="creditHours" required type="number" min="0" step="0.5" defaultValue={editing.creditHours ?? ""} /></Field><Field label="Course type"><select name="courseType" defaultValue={editing.courseType || "core"}><option value="core">Core</option><option value="elective">Elective</option><option value="huma">Humanities</option></select></Field><Field label="Recommended semester"><input name="recommendedSemester" type="number" min="1" max="10" defaultValue={editing.recommendedSemester ?? ""} /></Field><Field label="Lecture hours"><input name="lectureHours" type="number" min="0" step="0.5" defaultValue={editing.lectureHours ?? ""} /></Field><Field label="Tutorial hours"><input name="tutorialHours" type="number" min="0" step="0.5" defaultValue={editing.tutorialHours ?? ""} /></Field><Field label="Lab hours"><input name="labHours" type="number" min="0" step="0.5" defaultValue={editing.labHours ?? ""} /></Field><Field label="Majors (one per line)" className="span-two"><textarea name="facultyMajors" rows={3} defaultValue={(editing.facultyMajors || []).join("\n")} placeholder="Computer Science\nDigital Media Engineering" /></Field><Field label="Offered in seasons"><select name="offeringSeasons" multiple defaultValue={editing.offeringSeasons || []}>{seasons.map((season) => <option key={season} value={season}>{pretty(season)}</option>)}</select><small>Use Ctrl or ⌘ to select more than one.</small></Field><Field label="Prerequisites"><select name="prerequisites" multiple defaultValue={(editing.prerequisites || []).map((entry) => entry._id || entry)}>{courses.filter((course) => course._id !== editing._id).map((course) => <option key={course._id} value={course._id}>{course.code} · {course.name}</option>)}</select></Field><label className="check-field"><input type="checkbox" name="isBachelorProject" defaultChecked={editing.isBachelorProject || false} /> Bachelor project</label><label className="check-field"><input type="checkbox" name="isActive" defaultChecked={editing.isActive !== false} /> Active in catalogue</label></div><FormFooter onCancel={() => setEditing(null)} busy={saving} submitText={editing._id ? "Save changes" : "Create course"} /></form></Modal>}
   </div>;
 }
@@ -69,24 +71,266 @@ function CoursesWorkspace({ token, role, notify }) {
 const blankTerm = { code: "", academicYear: "", season: "spring", termStart: "", termEnd: "", teachingStart: "", teachingEnd: "", registrationStart: "", registrationEnd: "", advisingDeadline: "", wholeScheduleSwapDeadline: "", isActive: false };
 const termDateFields = ["termStart", "termEnd", "teachingStart", "teachingEnd", "registrationStart", "registrationEnd", "advisingDeadline", "wholeScheduleSwapDeadline"];
 function TermsWorkspace({ token, notify }) {
-  const [form, setForm] = useState(blankTerm); const [termId, setTermId] = useState(""); const [savedTerms, setSavedTerms] = useState(() => readRecentTerms());
-  const [loading, setLoading] = useState(false); const [message, setMessage] = useState(""); const [error, setError] = useState("");
-  const update = (field, value) => setForm((current) => ({ ...current, [field]: value }));
-  const toPayload = () => ({ ...form, ...Object.fromEntries(termDateFields.map((field) => [field, dateToIso(form[field])])) });
-  const submit = async (event) => {
-    event.preventDefault(); setLoading(true); setError(""); setMessage("");
+  const [form, setForm] = useState(blankTerm);
+  const [termId, setTermId] = useState("");
+  const [terms, setTerms] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [fetchingTerms, setFetchingTerms] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
+  const loadTerms = async () => {
+    setFetchingTerms(true);
     try {
-      const data = await api(termId.trim() ? `/api/academic-terms/academicTerm/${encodeURIComponent(termId.trim())}` : "/api/academic-terms/academicTerm", { token, method: termId.trim() ? "PUT" : "POST", body: toPayload() });
-      const next = [data, ...savedTerms.filter((term) => term._id !== data._id)].slice(0, 8); setSavedTerms(next); window.localStorage.setItem("bobos.recentTerms", JSON.stringify(next)); setTermId(data._id); setMessage(`Term ${data.code} saved. Its ID is ready for offerings and schedule preferences.`); notify("success", `Academic term ${data.code} saved.`);
-    } catch (e) { setError(e.message); }
-    finally { setLoading(false); }
+      const data = await api("/api/academic-terms/academicTerm", { token });
+      setTerms(Array.isArray(data) ? data : []);
+    } catch {
+      // Fallback to recent terms stored locally if any
+      setTerms(readRecentTerms());
+    } finally {
+      setFetchingTerms(false);
+    }
   };
-  const useTerm = (term) => { setTermId(term._id); setForm(termToForm(term)); setMessage(""); setError(""); };
-  return <div className="page-stack"><PageTitle eyebrow="GROUP C · ACADEMIC CALENDAR" title="Academic terms" description="Define term dates and deadlines used by offerings and scheduling." />
-    <div className="feedback info">The current API supports creating and updating terms, but does not expose a list route. Terms created here stay visible in this browser; paste another term ID to update an existing term.</div>
-    {message && <div className="feedback success" role="status">{message}</div>}{error && <div className="feedback error" role="alert">{error}</div>}
-    <div className="content-grid term-grid"><section className="panel"><div className="panel-heading"><div><p className="eyebrow">TERM DETAILS</p><h2>{termId ? "Update term" : "Create a term"}</h2></div><span className="panel-count">01</span></div><form className="form-stack" onSubmit={submit}><div className="form-grid"><Field label="Term code"><input required maxLength={20} value={form.code} onChange={(e) => update("code", e.target.value)} placeholder="S26" /></Field><Field label="Academic year"><input required value={form.academicYear} onChange={(e) => update("academicYear", e.target.value)} placeholder="2025/2026" /></Field><Field label="Season"><select value={form.season} onChange={(e) => update("season", e.target.value)}>{seasons.map((season) => <option key={season} value={season}>{pretty(season)}</option>)}</select></Field><label className="check-field term-active"><input type="checkbox" checked={form.isActive} onChange={(e) => update("isActive", e.target.checked)} /> Active term</label>{termDateFields.map((field) => <Field key={field} label={pretty(field)}><input type="date" required value={form[field]} onChange={(e) => update(field, e.target.value)} /></Field>)}</div><div className="form-footer"><button className="text-button" type="button" onClick={() => { setForm(blankTerm); setTermId(""); setMessage(""); setError(""); }}>Clear form</button><button className="primary-button" disabled={loading}>{loading ? "Saving…" : termId ? "Update term" : "Create term"}<span>→</span></button></div></form></section><section className="panel"><div className="panel-heading"><div><p className="eyebrow">SAVED IN THIS BROWSER</p><h2>Recent terms</h2></div><span className="panel-count">{savedTerms.length.toString().padStart(2, "0")}</span></div>{savedTerms.length ? <div className="recent-terms">{savedTerms.map((term) => <button className={`recent-term ${term._id === termId ? "selected" : ""}`} key={term._id} onClick={() => useTerm(term)} type="button"><span className="term-icon">◷</span><span><strong>{term.code} · {term.academicYear}</strong><small>{pretty(term.season)}{term.isActive ? " · Active" : ""}</small></span><span className="term-id">{term._id}</span></button>)}</div> : <EmptyState title="No recent terms" text="Create a term to keep its details here for this browser." icon="◷" />}<label className="field term-id-field"><span>Or edit by term ID</span><input value={termId} onChange={(e) => { setTermId(e.target.value); if (!e.target.value) setForm(blankTerm); }} placeholder="Academic term MongoDB ID" /></label><p className="helper-text">The backend cannot load a term by ID yet. Enter all fields above before saving an update.</p></section></div>
-  </div>;
+
+  useEffect(() => {
+    loadTerms();
+  }, [token]);
+
+  const update = (field, value) => {
+    setForm((current) => {
+      const next = { ...current, [field]: value };
+      // If setting termStart, ensure teachingStart defaults reasonably if empty
+      return next;
+    });
+  };
+
+  const toPayload = () => {
+    const payload = {};
+    for (const key of Object.keys(blankTerm)) {
+      if (form[key] !== undefined) {
+        payload[key] = termDateFields.includes(key) && form[key]
+          ? dateToIso(form[key])
+          : form[key];
+      }
+    }
+    return payload;
+  };
+
+  const validateDates = () => {
+    if (form.termStart && form.termEnd && form.termStart > form.termEnd) {
+      return "Term end must be on or after term start.";
+    }
+    if (form.teachingStart && form.teachingEnd && form.teachingStart > form.teachingEnd) {
+      return "Teaching end must be on or after teaching start.";
+    }
+    if (form.termStart && form.teachingStart && form.teachingStart < form.termStart) {
+      return "Teaching start must be on or after term start (Teaching must start during the term).";
+    }
+    if (form.termEnd && form.teachingEnd && form.teachingEnd > form.termEnd) {
+      return "Teaching end must be on or before term end (Teaching must end during the term).";
+    }
+    if (form.registrationStart && form.registrationEnd && form.registrationStart > form.registrationEnd) {
+      return "Registration end must be on or after registration start.";
+    }
+    return null;
+  };
+
+  const submit = async (event) => {
+    event.preventDefault();
+    setError("");
+    setMessage("");
+
+    const clientValidation = validateDates();
+    if (clientValidation) {
+      setError(clientValidation);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const data = await api(
+        termId.trim()
+          ? `/api/academic-terms/academicTerm/${encodeURIComponent(termId.trim())}`
+          : "/api/academic-terms/academicTerm",
+        {
+          token,
+          method: termId.trim() ? "PUT" : "POST",
+          body: toPayload(),
+        }
+      );
+      setTermId(data._id);
+      setMessage(`Term ${data.code} saved. Its ID is ready for offerings and schedule preferences.`);
+      notify("success", `Academic term ${data.code} saved.`);
+      window.localStorage.setItem("bobos.lastTermId", data._id);
+      loadTerms();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const useTerm = (term) => {
+    setTermId(term._id);
+    setForm(termToForm(term));
+    setMessage("");
+    setError("");
+  };
+
+  return (
+    <div className="page-stack">
+      <PageTitle
+        eyebrow="GROUP C · ACADEMIC CALENDAR"
+        title="Academic terms"
+        description="Define term dates and deadlines used by offerings and scheduling."
+      />
+      {message && <div className="feedback success" role="status">{message}</div>}
+      {error && <div className="feedback error" role="alert">{error}</div>}
+      <div className="content-grid term-grid">
+        <section className="panel">
+          <div className="panel-heading">
+            <div>
+              <p className="eyebrow">TERM DETAILS</p>
+              <h2>{termId ? "Update term" : "Create a term"}</h2>
+            </div>
+            <span className="panel-count">01</span>
+          </div>
+          <form className="form-stack" onSubmit={submit}>
+            <div className="form-grid">
+              <Field label="Term code">
+                <input
+                  required
+                  maxLength={20}
+                  value={form.code}
+                  onChange={(e) => update("code", e.target.value)}
+                  placeholder="S26"
+                />
+              </Field>
+              <Field label="Academic year">
+                <input
+                  required
+                  value={form.academicYear}
+                  onChange={(e) => update("academicYear", e.target.value)}
+                  placeholder="2025/2026"
+                />
+              </Field>
+              <Field label="Season">
+                <select value={form.season} onChange={(e) => update("season", e.target.value)}>
+                  {seasons.map((season) => (
+                    <option key={season} value={season}>{pretty(season)}</option>
+                  ))}
+                </select>
+              </Field>
+              <label className="check-field term-active">
+                <input
+                  type="checkbox"
+                  checked={form.isActive}
+                  onChange={(e) => update("isActive", e.target.checked)}
+                /> Active term
+              </label>
+              {termDateFields.map((field) => (
+                <Field key={field} label={pretty(field)}>
+                  <input
+                    type="date"
+                    required
+                    value={form[field]}
+                    min={
+                      field === "teachingStart" && form.termStart
+                        ? form.termStart
+                        : field === "termEnd" && form.termStart
+                        ? form.termStart
+                        : undefined
+                    }
+                    max={
+                      field === "teachingEnd" && form.termEnd
+                        ? form.termEnd
+                        : undefined
+                    }
+                    onChange={(e) => update(field, e.target.value)}
+                  />
+                </Field>
+              ))}
+            </div>
+            <div className="form-footer">
+              <button
+                className="text-button"
+                type="button"
+                onClick={() => {
+                  setForm(blankTerm);
+                  setTermId("");
+                  setMessage("");
+                  setError("");
+                }}
+              >
+                Clear form
+              </button>
+              <button className="primary-button" disabled={loading}>
+                {loading ? "Saving…" : termId ? "Update term" : "Create term"}
+                <span>→</span>
+              </button>
+            </div>
+          </form>
+        </section>
+        <section className="panel">
+          <div className="panel-heading">
+            <div>
+              <p className="eyebrow">ACADEMIC TERMS</p>
+              <h2>Configured terms</h2>
+            </div>
+            <span className="panel-count">{terms.length.toString().padStart(2, "0")}</span>
+          </div>
+          {fetchingTerms ? (
+            <Loading />
+          ) : terms.length ? (
+            <div className="recent-terms">
+              {terms.map((term) => (
+                <button
+                  className={`recent-term ${term._id === termId ? "selected" : ""}`}
+                  key={term._id}
+                  onClick={() => useTerm(term)}
+                  type="button"
+                >
+                  <span className="term-icon">◷</span>
+                  <span>
+                    <strong>{term.code} · {term.academicYear}</strong>
+                    <small>{pretty(term.season)}{term.isActive ? " · Active" : ""}</small>
+                  </span>
+                  <span className="term-id">{term._id}</span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <EmptyState
+              title="No terms found"
+              text="Create an academic term to begin scheduling."
+              icon="◷"
+            />
+          )}
+          <label className="field term-id-field" style={{ marginTop: "1rem" }}>
+            <span>Or load/edit by term ID</span>
+            <input
+              value={termId}
+              onChange={async (e) => {
+                const val = e.target.value;
+                setTermId(val);
+                if (!val.trim()) {
+                  setForm(blankTerm);
+                } else if (val.trim().length === 24) {
+                  try {
+                    const loaded = await api(`/api/academic-terms/academicTerm/${encodeURIComponent(val.trim())}`, { token });
+                    if (loaded) setForm(termToForm(loaded));
+                  } catch {
+                    // Ignore lookup if invalid ID
+                  }
+                }
+              }}
+              placeholder="Academic term MongoDB ID"
+            />
+          </label>
+        </section>
+      </div>
+    </div>
+  );
 }
 
 function OfferingsWorkspace({ token, notify }) {
@@ -157,5 +401,120 @@ function timeToMinutes(value) { const match = /^(\d{2}):(\d{2})$/.exec(value || 
 function minutesToTime(value) { return `${String(Math.floor(value / 60)).padStart(2, "0")}:${String(value % 60).padStart(2, "0")}`; }
 function formatMinutes(value) { return minutesToTime(value); }
 function dateToIso(value) { if (!value) return ""; return new Date(`${value}T12:00:00`).toISOString(); }
-function termToForm(term) { return Object.fromEntries(Object.entries({ ...blankTerm, ...term }).map(([key, value]) => [key, termDateFields.includes(key) && value ? new Date(value).toISOString().slice(0, 10) : value])); }
+function termToForm(term) {
+  const result = { ...blankTerm };
+  if (!term) return result;
+  for (const key of Object.keys(blankTerm)) {
+    if (term[key] !== undefined) {
+      result[key] = termDateFields.includes(key) && term[key]
+        ? new Date(term[key]).toISOString().slice(0, 10)
+        : term[key];
+    }
+  }
+  return result;
+}
 function readRecentTerms() { try { return JSON.parse(window.localStorage.getItem("bobos.recentTerms") || "[]"); } catch { return []; } }
+
+function CourseDetailsModal({ course, allCourses = [], onClose, onEdit }) {
+  if (!course) return null;
+  const prereqList = (course.prerequisites || []).map((p) => {
+    if (typeof p === "object" && p !== null && p.code) return p;
+    return allCourses.find((c) => c._id === p || c.code === p) || { code: String(p), name: "Course ID: " + p };
+  });
+
+  return (
+    <Modal title={`${course.code} · ${course.name}`} eyebrow="COURSE SPECIFICATION" onClose={onClose} wide>
+      <div className="offering-detail-head" style={{ marginBottom: "1.5rem" }}>
+        <div>
+          <span className="course-code-pill" style={{ fontSize: "1rem", padding: "0.25rem 0.75rem", marginBottom: "0.5rem", display: "inline-block" }}>
+            {course.code}
+          </span>
+          <h2 style={{ fontSize: "1.35rem", fontWeight: "700", marginTop: "0.25rem" }}>{course.name}</h2>
+          <p style={{ color: "#64748b" }}>
+            {course.creditHours} Credit Hours · {pretty(course.courseType)}
+            {course.isBachelorProject ? " · Bachelor Project" : ""}
+          </p>
+        </div>
+        <span className={`status-pill ${course.isActive ? "good" : "muted"}`}>
+          {course.isActive ? "Active in Catalogue" : "Inactive"}
+        </span>
+      </div>
+
+      <div className="form-grid" style={{ gap: "1rem", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
+        <div className="panel" style={{ padding: "1rem", background: "var(--surface-sunken, #f8fafc)" }}>
+          <p className="eyebrow" style={{ fontSize: "0.75rem" }}>CURRICULUM HOURS</p>
+          <p style={{ margin: "0.25rem 0", fontSize: "0.95rem" }}>
+            <strong>Lecture:</strong> {course.lectureHours ?? "—"} hrs/week
+          </p>
+          <p style={{ margin: "0.25rem 0", fontSize: "0.95rem" }}>
+            <strong>Tutorial:</strong> {course.tutorialHours ?? "—"} hrs/week
+          </p>
+          <p style={{ margin: "0.25rem 0", fontSize: "0.95rem" }}>
+            <strong>Lab:</strong> {course.labHours ?? "—"} hrs/week
+          </p>
+        </div>
+
+        <div className="panel" style={{ padding: "1rem", background: "var(--surface-sunken, #f8fafc)" }}>
+          <p className="eyebrow" style={{ fontSize: "0.75rem" }}>SEMESTER & OFFERING</p>
+          <p style={{ margin: "0.25rem 0", fontSize: "0.95rem" }}>
+            <strong>Recommended Semester:</strong> {course.recommendedSemester ? `Semester ${course.recommendedSemester}` : "—"}
+          </p>
+          <p style={{ margin: "0.25rem 0", fontSize: "0.95rem" }}>
+            <strong>Offering Seasons:</strong> {(course.offeringSeasons || []).map(pretty).join(", ") || "All"}
+          </p>
+        </div>
+
+        <div className="panel span-two" style={{ padding: "1rem", background: "var(--surface-sunken, #f8fafc)" }}>
+          <p className="eyebrow" style={{ fontSize: "0.75rem" }}>FACULTY / MAJORS (MET & DMET)</p>
+          <p style={{ margin: "0.25rem 0", fontSize: "0.95rem" }}>
+            {(course.facultyMajors || []).length > 0 ? (
+              (course.facultyMajors || []).map((major, i) => (
+                <span key={i} className="course-code-pill" style={{ marginRight: "0.5rem", marginBottom: "0.25rem", display: "inline-block" }}>
+                  {major}
+                </span>
+              ))
+            ) : (
+              <span className="secondary-text">Available to all faculties</span>
+            )}
+          </p>
+        </div>
+
+        <div className="panel span-two" style={{ padding: "1rem", background: "var(--surface-sunken, #f8fafc)" }}>
+          <p className="eyebrow" style={{ fontSize: "0.75rem" }}>PREREQUISITES</p>
+          {prereqList.length > 0 ? (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", marginTop: "0.5rem" }}>
+              {prereqList.map((prereq, index) => (
+                <div
+                  key={index}
+                  style={{
+                    border: "1px solid var(--border, #e2e8f0)",
+                    background: "var(--surface, #fff)",
+                    padding: "0.5rem 0.75rem",
+                    borderRadius: "6px",
+                  }}
+                >
+                  <strong style={{ color: "#2563eb" }}>{prereq.code}</strong>
+                  {prereq.name ? <span style={{ marginLeft: "0.4rem", color: "#475569" }}>— {prereq.name}</span> : null}
+                  {prereq.creditHours ? <small style={{ display: "block", color: "#94a3b8" }}>{prereq.creditHours} credits</small> : null}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p style={{ margin: "0.25rem 0", color: "#64748b" }}>No prerequisites required (direct entry).</p>
+          )}
+        </div>
+      </div>
+
+      <div className="form-footer" style={{ marginTop: "1.5rem" }}>
+        <button type="button" className="outline-button" onClick={onClose}>
+          Close
+        </button>
+        {onEdit && (
+          <button type="button" className="primary-button" onClick={onEdit}>
+            Edit course <span>→</span>
+          </button>
+        )}
+      </div>
+    </Modal>
+  );
+}
