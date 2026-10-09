@@ -8,6 +8,7 @@ import {
   createOffering,
   getOfferings,
   getOfferingById,
+  addOfferingSlots,
   updateOffering,
   updateOfferingSlot,
   deleteOffering,
@@ -28,6 +29,9 @@ router.get('/offerings', requireAuth, requireRole('administrator', 'coordinator'
 
 // Req 23: Select an offering to view all of its details and slots
 router.get('/offerings/:id', requireAuth, requireRole('administrator', 'coordinator'), getOfferingById);
+
+// Req 25: Add groups to an existing course offering.
+router.post('/offerings/:id/slots', requireAuth, requireRole('administrator'), addOfferingSlots);
 
 // Courses managment
 router.post('/courses/import', express.json({ limit: "2mb" }), requireAuth, requireRole('administrator'), importCoursesCsv);

@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { ScheduleTemplate } from '../models/academics.js';
+import { ScheduleTemplate, StudentSchedule } from '../models/academics.js';
 import { CourseOffering, AcademicTerm, Course } from '../models/catalogue.js';
 
 const isId = (value) => typeof value === 'string' && mongoose.isValidObjectId(value);
@@ -230,6 +230,25 @@ export const getScheduleTemplateById = async (req, res) => {
       .populate('courses.courseOffering');
     if (!template) return res.status(404).json({ message: 'Schedule template not found.' });
     res.json(template);
+  } catch (error) {
+    return handleError(res, error);
+  }
+};
+
+// Delete an unused template without leaving student schedules with a broken reference.
+export const deleteScheduleTemplate = async (req, res) => {
+  try {
+    if (!isId(req.params.id)) return res.status(400).json({ message: 'Invalid template ID format.' });
+    const template = await ScheduleTemplate.findById(req.params.id);
+    if (!template) return res.status(404).json({ message: 'Schedule template not found.' });
+
+    const assignedSchedule = await StudentSchedule.exists({ template: template._id });
+    if (assignedSchedule) {
+      return res.status(409).json({ message: 'This template is assigned to one or more student schedules. Unassign or reassign those students before deleting it.' });
+    }
+
+    await template.deleteOne();
+    return res.json({ message: 'Schedule template deleted.' });
   } catch (error) {
     return handleError(res, error);
   }
