@@ -9,8 +9,12 @@ import {
   MandatoryCourseRemovalRequest,
   WholeScheduleSwapRequest,
 } from '../models/index.js';
+import { AcademicTerm } from '../models/catalogue.js';
+import { WORKFLOW_STATUSES } from '../models/shared.js';
 
 const { Types } = mongoose;
+const ADVISING_REASONS = ['probation', 'failedCourses', 'unattendedCourses', 'undeclaredMajor', 'transfer'];
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const PENDING_REQUEST_MAP = {
   slotChange: {
@@ -38,7 +42,7 @@ const PENDING_REQUEST_MAP = {
 export const listAdvisors = async (req, res) => {
   try {
     const advisors = await User.find(
-      { role: 'advisor', isActive: true },
+      { role: 'advisor', isActive: true, isAdvisorInSystem: true },
       'fullName email',
     );
     return res.json(advisors);
@@ -49,7 +53,7 @@ export const listAdvisors = async (req, res) => {
 
 export const assignAdvisor = async (req, res) => {
   const { profileId } = req.params;
-  const { advisorId } = req.body;
+  const advisorId = req.body?.advisorId;
 
   if (!Types.ObjectId.isValid(profileId)) {
     return res.status(400).json({ message: 'Invalid student profile ID' });
@@ -73,7 +77,7 @@ export const assignAdvisor = async (req, res) => {
     }
 
     const advisor = await User.findOne(
-      { _id: advisorId, role: 'advisor' },
+      { _id: advisorId, role: 'advisor', isActive: true, isAdvisorInSystem: true },
       null,
       { session },
     );
@@ -89,6 +93,13 @@ export const assignAdvisor = async (req, res) => {
       null,
       { session },
     );
+    if (existing && String(existing.advisor) === String(advisor._id) && String(profile.assignedAdvisor) === String(advisor._id)) {
+      await session.commitTransaction();
+      const unchanged = await StudentProfile.findById(profileId)
+        .populate('user', 'fullName email')
+        .populate('assignedAdvisor', 'fullName email');
+      return res.json(unchanged);
+    }
     if (existing) {
       existing.endedAt = new Date();
       existing.endedBy = actorId;
@@ -111,10 +122,10 @@ export const assignAdvisor = async (req, res) => {
 
     return res.json(updated);
   } catch (err) {
-    await session.abortTransaction();
-    return res.status(500).json({ message: err.message });
+    if (session.inTransaction()) await session.abortTransaction();
+    return res.status(500).json({ message: 'Unable to assign advisor' });
   } finally {
-    session.endSession();
+    await session.endSession();
   }
 };
 
@@ -141,6 +152,10 @@ export const getMyAdvisor = async (req, res) => {
 
 export const listAdvisingStudents = async (req, res) => {
   try {
+    const activeTerm = await AcademicTerm.findOne({ isActive: true })
+      .sort({ termStart: -1 })
+      .select('_id')
+      .lean();
     const {
       search,
       advisorId,
@@ -152,12 +167,41 @@ export const listAdvisingStudents = async (req, res) => {
       limit = '20',
     } = req.query;
 
-    const pageNum = Math.max(1, parseInt(page, 10) || 1);
-    const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
+    for (const key of ['search', 'advisorId', 'major', 'advisingReason', 'scheduleStatus', 'pendingRequestType', 'page', 'limit']) {
+      if (req.query[key] !== undefined && typeof req.query[key] !== 'string') {
+        return res.status(400).json({ message: `Invalid ${key} filter` });
+      }
+    }
+    if (search && search.length > 100) {
+      return res.status(400).json({ message: 'Search must be 100 characters or fewer' });
+    }
+    if (advisorId && !Types.ObjectId.isValid(advisorId)) {
+      return res.status(400).json({ message: 'Invalid advisor' });
+    }
+    if (major && major.length > 100) return res.status(400).json({ message: 'Invalid major filter' });
+    if (advisingReason && !ADVISING_REASONS.includes(advisingReason)) {
+      return res.status(400).json({ message: 'Invalid advising reason' });
+    }
+    if (scheduleStatus && !WORKFLOW_STATUSES.includes(scheduleStatus)) {
+      return res.status(400).json({ message: 'Invalid schedule status' });
+    }
+    if (pendingRequestType && !PENDING_REQUEST_MAP[pendingRequestType]) {
+      return res.status(400).json({ message: 'Invalid pending request type' });
+    }
+
+    if (!/^\d+$/.test(page) || !/^\d+$/.test(limit)) {
+      return res.status(400).json({ message: 'Page and limit must be positive integers' });
+    }
+    const pageNum = Number(page);
+    const limitNum = Number(limit);
+    if (!Number.isSafeInteger(pageNum) || pageNum < 1 || !Number.isSafeInteger(limitNum) || limitNum < 1 || limitNum > 100) {
+      return res.status(400).json({ message: 'Page must be positive and limit must be between 1 and 100' });
+    }
     const skip = (pageNum - 1) * limitNum;
+    if (!Number.isSafeInteger(skip)) return res.status(400).json({ message: 'Page is too large' });
 
     const baseMatch = { studentType: 'advising' };
-    if (advisorId && Types.ObjectId.isValid(advisorId)) {
+    if (advisorId) {
       baseMatch.assignedAdvisor = new Types.ObjectId(advisorId);
     }
     if (major) baseMatch.major = major;
@@ -177,7 +221,7 @@ export const listAdvisingStudents = async (req, res) => {
     ];
 
     if (search) {
-      const re = { $regex: search, $options: 'i' };
+      const re = { $regex: escapeRegex(search), $options: 'i' };
       pipeline.push({
         $match: {
           $or: [
@@ -195,7 +239,16 @@ export const listAdvisingStudents = async (req, res) => {
           from: StudentWorkflowState.collection.name,
           let: { sid: '$_id' },
           pipeline: [
-            { $match: { $expr: { $eq: ['$student', '$$sid'] } } },
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ['$student', '$$sid'] },
+                    { $eq: ['$term', activeTerm?._id ?? null] },
+                  ],
+                },
+              },
+            },
             { $sort: { lastActivityAt: -1 } },
             { $limit: 1 },
           ],
@@ -211,7 +264,7 @@ export const listAdvisingStudents = async (req, res) => {
       pipeline.push({ $match: { 'workflowState.status': scheduleStatus } });
     }
 
-    if (pendingRequestType && PENDING_REQUEST_MAP[pendingRequestType]) {
+    if (pendingRequestType) {
       const { getCollection, statusField, statusValue } = PENDING_REQUEST_MAP[pendingRequestType];
       pipeline.push(
         {
@@ -224,6 +277,7 @@ export const listAdvisingStudents = async (req, res) => {
                   $expr: {
                     $and: [
                       { $eq: ['$student', '$$sid'] },
+                      { $eq: ['$term', activeTerm?._id ?? null] },
                       { $eq: [`$${statusField}`, statusValue] },
                     ],
                   },
@@ -286,6 +340,8 @@ export const listAdvisingStudents = async (req, res) => {
     const total = countResult[0]?.total ?? 0;
 
     return res.json({
+      currentUserId: String(req.user._id),
+      currentUserRole: req.user.role,
       data: students,
       pagination: {
         total,
@@ -317,8 +373,14 @@ export const getAdvisingStudent = async (req, res) => {
       return res.status(404).json({ message: 'Advising student profile not found' });
     }
 
+    const activeTerm = await AcademicTerm.findOne({ isActive: true })
+      .sort({ termStart: -1 })
+      .select('_id')
+      .lean();
     const [workflowState, assignmentHistory] = await Promise.all([
-      StudentWorkflowState.findOne({ student: profileId }).sort({ lastActivityAt: -1 }),
+      activeTerm
+        ? StudentWorkflowState.findOne({ student: profileId, term: activeTerm._id })
+        : null,
       AdvisorAssignment.find({ student: profileId })
         .sort({ createdAt: -1 })
         .populate('advisor', 'fullName email')
@@ -335,4 +397,3 @@ export const getAdvisingStudent = async (req, res) => {
     return res.status(500).json({ message: err.message });
   }
 };
-

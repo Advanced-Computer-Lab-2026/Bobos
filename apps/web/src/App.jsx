@@ -1,328 +1,182 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { api, explainApiError } from "./api.js";
+import AuthPage from "./components/AuthPage.jsx";
+import {
+  OverviewPage,
+  ProfilePage,
+  NotificationsPage,
+  StudentRecordsPage,
+  PreferencesPage,
+} from "./components/BasicPages.jsx";
+import StudentDirectoryPage from "./components/StudentDirectoryPage.jsx";
+import AdvisingPage, { MyAdvisorPage } from "./components/AdvisingPage.jsx";
+import AcademicWorkspace from "./components/AcademicWorkspace.jsx";
+import { GroupAssignmentsPage, StaffSchedulesPage, StudentSchedulingPage } from "./components/SchedulingPages.jsx";
 
-const emptyFilters = {
-  search: "",
-  studentType: "",
-  advisor: "",
-  major: "",
-  currentSemester: "",
-  academicStanding: "",
-  workflowStatus: "",
-  blockingStep: "",
-  accountStatus: "",
+const roleNames = {
+  normalStudent: "Normal student",
+  advisingStudent: "Advising student",
+  advisor: "Advisor",
+  coordinator: "Coordinator",
+  administrator: "Administrator",
 };
 
-const humanize = (value = "") => (value || "").replace(/([a-z])([A-Z])/g, "$1 $2").replace(/^./, (letter) => letter.toUpperCase());
+const navGroups = (role) => {
+  const student = ["normalStudent", "advisingStudent"].includes(role);
+  const staff = ["advisor", "coordinator", "administrator"].includes(role);
+  return [
+    { title: "Workspace", items: [{ id: "overview", label: "Overview", icon: "⌂" }, { id: "profile", label: "My profile", icon: "◉" }, { id: "notifications", label: "Notifications", icon: "◌" }] },
+    ...(student ? [{ title: "Student services", items: [
+      { id: "records", label: "Academic records", icon: "▤" },
+      { id: "my-schedule", label: "My schedule", icon: "◷" },
+      { id: "my-courses", label: "Registered courses", icon: "▦" },
+      ...(role === "normalStudent" ? [{ id: "schedule-swap", label: "Eligible swap groups", icon: "⇄" }] : []),
+      ...(role === "advisingStudent" ? [{ id: "preferences", label: "Schedule preferences", icon: "☷" }] : []),
+      { id: "my-advisor", label: "My advisor", icon: "♧" },
+    ] }] : []),
+    ...(staff ? [{ title: "People", items: [
+      ...(["coordinator", "administrator"].includes(role) ? [{ id: "directory", label: "Student directory", icon: "♙" }] : []),
+      ...(role === "advisor" || role === "coordinator" ? [{ id: "advising", label: "Advising students", icon: "♧" }] : []),
+      ...(role === "advisor" || role === "coordinator" ? [{ id: "preferences", label: "Student preferences", icon: "☷" }] : []),
+      { id: "student-schedules", label: "Student schedules", icon: "◷" },
+    ] }] : []),
+    ...(["coordinator", "administrator"].includes(role) ? [{ title: "Academic setup", items: [
+      { id: "courses", label: "Course catalogue", icon: "▦" },
+      { id: "terms", label: "Academic terms", icon: "◷" },
+      ...(role === "administrator" ? [{ id: "offerings", label: "Course offerings", icon: "▤" }] : []),
+      ...(role === "coordinator" ? [{ id: "templates", label: "Schedule templates", icon: "▧" }] : []),
+      { id: "group-assignments", label: "Schedule group assignments", icon: "⇄" },
+    ] }] : []),
+  ];
+};
 
-async function apiRequest(url, options) {
-  const response = await fetch(url, options);
-  const body = await response.json().catch(() => null);
-  if (!response.ok) throw new Error(body?.message || "Request failed");
-  return body;
-}
-
-function SelectFilter({ label, value, onChange, options, placeholder = "All", disabled = false }) {
-  return (
-    <label className="filter-field">
-      <span>{label}</span>
-      <select value={value} onChange={onChange} disabled={disabled}>
-        <option value="">{placeholder}</option>
-        {options.map((option) => {
-          const item = typeof option === "string" ? { value: option, label: humanize(option) } : option;
-          return <option key={item.value} value={item.value}>{item.label}</option>;
-        })}
-      </select>
-    </label>
-  );
-}
+const titleByScreen = {
+  overview: "Overview", profile: "My profile", notifications: "Notifications",
+  records: "Academic records", preferences: "Schedule preferences", directory: "Student directory",
+  advising: "Advising students", "my-advisor": "My advisor", courses: "Course catalogue",
+  terms: "Academic terms", offerings: "Course offerings", templates: "Schedule templates",
+  "my-schedule": "My schedule", "my-courses": "Registered courses", "schedule-swap": "Eligible swap groups",
+  "student-schedules": "Student schedules", "group-assignments": "Schedule group assignments",
+};
 
 export default function App() {
-  const [filters, setFilters] = useState(emptyFilters);
-  const [appliedFilters, setAppliedFilters] = useState(emptyFilters);
-  const [directory, setDirectory] = useState({ students: [], filters: {} });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [studentDetails, setStudentDetails] = useState(null);
-  const [detailsOpen, setDetailsOpen] = useState(false);
-  const [detailsLoading, setDetailsLoading] = useState(false);
-  const [detailsError, setDetailsError] = useState("");
-  const [advisorEmail, setAdvisorEmail] = useState("");
-  const [advisor, setAdvisor] = useState(null);
-  const [advisorError, setAdvisorError] = useState("");
-  const [advisorMessage, setAdvisorMessage] = useState("");
+  const [token, setToken] = useState(() => window.localStorage.getItem("bobos.token"));
+  const [profile, setProfile] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(Boolean(token));
+  const [activeScreen, setActiveScreen] = useState("overview");
+  const [screenContext, setScreenContext] = useState(null);
+  const [notice, setNotice] = useState(null);
 
   useEffect(() => {
-    const controller = new AbortController();
-    const params = new URLSearchParams(
-      Object.entries(appliedFilters).filter(([, value]) => value),
-    );
-
-    setLoading(true);
-    setError("");
-    fetch(`/api/admin/students?${params}`, { signal: controller.signal })
-      .then(async (response) => {
-        const body = await response.json().catch(() => null);
-        if (!response.ok) throw new Error(body?.message || "Could not load students");
-        if (!body) throw new Error("Could not load students");
-        setDirectory(body);
+    if (!token) {
+      setProfile(null);
+      setProfileLoading(false);
+      return;
+    }
+    let alive = true;
+    setProfileLoading(true);
+    api("/api/identity/profile", { token })
+      .then((data) => {
+        if (alive) setProfile(data.profile);
       })
-      .catch((requestError) => {
-        if (requestError.name !== "AbortError") {
-          setError(requestError instanceof TypeError ? "Student directory service is unavailable." : requestError.message);
-        }
+      .catch((error) => {
+        if (!alive) return;
+        window.localStorage.removeItem("bobos.token");
+        setToken(null);
+        setProfile(null);
+        if (error.status !== 401) setNotice({ type: "error", text: error.message });
       })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
+      .finally(() => alive && setProfileLoading(false));
+    return () => { alive = false; };
+  }, [token]);
 
-    return () => controller.abort();
-  }, [appliedFilters]);
+  useEffect(() => {
+    if (!notice) return undefined;
+    const timeout = window.setTimeout(() => setNotice(null), 5000);
+    return () => window.clearTimeout(timeout);
+  }, [notice]);
 
-  const updateFilter = (key) => (event) => {
-    const value = event.target.value;
-    setFilters((current) => ({
-      ...current,
-      [key]: value,
-      ...(key === "studentType" && value === "normal" ? { advisor: "" } : {}),
-    }));
+  const groups = useMemo(() => navGroups(profile?.role), [profile?.role]);
+  const allNavItems = groups.flatMap((group) => group.items);
+
+  const acceptLogin = (newToken) => {
+    window.localStorage.setItem("bobos.token", newToken);
+    setToken(newToken);
+    setActiveScreen("overview");
+    setScreenContext(null);
   };
 
-  const clearFilters = () => {
-    setFilters(emptyFilters);
-    setAppliedFilters(emptyFilters);
+  const signOut = async () => {
+    try { await api("/api/identity/logout", { token, method: "POST", body: {} }); } catch { /* Clear the local session even when the API is offline. */ }
+    window.localStorage.removeItem("bobos.token");
+    setToken(null);
+    setProfile(null);
+    setActiveScreen("overview");
   };
 
-  const openStudent = async (id) => {
-    setDetailsOpen(true);
-    setDetailsLoading(true);
-    setStudentDetails(null);
-    setDetailsError("");
-    try {
-      setStudentDetails(await apiRequest(`/api/admin/students/${id}`));
-    } catch (requestError) {
-      setDetailsError(requestError.message);
-    } finally {
-      setDetailsLoading(false);
-    }
+  const notify = (type, text) => setNotice({ type, text });
+  const openScreen = (screen, context = null) => {
+    setActiveScreen(screen);
+    setScreenContext(context);
   };
 
-  const updateAccount = async () => {
-    const user = studentDetails.user;
-    try {
-      const updatedUser = await apiRequest(`/api/admin/users/${user._id}/status`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isActive: !user.isActive }),
-      });
-      setStudentDetails((current) => ({ ...current, user: { ...current.user, isActive: updatedUser.isActive } }));
-      setDirectory((current) => ({
-        ...current,
-        students: current.students.map((student) => student.id === String(studentDetails._id)
-          ? { ...student, accountStatus: updatedUser.isActive ? "active" : "inactive" }
-          : student),
-      }));
-    } catch (requestError) {
-      setDetailsError(requestError.message);
-    }
-  };
-
-  const lookupAdvisor = async (event) => {
-    event.preventDefault();
-    setAdvisor(null);
-    setAdvisorError("");
-    setAdvisorMessage("");
-    try {
-      setAdvisor(await apiRequest(`/api/admin/advisors/lookup?email=${encodeURIComponent(advisorEmail)}`));
-    } catch (requestError) {
-      setAdvisorError(requestError.message);
-    }
-  };
-
-  const changeAdvisor = async (add) => {
-    setAdvisorError("");
-    setAdvisorMessage("");
-    try {
-      const result = await apiRequest(add ? "/api/admin/advisors" : `/api/admin/advisors/${encodeURIComponent(advisor.email)}`, {
-        method: add ? "POST" : "DELETE",
-        ...(add ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: advisor.email }) } : {}),
-      });
-      setAdvisor((current) => ({ ...current, isAdvisorInSystem: add }));
-      setAdvisorMessage(add ? `Advisor added. Email status: ${result.emailStatus}.` : `Advisor removed. Email status: ${result.emailStatus}.`);
-      setAppliedFilters((current) => ({ ...current }));
-    } catch (requestError) {
-      setAdvisorError(requestError.message);
-    }
-  };
-
-  const students = directory.students || [];
-  const options = directory.filters || {};
+  if (!token) return <AuthPage onLogin={acceptLogin} />;
+  if (profileLoading) return <div className="app-loading"><span className="loader" />Loading your workspace…</div>;
+  if (!profile) return <AuthPage onLogin={acceptLogin} />;
 
   return (
-    <main className="directory-page">
-      <header className="page-header">
-        <div>
-          <p className="eyebrow">Administration</p>
-          <h1>Student directory</h1>
-        </div>
-        <p className="term-label">
-          {directory.term ? `${humanize(directory.term.season)} ${directory.term.academicYear}` : "No active term"}
-        </p>
-      </header>
+    <div className="app-shell">
+      <aside className="sidebar">
+        <div className="brand"><span className="brand-mark">B</span><span>bobos<span className="brand-dot">.</span><small>UNIVERSITY SCHEDULING</small></span></div>
+        <div className="sidebar-label">MENU</div>
+        <nav aria-label="Main navigation">
+          {groups.map((group) => (
+            <div className="nav-group" key={group.title}>
+              <p className="nav-group-title">{group.title}</p>
+              {group.items.map((item) => (
+                <button
+                  className={`nav-item ${activeScreen === item.id ? "active" : ""}`}
+                  type="button"
+                  key={item.id}
+                  onClick={() => openScreen(item.id)}
+                >
+                  <span className="nav-icon" aria-hidden="true">{item.icon}</span><span>{item.label}</span>
+                </button>
+              ))}
+            </div>
+          ))}
+        </nav>
+        <div className="sidebar-bottom"><span className="online-dot" />Academic portal <span className="version">Development</span></div>
+      </aside>
 
-      <form
-        className="filters"
-        onSubmit={(event) => {
-          event.preventDefault();
-          setAppliedFilters({ ...filters });
-        }}
-      >
-        <label className="filter-field search-field">
-          <span>Search students</span>
-          <input
-            type="search"
-            value={filters.search}
-            onChange={updateFilter("search")}
-            placeholder="ID, name, or email"
-            maxLength={100}
-          />
-        </label>
-        <SelectFilter label="Student type" value={filters.studentType} onChange={updateFilter("studentType")} options={options.studentTypes || []} />
-        <SelectFilter
-          label="Advisor"
-          value={filters.advisor}
-          onChange={updateFilter("advisor")}
-          options={(options.advisors || []).map((advisor) => ({ value: advisor.id, label: advisor.fullName }))}
-          disabled={filters.studentType === "normal"}
-        />
-        <SelectFilter label="Major" value={filters.major} onChange={updateFilter("major")} options={options.majors || []} />
-        <SelectFilter
-          label="Current semester"
-          value={filters.currentSemester}
-          onChange={updateFilter("currentSemester")}
-          options={Array.from({ length: 10 }, (_, index) => ({ value: String(index + 1), label: String(index + 1) }))}
-        />
-        <SelectFilter label="Academic standing" value={filters.academicStanding} onChange={updateFilter("academicStanding")} options={options.academicStandings || []} />
-        <SelectFilter label="Workflow status" value={filters.workflowStatus} onChange={updateFilter("workflowStatus")} options={options.workflowStatuses || []} />
-        <SelectFilter label="Blocking step" value={filters.blockingStep} onChange={updateFilter("blockingStep")} options={options.blockingSteps || []} />
-        <SelectFilter
-          label="Account status"
-          value={filters.accountStatus}
-          onChange={updateFilter("accountStatus")}
-          options={[{ value: "active", label: "Active" }, { value: "inactive", label: "Inactive" }]}
-        />
-        <div className="filter-actions">
-          <button className="primary-button" type="submit">Apply filters</button>
-          <button className="text-button" type="button" onClick={clearFilters}>Clear</button>
-        </div>
-      </form>
-
-      <section className="results" aria-label="Student results" aria-busy={loading}>
-        <div className="results-heading">
-          <h2>Students</h2>
-          <span>{loading ? "Loading" : error ? "Unavailable" : `${students.length} students`}</span>
-        </div>
-        {error ? (
-          <p className="feedback error" role="alert">{error}</p>
-        ) : loading ? (
-          <p className="feedback">Loading students…</p>
-        ) : students.length === 0 ? (
-          <p className="feedback">No students match these filters.</p>
-        ) : (
-          <div className="table-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th scope="col">Student ID</th>
-                  <th scope="col">Name and email</th>
-                  <th scope="col">Type</th>
-                  <th scope="col">Major</th>
-                  <th scope="col">Semester</th>
-                  <th scope="col">Standing</th>
-                  <th scope="col">Advisor</th>
-                  <th scope="col">Account</th>
-                  <th scope="col">Workflow status</th>
-                  <th scope="col">Blocking step</th>
-                  <th scope="col">Last update</th>
-                </tr>
-              </thead>
-              <tbody>
-                {students.map((student) => (
-                  <tr key={student.id}>
-                    <td className="student-id"><button className="text-button" type="button" onClick={() => openStudent(student.id)}>{student.studentId}</button></td>
-                    <td><strong>{student.fullName || "—"}</strong><span className="secondary-text">{student.email}</span></td>
-                    <td>{humanize(student.studentType)}</td>
-                    <td>{student.major || "—"}</td>
-                    <td>{student.currentSemester}</td>
-                    <td>{humanize(student.academicStanding) || "—"}</td>
-                    <td>{student.assignedAdvisor?.fullName || "—"}</td>
-                    <td>{humanize(student.accountStatus) || "—"}</td>
-                    <td>{humanize(student.workflowStatus) || "—"}</td>
-                    <td>{humanize(student.blockingStep) || "—"}</td>
-                    <td>{student.lastUpdatedAt ? new Date(student.lastUpdatedAt).toLocaleString() : "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      <main className="main-area">
+        <header className="topbar">
+          <div className="breadcrumbs"><span>Workspace</span><span className="crumb-separator">/</span><strong>{titleByScreen[activeScreen] || "Overview"}</strong></div>
+          <div className="topbar-actions">
+            <button className="icon-button" type="button" aria-label="Open notifications" title="Notifications" onClick={() => openScreen("notifications")}>♧</button>
+            <span className="topbar-divider" />
+            <div className="user-chip"><span className="avatar">{(profile.fullName || "U").trim().slice(0, 1).toUpperCase()}</span><span><strong>{profile.fullName}</strong><small>{roleNames[profile.role] || profile.role}</small></span></div>
+            <button className="signout-button" type="button" onClick={signOut}>Sign out</button>
           </div>
-        )}
-      </section>
+        </header>
 
-      {directory.currentUserRole === "coordinator" && (
-        <section className="advisor-management" aria-labelledby="advisor-heading">
-          <h2 id="advisor-heading">Advisors</h2>
-          <form className="advisor-lookup" onSubmit={lookupAdvisor}>
-            <label className="filter-field">
-              <span>Advisor GUC email</span>
-              <input type="email" required value={advisorEmail} onChange={(event) => setAdvisorEmail(event.target.value)} />
-            </label>
-            <button className="primary-button" type="submit">Look up advisor</button>
-          </form>
-          {advisorError && <p className="feedback error" role="alert">{advisorError}</p>}
-          {advisorMessage && <p className="feedback" role="status">{advisorMessage}</p>}
-          {advisor && (
-            <div className="advisor-result">
-              <p><strong>{advisor.fullName}</strong><span className="secondary-text">{advisor.email}</span></p>
-              <span>{advisor.isAdvisorInSystem ? "In advising system" : "Not in advising system"}</span>
-              <button className="primary-button" type="button" onClick={() => changeAdvisor(!advisor.isAdvisorInSystem)}>
-                {advisor.isAdvisorInSystem ? "Remove advisor" : "Add advisor"}
-              </button>
-            </div>
-          )}
-          <p className="secondary-text">Email delivery requires SMTP settings in `.env`.</p>
-        </section>
-      )}
-
-      {detailsOpen && (
-        <div className="details-backdrop">
-          <section className="student-details" role="dialog" aria-modal="true" aria-labelledby="details-heading">
-            <div className="details-heading">
-              <h2 id="details-heading">Student details</h2>
-              <button className="text-button" type="button" onClick={() => setDetailsOpen(false)}>Close</button>
-            </div>
-            {detailsError && <p className="feedback error" role="alert">{detailsError}</p>}
-            {detailsLoading ? <p className="feedback">Loading student…</p> : studentDetails && (
-              <dl className="details-list">
-                <dt>Student ID</dt><dd>{studentDetails.studentId}</dd>
-                <dt>Name</dt><dd>{studentDetails.user?.fullName}</dd>
-                <dt>Email</dt><dd>{studentDetails.user?.email}</dd>
-                <dt>Student type</dt><dd>{humanize(studentDetails.studentType)}</dd>
-                <dt>Major</dt><dd>{studentDetails.major}</dd>
-                <dt>Semester</dt><dd>{studentDetails.currentSemester}</dd>
-                <dt>Academic standing</dt><dd>{humanize(studentDetails.academicStanding)}</dd>
-                <dt>GPA</dt><dd>{studentDetails.gpa}</dd>
-                <dt>Enrollment</dt><dd>{humanize(studentDetails.enrollmentStatus)}</dd>
-                <dt>Advisor</dt><dd>{studentDetails.assignedAdvisor?.fullName || "—"}</dd>
-                <dt>Account</dt><dd>{studentDetails.user?.isActive ? "Active" : "Inactive"}</dd>
-              </dl>
-            )}
-            {!detailsLoading && studentDetails?.user && directory.currentUserRole === "administrator" && (
-              <button className="primary-button" type="button" onClick={updateAccount}>
-                {studentDetails.user?.isActive ? "Deactivate account" : "Activate account"}
-              </button>
-            )}
-          </section>
+        <div className="page-content">
+          {notice && <div className={`toast ${notice.type}`} role={notice.type === "error" ? "alert" : "status"}>{notice.text}<button type="button" aria-label="Dismiss" onClick={() => setNotice(null)}>×</button></div>}
+          {activeScreen === "overview" && <OverviewPage profile={profile} onOpen={openScreen} />}
+          {activeScreen === "profile" && <ProfilePage profile={profile} />}
+          {activeScreen === "notifications" && <NotificationsPage token={token} notify={notify} />}
+          {activeScreen === "records" && <StudentRecordsPage token={token} profile={profile} notify={notify} />}
+          {activeScreen === "preferences" && <PreferencesPage token={token} profile={profile} profileId={screenContext?.id || screenContext?._id || profile.studentProfileId} notify={notify} />}
+          {activeScreen === "directory" && <StudentDirectoryPage token={token} role={profile.role} notify={notify} />}
+          {activeScreen === "advising" && <AdvisingPage token={token} role={profile.role} onOpenPreferences={(student) => openScreen("preferences", student)} />}
+          {activeScreen === "my-advisor" && <MyAdvisorPage token={token} />}
+          {activeScreen === "group-assignments" && <GroupAssignmentsPage token={token} canAssign={profile.role === "coordinator"} notify={notify} />}
+          {activeScreen === "student-schedules" && <StaffSchedulesPage token={token} notify={notify} />}
+          {["my-schedule", "my-courses", "schedule-swap"].includes(activeScreen) && <StudentSchedulingPage token={token} section={activeScreen} />}
+          {["courses", "terms", "offerings", "templates"].includes(activeScreen) && <AcademicWorkspace token={token} role={profile.role} section={activeScreen} onNavigate={openScreen} notify={notify} />}
+          {!allNavItems.some((item) => item.id === activeScreen) && <OverviewPage profile={profile} onOpen={openScreen} />}
         </div>
-      )}
-    </main>
+      </main>
+    </div>
   );
 }

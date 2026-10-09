@@ -1,30 +1,18 @@
-import express from "express";
 import mongoose from "mongoose";
-import "./models/index.js";
-
-import adminRoutes from "./routes/admin.routes.js";
-import catalogueRoutes from "./routes/catalogue.routes.js";
-import advisorRoutes from "./routes/advisor.routes.js";
-
-const app = express();
+import app from "./app.js";
 const port = Number(process.env.PORT || 3000);
-const mongoUri = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/bobos";
+const mongoUri = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/bobos?replicaSet=rs0";
 
-app.use(express.json());
-
-app.use("/api/admin", adminRoutes);
-app.use("/api/catalogue", catalogueRoutes);
-app.use("/api/advisor", advisorRoutes);
-
-app.get("/api/health", (_req, res) => {
-  res.json({
-    status: "ok",
-    database: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
-  });
-});
-
-await mongoose.connect(mongoUri);
+try {
+  await mongoose.connect(mongoUri);
+  console.log("Connected to MongoDB");
+} catch {
+  console.error("Could not connect to MongoDB. Check MONGODB_URI and that the database server is running.");
+  process.exit(1);
+}
 
 app.listen(port, () => {
   console.log(`API listening at http://localhost:${port}`);
 });
+
+export default app;

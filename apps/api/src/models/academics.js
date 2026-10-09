@@ -1,4 +1,5 @@
 import { ACADEMIC_STANDINGS, DAYS_OF_WEEK, STUDENT_TYPES, WORKFLOW_STATUSES, ref, registerModel, Schema, withTimestamps } from "./shared.js";
+import mongoose from 'mongoose';
 
 // ## Sprint 1 schemas
 // ScheduleTemplate: Req. 28-29; StudentSchedule: Req. 30-34, 49; CourseAttempt: Req. 54-56, 61.
@@ -28,6 +29,10 @@ const scheduleTemplateSchema = withTimestamps({
   studyGroup: { type: String, required: true, trim: true },
   courses: { type: [templateCourseSchema], default: [] },
   isPublished: { type: Boolean, default: false, index: true },
+});
+
+scheduleTemplateSchema.pre("validate", function () {
+  if (!this.courses?.length) this.invalidate("courses", "A schedule template must include at least one course.");
 });
 
 scheduleTemplateSchema.index({ term: 1, major: 1, semester: 1, studyGroup: 1 }, { unique: true });
@@ -173,3 +178,161 @@ const studentTermStandingSchema = withTimestamps({
 studentTermStandingSchema.index({ student: 1, term: 1 }, { unique: true });
 
 export const StudentTermStanding = registerModel("StudentTermStanding", studentTermStandingSchema);
+
+//Added for Req 54: View academic history
+export const getAcademicHistory = async (studentId) => {
+// mongoose is needed to access other models if they aren't explicitly imported here
+  const StudentProfile = mongoose.model('StudentProfile');
+  const Course = mongoose.model('Course');
+
+  const profile = await StudentProfile.findById(studentId).populate('assignedAdvisor', 'fullName').lean();
+  if(!profile){
+    return null;
+  }
+
+  const attempts = await CourseAttempt.find({ student: studentId }).populate('course').lean();
+
+
+  const completedCourses = [];
+  const currentCourses = [];
+  const takenCourseIds = new Set(); //this will help figuring out the remaining courses
+
+  attempts.forEach(attempt => {
+    if(attempt.course){
+      if (attempt.result === 'passed' || attempt.result === 'current') takenCourseIds.add(attempt.course._id.toString());
+
+      if(attempt.result === 'current'){
+        currentCourses.push(attempt);
+      }else{
+        completedCourses.push(attempt);
+      }
+    }
+  });
+
+  const remainingCourses = await Course.find({ isActive: true, facultyMajors: profile.major, _id: { $nin: Array.from(takenCourseIds) } }).select('code name creditHours prerequisites offeringSeasons').lean();
+
+  return{
+    studentProfile: {
+      advisor: profile.assignedAdvisor?.fullName ?? 'Unassigned',
+      major: profile.major,
+      gpa: profile.gpa,
+      completedHours: [...new Map(completedCourses.filter(a => a.result === 'passed').map(a => [String(a.course._id), a.course.creditHours])).values()].reduce((sum, hours) => sum + hours, 0),
+      currentSemester: profile.currentSemester
+    },
+    completedCourses,
+    currentCourses,
+    remainingCourses
+  };
+};
+
+
+//Added for Req 55: View transcript for a selected academic year
+export const getTranscriptByYear = async (studentId, year) => {
+  const attempts = await CourseAttempt.find({ student: studentId })
+    .populate({
+      path: 'term',
+      match: { academicYear: year }
+    })
+    .populate('course')
+    .exec();
+
+  const validAttempts = attempts.filter(attempt => attempt.term !== null);
+  if (validAttempts.length === 0) return null;
+
+  const transcript = {
+    studentId,
+    year,
+    terms: {
+      winter: [],
+      spring: [],
+      summer: [],
+      firstMakeup: [],
+      secondMakeup: []
+    }
+  };
+
+  validAttempts.forEach(attempt => {
+    const season = attempt.term.season ? attempt.term.season.toLowerCase() : '';
+
+    if (season === 'winter') transcript.terms.winter.push(attempt);
+    else if (season === 'spring') transcript.terms.spring.push(attempt);
+    else if (season === 'summer') transcript.terms.summer.push(attempt);
+    else if (season.includes('first') && season.includes('makeup')) transcript.terms.firstMakeup.push(attempt);
+    else if (season.includes('second') && season.includes('makeup')) transcript.terms.secondMakeup.push(attempt);
+  });
+
+  return transcript;
+};
+
+//Added for Req 61: View failed and unattended courses
+export const getFailedAndUnattended = async (studentId, termId) => {
+  const RemovalRequest = mongoose.model('MandatoryCourseRemovalRequest');
+  const AcademicTerm = mongoose.model('AcademicTerm');
+  const currentTerm = termId ? { _id: termId } : await AcademicTerm.findOne({ isActive: true }).sort({ termStart: -1 });
+  const removed = currentTerm ? await RemovalRequest.find({ student: studentId, term: currentTerm._id, status: 'approved' }).select('course').lean() : [];
+  const excluded = new Set(removed.map(request => String(request.course)));
+  const passed = await CourseAttempt.distinct('course', { student: studentId, result: 'passed' });
+  for (const courseId of passed) excluded.add(String(courseId));
+  const mandatoryCandidates = await CourseAttempt.find({
+     student: studentId,
+    $or: [
+      { result: 'failed' },
+      { attendance: 'unattended' }
+    ]
+  })
+  .populate('course')
+  .populate('term')
+  .exec();
+
+  mandatoryCandidates.sort((a, b) => new Date(b.term?.termStart ?? b.createdAt) - new Date(a.term?.termStart ?? a.createdAt) || b.attemptNumber - a.attemptNumber);
+  const seen = new Set();
+  return mandatoryCandidates.filter(attempt => {
+    const courseId = String(attempt.course?._id ?? attempt._id);
+    if (excluded.has(courseId) || seen.has(courseId)) return false;
+    seen.add(courseId);
+    return true;
+  })
+    .map(attempt => ({ ...attempt.toObject(), isMandatory: true }));
+};
+
+export const getAttendedAcademicYears = async (studentId) => {
+  const AcademicTerm = mongoose.model('AcademicTerm');
+  const termIds = await CourseAttempt.distinct('term', { student: studentId });
+  const terms = await AcademicTerm.find({ _id: { $in: termIds } }).sort({ termStart: -1 }).select('academicYear').lean();
+  return [...new Set(terms.map(term => term.academicYear))];
+};
+
+//Added for Req 89: View wallet
+export const getWallet = async (studentId) => {
+  const FinancialTransaction = mongoose.model('FinancialTransaction');
+
+  const transactions = await FinancialTransaction.find({ student: studentId })
+    .where('kind').in(['walletTopUp', 'refund', 'extraHoursWalletPayment'])
+    .sort({ occurredAt: 1, _id: 1 })
+    .lean();
+
+  if (!transactions) {
+    return null;
+  }
+
+  let balanceCents = 0;
+
+  transactions.forEach(txn => {
+    if (txn.status === 'succeeded') {
+      if (txn.kind === 'walletTopUp' || txn.kind === 'refund') {
+        balanceCents += Math.round(txn.amount * 100);
+      } else if (txn.kind === 'extraHoursWalletPayment') {
+        balanceCents -= Math.round(txn.amount * 100);
+      }
+    }
+    txn.resultingBalance = balanceCents / 100;
+    txn.direction = txn.kind === 'extraHoursWalletPayment' ? 'debit' : 'credit';
+  });
+
+  return {
+    studentId,
+    balance: balanceCents / 100,
+    currency: "EGP",
+    transactions: transactions.reverse()
+  };
+};

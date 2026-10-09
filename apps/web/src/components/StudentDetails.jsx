@@ -11,7 +11,7 @@ const Field = ({ label, value }) => (
   </p>
 );
 
-export default function StudentDetails({ profileId, onBack }) {
+export default function StudentDetails({ profileId, canAssign = false, onBack }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -62,6 +62,7 @@ export default function StudentDetails({ profileId, onBack }) {
         <Field label="Email" value={profile.user?.email} />
         <Field label="Major" value={profile.major} />
         <Field label="Current Semester" value={profile.currentSemester} />
+        <Field label="GPA" value={profile.gpa} />
         <Field label="Advising Reason" value={profile.advisingReason} />
         <Field label="Academic Standing" value={profile.academicStanding} />
         <Field label="Enrollment Status" value={profile.enrollmentStatus} />
@@ -79,12 +80,14 @@ export default function StudentDetails({ profileId, onBack }) {
             <em>No advisor currently assigned</em>
           </p>
         )}
-        <button
-          onClick={() => setShowAssign(true)}
-          style={{ marginTop: '0.75rem', padding: '0.35rem 0.8rem', cursor: 'pointer' }}
-        >
-          {profile.assignedAdvisor ? 'Reassign Advisor' : 'Assign Advisor'}
-        </button>
+        {canAssign && (
+          <button
+            onClick={() => setShowAssign(true)}
+            style={{ marginTop: '0.75rem', padding: '0.35rem 0.8rem', cursor: 'pointer' }}
+          >
+            {profile.assignedAdvisor ? 'Reassign Advisor' : 'Assign Advisor'}
+          </button>
+        )}
       </section>
 
       {workflowState && (
@@ -133,7 +136,7 @@ export default function StudentDetails({ profileId, onBack }) {
         )}
       </section>
 
-      {showAssign && (
+      {canAssign && showAssign && (
         <AssignAdvisorModal
           student={assignTargetShape}
           onClose={() => setShowAssign(false)}
