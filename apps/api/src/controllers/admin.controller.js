@@ -1,10 +1,16 @@
 import mongoose from "mongoose";
 import nodemailer from "nodemailer";
-import { StudentWorkflowState } from "../models/academics.js";
-import { Notification } from "../models/communications.js";
+import { StudentSchedule } from "../models/academics.js";
+import { Notification, ScheduleActivity } from "../models/communications.js";
 import { AcademicTerm } from "../models/catalogue.js";
 import { ACADEMIC_STANDINGS, STUDENT_TYPES, WORKFLOW_STATUSES } from "../models/shared.js";
 import { AdvisorAssignment, StudentProfile, User } from "../models/identity.js";
+import {
+  ExtraHoursRequest,
+  MandatoryCourseRemovalRequest,
+  SlotChangeRequest,
+  WholeScheduleSwapRequest,
+} from "../models/requests.js";
 
 const filterKeys = [
   "search",
@@ -109,16 +115,8 @@ export async function getStudents(req, res) {
       : null;
     Object.assign(profileFilter, buildStudentSearchFilter(searchPattern, searchUserIds, accountUserIds));
 
-    if (workflowStatus || blockingStep) {
-      const workflowFilter = { term: activeTerm?._id };
-      if (workflowStatus) workflowFilter.status = workflowStatus;
-      if (blockingStep) workflowFilter.blockingStep = blockingStep;
-      const studentIds = activeTerm ? await StudentWorkflowState.distinct("student", workflowFilter) : [];
-      profileFilter._id = { $in: studentIds };
-    }
-
     const assignedAdvisorIds = await StudentProfile.distinct("assignedAdvisor", { assignedAdvisor: { $ne: null } });
-    const [profiles, advisors, majors, blockingSteps] = await Promise.all([
+    const [profiles, advisors, majors] = await Promise.all([
       StudentProfile.find(profileFilter)
         .select("user studentId studentType major currentSemester academicStanding assignedAdvisor")
         .populate("user", "fullName email isActive")
@@ -130,21 +128,154 @@ export async function getStudents(req, res) {
         .sort({ fullName: 1 })
         .lean(),
       StudentProfile.distinct("major", { major: { $nin: [null, ""] } }),
-      activeTerm
-        ? StudentWorkflowState.distinct("blockingStep", {
-            term: activeTerm._id,
-            blockingStep: { $nin: [null, ""] },
-          })
-        : [],
     ]);
 
-    const states = activeTerm && profiles.length
-      ? await StudentWorkflowState.find({
-          term: activeTerm._id,
-          student: { $in: profiles.map((profile) => profile._id) },
-        }).select("student status blockingStep lastActivityAt").lean()
-      : [];
-    const stateByStudent = new Map(states.map((state) => [String(state.student), state]));
+    const studentIds = profiles.map((profile) => profile._id);
+    const [schedules, swapRequests, scheduleActivities, slotChanges, removalRequests, extraHourRequests] = activeTerm && studentIds.length
+      ? await Promise.all([
+          StudentSchedule.find({ term: activeTerm._id, student: { $in: studentIds } })
+            .select("_id student scheduleType status version updatedAt processedAt createdAt")
+            .lean(),
+          WholeScheduleSwapRequest.find({ term: activeTerm._id, student: { $in: studentIds } })
+            .select("student status expiresAt updatedAt")
+            .sort({ updatedAt: -1 })
+            .lean(),
+          ScheduleActivity.find({ term: activeTerm._id, student: { $in: studentIds } })
+            .select("student schedule action scheduleVersion occurredAt")
+            .sort({ occurredAt: -1 })
+            .lean(),
+          SlotChangeRequest.find({ term: activeTerm._id, student: { $in: studentIds } })
+            .select("student status updatedAt")
+            .lean(),
+          MandatoryCourseRemovalRequest.find({ term: activeTerm._id, student: { $in: studentIds } })
+            .select("student status updatedAt")
+            .lean(),
+          ExtraHoursRequest.find({ term: activeTerm._id, student: { $in: studentIds } })
+            .select("student decisionStatus settlementStatus updatedAt")
+            .lean(),
+        ])
+      : [[], [], [], [], [], []];
+    const workflowByStudent = new Map();
+    const scheduleCycleStartedAtByStudent = new Map();
+    const applyWorkflow = (student, status, blockingStep, updatedAt, priority) => {
+      const id = String(student);
+      const current = workflowByStudent.get(id);
+      const time = updatedAt ? new Date(updatedAt) : null;
+      const lastUpdatedAt = !current?.lastUpdatedAt || time > current.lastUpdatedAt
+        ? time
+        : current.lastUpdatedAt;
+      if (!current || priority > current.priority ||
+        (priority === current.priority && time && (!current.statusUpdatedAt || time >= current.statusUpdatedAt))) {
+        workflowByStudent.set(id, { status, blockingStep, lastUpdatedAt, statusUpdatedAt: time, priority });
+      } else {
+        current.lastUpdatedAt = lastUpdatedAt;
+      }
+    };
+    const latestActivityBySchedule = new Map();
+    for (const activity of scheduleActivities) {
+      const key = String(activity.schedule);
+      if (!latestActivityBySchedule.has(key)) latestActivityBySchedule.set(key, activity);
+    }
+    for (const schedule of schedules) {
+      const latestActivity = latestActivityBySchedule.get(String(schedule._id));
+      if (schedule.scheduleType === "advising") {
+        scheduleCycleStartedAtByStudent.set(
+          String(schedule.student),
+          latestActivity?.action === "reopened" && latestActivity.scheduleVersion === schedule.version
+            ? latestActivity.occurredAt
+            : schedule.createdAt,
+        );
+      }
+      const reopened = schedule.scheduleType === "advising" && schedule.status === "draft" &&
+        latestActivity?.action === "reopened" && latestActivity.scheduleVersion === schedule.version;
+      const status = schedule.scheduleType === "advising"
+        ? reopened ? "reopened" : schedule.status
+        : schedule.status === "processed" ? "scheduleAssigned" : null;
+      if (status) {
+        const scheduleUpdatedAt = schedule.updatedAt ?? schedule.processedAt ?? schedule.createdAt ?? null;
+        const lastUpdatedAt = latestActivity?.occurredAt &&
+          (!scheduleUpdatedAt || latestActivity.occurredAt > scheduleUpdatedAt)
+          ? latestActivity.occurredAt
+          : scheduleUpdatedAt;
+        applyWorkflow(schedule.student, status, {
+          draft: "Complete draft schedule",
+          reopened: "Complete reopened schedule",
+        }[status] ?? null,
+        lastUpdatedAt, schedule.scheduleType === "normal" ? 2 : 1);
+      }
+    }
+    if (activeTerm) {
+      for (const profile of profiles) {
+        if (profile.studentType === "advising" && !workflowByStudent.has(String(profile._id))) {
+          applyWorkflow(profile._id, "notStarted", "Create advising schedule", null, 1);
+        }
+      }
+    }
+    const resolvedWorkflowByStudent = new Map();
+    const markResolved = (request) => {
+      const id = String(request.student);
+      const updatedAt = request.updatedAt;
+      if (!resolvedWorkflowByStudent.has(id) || updatedAt > resolvedWorkflowByStudent.get(id)) {
+        resolvedWorkflowByStudent.set(id, updatedAt);
+      }
+    };
+    const now = new Date();
+    for (const request of swapRequests) {
+      const expired = request.status === "open" && request.expiresAt <= now;
+      const status = expired ? "swapExpired" : {
+        open: "swapRequestOpen",
+        completed: "swapCompleted",
+        withdrawn: "swapWithdrawn",
+        expired: "swapExpired",
+      }[request.status];
+      if (status) {
+        applyWorkflow(request.student, status, null, expired ? request.expiresAt : request.updatedAt, 2);
+      }
+    }
+    for (const request of slotChanges) {
+      if (request.status === "pending") {
+        applyWorkflow(request.student, "changeRequestPending", "Resolve pending slot-change requests", request.updatedAt, 3);
+      } else {
+        markResolved(request);
+      }
+    }
+    for (const request of removalRequests) {
+      if (request.status === "pending") {
+        applyWorkflow(request.student, "pendingApproval", "Resolve pending coordinator approval", request.updatedAt, 4);
+      } else {
+        markResolved(request);
+      }
+    }
+    for (const request of extraHourRequests) {
+      const status = request.decisionStatus === "pending"
+        ? "pendingApproval"
+        : request.decisionStatus === "approved" && ["none", "awaitingChoice", "failed", "cancelled"].includes(request.settlementStatus)
+          ? "awaitingPaymentChoice"
+          : request.decisionStatus === "approved" && request.settlementStatus === "deferred" ? "deferredToNextInstallment" : null;
+      if (status) {
+        applyWorkflow(request.student, status, {
+          pendingApproval: "Resolve pending coordinator approval",
+          awaitingPaymentChoice: "Choose payment option",
+        }[status] ?? null, request.updatedAt, status === "pendingApproval" ? 4 : 3);
+      } else {
+        markResolved(request);
+      }
+    }
+    for (const profile of profiles) {
+      const workflow = workflowByStudent.get(String(profile._id));
+      const resolvedAt = resolvedWorkflowByStudent.get(String(profile._id));
+      const cycleStartedAt = scheduleCycleStartedAtByStudent.get(String(profile._id));
+      if (profile.studentType === "advising" && workflow?.status === "readyForStudentReview" &&
+        resolvedAt && cycleStartedAt && resolvedAt >= cycleStartedAt) {
+        applyWorkflow(profile._id, "readyToProcess", null, resolvedAt, 2);
+      }
+    }
+    const blockingSteps = [...new Set([...workflowByStudent.values()].map((workflow) => workflow.blockingStep).filter(Boolean))].sort();
+    const visibleProfiles = profiles.filter((profile) => {
+      const workflow = workflowByStudent.get(String(profile._id));
+      return (!workflowStatus || workflow?.status === workflowStatus) &&
+        (!blockingStep || workflow?.blockingStep === blockingStep);
+    });
 
     res.json({
       currentUserRole: req.user.role,
@@ -153,8 +284,8 @@ export async function getStudents(req, res) {
         academicYear: activeTerm.academicYear,
         season: activeTerm.season,
       } : null,
-      students: profiles.map((profile) => {
-        const state = stateByStudent.get(String(profile._id));
+      students: visibleProfiles.map((profile) => {
+        const workflow = workflowByStudent.get(String(profile._id));
         return {
           id: String(profile._id),
           studentId: profile.studentId,
@@ -170,9 +301,9 @@ export async function getStudents(req, res) {
             fullName: profile.assignedAdvisor.fullName,
             email: profile.assignedAdvisor.email,
           } : null,
-          workflowStatus: state?.status ?? null,
-          blockingStep: state?.blockingStep ?? null,
-          lastUpdatedAt: state?.lastActivityAt ?? null,
+          workflowStatus: workflow?.status ?? null,
+          blockingStep: workflow?.blockingStep ?? null,
+          lastUpdatedAt: workflow?.lastUpdatedAt ?? null,
         };
       }),
       filters: {
@@ -181,7 +312,7 @@ export async function getStudents(req, res) {
         workflowStatuses: WORKFLOW_STATUSES,
         advisors: advisors.map((user) => ({ id: String(user._id), fullName: user.fullName, email: user.email })),
         majors: majors.filter(Boolean).sort(),
-        blockingSteps: blockingSteps.filter(Boolean).sort(),
+        blockingSteps,
       },
     });
   } catch (error) {

@@ -25,7 +25,7 @@ export function GroupAssignmentsPage({ token, canAssign = false, notify }) {
       .then(({ terms: rows = [] }) => {
         if (!alive) return;
         setTerms(rows);
-        setTermId(rows.find((item) => item.isActive)?._id || rows[0]?._id || "");
+        setTermId(rows.find((item) => item.isActive)?.code || rows[0]?.code || "");
       })
       .catch((err) => alive && setError(err.message))
       .finally(() => alive && setLoading(false));
@@ -91,7 +91,7 @@ export function GroupAssignmentsPage({ token, canAssign = false, notify }) {
 
   return <div className="page-stack scheduling-page">
     <div className="page-title-row"><div><p className="eyebrow">Requirement 30 · Coordinator</p><h1>Schedule group assignments</h1><p className="page-description">Assign or move active normal students to a published group for their major and semester.</p></div>
-      <label className="field term-picker"><span>Academic term</span><select value={termId} onChange={(event) => setTermId(event.target.value)} disabled={loading || !terms.length}>{terms.map((term) => <option key={term._id} value={term._id}>{term.season} {term.academicYear}{term.isActive ? " · Active" : ""}</option>)}</select></label>
+      <label className="field term-picker"><span>Academic term</span><select value={termId} onChange={(event) => setTermId(event.target.value)} disabled={loading || !terms.length}>{terms.map((term) => <option key={term._id} value={term.code}>Term {term.code} · {term.season}{term.isActive ? " · Active" : ""}</option>)}</select></label>
     </div>
     {error && <Feedback tone="error">{error}</Feedback>}
     {!loading && !terms.length && <Feedback tone="warning">Create an academic term before assigning schedules.</Feedback>}
@@ -205,7 +205,7 @@ export function StaffSchedulesPage({ token, notify }) {
     let alive = true;
     api("/api/group-assignments/terms", { token }).then(({ terms: rows = [] }) => {
       if (!alive) return;
-      setTerms(rows); setTermId(rows.find((term) => term.isActive)?._id || rows[0]?._id || "");
+      setTerms(rows); setTermId(rows.find((term) => term.isActive)?.code || rows[0]?.code || "");
     }).catch(() => { /* Advisors can use the active term without directory access. */ });
     return () => { alive = false; };
   }, [token]);
@@ -228,7 +228,7 @@ export function StaffSchedulesPage({ token, notify }) {
 
   return <div className="page-stack scheduling-page">
     <div className="page-title-row"><div><p className="eyebrow">Requirement 31 · Staff</p><h1>Student schedules</h1><p className="page-description">Review a student’s schedule according to your role and advising assignments.</p></div>
-      {terms.length > 0 && <label className="field term-picker"><span>Academic term</span><select value={termId} onChange={(event) => { setTermId(event.target.value); setSelected(null); setSchedule(null); }}>{terms.map((term) => <option key={term._id} value={term._id}>{term.season} {term.academicYear}</option>)}</select></label>}
+      {terms.length > 0 && <label className="field term-picker"><span>Academic term</span><select value={termId} onChange={(event) => { setTermId(event.target.value); setSelected(null); setSchedule(null); }}>{terms.map((term) => <option key={term._id} value={term.code}>Term {term.code} · {term.season}</option>)}</select></label>}
     </div>
     {error && <Feedback tone="error">{error}</Feedback>}
     <section className="panel"><div className="results-heading"><div><p className="eyebrow">Roster</p><h2>Students</h2></div><span className="result-count">{students.length} students</span></div>

@@ -43,8 +43,8 @@ const navGroups = (role) => {
     ...(["coordinator", "administrator"].includes(role) ? [{ title: "Academic setup", items: [
       { id: "courses", label: "Course catalogue", icon: "▦" },
       { id: "terms", label: "Academic terms", icon: "◷" },
-      { id: "offerings", label: "Course offerings", icon: "▤" },
-      { id: "templates", label: "Schedule templates", icon: "▧" },
+      ...(role === "administrator" ? [{ id: "offerings", label: "Course offerings", icon: "▤" }] : []),
+      ...(role === "coordinator" ? [{ id: "templates", label: "Schedule templates", icon: "▧" }] : []),
       { id: "group-assignments", label: "Schedule group assignments", icon: "⇄" },
     ] }] : []),
   ];

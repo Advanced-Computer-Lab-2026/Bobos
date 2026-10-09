@@ -34,7 +34,7 @@ export const  createAcademicTerm = async (req, res) => {
 export const updateAcademicTerm = async (req, res) => {
   try {
     const { id } = req.params;
-    if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: 'Invalid academic term ID' });
+    if (typeof id !== 'string' || !id.trim()) return res.status(400).json({ message: 'Academic term code or ID is required' });
     if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
       return res.status(400).json({ message: 'Request body must be a JSON object' });
     }
@@ -43,7 +43,10 @@ export const updateAcademicTerm = async (req, res) => {
     if (unknown.length) return res.status(400).json({ message: `Unknown field(s): ${unknown.join(', ')}` });
     if (!Object.keys(req.body).length) return res.status(400).json({ message: 'Provide at least one field to update' });
 
-    const term = await AcademicTerm.findById(id);
+    const identifier = id.trim();
+    const term = mongoose.isValidObjectId(identifier)
+      ? await AcademicTerm.findById(identifier)
+      : await AcademicTerm.findOne({ code: identifier });
     if (!term) return res.status(404).json({ message: 'Academic term not found' });
 
     Object.assign(term, req.body);

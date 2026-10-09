@@ -96,8 +96,8 @@ const offeringSlotSchema = new Schema(
       },
     },
     room: { type: String, required: true, trim: true },
-    capacity: { type: Number, required: true, min: 0 },
-    assignedStudentCount: { type: Number, default: 0, min: 0 },
+    capacity: { type: Number, required: true, min: 0, validate: Number.isInteger },
+    assignedStudentCount: { type: Number, default: 0, min: 0, validate: Number.isInteger },
   },
   { timestamps: false, toJSON: { virtuals: true }, toObject: { virtuals: true } },
 );
