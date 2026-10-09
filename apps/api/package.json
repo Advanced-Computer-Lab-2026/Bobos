@@ -8,6 +8,7 @@
     "seed": "node --env-file-if-exists=../../.env src/seed/index.js",
     "seed:c2": "node --env-file-if-exists=../../.env src/seed/c2.js",
     "seed:evaluation": "node --env-file-if-exists=../../.env src/seed/evaluation.js",
+    "seed:unpublish-review": "node --env-file-if-exists=../../.env src/seed/unpublish-review.js",
     "seed:advising": "node --env-file-if-exists=../../.env seed.js",
     "import:courses": "node src/scripts/importCourses.js"
   },
