@@ -339,7 +339,7 @@ async function withOwnSchedule(req, res, callback) {
 
 export async function listAssignmentTerms(_req, res, next) {
   try {
-    const terms = await AcademicTerm.find().select("code academicYear season isActive termStart termEnd wholeScheduleSwapDeadline")
+    const terms = await AcademicTerm.find({ code: { $not: /^C2DEMO/i } }).select("code academicYear season isActive termStart termEnd wholeScheduleSwapDeadline")
       .sort({ termStart: -1 }).lean();
     res.json({ terms: terms.map(termView) });
   } catch (error) { next(error); }
