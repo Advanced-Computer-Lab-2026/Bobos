@@ -35,11 +35,12 @@ router.post('/offerings/:id/slots', requireAuth, requireRole('administrator'), a
 
 // Courses managment
 router.post('/courses/import', express.json({ limit: "2mb" }), requireAuth, requireRole('administrator'), importCoursesCsv);
-router.post('/courses', createCourse);
-router.get('/courses/:id', getCourseById);
-router.get('/courses', getCourses);
-router.put('/courses/:id', updateCourse);
-router.delete('/courses/:id', deleteCourse);
+router.post('/courses', requireAuth, requireRole('administrator'), createCourse);
+// Coordinators need read access to choose courses while creating schedule templates.
+router.get('/courses/:id', requireAuth, requireRole('administrator', 'coordinator'), getCourseById);
+router.get('/courses', requireAuth, requireRole('administrator', 'coordinator'), getCourses);
+router.put('/courses/:id', requireAuth, requireRole('administrator'), updateCourse);
+router.delete('/courses/:id', requireAuth, requireRole('administrator'), deleteCourse);
 // Req 25: Update a course offering (top-level fields)
 router.put('/offerings/:id', requireAuth, requireRole('administrator'), updateOffering);
 

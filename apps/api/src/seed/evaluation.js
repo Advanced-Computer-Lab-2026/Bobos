@@ -1,9 +1,11 @@
 import bcrypt from 'bcryptjs';
 import mongoose from 'mongoose';
 import { readFile } from 'node:fs/promises';
+import { pathToFileURL } from 'node:url';
 import { AdvisorAssignment, StudentProfile, User } from '../models/identity.js';
 import { AcademicTerm, Course, CourseOffering } from '../models/catalogue.js';
-import { StudentWorkflowState } from '../models/academics.js';
+import { CourseAttempt, StudentSchedule, StudentWorkflowState } from '../models/academics.js';
+import { FinancialTransaction } from '../models/finance.js';
 import { parseCurriculumCsv } from '../scripts/importCourses.js';
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/bobos';
@@ -175,7 +177,29 @@ async function seedAccounts(currentTerm, passwordHash) {
     students.push({ user, profile });
   }
 
-  return { administrator, coordinator, advisors, students };
+  const normalStudent = await upsertUser('evaluation.normal@student.guc.edu.eg', {
+    fullName: 'Evaluation Normal Student', passwordHash, role: 'normalStudent', isActive: true,
+  });
+  const normalProfile = await StudentProfile.findOneAndUpdate(
+    { user: normalStudent._id },
+    { $set: {
+      user: normalStudent._id,
+      studentId: '61-00100',
+      studentType: 'normal',
+      faculty: 'MET',
+      major: 'CS',
+      currentSemester: 1,
+      gpa: 3.1,
+      academicStanding: 'goodAcademicStanding',
+      enrollmentStatus: 'active',
+      studyGroup: '1',
+      advisingReason: undefined,
+      assignedAdvisor: null,
+    } },
+    { upsert: true, returnDocument: 'after', runValidators: true, setDefaultsOnInsert: true },
+  );
+
+  return { administrator, coordinator, advisors, students, normalStudent, normalProfile };
 }
 
 async function seedCurrentTermOfferings(term) {
@@ -233,7 +257,82 @@ async function seedCurrentTermOfferings(term) {
   return offerings;
 }
 
-async function seedEvaluationData() {
+async function seedRepresentativeRecords(accounts, terms, currentTerm) {
+  const passedCourse = await Course.findOne({ code: 'CSEN102' });
+  const failedCourse = await Course.findOne({ code: 'MATH103' });
+  const passedTerm = terms.find(({ code }) => code === '58-');
+  const failedTerm = terms.find(({ code }) => code === '59-');
+  if (!passedCourse || !failedCourse || !passedTerm || !failedTerm) {
+    throw new Error('Cannot seed evaluation records: sample courses or historical terms are missing.');
+  }
+
+  const advisingProfile = accounts.students[0].profile;
+  await CourseAttempt.findOneAndUpdate(
+    { student: advisingProfile._id, course: passedCourse._id, term: passedTerm._id, attemptNumber: 1 },
+    { $set: { student: advisingProfile._id, course: passedCourse._id, term: passedTerm._id, attemptNumber: 1, attendance: 'attended', result: 'passed', grade: 'B' } },
+    { upsert: true, returnDocument: 'after', runValidators: true, setDefaultsOnInsert: true },
+  );
+  await CourseAttempt.findOneAndUpdate(
+    { student: advisingProfile._id, course: failedCourse._id, term: failedTerm._id, attemptNumber: 1 },
+    { $set: { student: advisingProfile._id, course: failedCourse._id, term: failedTerm._id, attemptNumber: 1, attendance: 'attended', result: 'failed', grade: 'F' } },
+    { upsert: true, returnDocument: 'after', runValidators: true, setDefaultsOnInsert: true },
+  );
+
+  const normalOfferings = await CourseOffering.find({ term: currentTerm._id, isPublished: true })
+    .populate('course', 'code creditHours courseType');
+  const scheduleCourses = normalOfferings
+    .filter(({ course }) => ['CSEN102', 'MATH103'].includes(course?.code))
+    .map((offering) => ({
+      course: offering.course._id,
+      courseOffering: offering._id,
+      slots: offering.slots.map((slot) => ({ componentType: slot.componentType, courseOffering: offering._id, slotGroupId: slot._id })),
+      isMandatory: offering.course.courseType !== 'elective',
+      isExtraHours: false,
+      creditHoursSnapshot: offering.course.creditHours,
+    }));
+  if (scheduleCourses.length !== 2) throw new Error('Cannot seed the normal-student schedule: CSEN102 or MATH103 offering is missing.');
+  const processedAt = new Date();
+  await StudentSchedule.findOneAndUpdate(
+    { student: accounts.normalProfile._id, term: currentTerm._id, scheduleType: 'normal' },
+    { $set: {
+      student: accounts.normalProfile._id,
+      term: currentTerm._id,
+      scheduleType: 'normal',
+      status: 'processed',
+      template: null,
+      courses: scheduleCourses,
+      createdBy: accounts.coordinator._id,
+      processedBy: accounts.coordinator._id,
+      processedAt,
+    } },
+    { upsert: true, returnDocument: 'after', runValidators: true, setDefaultsOnInsert: true },
+  );
+
+  const walletRecords = [
+    { kind: 'walletTopUp', amount: 500, status: 'succeeded', suffix: 'top-up' },
+    { kind: 'extraHoursWalletPayment', amount: 120, status: 'succeeded', suffix: 'extra-hours' },
+    { kind: 'walletTopUp', amount: 75, status: 'pending', suffix: 'pending-top-up' },
+  ];
+  for (const record of walletRecords) {
+    const { suffix, ...fields } = record;
+    await FinancialTransaction.findOneAndUpdate(
+      { student: accounts.normalProfile._id, transactionReference: `evaluation-${suffix}-60` },
+      { $set: {
+        student: accounts.normalProfile._id,
+        ...fields,
+        currency: 'EGP',
+        settlementOption: 'wallet',
+        transactionReference: `evaluation-${suffix}-60`,
+        occurredAt: new Date(currentTerm.termStart.getTime() + (suffix === 'extra-hours' ? 2 : 1) * 86400000),
+      } },
+      { upsert: true, returnDocument: 'after', runValidators: true, setDefaultsOnInsert: true },
+    );
+  }
+
+  return { courseAttempts: 2, normalScheduleCourses: scheduleCourses.length, walletTransactions: walletRecords.length };
+}
+
+export async function seedEvaluationData() {
   assertLocalDatabase(MONGODB_URI);
   await mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 7000 });
   try {
@@ -242,22 +341,26 @@ async function seedEvaluationData() {
     const courses = await seedCurriculum();
     const accounts = await seedAccounts(terms.find(({ code }) => code === '60-'), passwordHash);
     const offerings = await seedCurrentTermOfferings(terms.find(({ code }) => code === '60-'));
+    const records = await seedRepresentativeRecords(accounts, terms, terms.find(({ code }) => code === '60-'));
     const totalTermCount = await AcademicTerm.countDocuments();
 
     console.log('Evaluation seed completed (idempotent; no collections were cleared).');
-    console.log(`Advising students: ${accounts.students.length}; advisors: ${accounts.advisors.length}; coordinator: 1; administrator: 1`);
+    console.log(`Students: ${accounts.students.length} advising + 1 normal; advisors: ${accounts.advisors.length}; coordinator: 1; administrator: 1`);
     console.log(`Courses: ${courses.curriculumCount} curriculum courses from courses.csv + ${courses.electiveCount} electives`);
     console.log(`Terms added/updated: ${terms.map(({ code }) => code).join(', ')}; total terms in database: ${totalTermCount}; active term: 60-`);
     console.log(`Offerings in active term 60-: ${offerings.map(({ code, isPublished }) => `${code} (${isPublished ? 'published' : 'draft'})`).join(', ')}`);
+    console.log(`Sample records: ${records.courseAttempts} course attempts, ${records.normalScheduleCourses} courses in the normal student's processed schedule, ${records.walletTransactions} wallet transactions`);
     console.log(`Curriculum repeated listings merged: ${courses.mergedListings}; elective placeholders skipped: ${courses.skippedPlaceholders}`);
     console.log(`Evaluation account password: ${DEVELOPMENT_PASSWORD}`);
-    console.log('Accounts: evaluation.admin@guc.edu.eg; evaluation.coordinator@guc.edu.eg; evaluation.advisor1-5@guc.edu.eg; evaluation.student1-10@student.guc.edu.eg');
+    console.log('Accounts: evaluation.admin@guc.edu.eg; evaluation.coordinator@guc.edu.eg; evaluation.advisor1-5@guc.edu.eg; evaluation.student1-10@student.guc.edu.eg; evaluation.normal@student.guc.edu.eg');
   } finally {
     await mongoose.disconnect();
   }
 }
 
-seedEvaluationData().catch((error) => {
-  console.error(`Evaluation seed failed: ${error.message}`);
-  process.exitCode = 1;
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  seedEvaluationData().catch((error) => {
+    console.error(`Evaluation seed failed: ${error.message}`);
+    process.exitCode = 1;
+  });
+}
