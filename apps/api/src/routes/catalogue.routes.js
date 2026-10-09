@@ -14,6 +14,9 @@ import {
   deleteOfferingSlot,
   togglePublishOffering,
 } from '../controllers/catalogue.controller.js';
+import { importCoursesCsv } from "../controllers/course-import.controller.js";
+import { requireAuth } from "../middleware/auth.middleware.js";
+import { requireRole } from "../middleware/require-role.js";
 
 const router = express.Router();
 
@@ -27,6 +30,7 @@ router.get('/offerings', getOfferings);
 router.get('/offerings/:id', getOfferingById);
 
 // Courses managment
+router.post('/courses/import', express.json({ limit: "2mb" }), requireAuth, requireRole('administrator'), importCoursesCsv);
 router.post('/courses', createCourse);
 router.get('/courses/:id', getCourseById);
 router.get('/courses', getCourses);

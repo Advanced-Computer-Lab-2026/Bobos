@@ -5,18 +5,34 @@ const pretty = (value = "") => String(value || "—").replace(/([a-z])([A-Z])/g,
 const seasons = ["winter", "spring", "summer", "firstMakeup", "secondMakeup"];
 const week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
-export default function AcademicWorkspace({ token, section, notify }) {
-  if (section === "courses") return <CoursesWorkspace token={token} notify={notify} />;
+export default function AcademicWorkspace({ token, role, section, notify }) {
+  if (section === "courses") return <CoursesWorkspace token={token} role={role} notify={notify} />;
   if (section === "terms") return <TermsWorkspace token={token} notify={notify} />;
   if (section === "offerings") return <OfferingsWorkspace token={token} notify={notify} />;
   return <TemplatesWorkspace token={token} notify={notify} />;
 }
 
-function CoursesWorkspace({ token, notify }) {
+function CoursesWorkspace({ token, role, notify }) {
   const [courses, setCourses] = useState([]); const [loading, setLoading] = useState(true); const [error, setError] = useState("");
   const [query, setQuery] = useState(""); const [editing, setEditing] = useState(null); const [saving, setSaving] = useState(false);
+  const [csvFile, setCsvFile] = useState(null); const [importing, setImporting] = useState(false); const [importErrors, setImportErrors] = useState([]);
   const load = useCallback(async () => { setLoading(true); setError(""); try { setCourses(await api("/api/catalogue/courses", { token })); } catch (e) { setError(explainApiError(e, "Course catalogue")); } finally { setLoading(false); } }, [token]);
   useEffect(() => { load(); }, [load]);
+  const importCsv = async (event) => {
+    event.preventDefault();
+    if (!csvFile) return;
+    const formElement = event.currentTarget;
+    setImporting(true); setImportErrors([]); setError("");
+    try {
+      const result = await api("/api/catalogue/courses/import", { token, method: "POST", body: { csvText: await csvFile.text() } });
+      setCsvFile(null); formElement.reset();
+      notify("success", `Imported ${result.total} courses: ${result.created} created, ${result.updated} updated.`);
+      await load();
+    } catch (e) {
+      setImportErrors(e.data?.errors || []);
+      setError(e.data?.message || (e.data?.errors?.length ? "The CSV has errors. Correct every listed row and upload it again; no courses were imported." : e.message));
+    } finally { setImporting(false); }
+  };
   const removeCourse = async (course) => {
     if (!window.confirm(`Delete ${course.code} · ${course.name}?`)) return;
     try { await api(`/api/catalogue/courses/${course._id}`, { token, method: "DELETE" }); notify("success", `${course.code} deleted.`); load(); }
@@ -44,6 +60,7 @@ function CoursesWorkspace({ token, notify }) {
   };
   return <div className="page-stack"><PageTitle eyebrow="GROUP C · COURSE CATALOGUE" title="Course catalogue" description="Create, search, and maintain the university course catalogue." action={<button className="primary-button" type="button" onClick={() => setEditing({})}>＋ Add course</button>} />
     {error && <div className="feedback error" role="alert">{error}</div>}
+    {role === "administrator" && <section className="panel course-import-panel"><div className="results-heading"><div><p className="eyebrow">ADMINISTRATOR</p><h2>Import courses from CSV</h2></div></div><p className="helper-text">Required columns: Course Code, Course Name, Credit Hours, Course Type, Faculty/Major, Recommended Semester, Offering Season, Prerequisites. Separate multiple majors, seasons, and prerequisite codes with semicolons. If any row is invalid, nothing is imported.</p><form className="inline-controls" onSubmit={importCsv}><label className="field"><span>CSV file</span><input type="file" accept=".csv,text/csv" onChange={(event) => { setCsvFile(event.target.files?.[0] || null); setImportErrors([]); }} required /></label><button className="primary-button" disabled={importing || !csvFile}>{importing ? "Validating and importing…" : "Validate and import"}</button><a className="text-button" download="course-import-template.csv" href={`data:text/csv;charset=utf-8,${encodeURIComponent("Course Code,Course Name,Credit Hours,Course Type,Faculty/Major,Recommended Semester,Offering Season,Prerequisites\n")}`}>Download CSV template</a></form>{importErrors.length > 0 && <div className="course-import-errors" role="alert"><h3>Fix these CSV errors</h3><div className="table-scroll"><table><thead><tr><th>Row</th><th>Column</th><th>Error</th></tr></thead><tbody>{importErrors.map((item, index) => <tr key={`${item.row}-${item.field}-${index}`}><td>{item.row}</td><td>{item.field}</td><td>{item.message}</td></tr>)}</tbody></table></div></div>}</section>}
     <section className="panel"><div className="results-heading"><div><p className="eyebrow">CATALOGUE</p><h2>Courses</h2></div><span className="result-count">{courses.length} total</span></div><label className="search-control"><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search by course code, name, or major" /></label>{loading ? <Loading /> : visible.length ? <div className="table-scroll"><table><thead><tr><th>Course</th><th>Credits</th><th>Type</th><th>Majors</th><th>Semester</th><th>Status</th><th>Actions</th></tr></thead><tbody>{visible.map((course) => <tr key={course._id}><td><strong>{course.code}</strong><span className="secondary-text">{course.name}</span></td><td>{course.creditHours}</td><td>{pretty(course.courseType)}</td><td>{(course.facultyMajors || []).join(", ") || "All"}</td><td>{course.recommendedSemester || "—"}</td><td><span className={`status-pill ${course.isActive ? "good" : "muted"}`}>{course.isActive ? "Active" : "Inactive"}</span></td><td><div className="table-actions"><button className="text-button" type="button" onClick={() => setEditing(course)}>Edit</button><button className="text-button danger-text" type="button" onClick={() => removeCourse(course)}>Delete</button></div></td></tr>)}</tbody></table></div> : <EmptyState title="No courses found" text={query ? "Try another search." : "Add a course to start building the catalogue."} />}</section>
     {editing && <Modal title={editing._id ? "Edit course" : "Add a course"} eyebrow="COURSE CATALOGUE" onClose={() => setEditing(null)}><form className="form-stack" onSubmit={saveCourse}><div className="form-grid"><Field label="Course code"><input name="code" required maxLength={24} defaultValue={editing.code || ""} placeholder="CSEN704" /></Field><Field label="Course name"><input name="name" required defaultValue={editing.name || ""} placeholder="Course title" /></Field><Field label="Credit hours"><input name="creditHours" required type="number" min="0" step="0.5" defaultValue={editing.creditHours ?? ""} /></Field><Field label="Course type"><select name="courseType" defaultValue={editing.courseType || "core"}><option value="core">Core</option><option value="elective">Elective</option><option value="huma">Humanities</option></select></Field><Field label="Recommended semester"><input name="recommendedSemester" type="number" min="1" max="10" defaultValue={editing.recommendedSemester ?? ""} /></Field><Field label="Lecture hours"><input name="lectureHours" type="number" min="0" step="0.5" defaultValue={editing.lectureHours ?? ""} /></Field><Field label="Tutorial hours"><input name="tutorialHours" type="number" min="0" step="0.5" defaultValue={editing.tutorialHours ?? ""} /></Field><Field label="Lab hours"><input name="labHours" type="number" min="0" step="0.5" defaultValue={editing.labHours ?? ""} /></Field><Field label="Majors (one per line)" className="span-two"><textarea name="facultyMajors" rows={3} defaultValue={(editing.facultyMajors || []).join("\n")} placeholder="Computer Science\nDigital Media Engineering" /></Field><Field label="Offered in seasons"><select name="offeringSeasons" multiple defaultValue={editing.offeringSeasons || []}>{seasons.map((season) => <option key={season} value={season}>{pretty(season)}</option>)}</select><small>Use Ctrl or ⌘ to select more than one.</small></Field><Field label="Prerequisites"><select name="prerequisites" multiple defaultValue={(editing.prerequisites || []).map((entry) => entry._id || entry)}>{courses.filter((course) => course._id !== editing._id).map((course) => <option key={course._id} value={course._id}>{course.code} · {course.name}</option>)}</select></Field><label className="check-field"><input type="checkbox" name="isBachelorProject" defaultChecked={editing.isBachelorProject || false} /> Bachelor project</label><label className="check-field"><input type="checkbox" name="isActive" defaultChecked={editing.isActive !== false} /> Active in catalogue</label></div><FormFooter onCancel={() => setEditing(null)} busy={saving} submitText={editing._id ? "Save changes" : "Create course"} /></form></Modal>}
   </div>;
