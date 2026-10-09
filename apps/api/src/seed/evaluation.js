@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import mongoose from 'mongoose';
 import { readFile } from 'node:fs/promises';
+import { pathToFileURL } from 'node:url';
 import { AdvisorAssignment, StudentProfile, User } from '../models/identity.js';
 import { AcademicTerm, Course, CourseOffering } from '../models/catalogue.js';
 import { CourseAttempt, StudentSchedule, StudentWorkflowState } from '../models/academics.js';
@@ -331,7 +332,7 @@ async function seedRepresentativeRecords(accounts, terms, currentTerm) {
   return { courseAttempts: 2, normalScheduleCourses: scheduleCourses.length, walletTransactions: walletRecords.length };
 }
 
-async function seedEvaluationData() {
+export async function seedEvaluationData() {
   assertLocalDatabase(MONGODB_URI);
   await mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 7000 });
   try {
@@ -357,7 +358,9 @@ async function seedEvaluationData() {
   }
 }
 
-seedEvaluationData().catch((error) => {
-  console.error(`Evaluation seed failed: ${error.message}`);
-  process.exitCode = 1;
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  seedEvaluationData().catch((error) => {
+    console.error(`Evaluation seed failed: ${error.message}`);
+    process.exitCode = 1;
+  });
+}
