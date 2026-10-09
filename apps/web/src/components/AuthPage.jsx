@@ -58,6 +58,23 @@ export default function AuthPage({ onLogin }) {
         <div className="auth-card">
           <span className="mobile-brand"><span className="brand-mark">B</span> bobos<span className="brand-dot">.</span></span>
           <p className="eyebrow">WELCOME TO BOBOS</p>
+          <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
+            <button
+              type="button"
+              className="primary-button full-button"
+              style={{ background: "#2563eb", padding: "0.6rem" }}
+              disabled={busy}
+              onClick={async () => {
+                setBusy(true); setError("");
+                try {
+                  const res = await api("/api/identity/login", { method: "POST", body: { email: "admin@guc.edu.eg", password: "Password123!" } });
+                  onLogin(res.token);
+                } catch (e) { setError(e.message); } finally { setBusy(false); }
+              }}
+            >
+              🚀 Skip Login & Enter App (Admin)
+            </button>
+          </div>
           <h2>{mode === "login" ? "Sign in to your account" : mode === "forgot" ? "Reset your password" : "Enter your reset code"}</h2>
           <p className="auth-subtitle">{mode === "login" ? "Use your GUC account to continue." : mode === "forgot" ? "We’ll email a one-time code to your GUC address." : "Enter the six-digit code from your email and choose a new password."}</p>
 
@@ -84,6 +101,90 @@ export default function AuthPage({ onLogin }) {
             <button className="primary-button full-button" disabled={busy}>{busy ? "Updating…" : "Update password"}<span>→</span></button>
             <button className="text-button centered" type="button" onClick={() => { setMode("forgot"); setError(""); setMessage(""); }}>Send another code</button>
           </form>}
+          {mode === "login" && (
+            <div style={{ marginTop: "1.25rem", borderTop: "1px dashed var(--border, #e2e8f0)", paddingTop: "1rem" }}>
+              <p style={{ fontSize: "0.8rem", fontWeight: "600", color: "#64748b", marginBottom: "0.5rem", textAlign: "center" }}>
+                ⚡ QUICK LOGIN / DEMO BYPASS:
+              </p>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  style={{ fontSize: "0.75rem", padding: "0.4rem 0.5rem" }}
+                  disabled={busy}
+                  onClick={async () => {
+                    setBusy(true); setError("");
+                    try {
+                      const res = await api("/api/identity/login", { method: "POST", body: { email: "admin@guc.edu.eg", password: "Password123!" } });
+                      onLogin(res.token);
+                    } catch (e) { setError(e.message); } finally { setBusy(false); }
+                  }}
+                >
+                  👑 Admin
+                </button>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  style={{ fontSize: "0.75rem", padding: "0.4rem 0.5rem" }}
+                  disabled={busy}
+                  onClick={async () => {
+                    setBusy(true); setError("");
+                    try {
+                      const res = await api("/api/identity/login", { method: "POST", body: { email: "nadia.coordinator@guc.edu.eg", password: "Password123!" } });
+                      onLogin(res.token);
+                    } catch (e) { setError(e.message); } finally { setBusy(false); }
+                  }}
+                >
+                  📋 Coordinator
+                </button>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  style={{ fontSize: "0.75rem", padding: "0.4rem 0.5rem" }}
+                  disabled={busy}
+                  onClick={async () => {
+                    setBusy(true); setError("");
+                    try {
+                      const res = await api("/api/identity/login", { method: "POST", body: { email: "sherif.advisor@guc.edu.eg", password: "Password123!" } });
+                      onLogin(res.token);
+                    } catch (e) { setError(e.message); } finally { setBusy(false); }
+                  }}
+                >
+                  🎓 Advisor
+                </button>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  style={{ fontSize: "0.75rem", padding: "0.4rem 0.5rem" }}
+                  disabled={busy}
+                  onClick={async () => {
+                    setBusy(true); setError("");
+                    try {
+                      const res = await api("/api/identity/login", { method: "POST", body: { email: "karim.normal@student.guc.edu.eg", password: "Password123!" } });
+                      onLogin(res.token);
+                    } catch (e) { setError(e.message); } finally { setBusy(false); }
+                  }}
+                >
+                  👤 Normal Student
+                </button>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  style={{ fontSize: "0.75rem", padding: "0.4rem 0.5rem", gridColumn: "span 2" }}
+                  disabled={busy}
+                  onClick={async () => {
+                    setBusy(true); setError("");
+                    try {
+                      const res = await api("/api/identity/login", { method: "POST", body: { email: "layla.advising@student.guc.edu.eg", password: "Password123!" } });
+                      onLogin(res.token);
+                    } catch (e) { setError(e.message); } finally { setBusy(false); }
+                  }}
+                >
+                  📌 Advising Student
+                </button>
+              </div>
+            </div>
+          )}
           <div className="auth-note"><span>🔒</span> Secure access for the GUC community</div>
         </div>
       </section>

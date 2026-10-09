@@ -1,0 +1,7 @@
+Course Code,Course Name,Credit Hours,Course Type,Faculty/Major,Recommended Semester,Offering Season,Prerequisites
+CSEN501,Database Systems,4,core,CS; DMET,5,winter; spring,CSEN202
+CSEN502,Operating Systems,4,core,CS,5,winter,CSEN301
+CSEN601,Software Engineering,4,core,CS; DMET,6,spring,CSEN501
+DMET502,Audio and Video Processing,4,core,DMET,5,winter,DMET501
+ELEC011,Deep Learning,4,elective,CS,7,winter; spring,CSEN301
+HUMA101,Communication and Presentation Skills,2,huma,All,1,winter; spring,
