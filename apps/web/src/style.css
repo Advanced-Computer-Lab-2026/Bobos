@@ -253,6 +253,12 @@ td strong, td .secondary-text { display: block; }
 .modal-card.narrow-modal { width: min(470px,100%); }
 .modal-heading { display: flex; align-items: start; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
 .modal-heading h2 { margin: 0; font-size: 17px; }
+.confirmation-content { display: grid; grid-template-columns: 38px minmax(0,1fr); align-items: start; gap: 13px; margin: 4px 0 20px; }
+.confirmation-icon { display: grid; width: 38px; height: 38px; place-items: center; border-radius: 50%; color: #a84e49; background: #fff0ef; font-size: 18px; font-weight: 700; }
+.confirmation-content p { margin: 1px 0 8px; color: #394640; font-size: 12px; line-height: 1.5; }
+.confirmation-content .helper-text { color: #7e8984; font-size: 10px; }
+.destructive-action { border-color: #b44640; color: #fff; background: #b44640; box-shadow: 0 4px 10px rgba(180,70,64,.14); }
+.destructive-action:hover:not(:disabled) { background: #963a35; }
 .modal-details { margin-bottom: 16px; }
 .slot-editor-heading { display: flex; align-items: end; justify-content: space-between; margin: 4px 0 10px; }
 .slot-editor-heading h3 { margin: 0; font-size: 13px; }

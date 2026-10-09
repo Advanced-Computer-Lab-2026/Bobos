@@ -1,7 +1,8 @@
 import mongoose from 'mongoose';
 import { CourseOffering, Course, AcademicTerm } from '../models/catalogue.js';
-import { ACADEMIC_SEASONS } from '../models/shared.js';
+import { ACADEMIC_SEASONS, DAYS_OF_WEEK } from '../models/shared.js';
 import { ScheduleTemplate, StudentSchedule } from '../models/academics.js';
+import { GraduationPlan, SlotChangeRequest } from '../models/requests.js';
 
 const overlaps = (first, second) =>
   first.day === second.day && first.startMinute < second.endMinute && first.endMinute > second.startMinute;
@@ -34,6 +35,26 @@ function sharesInstructor(firstOffering, secondOffering) {
       return (firstEmail && secondEmail && firstEmail === secondEmail) || (firstName && firstName === secondName);
     })
   );
+}
+
+function duplicateGroupNumber(slots) {
+  const seen = new Set();
+  for (const slot of slots || []) {
+    const key = `${String(slot.componentType || '').trim().toLowerCase()}:${String(slot.groupNumber || '').trim().toLowerCase()}`;
+    if (!slot.componentType || !slot.groupNumber || seen.has(key)) return slot.groupNumber || '';
+    seen.add(key);
+  }
+  return null;
+}
+
+function validSlotInput(slot) {
+  return slot && typeof slot === 'object' && !Array.isArray(slot) &&
+    ['lecture', 'tutorial', 'lab'].includes(slot.componentType) &&
+    typeof slot.groupNumber === 'string' && slot.groupNumber.trim() &&
+    DAYS_OF_WEEK.includes(slot.day) && Number.isInteger(slot.startMinute) && slot.startMinute >= 0 && slot.startMinute < 1440 &&
+    Number.isInteger(slot.endMinute) && slot.endMinute > slot.startMinute && slot.endMinute <= 1440 &&
+    typeof slot.room === 'string' && slot.room.trim() &&
+    Number.isInteger(slot.capacity) && slot.capacity >= 0;
 }
 
 function conflictMessage(candidateOffering, candidateSlot, otherOffering, otherSlot) {
@@ -71,8 +92,9 @@ async function findOfferingSlotConflict(candidateOffering, candidateSlot, skipSl
   return null;
 }
 
-async function hasOfferingReferences(offeringId) {
-  const [template, schedule] = await Promise.all([
+async function hasOfferingReferences(offering) {
+  const offeringId = offering._id;
+  const [template, schedule, slotChange, graduationPlan] = await Promise.all([
     ScheduleTemplate.exists({
       $or: [
         { 'courses.courseOffering': offeringId },
@@ -85,12 +107,17 @@ async function hasOfferingReferences(offeringId) {
         { 'courses.slots.courseOffering': offeringId },
       ],
     }),
+    SlotChangeRequest.exists({ status: { $in: ['pending', 'approved'] }, $or: [{ currentOffering: offeringId }, { replacementOffering: offeringId }] }),
+    GraduationPlan.exists({
+      status: { $in: ['submitted', 'accepted'] },
+      termPlans: { $elemMatch: { term: offering.term, courses: offering.course } },
+    }),
   ]);
-  return { template: Boolean(template), schedule: Boolean(schedule) };
+  return { template: Boolean(template), schedule: Boolean(schedule), slotChange: Boolean(slotChange), graduationPlan: Boolean(graduationPlan) };
 }
 
 async function hasSlotReferences(offeringId, slotId) {
-  const [template, schedule] = await Promise.all([
+  const [template, schedule, slotChange] = await Promise.all([
     ScheduleTemplate.exists({
       courses: { $elemMatch: {
         courseOffering: offeringId,
@@ -102,8 +129,12 @@ async function hasSlotReferences(offeringId, slotId) {
         slots: { $elemMatch: { courseOffering: offeringId, slotGroupId: slotId } },
       } },
     }),
+    SlotChangeRequest.exists({ status: { $in: ['pending', 'approved'] }, $or: [
+      { currentOffering: offeringId, currentSlotGroupId: slotId },
+      { replacementOffering: offeringId, replacementSlotGroupId: slotId },
+    ] }),
   ]);
-  return { template: Boolean(template), schedule: Boolean(schedule) };
+  return { template: Boolean(template), schedule: Boolean(schedule), slotChange: Boolean(slotChange) };
 }
 
 export const createCourse = async (req, res) => {
@@ -348,15 +379,13 @@ export const createOffering = async (req, res) => {
     // --- Validate slots ---
     for (let i = 0; i < slots.length; i++) {
       const slot = slots[i];
-      if (!slot || typeof slot !== 'object' || Array.isArray(slot) || !slot.componentType || !slot.groupNumber || !slot.day || slot.startMinute == null || slot.endMinute == null || typeof slot.room !== 'string' || !slot.room.trim() || slot.capacity == null) {
+      if (!validSlotInput(slot)) {
         return res.status(400).json({ message: `Slot at index ${i} is missing required fields.` });
       }
-      if (!Number.isInteger(slot.startMinute) || !Number.isInteger(slot.endMinute) || slot.endMinute <= slot.startMinute) {
-        return res.status(400).json({ message: `Slot at index ${i} must have integer times and end after start.` });
-      }
-      if (!Number.isInteger(slot.capacity) || slot.capacity < 0) {
-        return res.status(400).json({ message: `Slot at index ${i} capacity must be a non-negative integer.` });
-      }
+    }
+    const duplicateGroup = duplicateGroupNumber(slots);
+    if (duplicateGroup) {
+      return res.status(400).json({ message: `Group number ${duplicateGroup} is duplicated for the same component.` });
     }
 
     const newOffering = new CourseOffering({
@@ -405,7 +434,11 @@ export const createOffering = async (req, res) => {
 // ─── Req 23: View course offerings for an academic term ───
 export const getOfferings = async (req, res) => {
   try {
-    const { termId } = req.query;
+    const { termId, publishedOnly } = req.query;
+
+    if (publishedOnly !== undefined && !['true', 'false'].includes(publishedOnly)) {
+      return res.status(400).json({ message: 'publishedOnly must be true or false.' });
+    }
 
     if (!termId) {
       return res.status(400).json({ message: 'termId query parameter is required' });
@@ -417,7 +450,9 @@ export const getOfferings = async (req, res) => {
       return res.status(404).json({ message: 'Academic term not found' });
     }
 
-    const offerings = await CourseOffering.find({ term: term._id })
+    const offeringFilter = { term: term._id };
+    if (publishedOnly === 'true') offeringFilter.isPublished = true;
+    const offerings = await CourseOffering.find(offeringFilter)
       .populate('course', 'code name creditHours courseType facultyMajors')
       .populate('term', 'code academicYear season');
 
@@ -558,6 +593,11 @@ export const updateOfferingSlot = async (req, res) => {
       room: room ?? slot.room,
       capacity: capacity ?? slot.capacity,
     };
+    const candidateSlots = offering.slots.map((existing) => existing._id.equals(slot._id) ? candidateSlot : existing);
+    const duplicateGroup = duplicateGroupNumber(candidateSlots);
+    if (duplicateGroup) {
+      return res.status(409).json({ message: `Group number ${duplicateGroup} is already used for this component in the offering.` });
+    }
     if (typeof candidateSlot.room !== 'string' || !candidateSlot.room.trim()) {
       return res.status(400).json({ message: 'Room is required.' });
     }
@@ -593,6 +633,59 @@ export const updateOfferingSlot = async (req, res) => {
   }
 };
 
+// Req 25: Add additional meeting groups after an offering has been created.
+export const addOfferingSlots = async (req, res) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ message: 'Invalid offering ID format.' });
+    const offering = await CourseOffering.findById(req.params.id);
+    if (!offering) return res.status(404).json({ message: 'Course offering not found.' });
+    const { slots } = req.body || {};
+    if (!Array.isArray(slots) || slots.length === 0) return res.status(400).json({ message: 'Add at least one group.' });
+    if (slots.some((slot) => !validSlotInput(slot))) {
+      return res.status(400).json({ message: 'Each group needs a valid component, group number, day, time range, room and non-negative integer capacity.' });
+    }
+
+    const originalSlotIds = new Set(offering.slots.map((slot) => String(slot._id)));
+    offering.slots.push(...slots.map((slot) => ({
+      componentType: slot.componentType,
+      groupNumber: slot.groupNumber.trim(),
+      day: slot.day,
+      startMinute: slot.startMinute,
+      endMinute: slot.endMinute,
+      room: slot.room.trim(),
+      capacity: slot.capacity,
+      assignedStudentCount: 0,
+    })));
+
+    const duplicateGroup = duplicateGroupNumber(offering.slots);
+    if (duplicateGroup) return res.status(409).json({ message: `Group number ${duplicateGroup} is already used for this component in the offering.` });
+
+    for (const slot of offering.slots) {
+      if (originalSlotIds.has(String(slot._id))) continue;
+      const sameOfferingConflict = offering.slots.find((other) =>
+        !other._id.equals(slot._id) && conflictMessage(offering, slot, offering, other),
+      );
+      if (sameOfferingConflict) {
+        return res.status(409).json({ message: `Slots in this offering conflict: ${conflictMessage(offering, slot, offering, sameOfferingConflict)}` });
+      }
+      const conflict = await findOfferingSlotConflict(offering, slot, slot._id);
+      if (conflict) return res.status(409).json({ message: `Slot ${slot.componentType} group ${slot.groupNumber}: ${conflict}` });
+    }
+
+    await offering.save();
+    const populated = await CourseOffering.findById(offering._id)
+      .populate('course', 'code name creditHours courseType facultyMajors')
+      .populate('term', 'code academicYear season');
+    res.status(201).json(populated.toObject({ virtuals: true }));
+  } catch (error) {
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ message: 'Validation failed', errors: Object.values(error.errors).map((item) => item.message) });
+    }
+    if (error.name === 'CastError') return res.status(400).json({ message: 'Invalid group data.' });
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // ─── Req 26: Delete a course offering ───
 // Extra comments: An offering or slot with assigned students cannot be deleted
 // until those assignments are moved or removed.
@@ -613,9 +706,9 @@ export const deleteOffering = async (req, res) => {
       });
     }
 
-    const references = await hasOfferingReferences(offering._id);
-    if (references.template || references.schedule) {
-      const usedBy = [references.template && 'a schedule template', references.schedule && 'a student schedule'].filter(Boolean).join(' and ');
+    const references = await hasOfferingReferences(offering);
+    if (references.template || references.schedule || references.slotChange || references.graduationPlan) {
+      const usedBy = [references.template && 'a schedule template', references.schedule && 'a student schedule', references.slotChange && 'a pending or approved slot-change request', references.graduationPlan && 'a submitted or accepted graduation plan'].filter(Boolean).join(', ');
       return res.status(409).json({ message: `Cannot delete this offering because it is referenced by ${usedBy}. Remove or update those references first.` });
     }
 
@@ -654,8 +747,8 @@ export const deleteOfferingSlot = async (req, res) => {
     }
 
     const references = await hasSlotReferences(offering._id, slot._id);
-    if (references.template || references.schedule) {
-      const usedBy = [references.template && 'a schedule template', references.schedule && 'a student schedule'].filter(Boolean).join(' and ');
+    if (references.template || references.schedule || references.slotChange) {
+      const usedBy = [references.template && 'a schedule template', references.schedule && 'a student schedule', references.slotChange && 'a pending or approved slot-change request'].filter(Boolean).join(', ');
       return res.status(409).json({ message: `Cannot delete this slot because it is referenced by ${usedBy}. Remove or update those references first.` });
     }
 
@@ -695,8 +788,11 @@ export const togglePublishOffering = async (req, res) => {
 
     // --- Block unpublishing if an active or processed schedule references this offering ---
     if (isPublished === false && offering.isPublished === true) {
-      const [activeSchedules, templates] = await Promise.all([
+      const [protectedSchedules, templates, slotChanges, graduationPlans] = await Promise.all([
         StudentSchedule.countDocuments({
+          // Drafts have not been made available to students. A schedule ready
+          // for student review is active; processed schedules are finalized.
+          status: { $in: ['readyForStudentReview', 'processed'] },
           $or: [
             { 'courses.courseOffering': offering._id },
             { 'courses.slots.courseOffering': offering._id },
@@ -708,12 +804,22 @@ export const togglePublishOffering = async (req, res) => {
             { 'courses.slots.courseOffering': offering._id },
           ],
         }),
+        SlotChangeRequest.countDocuments({
+          status: { $in: ['pending', 'approved'] },
+          $or: [{ currentOffering: offering._id }, { replacementOffering: offering._id }],
+        }),
+        GraduationPlan.countDocuments({
+          status: { $in: ['submitted', 'accepted'] },
+          termPlans: { $elemMatch: { term: offering.term, courses: offering.course } },
+        }),
       ]);
 
-      if (activeSchedules > 0 || templates > 0) {
+      if (protectedSchedules > 0 || templates > 0 || slotChanges > 0 || graduationPlans > 0) {
         const reasons = [];
-        if (activeSchedules) reasons.push(`${activeSchedules} student schedule(s)`);
+        if (protectedSchedules) reasons.push(`${protectedSchedules} active or processed student schedule(s)`);
         if (templates) reasons.push(`${templates} schedule template(s)`);
+        if (slotChanges) reasons.push(`${slotChanges} pending or approved slot-change request(s)`);
+        if (graduationPlans) reasons.push(`${graduationPlans} submitted or accepted graduation plan(s)`);
         return res.status(409).json({
           message: `Cannot unpublish ${offering.course.code}: it is referenced by ${reasons.join(' and ')}. Update those references first.`,
         });

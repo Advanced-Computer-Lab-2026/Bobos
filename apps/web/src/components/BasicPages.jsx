@@ -164,7 +164,7 @@ export function PreferencesPage({ token, profile, profileId: passedProfileId, no
       setNote(current.note || "");
       setGroups((current.preferredGroups || []).map((entry) => ({ course: entry.course?._id || entry.course, componentType: entry.componentType, groupNumber: entry.groupNumber })));
       if (termId.trim()) {
-        const available = await api(`/api/catalogue/offerings?termId=${encodeURIComponent(termId.trim())}`, { token });
+        const available = await api(`/api/catalogue/offerings?termId=${encodeURIComponent(termId.trim())}&publishedOnly=true`, { token });
         setOfferings(available.offerings || []);
       }
     } catch (requestError) { setError(explainApiError(requestError, "Scheduling preferences")); }
