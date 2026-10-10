@@ -70,7 +70,7 @@ export default function StudentDetails({ profileId, canAssign = false, onBack })
 
       <section style={{ marginBottom: '1.5rem' }}>
         <h3 style={{ borderBottom: '1px solid #ccc', paddingBottom: '0.25rem' }}>Assigned Advisor</h3>
-        {profile.assignedAdvisor ? (
+        {profile.assignedAdvisor?._id ? (
           <>
             <Field label="Name" value={profile.assignedAdvisor.fullName} />
             <Field label="Email" value={profile.assignedAdvisor.email} />
@@ -85,7 +85,7 @@ export default function StudentDetails({ profileId, canAssign = false, onBack })
             onClick={() => setShowAssign(true)}
             style={{ marginTop: '0.75rem', padding: '0.35rem 0.8rem', cursor: 'pointer' }}
           >
-            {profile.assignedAdvisor ? 'Reassign Advisor' : 'Assign Advisor'}
+            {profile.assignedAdvisor?._id ? 'Reassign Advisor' : 'Assign Advisor'}
           </button>
         )}
       </section>

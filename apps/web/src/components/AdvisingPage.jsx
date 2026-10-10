@@ -4,6 +4,13 @@ import { StudentRecordsPage } from "./BasicPages.jsx";
 
 const reasons = ["probation", "failedCourses", "unattendedCourses", "undeclaredMajor", "transfer"];
 const statuses = ["notStarted", "drafting", "readyForStudentReview", "processed"];
+const majors = ["CS", "DMET"];
+const pendingRequestTypes = [
+  { value: "slotChange", label: "Slot change" },
+  { value: "extraHours", label: "Extra hours" },
+  { value: "mandatoryCourseRemoval", label: "Course removal" },
+  { value: "scheduleSwap", label: "Schedule swap" },
+];
 const pretty = (value = "") => String(value || "—").replace(/([a-z])([A-Z])/g, "$1 $2").replace(/^./, (letter) => letter.toUpperCase());
 
 export default function AdvisingPage({ token, role, onOpenPreferences }) {
@@ -11,8 +18,10 @@ export default function AdvisingPage({ token, role, onOpenPreferences }) {
   const [advisors, setAdvisors] = useState([]);
   const [search, setSearch] = useState("");
   const [advisorFilter, setAdvisorFilter] = useState("");
+  const [majorFilter, setMajorFilter] = useState("");
   const [reason, setReason] = useState("");
   const [status, setStatus] = useState("");
+  const [pendingType, setPendingType] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selected, setSelected] = useState(null);
@@ -24,8 +33,10 @@ export default function AdvisingPage({ token, role, onOpenPreferences }) {
     const params = new URLSearchParams();
     if (search) params.set("search", search);
     if (advisorFilter) params.set("advisorId", advisorFilter);
+    if (majorFilter) params.set("major", majorFilter);
     if (reason) params.set("advisingReason", reason);
     if (status) params.set("scheduleStatus", status);
+    if (pendingType) params.set("pendingRequestType", pendingType);
     try {
       const [result, advisorList] = await Promise.all([
         api(`/api/advisor/students?${params.toString()}`, { token }),
@@ -34,11 +45,19 @@ export default function AdvisingPage({ token, role, onOpenPreferences }) {
       setRows(result.data || result.students || []); setAdvisors(advisorList.advisors || advisorList || []);
     } catch (requestError) { setError(explainApiError(requestError, "Advising directory")); }
     finally { setLoading(false); }
-  }, [token, search, advisorFilter, reason, status]);
+  }, [token, search, advisorFilter, majorFilter, reason, status, pendingType]);
+  const clearDropdownFilters = () => {
+    setAdvisorFilter("");
+    setMajorFilter("");
+    setReason("");
+    setStatus("");
+    setPendingType("");
+  };
+
   useEffect(() => { load(); }, [load]);
 
   return <div className="page-stack"><div className="page-title-row"><div><p className="eyebrow">GROUP B · ADVISING</p><h1>Advising students</h1><p className="page-description">Review assigned advising students and their current workflow status.</p></div><button className="outline-button" type="button" onClick={load}>↻ Refresh</button></div>
-    <section className="panel directory-filters"><div className="filter-grid advisor-filters"><label className="field span-two"><span>Search by student, ID, or email</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Type to search" /></label><label className="field"><span>Advisor</span><select value={advisorFilter} onChange={(event) => setAdvisorFilter(event.target.value)}><option value="">All advisors</option>{advisors.map((advisor) => <option key={advisor._id} value={advisor._id}>{advisor.fullName}</option>)}</select></label><label className="field"><span>Advising reason</span><select value={reason} onChange={(event) => setReason(event.target.value)}><option value="">All reasons</option>{reasons.map((item) => <option key={item} value={item}>{pretty(item)}</option>)}</select></label><label className="field"><span>Schedule status</span><select value={status} onChange={(event) => setStatus(event.target.value)}><option value="">All statuses</option>{statuses.map((item) => <option key={item} value={item}>{pretty(item)}</option>)}</select></label></div></section>
+    <section className="panel directory-filters"><div className="filter-grid advisor-filters"><label className="field span-two"><span>Search by student, ID, or email</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Type to search" /></label><label className="field"><span>Advisor</span><select value={advisorFilter} onChange={(event) => setAdvisorFilter(event.target.value)}><option value="">All advisors</option>{advisors.map((advisor) => <option key={advisor._id} value={advisor._id}>{advisor.fullName}</option>)}</select></label><label className="field"><span>Major</span><select value={majorFilter} onChange={(event) => setMajorFilter(event.target.value)}><option value="">All majors</option>{majors.map((item) => <option key={item} value={item}>{item}</option>)}</select></label><label className="field"><span>Advising reason</span><select value={reason} onChange={(event) => setReason(event.target.value)}><option value="">All reasons</option>{reasons.map((item) => <option key={item} value={item}>{pretty(item)}</option>)}</select></label><label className="field"><span>Schedule status</span><select value={status} onChange={(event) => setStatus(event.target.value)}><option value="">All statuses</option>{statuses.map((item) => <option key={item} value={item}>{pretty(item)}</option>)}</select></label><label className="field span-two"><span>Pending request type</span><select value={pendingType} onChange={(event) => setPendingType(event.target.value)}><option value="">All pending request types</option>{pendingRequestTypes.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label></div><div className="form-actions" style={{ marginTop: "0.75rem" }}><button className="outline-button" type="button" onClick={clearDropdownFilters}>Clear filters</button></div></section>
     {error && <div className="feedback error" role="alert">{error}</div>}
     <section className="panel results-panel" aria-busy={loading}><div className="results-heading"><div><p className="eyebrow">ADVISOR WORKSPACE</p><h2>Assigned students</h2></div><span className="result-count">{loading ? "Loading" : `${rows.length} students`}</span></div>{loading ? <div className="loading-state"><span className="loader" />Loading advising students…</div> : rows.length === 0 ? <div className="empty-state"><span>♧</span><h3>No advising students found</h3><p>{error || "Change your filters to see more students."}</p></div> : <div className="table-scroll"><table><thead><tr><th>Student ID</th><th>Name and email</th><th>Major</th><th>Advisor</th><th>Workflow status</th><th>Blocking step</th><th>Last update</th><th>Actions</th></tr></thead><tbody>{rows.map((student) => <tr key={student._id}><td><strong>{student.studentId}</strong></td><td><strong>{student.user?.fullName || "—"}</strong><span className="secondary-text">{student.user?.email}</span></td><td>{student.major || "—"}</td><td>{student.assignedAdvisor?.fullName || "Unassigned"}</td><td>{pretty(student.workflowStatus)}</td><td>{pretty(student.blockingStep)}</td><td>{student.lastActivityAt ? new Date(student.lastActivityAt).toLocaleDateString() : "—"}</td><td><div className="table-actions"><button className="text-button" type="button" onClick={() => setRecordsStudent(student)}>Profile</button><button className="text-button" type="button" onClick={async () => { try { setSelected(await api(`/api/advisor/students/${student._id}`, { token })); } catch (requestError) { setError(explainApiError(requestError, "Student details")); } }}>Details</button><button className="text-button" type="button" onClick={() => setAssigning(student)}>{student.assignedAdvisor?._id ? "Reassign" : "Assign"}</button><button className="text-button" type="button" onClick={() => onOpenPreferences?.(student)}>Preferences</button></div></td></tr>)}</tbody></table></div>}</section>
     {selected && <StudentModal student={selected} onClose={() => setSelected(null)} />}
@@ -48,16 +67,62 @@ export default function AdvisingPage({ token, role, onOpenPreferences }) {
 }
 
 export function MyAdvisorPage({ token }) {
-  const [advisor, setAdvisor] = useState(null); const [loading, setLoading] = useState(true); const [error, setError] = useState("");
-  useEffect(() => { api("/api/advisor/my-advisor", { token }).then(setAdvisor).catch((requestError) => setError(explainApiError(requestError, "Assigned advisor"))).finally(() => setLoading(false)); }, [token]);
-  return <div className="page-stack"><div className="page-title-row"><div><p className="eyebrow">GROUP B · STUDENT SERVICES</p><h1>My advisor</h1><p className="page-description">Contact details for your currently assigned advisor.</p></div></div>{error && <div className="feedback error" role="alert">{error}</div>}{loading ? <div className="panel loading-state"><span className="loader" />Loading advisor…</div> : advisor && <section className="panel advisor-card"><span className="avatar avatar-xl">{advisor.fullName?.slice(0, 1) || "A"}</span><div><p className="eyebrow">YOUR ADVISOR</p><h2>{advisor.fullName}</h2><a href={`mailto:${advisor.email}`}>{advisor.email}</a></div><a className="primary-button" href={`mailto:${advisor.email}`}>Send email <span>↗</span></a></section>}{!loading && !error && !advisor && <div className="panel empty-state"><span>♧</span><h3>No advisor assigned</h3><p>Your assigned advisor will appear here once the assignment is recorded.</p></div>}</div>;
+  const [advisor, setAdvisor] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    api("/api/advisor/my-advisor", { token })
+      .then(setAdvisor)
+      .catch((requestError) => {
+        if (requestError?.status === 404) {
+          setAdvisor(null);
+          return;
+        }
+        setError(explainApiError(requestError, "Assigned advisor"));
+      })
+      .finally(() => setLoading(false));
+  }, [token]);
+
+  return (
+    <div className="page-stack">
+      <div className="page-title-row">
+        <div>
+          <p className="eyebrow">GROUP B · STUDENT SERVICES</p>
+          <h1>My advisor</h1>
+          <p className="page-description">Contact details for your currently assigned advisor.</p>
+        </div>
+      </div>
+      {error && <div className="feedback error" role="alert">{error}</div>}
+      {loading ? (
+        <div className="panel loading-state"><span className="loader" />Loading advisor…</div>
+      ) : advisor ? (
+        <section className="panel advisor-card">
+          <span className="avatar avatar-xl">{advisor.fullName?.slice(0, 1) || "A"}</span>
+          <div>
+            <p className="eyebrow">YOUR ADVISOR</p>
+            <h2>{advisor.fullName}</h2>
+            <a href={`mailto:${advisor.email}`}>{advisor.email}</a>
+          </div>
+          <a className="primary-button" href={`mailto:${advisor.email}`}>Send email <span>↗</span></a>
+        </section>
+      ) : (
+        <div className="panel empty-state">
+          <span>♧</span>
+          <h3>Not Assigned</h3>
+          <p>No advisor currently assigned. Your assigned advisor will appear here once an advisor is assigned to you.</p>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function AssignModal({ token, student, advisors, onClose, onSaved }) {
+  const isReassign = Boolean(student.assignedAdvisor?._id);
   const [advisorId, setAdvisorId] = useState(student.assignedAdvisor?._id || "");
   const [busy, setBusy] = useState(false); const [error, setError] = useState("");
   const save = async (event) => { event.preventDefault(); setBusy(true); setError(""); try { await api(`/api/advisor/students/${student._id}/advisor`, { token, method: "PATCH", body: { advisorId } }); onSaved(); } catch (requestError) { setError(explainApiError(requestError, "Advisor assignment")); } finally { setBusy(false); } };
-  return <div className="modal-backdrop" onClick={onClose}><section className="modal-card narrow-modal" role="dialog" aria-modal="true" aria-labelledby="assign-heading" onClick={(event) => event.stopPropagation()}><div className="modal-heading"><div><p className="eyebrow">GROUP B · ADVISOR ASSIGNMENT</p><h2 id="assign-heading">{student.assignedAdvisor ? "Reassign advisor" : "Assign advisor"}</h2></div><button className="icon-button" type="button" onClick={onClose} aria-label="Close">×</button></div><p className="page-description">Student: <strong>{student.user?.fullName || student.studentId}</strong> · {student.studentId}</p>{error && <div className="feedback error">{error}</div>}<form className="form-stack" onSubmit={save}><label className="field"><span>Advisor</span><select required value={advisorId} onChange={(event) => setAdvisorId(event.target.value)}><option value="">Choose an advisor</option>{advisors.map((advisor) => <option key={advisor._id} value={advisor._id}>{advisor.fullName} ({advisor.email})</option>)}</select></label><div className="form-actions"><button type="button" className="outline-button" onClick={onClose} disabled={busy}>Cancel</button><button className="primary-button" disabled={busy || !advisorId}>{busy ? "Saving…" : "Save assignment"}</button></div></form></section></div>;
+  return <div className="modal-backdrop" onClick={onClose}><section className="modal-card narrow-modal" role="dialog" aria-modal="true" aria-labelledby="assign-heading" onClick={(event) => event.stopPropagation()}><div className="modal-heading"><div><p className="eyebrow">GROUP B · ADVISOR ASSIGNMENT</p><h2 id="assign-heading">{isReassign ? "Reassign advisor" : "Assign advisor"}</h2></div><button className="icon-button" type="button" onClick={onClose} aria-label="Close">×</button></div><p className="page-description">Student: <strong>{student.user?.fullName || student.studentId}</strong> · {student.studentId}</p>{error && <div className="feedback error">{error}</div>}<form className="form-stack" onSubmit={save}><label className="field"><span>Advisor</span><select required value={advisorId} onChange={(event) => setAdvisorId(event.target.value)}><option value="">Choose an advisor</option>{advisors.map((advisor) => <option key={advisor._id} value={advisor._id}>{advisor.fullName} ({advisor.email})</option>)}</select></label><div className="form-actions"><button type="button" className="outline-button" onClick={onClose} disabled={busy}>Cancel</button><button className="primary-button" disabled={busy || !advisorId}>{busy ? "Saving…" : (isReassign ? "Save reassignment" : "Save assignment")}</button></div></form></section></div>;
 }
 
 function StudentModal({ student, onClose }) {

@@ -398,39 +398,41 @@ export async function addAdvisor(req, res) {
 export async function removeAdvisor(req, res) {
   const email = advisorEmail(req.params.email);
   if (!email) return res.status(400).json({ message: "Enter a valid GUC email" });
-  const session = await mongoose.startSession();
+  const isSingle = mongoose.connection.client?.topology?.description?.type === 'Single';
+  const session = isSingle ? null : await mongoose.startSession();
+  const sessionOpt = session ? { session } : {};
   let advisor;
   let result;
   try {
-    session.startTransaction();
-    advisor = await User.findOne({ email, role: "advisor" }, null, { session });
+    if (session) session.startTransaction();
+    advisor = await User.findOne({ email, role: "advisor" }, null, sessionOpt);
     if (!advisor) {
-      await session.abortTransaction();
+      if (session?.inTransaction()) await session.abortTransaction();
       return res.status(404).json({ message: "Advisor not found" });
     }
     if (!advisor.isAdvisorInSystem) {
-      await session.abortTransaction();
+      if (session?.inTransaction()) await session.abortTransaction();
       return res.status(409).json({ message: "Advisor is not in the advising system" });
     }
     const endedAt = new Date();
     result = await AdvisorAssignment.updateMany(
       { advisor: advisor._id, endedAt: null },
       { $set: { endedAt, endedBy: req.user._id } },
-      { session },
+      sessionOpt,
     );
     await StudentProfile.updateMany(
       { assignedAdvisor: advisor._id },
       { $set: { assignedAdvisor: null } },
-      { session },
+      sessionOpt,
     );
     advisor.isAdvisorInSystem = false;
-    await advisor.save({ session });
-    await session.commitTransaction();
+    await advisor.save(sessionOpt);
+    if (session?.inTransaction()) await session.commitTransaction();
   } catch (error) {
-    await session.abortTransaction();
+    if (session?.inTransaction()) await session.abortTransaction();
     throw error;
   } finally {
-    session.endSession();
+    if (session) session.endSession();
   }
   const notification = await emailAdvisor(advisor, "advisorRemoved", "You have been removed from the advising system", "You have been removed from the advising system. Your previous schedule activity history has been preserved.");
   res.json({ assignmentsEnded: result.modifiedCount, emailStatus: notification.deliveryStatus });
