@@ -81,14 +81,16 @@ export function NotificationsPage({ token, notify }) {
   </div>;
 }
 
-export function StudentRecordsPage({ token, profile, notify }) {
+export function StudentRecordsPage({ token, profile, profileId: targetProfileId, viewerRole, subjectName, onClose, notify }) {
   const [tab, setTab] = useState("history");
   const [year, setYear] = useState("");
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const profileId = profile.studentProfileId;
-  const tabs = ["history", "transcript", "failed", "wallet"];
+  const profileId = targetProfileId || profile.studentProfileId;
+  const role = viewerRole || profile.role;
+  const isStaffViewer = ["advisor", "coordinator"].includes(role);
+  const tabs = isStaffViewer ? ["history", "transcript", "failed"] : ["history", "transcript", "failed", "wallet"];
 
   const load = async (selectedTab = tab, selectedYear = year) => {
     if (!profileId) { setError("The API profile response is missing the student profile ID required by this records endpoint."); return; }
@@ -124,7 +126,7 @@ export function StudentRecordsPage({ token, profile, notify }) {
     } catch (requestError) { setError(explainApiError(requestError, "Transcript download")); }
   };
 
-  return <div className="page-stack"><PageTitle eyebrow="STUDENT SERVICES" title="Academic records" description="Review your academic history, yearly transcripts, failed courses, and wallet." />
+  return <div className="page-stack"><PageTitle eyebrow={isStaffViewer ? "ADVISING STUDENT RECORD" : "STUDENT SERVICES"} title="Academic records" description={subjectName ? `Academic history, yearly transcripts, and failed courses for ${subjectName}.` : "Review your academic history, yearly transcripts, failed courses, and wallet."} action={onClose ? <button className="outline-button" type="button" onClick={onClose}>← Back to advising</button> : undefined} />
     <div className="tab-bar" role="tablist" aria-label="Academic records">{tabs.map((item) => <button type="button" role="tab" aria-selected={tab === item} className={tab === item ? "selected" : ""} key={item} onClick={() => setTab(item)}>{({ history: "History", transcript: "Transcript", failed: "Failed courses", wallet: "Wallet" })[item]}</button>)}</div>
     {tab === "transcript" && <div className="inline-controls"><label className="field compact-field"><span>Academic year</span><input value={year} onChange={(event) => setYear(event.target.value)} placeholder="2025/2026" /></label><button className="primary-button" type="button" onClick={() => load("transcript", year)}>View transcript</button><button className="outline-button" type="button" onClick={download}>Download PDF ↓</button></div>}
     {error && <div className="feedback error" role="alert">{error}</div>}
