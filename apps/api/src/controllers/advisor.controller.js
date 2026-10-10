@@ -62,27 +62,30 @@ export const assignAdvisor = async (req, res) => {
     return res.status(400).json({ message: 'advisorId is required and must be a valid ID' });
   }
 
-  const session = await mongoose.startSession();
+  const isSingle = mongoose.connection.client?.topology?.description?.type === 'Single';
+  const session = isSingle ? null : await mongoose.startSession();
+  const sessionOpt = session ? { session } : {};
+
   try {
-    session.startTransaction();
+    if (session) session.startTransaction();
 
     const profile = await StudentProfile.findOne(
       { _id: profileId, studentType: 'advising' },
       null,
-      { session },
+      sessionOpt,
     );
     if (!profile) {
-      await session.abortTransaction();
+      if (session?.inTransaction()) await session.abortTransaction();
       return res.status(404).json({ message: 'Advising student profile not found' });
     }
 
     const advisor = await User.findOne(
       { _id: advisorId, role: 'advisor', isActive: true, isAdvisorInSystem: true },
       null,
-      { session },
+      sessionOpt,
     );
     if (!advisor) {
-      await session.abortTransaction();
+      if (session?.inTransaction()) await session.abortTransaction();
       return res.status(404).json({ message: 'Advisor not found' });
     }
 
@@ -91,10 +94,10 @@ export const assignAdvisor = async (req, res) => {
     const existing = await AdvisorAssignment.findOne(
       { student: profileId, endedAt: null },
       null,
-      { session },
+      sessionOpt,
     );
     if (existing && String(existing.advisor) === String(advisor._id) && String(profile.assignedAdvisor) === String(advisor._id)) {
-      await session.commitTransaction();
+      if (session?.inTransaction()) await session.commitTransaction();
       const unchanged = await StudentProfile.findById(profileId)
         .populate('user', 'fullName email')
         .populate('assignedAdvisor', 'fullName email');
@@ -103,18 +106,18 @@ export const assignAdvisor = async (req, res) => {
     if (existing) {
       existing.endedAt = new Date();
       existing.endedBy = actorId;
-      await existing.save({ session });
+      await existing.save(sessionOpt);
     }
 
     await AdvisorAssignment.create(
       [{ student: profileId, advisor: advisorId, assignedBy: actorId }],
-      { session },
+      sessionOpt,
     );
 
     profile.assignedAdvisor = advisorId;
-    await profile.save({ session });
+    await profile.save(sessionOpt);
 
-    await session.commitTransaction();
+    if (session?.inTransaction()) await session.commitTransaction();
 
     const updated = await StudentProfile.findById(profileId)
       .populate('user', 'fullName email')
@@ -122,10 +125,10 @@ export const assignAdvisor = async (req, res) => {
 
     return res.json(updated);
   } catch (err) {
-    if (session.inTransaction()) await session.abortTransaction();
+    if (session?.inTransaction()) await session.abortTransaction();
     return res.status(500).json({ message: 'Unable to assign advisor' });
   } finally {
-    await session.endSession();
+    if (session) await session.endSession();
   }
 };
 
@@ -317,9 +320,15 @@ export const listAdvisingStudents = async (req, res) => {
           email: '$userDoc.email',
         },
         assignedAdvisor: {
-          _id: '$advisorDoc._id',
-          fullName: '$advisorDoc.fullName',
-          email: '$advisorDoc.email',
+          $cond: {
+            if: '$advisorDoc._id',
+            then: {
+              _id: '$advisorDoc._id',
+              fullName: '$advisorDoc.fullName',
+              email: '$advisorDoc.email',
+            },
+            else: null,
+          },
         },
         workflowStatus: '$workflowState.status',
         blockingStep: '$workflowState.blockingStep',
