@@ -5,6 +5,7 @@ import { AdvisorAssignment, StudentProfile, User } from '../models/identity.js';
 import { AcademicTerm, Course, CourseOffering } from '../models/catalogue.js';
 import { StudentWorkflowState } from '../models/academics.js';
 import { parseCurriculumCsv } from '../scripts/importCourses.js';
+import { canonicalMajor } from '../utils/major.js';
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/bobos';
 const DEVELOPMENT_PASSWORD = 'Password123!';
@@ -50,7 +51,7 @@ function termDates(code, startYear, season) {
     teachingEnd: new Date(end.getTime() - 14 * day),
     registrationStart: new Date(start.getTime() - 14 * day),
     registrationEnd: new Date(start.getTime() + 5 * day),
-    advisingDeadline: new Date(start.getTime() + 14 * day),
+    advisingDeadline: code === '60-' ? new Date(Date.now() + 14 * day) : new Date(start.getTime() + 14 * day),
     wholeScheduleSwapDeadline: new Date(start.getTime() + 21 * day),
     isActive: code === '60-',
   };
@@ -96,7 +97,19 @@ async function seedCurriculum() {
       isActive: true,
     };
   });
-  const allCourses = [...curriculumCourses, ...electives];
+  const evaluationCourses = Array.from({ length: 9 }, (_, index) => index + 2).flatMap((semester) =>
+    ['A', 'B', 'C', 'D', 'E', 'F', 'G'].map((letter, courseIndex) => ({
+      code: `EVAL${semester}${letter}`,
+      name: `Evaluation Schedule Course ${semester}${letter}`,
+      creditHours: courseIndex === 0 ? 3 : 4,
+      courseType: 'elective',
+      facultyMajors: ['CS', 'DMET'],
+      recommendedSemester: semester,
+      offeringSeasons: ['winter', 'spring'],
+      isActive: true,
+    })),
+  );
+  const allCourses = [...curriculumCourses, ...electives, ...evaluationCourses];
 
   for (const course of allCourses) {
     const { prerequisites, ...fields } = course;
@@ -117,7 +130,36 @@ async function seedCurriculum() {
     );
   }
 
-  return { curriculumCount: curriculumCourses.length, electiveCount: electives.length, mergedListings, skippedPlaceholders };
+  return { curriculumCount: curriculumCourses.length, electiveCount: electives.length, evaluationCourseCount: evaluationCourses.length, mergedListings, skippedPlaceholders };
+}
+
+function evaluationMajors(course) {
+  const source = course.facultyMajors?.length ? course.facultyMajors : ['CS', 'DMET'];
+  return [...new Set(source.map((value) => {
+    const major = canonicalMajor(value);
+    return major === 'cs' ? 'CS' : major === 'dmet' ? 'DMET' : String(value).trim();
+  }).filter(Boolean))];
+}
+
+function evaluationSlots(courseCode, components) {
+  const days = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'];
+  const starts = [540, 630, 720, 810, 900];
+  const hash = [...courseCode].reduce((value, character) => value + character.charCodeAt(0), 0);
+  const componentTypes = components.length ? components : ['lecture'];
+  return componentTypes.flatMap((componentType, componentIndex) => [1, 2].map((groupNumber) => {
+    const offset = hash + componentIndex * 3 + (groupNumber === 2 ? 7 : 0);
+    const day = days[offset % days.length];
+    const startMinute = starts[Math.floor(offset / days.length) % starts.length];
+    return {
+      componentType,
+      groupNumber: String(groupNumber),
+      day,
+      startMinute,
+      endMinute: startMinute + 60,
+      room: `E${componentIndex + 1}.${groupNumber}01`,
+      capacity: 30,
+    };
+  }));
 }
 
 async function seedAccounts(currentTerm, passwordHash) {
@@ -205,6 +247,23 @@ async function seedCurrentTermOfferings(term) {
       ],
     },
     {
+      courseCode: 'CSEN301', isPublished: true,
+      eligibleGroups: [{ major: 'CS', semester: 3 }, { major: 'DMET', semester: 3 }],
+      slots: [
+        { componentType: 'lecture', groupNumber: '1', day: 'Monday', startMinute: 570, endMinute: 630, room: 'C7.303', capacity: 100 },
+        { componentType: 'lecture', groupNumber: '2', day: 'Monday', startMinute: 600, endMinute: 660, room: 'C7.304', capacity: 100 },
+        { componentType: 'tutorial', groupNumber: '1', day: 'Wednesday', startMinute: 540, endMinute: 600, room: 'C6.303', capacity: 30 },
+      ],
+    },
+    {
+      courseCode: 'CSEN401', isPublished: true,
+      eligibleGroups: [{ major: 'CS', semester: 4 }],
+      slots: [
+        { componentType: 'lab', groupNumber: '1', day: 'Tuesday', startMinute: 600, endMinute: 660, room: 'B4.401', capacity: 24 },
+        { componentType: 'lab', groupNumber: '2', day: 'Thursday', startMinute: 600, endMinute: 660, room: 'B4.402', capacity: 24 },
+      ],
+    },
+    {
       courseCode: 'CSEN202', isPublished: false,
       eligibleGroups: [{ major: 'CS', semester: 2 }, { major: 'DMET', semester: 2 }],
       slots: [
@@ -230,6 +289,34 @@ async function seedCurrentTermOfferings(term) {
     );
     offerings.push({ code: course.code, isPublished: offering.isPublished });
   }
+
+  const explicitlySeededCodes = new Set(specs.map(({ courseCode }) => courseCode));
+  const curriculumCourses = await Course.find({
+    isActive: true,
+    recommendedSemester: { $gte: 2, $lte: 10 },
+  }).lean();
+  for (const course of curriculumCourses) {
+    if (explicitlySeededCodes.has(course.code)) continue;
+    if (course.offeringSeasons?.length && !course.offeringSeasons.includes(term.season)) continue;
+    const semester = Number(course.recommendedSemester);
+    const eligibleGroups = evaluationMajors(course).map((major) => ({ major, semester }));
+    const components = ['lecture', 'tutorial', 'lab'].filter((component) => Number(course[`${component}Hours`] || 0) > 0);
+    const offering = await CourseOffering.findOneAndUpdate(
+      { term: term._id, course: course._id },
+      { $setOnInsert: {
+        course: course._id,
+        term: term._id,
+        academicYear: term.academicYear,
+        instructors: [{ fullName: 'Evaluation Faculty Member', email: 'evaluation.faculty@guc.edu.eg' }],
+        eligibleGroups,
+        isPublished: true,
+        slots: evaluationSlots(course.code, components),
+      } },
+      { upsert: true, returnDocument: 'after', runValidators: true, setDefaultsOnInsert: true },
+    );
+    offerings.push({ code: course.code, isPublished: offering.isPublished });
+  }
+
   return offerings;
 }
 
@@ -246,9 +333,10 @@ async function seedEvaluationData() {
 
     console.log('Evaluation seed completed (idempotent; no collections were cleared).');
     console.log(`Advising students: ${accounts.students.length}; advisors: ${accounts.advisors.length}; coordinator: 1; administrator: 1`);
-    console.log(`Courses: ${courses.curriculumCount} curriculum courses from courses.csv + ${courses.electiveCount} electives`);
+    console.log(`Courses: ${courses.curriculumCount} curriculum courses from courses.csv + ${courses.electiveCount} electives + ${courses.evaluationCourseCount} evaluation courses`);
     console.log(`Terms added/updated: ${terms.map(({ code }) => code).join(', ')}; total terms in database: ${totalTermCount}; active term: 60-`);
-    console.log(`Offerings in active term 60-: ${offerings.map(({ code, isPublished }) => `${code} (${isPublished ? 'published' : 'draft'})`).join(', ')}`);
+    console.log(`Active term advising deadline: ${terms.find(({ code }) => code === '60-').advisingDeadline.toISOString()}`);
+    console.log(`Offerings in active term 60-: ${offerings.length} seeded; ${offerings.filter(({ isPublished }) => isPublished).length} published and eligible for the seeded major/semester combinations`);
     console.log(`Curriculum repeated listings merged: ${courses.mergedListings}; elective placeholders skipped: ${courses.skippedPlaceholders}`);
     console.log(`Evaluation account password: ${DEVELOPMENT_PASSWORD}`);
     console.log('Accounts: evaluation.admin@guc.edu.eg; evaluation.coordinator@guc.edu.eg; evaluation.advisor1-5@guc.edu.eg; evaluation.student1-10@student.guc.edu.eg');

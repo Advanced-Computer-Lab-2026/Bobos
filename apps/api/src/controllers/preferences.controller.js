@@ -87,6 +87,46 @@ async function preferenceResponse(student, term) {
   return { success: true, submitted: Boolean(preferences), advisoryOnly: true, preferences, lastUpdatedAt: preferences?.updatedAt ?? null };
 }
 
+function findPreferredGroupConflict(preferredGroups, offerings) {
+  for (let firstIndex = 0; firstIndex < preferredGroups.length; firstIndex += 1) {
+    const first = preferredGroups[firstIndex];
+    const firstCourseId = String(first.course);
+    const firstOffering = offerings.find(offering => String(offering.course) === firstCourseId);
+    if (!firstOffering) continue;
+    const firstSlots = firstOffering.slots.filter(slot => slot.componentType === first.componentType && slot.groupNumber === first.groupNumber);
+    for (let secondIndex = firstIndex + 1; secondIndex < preferredGroups.length; secondIndex += 1) {
+      const second = preferredGroups[secondIndex];
+      if (String(second.course) === firstCourseId) continue;
+      const secondOffering = offerings.find(offering => String(offering.course) === String(second.course));
+      if (!secondOffering) continue;
+      const secondSlots = secondOffering.slots.filter(slot => slot.componentType === second.componentType && slot.groupNumber === second.groupNumber);
+      for (const firstSlot of firstSlots) {
+        for (const secondSlot of secondSlots) {
+          if (firstSlot.day !== secondSlot.day) continue;
+          const startMinute = Math.max(firstSlot.startMinute, secondSlot.startMinute);
+          const endMinute = Math.min(firstSlot.endMinute, secondSlot.endMinute);
+          if (startMinute < endMinute) {
+            return {
+              firstCode: firstOffering.courseCode,
+              firstGroup: `${first.componentType} ${first.groupNumber}`,
+              secondCode: secondOffering.courseCode,
+              secondGroup: `${second.componentType} ${second.groupNumber}`,
+              day: firstSlot.day,
+              startMinute,
+              endMinute,
+            };
+          }
+        }
+      }
+    }
+  }
+  return null;
+}
+
+function formatTime(minute) {
+  return `${String(Math.floor(minute / 60)).padStart(2, '0')}:${String(minute % 60).padStart(2, '0')}`;
+}
+
 // Req 58: absence of preferences is a successful, non-blocking read.
 export async function getPreferences(req, res) {
   try {
@@ -119,13 +159,22 @@ export async function savePreferences(req, res) {
     if (preferences.preferredGroups.length) {
       const ids = [...new Set(preferences.preferredGroups.map(group => group.course))];
       const [courses, offerings] = await Promise.all([
-        Course.find({ _id: { $in: ids }, isActive: true }).select('_id').lean(),
-        CourseOffering.find({ term: term._id, course: { $in: ids }, isPublished: true }).select('course slots.componentType slots.groupNumber').lean(),
+        Course.find({ _id: { $in: ids }, isActive: true }).select('_id code').lean(),
+        CourseOffering.find({ term: term._id, course: { $in: ids }, isPublished: true }).select('course slots.componentType slots.groupNumber slots.day slots.startMinute slots.endMinute').lean(),
       ]);
       const activeCourses = new Set(courses.map(course => String(course._id)));
+      const courseCodes = new Map(courses.map(course => [String(course._id), course.code]));
+      offerings.forEach(offering => { offering.courseCode = courseCodes.get(String(offering.course)); });
       const publishedGroups = new Set(offerings.flatMap(offering => offering.slots.map(slot => JSON.stringify([String(offering.course), slot.componentType, slot.groupNumber]))));
       if (preferences.preferredGroups.some(group => !activeCourses.has(group.course) || !publishedGroups.has(JSON.stringify([group.course, group.componentType, group.groupNumber])))) {
         return res.status(400).json({ success: false, message: "Preferred groups must exist in a published offering for the selected term and an active course." });
+      }
+      const conflict = findPreferredGroupConflict(preferences.preferredGroups, offerings);
+      if (conflict) {
+        return res.status(400).json({
+          success: false,
+          message: `Selected groups overlap: ${conflict.firstCode} ${conflict.firstGroup} and ${conflict.secondCode} ${conflict.secondGroup} on ${conflict.day}, ${formatTime(conflict.startMinute)}–${formatTime(conflict.endMinute)}. Choose a different group.`,
+        });
       }
     }
     // Re-read after group validation so a deadline changed meanwhile is honored.

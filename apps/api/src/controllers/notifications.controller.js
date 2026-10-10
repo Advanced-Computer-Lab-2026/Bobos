@@ -53,6 +53,31 @@ export const getMyNotifications = async (req, res) => {
   }
 };
 
+/** Development-only helper for verifying the authenticated user's inbox end to end. */
+export const createTestNotification = async (req, res) => {
+  if (process.env.NODE_ENV === "production") {
+    return res.status(404).json({ success: false, message: "Not found." });
+  }
+
+  const user = req.user;
+  if (!user?._id) {
+    return res.status(401).json({ success: false, message: "Authentication required." });
+  }
+
+  try {
+    const notification = await Notification.create({
+      recipient: user._id,
+      type: "advisorAssigned",
+      title: "Test notification",
+      message: "This test confirms that notifications can be saved and shown in your inbox.",
+      channels: ["inApp"],
+    });
+    return res.status(201).json({ success: true, notification: { _id: notification._id } });
+  } catch {
+    return res.status(500).json({ success: false, message: "Failed to create a test notification." });
+  }
+};
+
 /**
  * Requirement 5: Mark a notification as read.
  * - Notification ID is supplied as a route parameter (:id).

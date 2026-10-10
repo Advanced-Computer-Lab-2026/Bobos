@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import mongoose from "mongoose";
 import { requireAuth } from "../middleware/auth.middleware.js";
-import { getMyNotifications, markNotificationAsRead } from "./notifications.controller.js";
+import { createTestNotification, getMyNotifications, markNotificationAsRead } from "./notifications.controller.js";
 import { Notification } from "../models/communications.js";
 
 const createMockReqRes = ({ user = null, headers = {}, query = {}, body = {}, params = {} } = {}) => {
@@ -53,6 +53,21 @@ test("Requirement 5: Unauthenticated user cannot retrieve notifications", async 
   assert.equal(res2.getStatusCode(), 401);
   assert.equal(res2.getBody().success, false);
   assert.match(res2.getBody().message, /Authentication required/i);
+});
+
+test("development test notification is saved for only the signed-in user", async (t) => {
+  const userId = new mongoose.Types.ObjectId();
+  const created = { _id: new mongoose.Types.ObjectId() };
+  let fields;
+  t.mock.method(Notification, "create", async (value) => { fields = value; return created; });
+  const { req, res } = createMockReqRes({ user: { _id: userId } });
+
+  await createTestNotification(req, res);
+
+  assert.equal(res.getStatusCode(), 201);
+  assert.equal(fields.recipient, userId);
+  assert.deepEqual(fields.channels, ["inApp"]);
+  assert.equal(res.getBody().notification._id, created._id);
 });
 
 test("Requirement 5: Unauthenticated user cannot mark a notification as read", async () => {

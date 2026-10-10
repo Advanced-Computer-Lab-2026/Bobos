@@ -1,7 +1,10 @@
 import mongoose from "mongoose";
 import { AcademicTerm, Course, CourseOffering } from "../models/catalogue.js";
 import { StudentProfile, User } from "../models/identity.js";
-import { ScheduleTemplate, StudentSchedule } from "../models/academics.js";
+import { CourseAttempt, ScheduleTemplate, SchedulingPreference, StudentSchedule } from "../models/academics.js";
+import { ExtraHoursRequest, MandatoryCourseRemovalRequest } from "../models/requests.js";
+import { calculateDraftCreditPolicy } from "../utils/credit-allowance.js";
+import { majorMatches } from "../utils/major.js";
 import { buildWeeklyCalendar } from "../../../../server/src/utils/weeklyCalendar.js";
 import { toMinutes, findFirstClash, describeSlot } from "../../../../server/src/utils/timetable.js";
 import { buildRegisteredCourses } from "../../../../server/src/utils/registeredCourses.js";
@@ -425,6 +428,275 @@ export async function getStudentAssignment(req, res, next) {
     const schedule = await findStudentSchedule(student, term);
     res.json({ term: termView(term), student: studentView(student, schedule), schedule });
   } catch (error) { next(error); }
+}
+
+function canManageAdvisingStudent(viewer, student) {
+  if (student.studentType !== "advising") return { status: 400, message: "Draft schedules are only available for advising students." };
+  if (student.enrollmentStatus !== "active" || student.user?.isActive === false) return { status: 409, message: "Inactive advising students cannot receive a new or updated draft schedule." };
+  if (viewer.role === "advisor" && idOf(student.assignedAdvisor) !== idOf(viewer._id)) {
+    return { status: 403, message: "Advisors may manage drafts only for their assigned advising students." };
+  }
+  return null;
+}
+
+function offeringEligibleForStudent(offering, student) {
+  const course = offering.course;
+  const majorIsEligible = !course.facultyMajors?.length || course.facultyMajors.some((major) => majorMatches(major, student.major));
+  return majorIsEligible && (offering.eligibleGroups || []).some((group) =>
+    majorMatches(group.major, student.major) && (group.semester == null || Number(group.semester) === Number(student.currentSemester)) &&
+    (!group.studyGroup || !student.studyGroup || String(group.studyGroup) === String(student.studyGroup))
+  );
+}
+
+function groupDraftOffering(offering, preferenceGroups = []) {
+  const byComponent = new Map();
+  for (const slot of offering.slots || []) {
+    const key = `${slot.componentType}:${slot.groupNumber}`;
+    const group = byComponent.get(key) || {
+      componentType: slot.componentType,
+      groupNumber: slot.groupNumber,
+      slots: [],
+      availableSeats: Number.MAX_SAFE_INTEGER,
+      preferredPriorities: [],
+      valid: true,
+    };
+    group.slots.push({
+      slotGroupId: slot._id,
+      day: slot.day,
+      startTime: clock(slot.startMinute),
+      endTime: clock(slot.endMinute),
+      room: slot.room,
+      capacity: slot.capacity,
+      assignedStudentCount: slot.assignedStudentCount || 0,
+    });
+    if (!TEACHING_DAYS.includes(slot.day) || !Number.isInteger(slot.startMinute) || !Number.isInteger(slot.endMinute) || slot.endMinute <= slot.startMinute) group.valid = false;
+    group.availableSeats = Math.min(group.availableSeats, Math.max(0, slot.capacity - (slot.assignedStudentCount || 0)));
+    byComponent.set(key, group);
+  }
+  const courseId = idOf(offering.course);
+  const groups = [...byComponent.values()];
+  for (const group of groups) {
+    const preferred = preferenceGroups.filter((item) => idOf(item.course?._id || item.course) === courseId &&
+      item.componentType === group.componentType && item.groupNumber === group.groupNumber);
+    group.preferredPriorities = preferred.map((item) => item.priority).sort((a, b) => a - b);
+    if (group.availableSeats === Number.MAX_SAFE_INTEGER || !group.valid) group.availableSeats = 0;
+  }
+  return {
+    _id: offering._id,
+    course: {
+      _id: offering.course._id,
+      code: offering.course.code,
+      name: offering.course.name,
+      creditHours: offering.course.creditHours,
+      courseType: offering.course.courseType,
+      prerequisites: (offering.course.prerequisites || []).map((item) => ({ _id: item._id, code: item.code, name: item.name })),
+    },
+    instructors: offering.instructors || [],
+    components: [...new Set(groups.map((group) => group.componentType))],
+    groups,
+  };
+}
+
+async function resolveDraftContext(req, res) {
+  const student = await resolveStudent(req.params.studentId);
+  if (!student) {
+    res.status(404).json({ message: "Student not found." });
+    return null;
+  }
+  const accessError = canManageAdvisingStudent(req.user, student);
+  if (accessError) {
+    res.status(accessError.status).json({ message: accessError.message });
+    return null;
+  }
+  const termResult = await resolveTerm(req.query.termId);
+  if (termResult.error) {
+    res.status(termResult.error.status).json({ message: termResult.error.message });
+    return null;
+  }
+  return { student, term: termResult.term };
+}
+
+async function loadDraftData(student, term) {
+  const [preference, schedule, publishedOfferings, passedCourseIds, mandatoryCourseIds, removedCourseIds, extraHoursRequests] = await Promise.all([
+    SchedulingPreference.findOne({ student: student._id, term: term._id }).populate("preferredGroups.course", "code name").lean(),
+    StudentSchedule.findOne({ student: student._id, term: term._id, scheduleType: "advising" }).lean(),
+    CourseOffering.find({ term: term._id, isPublished: true }).populate({ path: "course", match: { isActive: true }, select: "code name creditHours courseType facultyMajors prerequisites isActive", populate: { path: "prerequisites", select: "code name" } }).lean(),
+    CourseAttempt.distinct("course", { student: student._id, result: "passed" }),
+    CourseAttempt.distinct("course", { student: student._id, $or: [{ result: "failed" }, { attendance: "unattended" }] }),
+    MandatoryCourseRemovalRequest.distinct("course", { student: student._id, term: term._id, status: "approved" }),
+    ExtraHoursRequest.find({ student: student._id, term: term._id, decisionStatus: "approved", settlementStatus: { $in: ["paid", "deferred"] } })
+      .populate("courses.course", "code creditHours").lean(),
+  ]);
+  const creditPolicy = calculateDraftCreditPolicy(student, extraHoursRequests);
+  const approvedExtraCourseIds = new Set(creditPolicy.approvedExtraCourses.map((item) => item.courseId));
+  const preferenceGroups = [...(preference?.preferredGroups || [])].sort((a, b) => a.priority - b.priority);
+  const offerings = publishedOfferings.filter((offering) => offering.course && offeringEligibleForStudent(offering, student))
+    .map((offering) => groupDraftOffering(offering, preferenceGroups))
+    .sort((a, b) => a.course.code.localeCompare(b.course.code));
+  const passed = new Set(passedCourseIds.map(idOf));
+  const removed = new Set(removedCourseIds.map(idOf));
+  const mandatoryIds = [...new Set(mandatoryCourseIds.map(idOf))].filter((courseId) => !passed.has(courseId) && !removed.has(courseId));
+  const coursesById = new Map(offerings.map((offering) => [idOf(offering.course._id), offering.course]));
+  const missingMandatoryIds = mandatoryIds.filter((courseId) => !coursesById.has(courseId));
+  const missingMandatoryCourses = missingMandatoryIds.length
+    ? await Course.find({ _id: { $in: missingMandatoryIds } }).select("code name creditHours courseType").lean()
+    : [];
+  const mandatoryCourses = [
+    ...mandatoryIds.map((courseId) => coursesById.get(courseId)).filter(Boolean).map((course) => ({ ...course, availableForTerm: true })),
+    ...missingMandatoryCourses.map((course) => ({ ...course, availableForTerm: false })),
+  ];
+  const currentSelections = [];
+  let staleCourseCount = 0;
+  if (schedule) {
+    const availableOfferings = new Map(offerings.map((offering) => [idOf(offering._id), offering]));
+    for (const scheduledCourse of schedule.courses || []) {
+      const offering = availableOfferings.get(idOf(scheduledCourse.courseOffering));
+      if (!offering) { staleCourseCount += 1; continue; }
+      const choices = new Map();
+      for (const slotRef of scheduledCourse.slots || []) {
+        const group = offering.groups.find((candidate) => candidate.componentType === slotRef.componentType && candidate.slots.some((slot) => idOf(slot.slotGroupId) === idOf(slotRef.slotGroupId)));
+        const slot = group?.slots.find((candidate) => idOf(candidate.slotGroupId) === idOf(slotRef.slotGroupId));
+        if (slot && group) choices.set(`${group.componentType}:${group.groupNumber}`, { componentType: group.componentType, groupNumber: group.groupNumber });
+      }
+      currentSelections.push({ courseOffering: idOf(scheduledCourse.courseOffering), groups: [...choices.values()] });
+    }
+  }
+  return {
+    preference: preference ? {
+      preferredDays: [...(preference.preferredDays || [])].sort((a, b) => a.priority - b.priority),
+      avoidedDays: [...(preference.avoidedDays || [])].sort((a, b) => a.priority - b.priority),
+      preferredTimes: [...(preference.preferredTimes || [])].sort((a, b) => a.priority - b.priority),
+      avoidedTimes: [...(preference.avoidedTimes || [])].sort((a, b) => a.priority - b.priority),
+      desiredDaysOff: [...(preference.desiredDaysOff || [])].sort((a, b) => a.priority - b.priority),
+      preferredGroups: preferenceGroups,
+      note: preference.note || "",
+    } : null,
+    preferenceLastUpdatedAt: preference?.updatedAt || null,
+    creditPolicy,
+    offerings,
+    availableOfferingRecords: publishedOfferings.filter((offering) => offering.course && offeringEligibleForStudent(offering, student)),
+    mandatoryCourses,
+    passedCourseIds: [...passed],
+    schedule: schedule ? {
+      _id: schedule._id,
+      status: schedule.status,
+      version: schedule.version,
+      updatedAt: schedule.updatedAt,
+      totalCreditHours: (schedule.courses || []).reduce((total, course) => total + Number(course.creditHoursSnapshot || 0), 0),
+      staleCourseCount,
+      courses: currentSelections,
+    } : null,
+  };
+}
+
+export async function getAdvisingDraft(req, res, next) {
+  try {
+    const context = await resolveDraftContext(req, res);
+    if (!context) return;
+    const { availableOfferingRecords: _privateRecords, ...data } = await loadDraftData(context.student, context.term);
+    res.json({ term: termView(context.term), student: studentView(context.student), ...data, editable: !data.schedule || data.schedule.status === "draft" });
+  } catch (error) { next(error); }
+}
+
+export async function saveAdvisingDraft(req, res, next) {
+  try {
+    if (!req.body || typeof req.body !== "object" || Array.isArray(req.body) || Object.keys(req.body).some((key) => !["version", "courses", "submitForReview"].includes(key))) {
+      return res.status(400).json({ message: "Send only version, courses, and optional submitForReview in the draft request." });
+    }
+    if (!Number.isSafeInteger(req.body.version) || req.body.version < 0) return res.status(400).json({ message: "version must be a non-negative integer." });
+    if (!Array.isArray(req.body.courses) || req.body.courses.length > 100) return res.status(400).json({ message: "courses must be an array of at most 100 course selections." });
+    if (req.body.submitForReview !== undefined && typeof req.body.submitForReview !== "boolean") return res.status(400).json({ message: "submitForReview must be a boolean." });
+    if (req.body.submitForReview && req.body.courses.length === 0) return res.status(409).json({ message: "Add at least one course before sending this schedule for student review." });
+    const context = await resolveDraftContext(req, res);
+    if (!context) return;
+    const { student, term } = context;
+    const data = await loadDraftData(student, term);
+    const approvedExtraCourseIds = new Set(data.creditPolicy.approvedExtraCourses.map((item) => item.courseId));
+    const existing = await StudentSchedule.findOne({ student: student._id, term: term._id, scheduleType: "advising" });
+    if (existing && existing.status !== "draft") return res.status(409).json({ message: "Only an open draft can be edited. This schedule has already moved to student review or processing." });
+    if ((existing?.version || 0) !== req.body.version) return res.status(409).json({ message: "This draft changed since it was loaded. Reload it before saving." });
+    const offeringById = new Map(data.availableOfferingRecords.map((offering) => [idOf(offering._id), offering]));
+    const usedCourseIds = new Set();
+    const passed = new Set(data.passedCourseIds);
+    const scheduledCourses = [];
+    const flatSlots = [];
+    for (const selection of req.body.courses) {
+      if (!selection || typeof selection !== "object" || Array.isArray(selection) || Object.keys(selection).some((key) => !["courseOffering", "groups"].includes(key)) || !isId(selection.courseOffering) || !Array.isArray(selection.groups)) {
+        return res.status(400).json({ message: "Each course selection needs a valid courseOffering and a groups array." });
+      }
+      const offering = offeringById.get(selection.courseOffering.toLowerCase());
+      if (!offering) return res.status(400).json({ message: "Every selected course must have an active, published offering for this student and term." });
+      const courseId = idOf(offering.course._id);
+      if (usedCourseIds.has(courseId)) return res.status(400).json({ message: `${offering.course.code} can only be selected once.` });
+      usedCourseIds.add(courseId);
+      if (passed.has(courseId)) return res.status(409).json({ message: `${offering.course.code} has already been passed and cannot be scheduled again in this draft.` });
+      const missingPrerequisites = (offering.course.prerequisites || []).filter((prerequisite) => !passed.has(idOf(prerequisite._id)));
+      if (missingPrerequisites.length) return res.status(409).json({ message: `${offering.course.code} requires previously passed ${missingPrerequisites.map((item) => item.code).join(", ")}.` });
+      const componentTypes = [...new Set(offering.slots.map((slot) => slot.componentType))];
+      if (selection.groups.length !== componentTypes.length) return res.status(400).json({ message: `${offering.course.code} needs exactly one group for each component: ${componentTypes.join(", ")}.` });
+      const chosenGroups = new Set();
+      const slotRefs = [];
+      for (const groupSelection of selection.groups) {
+        if (!groupSelection || typeof groupSelection !== "object" || Array.isArray(groupSelection) || Object.keys(groupSelection).some((key) => !["componentType", "groupNumber"].includes(key)) || !["lecture", "tutorial", "lab"].includes(groupSelection.componentType) || typeof groupSelection.groupNumber !== "string" || !groupSelection.groupNumber.trim()) {
+          return res.status(400).json({ message: "Each selected group needs a componentType and groupNumber." });
+        }
+        const groupKey = `${groupSelection.componentType}:${groupSelection.groupNumber.trim()}`;
+        if (chosenGroups.has(groupKey) || [...chosenGroups].some((key) => key.startsWith(`${groupSelection.componentType}:`))) return res.status(400).json({ message: `Choose only one ${groupSelection.componentType} group for ${offering.course.code}.` });
+        chosenGroups.add(groupKey);
+        const selectedSlots = offering.slots.filter((slot) => slot.componentType === groupSelection.componentType && slot.groupNumber === groupSelection.groupNumber.trim());
+        if (!selectedSlots.length) return res.status(400).json({ message: `${offering.course.code} ${groupSelection.componentType} group ${groupSelection.groupNumber} is not in the published offering.` });
+        for (const slot of selectedSlots) {
+          if ((slot.assignedStudentCount || 0) >= slot.capacity) return res.status(409).json({ message: `${offering.course.code} ${slot.componentType} group ${slot.groupNumber} is full. Drafts do not reserve seats.` });
+          const viewed = slotView(slot, offering.course.code);
+          if (viewed.error) return res.status(409).json({ message: viewed.error });
+          flatSlots.push({ ...viewed, courseCode: offering.course.code, type: slot.componentType, groupNumber: slot.groupNumber });
+          slotRefs.push({ componentType: slot.componentType, courseOffering: offering._id, slotGroupId: slot._id });
+        }
+      }
+      if (componentTypes.some((component) => ![...chosenGroups].some((key) => key.startsWith(`${component}:`)))) return res.status(400).json({ message: `${offering.course.code} needs a selected group for every component.` });
+      const mandatory = data.mandatoryCourses.some((item) => idOf(item._id) === courseId);
+      scheduledCourses.push({ course: offering.course._id, courseOffering: offering._id, slots: slotRefs, isMandatory: mandatory, isExtraHours: approvedExtraCourseIds.has(courseId), creditHoursSnapshot: offering.course.creditHours });
+    }
+    if (scheduledCourses.length) {
+      const unavailableMandatory = data.mandatoryCourses.filter((course) => !course.availableForTerm);
+      if (unavailableMandatory.length) return res.status(409).json({ message: `A required failed/unattended course has no eligible published offering for this term: ${unavailableMandatory.map((course) => course.code).join(", ")}.` });
+      const selectedCourseIds = new Set(scheduledCourses.map((course) => idOf(course.course)));
+      const omittedMandatory = data.mandatoryCourses.filter((course) => !selectedCourseIds.has(idOf(course._id)));
+      if (omittedMandatory.length) return res.status(409).json({ message: `Add the required failed/unattended courses before saving this draft: ${omittedMandatory.map((course) => course.code).join(", ")}.` });
+    }
+    const clash = findFirstClash(flatSlots);
+    if (clash) return res.status(409).json({ message: `Selected groups overlap: ${describeSlot(clash[0])} overlaps ${describeSlot(clash[1])}. Choose a different group.` });
+    const totalCreditHours = scheduledCourses.reduce((total, course) => total + Number(course.creditHoursSnapshot || 0), 0);
+    const baseAllowance = data.creditPolicy.baseAllowance ?? 34;
+    const extraHoursNeeded = Math.max(0, totalCreditHours - baseAllowance);
+    const selectedApprovedExtraHours = scheduledCourses.reduce((total, course) => {
+      if (!course.isExtraHours) return total;
+      const approved = data.creditPolicy.approvedExtraCourses.find((item) => item.courseId === idOf(course.course));
+      return total + Math.min(Number(approved?.hours || 0), Number(course.creditHoursSnapshot || 0));
+    }, 0);
+    if (totalCreditHours > data.creditPolicy.maximumCreditHours + 1e-9) {
+      return res.status(409).json({ message: `The draft totals ${totalCreditHours} credit hours, above the allowed ${data.creditPolicy.maximumCreditHours}${data.creditPolicy.probation ? " probation" : ""} hours for this student. Only approved and activated extra hours count.` });
+    }
+    if (extraHoursNeeded > data.creditPolicy.approvedExtraHours + 1e-9 || extraHoursNeeded > selectedApprovedExtraHours + 1e-9) {
+      return res.status(409).json({ message: `The draft exceeds the standard ${baseAllowance}-hour allowance. Include the student's approved extra-hours courses after they are paid or deferred; approval alone does not activate them.` });
+    }
+    if (existing) {
+      const saved = await StudentSchedule.findOneAndUpdate(
+        { _id: existing._id, version: req.body.version, status: "draft" },
+        { $set: { courses: scheduledCourses, ...(req.body.submitForReview ? { status: "readyForStudentReview" } : {}) }, $inc: { version: 1 } },
+        { returnDocument: "after", runValidators: true },
+      );
+      if (!saved) return res.status(409).json({ message: "This draft changed while it was being saved. Reload it and try again." });
+      return res.json({ message: req.body.submitForReview ? "Schedule saved and sent for student review." : "Draft schedule updated.", schedule: saved });
+    }
+    if (req.body.version !== 0) return res.status(409).json({ message: "No draft exists at this version. Reload the student before saving." });
+    const status = req.body.submitForReview ? "readyForStudentReview" : "draft";
+    const saved = await StudentSchedule.create({ student: student._id, term: term._id, scheduleType: "advising", status, courses: scheduledCourses, createdBy: req.user._id });
+    return res.status(201).json({ message: req.body.submitForReview ? "Schedule created and sent for student review." : "Draft schedule created.", schedule: saved });
+  } catch (error) {
+    if (error.code === 11000) return res.status(409).json({ message: "A draft was created at the same time. Reload it before saving." });
+    next(error);
+  }
 }
 
 function collectSlotRefs(courses) {

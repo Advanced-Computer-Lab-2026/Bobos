@@ -63,6 +63,21 @@ test("advising students require a supported advising reason", async () => {
   await valid(new StudentProfile({ ...fields, studentType: "normal" }));
 });
 
+test("student IDs accept four- or five-digit suffixes", async () => {
+  const fields = {
+    user: id(),
+    studentType: "normal",
+    currentSemester: 1,
+    gpa: 0,
+    academicStanding: "goodAcademicStanding",
+  };
+
+  await valid(new StudentProfile({ ...fields, studentId: "61-1051" }));
+  await valid(new StudentProfile({ ...fields, studentId: "61-01051" }));
+  await invalid(new StudentProfile({ ...fields, studentId: "61-105" }));
+  await invalid(new StudentProfile({ ...fields, studentId: "61-010510" }));
+});
+
 test("advisor roster membership does not change account activity", async () => {
   const advisor = new User({ email: "advisor@guc.edu.eg", fullName: "Advisor", passwordHash: "hash", role: "advisor" });
   assert.equal(advisor.isAdvisorInSystem, false);

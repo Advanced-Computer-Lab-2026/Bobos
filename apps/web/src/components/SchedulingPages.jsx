@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api.js";
 
 const WEEK = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"];
@@ -168,11 +168,12 @@ export function StudentSchedulingPage({ token, section }) {
   if (loading) return <Loading />;
   const titles = { "my-schedule": ["Requirement 31", "My weekly schedule"], "my-courses": ["Requirements 32–33", "Registered courses"], "schedule-swap": ["Requirement 34", "Eligible schedule groups"] };
   const [eyebrow, title] = titles[section] || titles["my-schedule"];
+  const scheduleNotReleased = section === "my-schedule" && error === "No schedule is available to view yet.";
   return <div className="page-stack scheduling-page">
     <div className="page-title-row"><div><p className="eyebrow">{eyebrow} · {schedule?.term ? `${schedule.term.season} ${schedule.term.academicYear}` : courses?.term ? `${courses.term.season} ${courses.term.academicYear}` : ""}</p><h1>{title}</h1></div>
       {section === "my-schedule" && <div className="form-actions"><button type="button" className="outline-button" onClick={() => window.print()} disabled={schedule?.schedule?.status !== "processed"}>Print</button><button type="button" className="primary-button" onClick={downloadPdf} disabled={downloadBusy || schedule?.schedule?.status !== "processed"}>{downloadBusy ? "Preparing…" : "Download PDF"}</button></div>}
     </div>
-    {error && <Feedback tone="error">{error}</Feedback>}
+    {error && <Feedback tone={scheduleNotReleased ? "info" : "error"}>{scheduleNotReleased ? "No schedule has been released for this term yet. Advising drafts appear after staff send them for student review; final schedules appear after processing." : error}</Feedback>}
     {section === "my-schedule" && schedule && <>
       <div className="stat-grid schedule-stats"><Stat label="Study group" value={schedule.schedule?.studyGroup ? `Group ${schedule.schedule.studyGroup}` : "Not assigned"} /><Stat label="Registered courses" value={schedule.schedule?.courses?.length ?? 0} /><Stat label="Credit hours" value={schedule.schedule?.totalCreditHours ?? 0} /><Stat label="Status" value={prettyStatus(schedule.schedule?.status)} /></div>
       {schedule.schedule ? <WeeklySchedule week={schedule.schedule.week} daysOff={schedule.schedule.daysOff} /> : <Empty title="No schedule yet" text="Your schedule will appear here once it has been assigned or prepared by your advisor." />}
@@ -191,7 +192,7 @@ export function StudentSchedulingPage({ token, section }) {
   </div>;
 }
 
-export function StaffSchedulesPage({ token, notify }) {
+export function StaffSchedulesPage({ token, role, notify }) {
   const [search, setSearch] = useState("");
   const [students, setStudents] = useState([]);
   const [selected, setSelected] = useState(null);
@@ -200,6 +201,8 @@ export function StaffSchedulesPage({ token, notify }) {
   const [error, setError] = useState("");
   const [termId, setTermId] = useState("");
   const [terms, setTerms] = useState([]);
+  const [draftStudent, setDraftStudent] = useState(null);
+  const scheduleResultRef = useRef(null);
 
   useEffect(() => {
     let alive = true;
@@ -219,12 +222,19 @@ export function StaffSchedulesPage({ token, notify }) {
     return () => { alive = false; };
   }, [token, termId, search]);
 
+  useEffect(() => {
+    if (!selected || !schedule?.schedule) return;
+    scheduleResultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [selected, schedule]);
+
   async function openStudent(student) {
     setSelected(student); setSchedule(null); setError("");
     const query = termId ? `?termId=${encodeURIComponent(termId)}` : "";
     try { setSchedule(await api(`/api/schedules/student/${encodeURIComponent(student._id)}${query}`, { token })); }
     catch (err) { setError(err.message); }
   }
+
+  if (draftStudent) return <AdvisingDraftEditor token={token} student={draftStudent} termId={termId} notify={notify} onBack={() => setDraftStudent(null)} onSaved={(status = "draft") => setStudents((current) => current.map((row) => row._id === draftStudent._id ? { ...row, scheduleStatus: status } : row))} />;
 
   return <div className="page-stack scheduling-page">
     <div className="page-title-row"><div><p className="eyebrow">Requirement 31 · Staff</p><h1>Student schedules</h1><p className="page-description">Review a student’s schedule according to your role and advising assignments.</p></div>
@@ -233,11 +243,207 @@ export function StaffSchedulesPage({ token, notify }) {
     {error && <Feedback tone="error">{error}</Feedback>}
     <section className="panel"><div className="results-heading"><div><p className="eyebrow">Roster</p><h2>Students</h2></div><span className="result-count">{students.length} students</span></div>
       <label className="field roster-search"><span>Search students</span><input value={search} onChange={(event) => setSearch(event.target.value)} maxLength={100} placeholder="Student ID, name, or email" /></label>
-      {loading ? <Loading /> : students.length ? <div className="table-scroll"><table><thead><tr><th>Student</th><th>Type</th><th>Major / semester</th><th>Schedule status</th><th /></tr></thead><tbody>{students.map((student) => <tr key={student._id}><td><strong>{student.fullName}</strong><span className="secondary-text">{student.studentId}</span></td><td>{student.studentType}</td><td>{student.major} · {student.currentSemester}</td><td>{prettyStatus(student.scheduleStatus)}</td><td><button className="small-button outline-button" type="button" onClick={() => openStudent(student)}>View schedule</button></td></tr>)}</tbody></table></div> : <Empty title="No students found" text="Try another search term." />}
+      {loading ? <Loading /> : students.length ? <div className="table-scroll"><table><thead><tr><th>Student</th><th>Type</th><th>Major / semester</th><th>Schedule status</th><th /></tr></thead><tbody>{students.map((student) => <tr key={student._id}><td><strong>{student.fullName}</strong><span className="secondary-text">{student.studentId}</span></td><td>{student.studentType}</td><td>{student.major} · {student.currentSemester}</td><td>{prettyStatus(student.scheduleStatus)}</td><td><div className="table-actions">{["advisor", "coordinator"].includes(role) && student.studentType === "advising" && (!student.scheduleStatus || student.scheduleStatus === "draft") && <button className="small-button primary-button" type="button" onClick={() => { setSelected(null); setSchedule(null); setDraftStudent(student); }}>{student.scheduleStatus === "draft" ? "Edit draft" : "Create draft"}</button>}{student.scheduleStatus && <button className="small-button outline-button" type="button" onClick={() => openStudent(student)}>View schedule</button>}</div></td></tr>)}</tbody></table></div> : <Empty title="No students found" text="Try another search term." />}
     </section>
-    {selected && schedule?.schedule && <section className="panel staff-schedule-result"><div className="results-heading"><div><p className="eyebrow">{schedule.student?.studentId} · {schedule.term?.season} {schedule.term?.academicYear}</p><h2>{schedule.student?.fullName}’s schedule</h2></div><span className="status-pill">{prettyStatus(schedule.schedule.status)}</span></div><WeeklySchedule week={schedule.schedule.week} daysOff={schedule.schedule.daysOff} /></section>}
+    {selected && schedule?.schedule && <section className="panel staff-schedule-result" ref={scheduleResultRef} tabIndex={-1} aria-label={`${schedule.student?.fullName ?? "Student"} schedule`}><div className="results-heading"><div><p className="eyebrow">{schedule.student?.studentId} · {schedule.term?.season} {schedule.term?.academicYear}</p><h2>{schedule.student?.fullName}’s schedule</h2></div><span className="status-pill">{prettyStatus(schedule.schedule.status)}</span></div>{schedule.schedule.courses?.length ? <WeeklySchedule week={schedule.schedule.week} daysOff={schedule.schedule.daysOff} /> : <Feedback tone="info">This draft is empty. Choose “Edit draft” in the student list to add course groups.</Feedback>}</section>}
   </div>;
 }
+
+function AdvisingDraftEditor({ token, student, termId, notify, onBack, onSaved }) {
+  const [data, setData] = useState(null);
+  const [selections, setSelections] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [sendingForReview, setSendingForReview] = useState(false);
+  const [refreshingPreferences, setRefreshingPreferences] = useState(false);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const editable = !data?.schedule || data.editable;
+
+  const load = useCallback(async () => {
+    setLoading(true); setError("");
+    const query = termId ? `?termId=${encodeURIComponent(termId)}` : "";
+    try {
+      const result = await api(`/api/schedules/advising/${encodeURIComponent(student._id)}/draft${query}`, { token });
+      setData(result);
+      const current = {};
+      for (const selected of result.schedule?.courses || []) current[selected.courseOffering] = { courseOffering: selected.courseOffering, groups: selected.groups || [] };
+      setSelections(current);
+    } catch (requestError) { setError(requestError.message); }
+    finally { setLoading(false); }
+  }, [student._id, termId, token]);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function refreshPreferences() {
+    setRefreshingPreferences(true); setError("");
+    const query = termId ? `?termId=${encodeURIComponent(termId)}` : "";
+    try {
+      const latest = await api(`/api/schedules/advising/${encodeURIComponent(student._id)}/draft${query}`, { token });
+      setData((current) => current ? { ...current, preference: latest.preference, preferenceLastUpdatedAt: latest.preferenceLastUpdatedAt, creditPolicy: latest.creditPolicy, offerings: latest.offerings, mandatoryCourses: latest.mandatoryCourses } : latest);
+      setMessage("Latest preferences refreshed. Your unsaved group choices are still selected.");
+    } catch (requestError) { setError(requestError.message); }
+    finally { setRefreshingPreferences(false); }
+  }
+
+  const addCourse = (offering) => setSelections((current) => ({
+    ...current,
+    [offering._id]: { courseOffering: offering._id, groups: [] },
+  }));
+  const removeCourse = (offeringId) => setSelections((current) => {
+    const next = { ...current }; delete next[offeringId]; return next;
+  });
+  const setGroup = (offeringId, componentType, groupNumber) => setSelections((current) => {
+    const selected = current[offeringId] || { courseOffering: offeringId, groups: [] };
+    const groups = selected.groups.filter((group) => group.componentType !== componentType);
+    if (groupNumber) groups.push({ componentType, groupNumber });
+    return { ...current, [offeringId]: { ...selected, groups } };
+  });
+
+  async function save(event, submitForReview = false) {
+    event?.preventDefault(); setSaving(true); setSendingForReview(submitForReview); setError(""); setMessage("");
+    try {
+      const result = await api(`/api/schedules/advising/${encodeURIComponent(student._id)}/draft${termId ? `?termId=${encodeURIComponent(termId)}` : ""}`, {
+        token,
+        method: "PUT",
+        body: { version: data?.schedule?.version || 0, courses: Object.values(selections), ...(submitForReview ? { submitForReview: true } : {}) },
+      });
+      const savedCourseCount = result.schedule?.courses?.length ?? Object.values(selections).length;
+      const savedCourseMessage = submitForReview
+        ? ` ${savedCourseCount} course${savedCourseCount === 1 ? "" : "s"} are ready for ${student.fullName} to review.`
+        : savedCourseCount
+        ? ` ${savedCourseCount} course${savedCourseCount === 1 ? "" : "s"} saved.`
+        : " The draft is empty because no courses were selected.";
+      const offeringsMessage = data?.offerings.length
+        ? ""
+        : " No published offerings are available for this student and term, so courses cannot be added yet.";
+      setMessage(`${result.message || "Draft saved."}${savedCourseMessage}${offeringsMessage}`);
+      await load();
+      onSaved?.(result.schedule?.status || "draft");
+      notify?.("success", result.message || "Draft saved.");
+    } catch (requestError) { setError(requestError.message); }
+    finally { setSaving(false); setSendingForReview(false); }
+  }
+
+  const selectedOfferings = Object.values(selections);
+  const credits = selectedOfferings.reduce((total, selected) => total + Number(data?.offerings.find((offering) => offering._id === selected.courseOffering)?.course.creditHours || 0), 0);
+  const creditPolicy = data?.creditPolicy;
+  const approvedExtraCourses = new Map((creditPolicy?.approvedExtraCourses || []).map((item) => [item.courseId, Number(item.hours)]));
+  const selectedApprovedExtraHours = selectedOfferings.reduce((total, selected) => {
+    const offering = data?.offerings.find((item) => item._id === selected.courseOffering);
+    const approvedHours = approvedExtraCourses.get(String(offering?.course?._id || ""));
+    return total + (approvedHours == null ? 0 : Math.min(approvedHours, Number(offering?.course?.creditHours || 0)));
+  }, 0);
+  const standardCreditAllowance = creditPolicy?.baseAllowance ?? 34;
+  const extraHoursNeeded = Math.max(0, credits - standardCreditAllowance);
+  const overCreditLimit = Boolean(creditPolicy && credits > creditPolicy.maximumCreditHours + 1e-9);
+  const extraHoursNotCovered = Boolean(creditPolicy && (extraHoursNeeded > creditPolicy.approvedExtraHours + 1e-9 || extraHoursNeeded > selectedApprovedExtraHours + 1e-9));
+  const selectedConflict = findDraftSelectionConflict(selectedOfferings, data?.offerings || []);
+  const incompleteSelection = selectedOfferings.find((selected) => {
+    const offering = data?.offerings.find((item) => item._id === selected.courseOffering);
+    return offering && selected.groups.length !== offering.components.length;
+  });
+  const missingMandatory = selectedOfferings.length ? (data?.mandatoryCourses || []).filter((course) => !course.availableForTerm || !selectedOfferings.some((selected) => data?.offerings.find((item) => item._id === selected.courseOffering)?.course._id === course._id)) : [];
+  const draftWeek = buildDraftWeek(selectedOfferings, data?.offerings || []);
+  const preferences = data?.preference;
+
+  return <div className="page-stack scheduling-page">
+    <div className="page-title-row"><div><p className="eyebrow">GROUP A · REQUIREMENT 58</p><h1>Advising draft schedule</h1><p className="page-description">Create or update an open draft for {student.fullName} ({student.studentId}). Preferences are ranking hints; course and timetable rules still apply.</p></div><button className="outline-button" type="button" onClick={onBack}>← Back to students</button></div>
+    {error && !data && <Feedback tone="error">{error}</Feedback>}
+    {loading ? <Loading /> : data && <>
+      <section className="panel draft-summary"><div><p className="eyebrow">{data.term?.code} · {data.term?.season} {data.term?.academicYear}</p><h2>{data.student?.fullName} · {data.student?.major}, semester {data.student?.currentSemester}</h2><p className="helper-text">{data.schedule ? `Draft version ${data.schedule.version} · last edited ${formatDraftDate(data.schedule.updatedAt)}` : "No draft exists for this term yet. Saving creates an open draft."}</p></div><span className={`status-pill ${editable ? "good" : "muted"}`}>{data.schedule ? prettyStatus(data.schedule.status) : "No draft"}</span></section>
+      {data.schedule?.staleCourseCount > 0 && <Feedback tone="warning">{data.schedule.staleCourseCount} course selection{data.schedule.staleCourseCount === 1 ? " is" : "s are"} no longer available for this student and term. Review the draft before saving; unavailable selections will be removed from the saved draft.</Feedback>}
+      <section className="panel draft-preferences"><div className="results-heading"><div><p className="eyebrow">REQUIREMENT 58 · STUDENT INPUT</p><h2>Latest scheduling preferences</h2></div><div className="table-actions"><span className="result-count">{data.preferenceLastUpdatedAt ? `Updated ${formatDraftDate(data.preferenceLastUpdatedAt)}` : "No submission"}</span><button className="text-button" type="button" disabled={refreshingPreferences} onClick={refreshPreferences}>{refreshingPreferences ? "Refreshing…" : "↻ Refresh"}</button></div></div>
+        {!preferences ? <Feedback tone="info">This student has not submitted preferences for this term. You can still create the draft.</Feedback> : <>
+          <p className="helper-text">Priority order is shown as ranked. Hints are satisfied where feasible and never override academic rules or a timetable clash.</p>
+          <div className="draft-preference-grid">
+            <PreferenceSummary title="Preferred days" entries={preferences.preferredDays.map((item) => `${item.day} · #${item.priority}`)} />
+            <PreferenceSummary title="Days to avoid" entries={preferences.avoidedDays.map((item) => `${item.day} · #${item.priority}`)} />
+            <PreferenceSummary title="Desired days off" entries={preferences.desiredDaysOff.map((item) => `${item.day} · #${item.priority}`)} />
+            <PreferenceSummary title="Preferred times" entries={preferences.preferredTimes.map((item) => `${formatDraftTime(item.startMinute)}–${formatDraftTime(item.endMinute)} · #${item.priority}`)} />
+            <PreferenceSummary title="Times to avoid" entries={preferences.avoidedTimes.map((item) => `${formatDraftTime(item.startMinute)}–${formatDraftTime(item.endMinute)} · #${item.priority}`)} />
+            <PreferenceSummary title="Preferred groups" entries={preferences.preferredGroups.map((item) => `${item.course?.code || "Course"} ${item.componentType} ${item.groupNumber} · #${item.priority}`)} />
+          </div>
+          {preferences.note && <p className="draft-student-note"><strong>Student note:</strong> {preferences.note}</p>}
+        </>}
+      </section>
+      {data.mandatoryCourses.length > 0 && <section className="panel"><div className="panel-heading"><div><p className="eyebrow">ACADEMIC RECORD</p><h2>Failed or unattended courses</h2></div></div><p className="helper-text">These courses are marked mandatory unless a removal was approved for this term. Include the available offerings in the draft when required.</p><div className="draft-mandatory-list">{data.mandatoryCourses.map((course) => <span className={`status-pill ${course.availableForTerm ? "warning" : "muted"}`} key={course._id}>{course.code}{course.availableForTerm ? " · mandatory" : " · no eligible published offering"}</span>)}</div></section>}
+      {!editable && data.schedule?.status === "readyForStudentReview" && <Feedback tone="success">This schedule is now visible to the advising student for review.</Feedback>}
+      <section className="panel draft-timetable"><div className="panel-heading"><div><p className="eyebrow">LIVE PREVIEW</p><h2>Selected timetable</h2></div><span className="result-count">{selectedOfferings.length} subjects</span></div>{selectedOfferings.length ? <WeeklySchedule week={draftWeek} compact /> : <p className="helper-text">Add course groups below to preview their days and times here.</p>}</section>
+      <form className="panel draft-course-editor" onSubmit={save}>
+        <div className="results-heading"><div><p className="eyebrow">DRAFT CONTENT</p><h2>Published course offerings</h2></div><span className="result-count">{selectedOfferings.length} selected · {credits} / {creditPolicy?.maximumCreditHours ?? "—"} credit hours</span></div>
+        <p className="helper-text">Choose a course, then one group for each component. Meeting times and available seats appear beside each option. Drafts do not reserve seats.</p>
+        {creditPolicy && <p className="helper-text">{creditPolicy.policyConfigured ? `${creditPolicy.probation ? "Probation" : "Standard"} allowance: ${creditPolicy.baseAllowance} hours · activated extra hours: ${creditPolicy.approvedExtraHours} · maximum: ${creditPolicy.maximumCreditHours}.` : `The requirements do not define a semester ${creditPolicy.semester} standard allowance; the explicit 34-hour overall ceiling is applied until that baseline is clarified.`}</p>}
+        {!editable && <Feedback tone="warning">This schedule has moved beyond draft status and is read-only.</Feedback>}
+        {selectedConflict && <Feedback tone="error">{selectedConflict}</Feedback>}
+        {!selectedConflict && incompleteSelection && <Feedback tone="warning">Choose one group for every component in each selected course before saving.</Feedback>}
+        {missingMandatory.length > 0 && <Feedback tone="warning">Before saving a non-empty draft, include required courses: {missingMandatory.map((course) => course.code).join(", ")}.</Feedback>}
+        {overCreditLimit && <Feedback tone="error">This draft exceeds the student's maximum of {creditPolicy.maximumCreditHours} credit hours.</Feedback>}
+        {!overCreditLimit && extraHoursNotCovered && <Feedback tone="warning">The draft goes beyond the standard allowance. Add an extra-hours course that has an approved request and is already paid or deferred; approval alone does not activate it.</Feedback>}
+        {!data.offerings.length ? <Empty title="No published offerings" text="There are no active published course offerings for this student's major and semester." /> : <div className="draft-course-list">{data.offerings.map((offering) => {
+          const selected = selections[offering._id];
+          return <article className={`draft-course ${selected ? "selected" : ""}`} key={offering._id}>
+            <div className="draft-course-heading"><div><strong>{offering.course.code} · {offering.course.name}</strong><span className="secondary-text">{offering.course.creditHours} credits · {offering.course.courseType}{approvedExtraCourses.has(String(offering.course._id)) ? " · approved extra-hours course (paid/deferred)" : ""}</span></div>{selected ? <button className="text-button" type="button" disabled={!editable} onClick={() => removeCourse(offering._id)}>Remove</button> : <button className="outline-button small-button" type="button" disabled={!editable} onClick={() => addCourse(offering)}>Add course</button>}</div>
+            {selected && <div className="draft-component-grid">{offering.components.map((componentType) => {
+              const picked = selected.groups.find((group) => group.componentType === componentType)?.groupNumber || "";
+              const options = offering.groups.filter((group) => group.componentType === componentType);
+              return <label className="field" key={componentType}><span>{componentType[0].toUpperCase() + componentType.slice(1)} group</span><select value={picked} disabled={!editable} onChange={(event) => setGroup(offering._id, componentType, event.target.value)}><option value="">Choose a group</option>{options.map((group) => { const preferred = group.preferredPriorities[0]; const issue = !group.valid ? " · invalid timetable" : ""; const optionText = `${group.groupNumber}${preferred ? ` · Preferred #${preferred}` : ""} · ${group.availableSeats} seats left${issue} · ${group.slots.map((slot) => `${slot.day} ${slot.startTime}–${slot.endTime}, ${slot.room}`).join(" / ")}`; return <option key={group.groupNumber} value={group.groupNumber} disabled={!group.valid || (!group.availableSeats && group.groupNumber !== picked)}>{optionText}</option>; })}</select></label>;
+            })}</div>}
+          </article>;
+        })}</div>}
+        {error && <Feedback tone="error">{error}</Feedback>}
+        {message && <Feedback tone="success">{message}</Feedback>}
+        <div className="form-footer"><span className="helper-text">Saving keeps the schedule in draft. The server rechecks academic rules, capacity, and clashes.</span><button className="primary-button" type="submit" disabled={saving || !editable || Boolean(selectedConflict) || Boolean(incompleteSelection) || missingMandatory.length > 0 || overCreditLimit || extraHoursNotCovered}>{saving && !sendingForReview ? "Saving draft…" : data.schedule ? "Update draft" : "Create draft"}<span>→</span></button></div>
+        {editable && selectedOfferings.length > 0 && <div className="form-footer"><span className="helper-text">When the schedule is ready, save it and make it visible to the student for review.</span><button className="outline-button" type="button" onClick={(event) => save(event, true)} disabled={saving || Boolean(selectedConflict) || Boolean(incompleteSelection) || missingMandatory.length > 0 || overCreditLimit || extraHoursNotCovered}>{sendingForReview ? "Sending for review…" : "Save and send for student review"}<span>→</span></button></div>}
+      </form>
+    </>}
+  </div>;
+}
+
+function PreferenceSummary({ title, entries }) {
+  return <div className="draft-preference-item"><strong>{title}</strong><span>{entries.length ? entries.join(", ") : "No preference"}</span></div>;
+}
+
+function formatDraftTime(minutes) { return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`; }
+function formatDraftDate(value) { return value ? new Date(value).toLocaleString() : "—"; }
+
+function buildDraftWeek(selections, offerings) {
+  const week = Object.fromEntries(WEEK.map((day) => [day, []]));
+  for (const selected of selections) {
+    const offering = offerings.find((item) => item._id === selected.courseOffering);
+    if (!offering) continue;
+    for (const choice of selected.groups) {
+      const group = offering.groups.find((item) => item.componentType === choice.componentType && item.groupNumber === choice.groupNumber);
+      for (const slot of group?.slots || []) week[slot.day]?.push({ courseCode: offering.course.code, type: choice.componentType, groupNumber: choice.groupNumber, startTime: slot.startTime, endTime: slot.endTime, room: slot.room });
+    }
+  }
+  for (const day of WEEK) week[day].sort((a, b) => a.startTime.localeCompare(b.startTime));
+  return week;
+}
+
+function findDraftSelectionConflict(selections, offerings) {
+  const slots = [];
+  for (const selected of selections) {
+    const offering = offerings.find((item) => item._id === selected.courseOffering);
+    if (!offering) continue;
+    for (const choice of selected.groups) {
+      const group = offering.groups.find((item) => item.componentType === choice.componentType && item.groupNumber === choice.groupNumber);
+      for (const slot of group?.slots || []) slots.push({ ...slot, courseCode: offering.course.code, componentType: choice.componentType, groupNumber: choice.groupNumber });
+    }
+  }
+  for (let firstIndex = 0; firstIndex < slots.length; firstIndex += 1) {
+    for (let secondIndex = firstIndex + 1; secondIndex < slots.length; secondIndex += 1) {
+      const first = slots[firstIndex]; const second = slots[secondIndex];
+      if (first.day !== second.day) continue;
+      const firstStart = draftMinutes(first.startTime); const firstEnd = draftMinutes(first.endTime);
+      const secondStart = draftMinutes(second.startTime); const secondEnd = draftMinutes(second.endTime);
+      if (firstStart < secondEnd && secondStart < firstEnd) return `Timetable clash: ${first.courseCode} ${first.componentType} ${first.groupNumber} (${first.day} ${first.startTime}–${first.endTime}) overlaps ${second.courseCode} ${second.componentType} ${second.groupNumber} (${second.startTime}–${second.endTime}). Choose a different group.`;
+    }
+  }
+  return "";
+}
+
+function draftMinutes(value) { const [hours, minutes] = value.split(":").map(Number); return hours * 60 + minutes; }
 
 function CourseDetailPanel({ details }) {
   const labels = [["lecture", "Lecture"], ["tutorial", "Tutorial"], ["lab", "Lab"]];
@@ -260,4 +466,4 @@ function Stat({ label, value }) { return <div className="stat-card"><span classN
 function Feedback({ tone = "info", children }) { return <div className={`feedback ${tone}`} role={tone === "error" ? "alert" : "status"}>{children}</div>; }
 function Empty({ title, text }) { return <div className="empty-state"><span>▤</span><h3>{title}</h3><p>{text}</p></div>; }
 function Loading() { return <div className="loading-state"><span className="loader" />Loading…</div>; }
-function prettyStatus(status) { return ({ processed: "Processed", readyForStudentReview: "Ready for review", draft: "Draft" })[status] || "No schedule"; }
+function prettyStatus(status) { return ({ processed: "Processed", readyForStudentReview: "Ready for student review", draft: "Draft" })[status] || "No schedule"; }

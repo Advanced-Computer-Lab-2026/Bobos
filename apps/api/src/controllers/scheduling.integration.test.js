@@ -6,8 +6,9 @@ import mongoose from "mongoose";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import app from "../app.js";
 import { AcademicTerm, Course, CourseOffering } from "../models/catalogue.js";
-import { ScheduleTemplate, StudentSchedule } from "../models/academics.js";
+import { CourseAttempt, ScheduleTemplate, SchedulingPreference, StudentSchedule } from "../models/academics.js";
 import { StudentProfile, User } from "../models/identity.js";
+import { ExtraHoursRequest, MandatoryCourseRemovalRequest } from "../models/requests.js";
 import { generateToken } from "../middleware/auth.middleware.js";
 
 let database, databasePath, server, base, users, profiles, term, courses, offerings, templates;
@@ -16,7 +17,7 @@ before(async () => {
   databasePath = await mkdtemp(join(process.cwd(), ".mongo-scheduling-"));
   database = await MongoMemoryServer.create({ instance: { dbPath: databasePath } });
   await mongoose.connect(database.getUri());
-  await Promise.all([User.init(), StudentProfile.init(), AcademicTerm.init(), Course.init(), CourseOffering.init(), ScheduleTemplate.init(), StudentSchedule.init()]);
+  await Promise.all([User.init(), StudentProfile.init(), AcademicTerm.init(), Course.init(), CourseOffering.init(), ScheduleTemplate.init(), StudentSchedule.init(), SchedulingPreference.init(), CourseAttempt.init(), ExtraHoursRequest.init()]);
   server = app.listen(0, "127.0.0.1");
   await new Promise((resolve) => server.once("listening", resolve));
   base = `http://127.0.0.1:${server.address().port}/api`;
@@ -30,7 +31,7 @@ after(async () => {
 });
 
 beforeEach(async () => {
-  await Promise.all([StudentSchedule.deleteMany({}), ScheduleTemplate.deleteMany({}), CourseOffering.deleteMany({}), Course.deleteMany({}), AcademicTerm.deleteMany({}), StudentProfile.deleteMany({}), User.deleteMany({})]);
+  await Promise.all([StudentSchedule.deleteMany({}), SchedulingPreference.deleteMany({}), CourseAttempt.deleteMany({}), ExtraHoursRequest.deleteMany({}), MandatoryCourseRemovalRequest.deleteMany({}), ScheduleTemplate.deleteMany({}), CourseOffering.deleteMany({}), Course.deleteMany({}), AcademicTerm.deleteMany({}), StudentProfile.deleteMany({}), User.deleteMany({})]);
   users = {};
   for (const role of ["coordinator", "administrator", "advisor", "normalStudent", "advisingStudent"]) {
     const studentRole = ["normalStudent", "advisingStudent"].includes(role);
@@ -177,6 +178,249 @@ test("advising schedule visibility and download status follow the student workfl
   const download = await call(`/schedules/me/download?termId=${term._id}`, { role: "advisingStudent" });
   assert.equal(download.status, 409);
   assert.match(download.body.message, /not final yet/i);
+});
+
+test("Req 58 lets staff send a validated advising draft to student review", async () => {
+  const path = `/schedules/advising/${profiles.advising._id}/draft?termId=${term.code}`;
+  const empty = await call(path, {
+    role: "coordinator", method: "PUT", body: { version: 0, courses: [], submitForReview: true },
+  });
+  assert.equal(empty.status, 409);
+  assert.match(empty.body.message, /at least one course/i);
+
+  const submitted = await call(path, {
+    role: "advisor", method: "PUT", body: {
+      version: 0,
+      courses: [{ courseOffering: String(offerings[0]._id), groups: [{ componentType: "lecture", groupNumber: "2" }] }],
+      submitForReview: true,
+    },
+  });
+  assert.equal(submitted.status, 201);
+  assert.equal(submitted.body.schedule.status, "readyForStudentReview");
+  assert.match(submitted.body.message, /sent for student review/i);
+
+  const visibleToStudent = await call(`/schedules/me?termId=${term.code}`, { role: "advisingStudent" });
+  assert.equal(visibleToStudent.status, 200);
+  assert.equal(visibleToStudent.body.schedule.status, "readyForStudentReview");
+  assert.equal(visibleToStudent.body.schedule.courses[0].courseCode, courses[0].code);
+
+  const editClosedDraft = await call(path, {
+    role: "coordinator", method: "PUT", body: { version: 1, courses: [], submitForReview: false },
+  });
+  assert.equal(editClosedDraft.status, 409);
+});
+
+test("Req 58: staff see the latest ranked preferences while creating and updating an advising draft", async () => {
+  await SchedulingPreference.create({
+    student: profiles.advising._id,
+    term: term._id,
+    preferredDays: [{ day: "Wednesday", priority: 2 }, { day: "Monday", priority: 1 }],
+    avoidedTimes: [{ startMinute: 480, endMinute: 540, priority: 1 }],
+    preferredGroups: [
+      { course: courses[0]._id, componentType: "lecture", groupNumber: "3", priority: 2 },
+      { course: courses[0]._id, componentType: "lecture", groupNumber: "2", priority: 1 },
+    ],
+    note: "Prefer a later lecture if seats permit.",
+  });
+  const submittedAt = (await SchedulingPreference.findOne({ student: profiles.advising._id, term: term._id })).updatedAt;
+
+  const loaded = await call(`/schedules/advising/${profiles.advising._id}/draft?termId=${term.code}`, { role: "advisor" });
+  assert.equal(loaded.status, 200);
+  assert.equal(loaded.body.preferenceLastUpdatedAt, submittedAt.toISOString());
+  assert.deepEqual(loaded.body.preference.preferredDays.map((item) => item.day), ["Monday", "Wednesday"]);
+  assert.deepEqual(loaded.body.preference.preferredGroups.map((item) => item.groupNumber), ["2", "3"]);
+  assert.equal(loaded.body.preference.preferredGroups[0].course.code, courses[0].code);
+  assert.equal(loaded.body.offerings.find((item) => item.course.code === courses[0].code).groups.find((item) => item.groupNumber === "2").preferredPriorities[0], 1);
+  assert.equal(loaded.body.offerings.find((item) => item.course.code === courses[0].code).groups.find((item) => item.groupNumber === "3").preferredPriorities[0], 2);
+  assert.equal(loaded.body.schedule, null);
+
+  const firstSave = await call(`/schedules/advising/${profiles.advising._id}/draft?termId=${term.code}`, {
+    role: "advisor", method: "PUT", body: { version: 0, courses: [{ courseOffering: String(offerings[0]._id), groups: [{ componentType: "lecture", groupNumber: "2" }] }] },
+  });
+  assert.equal(firstSave.status, 201);
+  assert.equal(firstSave.body.schedule.status, "draft");
+  assert.equal(firstSave.body.schedule.version, 1);
+  assert.equal((await CourseOffering.findById(offerings[0]._id)).slots.find((slot) => slot.groupNumber === "2").assignedStudentCount, 0, "drafts do not reserve seats");
+
+  const reopened = await call(`/schedules/advising/${profiles.advising._id}/draft?termId=${term.code}`, { role: "advisor" });
+  assert.equal(reopened.body.schedule.version, 1);
+  assert.deepEqual(reopened.body.schedule.courses[0].groups, [{ componentType: "lecture", groupNumber: "2" }]);
+  assert.equal(reopened.body.preferenceLastUpdatedAt, submittedAt.toISOString(), "latest student preference remains available during edits");
+  const secondSave = await call(`/schedules/advising/${profiles.advising._id}/draft?termId=${term.code}`, {
+    role: "coordinator", method: "PUT", body: { version: 1, courses: [{ courseOffering: String(offerings[1]._id), groups: [{ componentType: "lecture", groupNumber: "3" }] }] },
+  });
+  assert.equal(secondSave.status, 200);
+  assert.equal(secondSave.body.schedule.version, 2);
+  assert.equal(secondSave.body.schedule.courses.length, 1);
+  assert.equal(String(secondSave.body.schedule.courses[0].course), String(courses[1]._id));
+  await CourseOffering.updateOne({ _id: offerings[1]._id }, { $set: { isPublished: false } });
+  const staleDraft = await call(`/schedules/advising/${profiles.advising._id}/draft?termId=${term.code}`, { role: "coordinator" });
+  assert.equal(staleDraft.body.schedule.staleCourseCount, 1);
+  assert.deepEqual(staleDraft.body.schedule.courses, [], "unpublished course selections are clearly marked for removal before an edit is saved");
+});
+
+test("Req 58: missing preferences do not block a draft, while advisor ownership and draft version are enforced", async () => {
+  const loaded = await call(`/schedules/advising/${profiles.advising._id}/draft?termId=${term.code}`, { role: "coordinator" });
+  assert.equal(loaded.status, 200);
+  assert.equal(loaded.body.preference, null);
+  assert.equal(loaded.body.preferenceLastUpdatedAt, null);
+  const emptyDraft = await call(`/schedules/advising/${profiles.advising._id}/draft?termId=${term.code}`, { role: "coordinator", method: "PUT", body: { version: 0, courses: [] } });
+  assert.equal(emptyDraft.status, 201);
+  assert.equal(emptyDraft.body.schedule.status, "draft");
+  assert.equal((await call(`/schedules/advising/${profiles.advising._id}/draft?termId=${term.code}`, { role: "normalStudent" })).status, 403);
+
+  const anotherAdvisor = await User.create({ email: "other.advisor@guc.edu.eg", fullName: "Other advisor", passwordHash: "test-hash", role: "advisor" });
+  await StudentProfile.updateOne({ _id: profiles.advising._id }, { $set: { assignedAdvisor: anotherAdvisor._id } });
+  assert.equal((await call(`/schedules/advising/${profiles.advising._id}/draft?termId=${term.code}`, { role: "advisor" })).status, 403);
+  const stale = await call(`/schedules/advising/${profiles.advising._id}/draft?termId=${term.code}`, { role: "coordinator", method: "PUT", body: { version: 0, courses: [] } });
+  assert.equal(stale.status, 409);
+  await StudentSchedule.updateOne({ student: profiles.advising._id, term: term._id }, { $set: { status: "readyForStudentReview" } });
+  const closed = await call(`/schedules/advising/${profiles.advising._id}/draft?termId=${term.code}`, { role: "coordinator", method: "PUT", body: { version: 1, courses: [] } });
+  assert.equal(closed.status, 409);
+});
+
+test("Req 58 preserves semester credit limits and only counts activated extra-hours approvals", async () => {
+  const addOffering = async (code, creditHours, day) => {
+    const course = await Course.create({ code, name: code, creditHours, courseType: "core", facultyMajors: ["CS"] });
+    const offering = await CourseOffering.create({
+      course: course._id,
+      academicYear: term.academicYear,
+      term: term._id,
+      instructors: [{ fullName: `Dr. ${code}`, email: `${code.toLowerCase()}@guc.edu.eg` }],
+      eligibleGroups: [{ major: "CS", semester: 5 }],
+      isPublished: true,
+      slots: [{ componentType: "lecture", groupNumber: "1", day, startMinute: 600, endMinute: 660, room: "C1", capacity: 5 }],
+    });
+    return { course, offering };
+  };
+  const makeSelection = (rows) => rows.map(({ offering }) => ({ courseOffering: String(offering._id), groups: [{ componentType: "lecture", groupNumber: "1" }] }));
+  await StudentProfile.updateOne({ _id: profiles.advising._id }, { $set: { advisingReason: "failedCourses", academicStanding: "goodAcademicStanding" } });
+  const twenty = await addOffering("CREDIT20", 20, "Tuesday");
+  const three = await addOffering("CREDIT3", 3, "Wednesday");
+  const four = await addOffering("CREDIT4", 4, "Thursday");
+  const twentyOne = await addOffering("CREDIT21", 21, "Thursday");
+  const twentyFour = await addOffering("CREDIT24", 24, "Monday");
+
+  const loaded = await call(`/schedules/advising/${profiles.advising._id}/draft?termId=${term.code}`, { role: "advisor" });
+  assert.equal(loaded.body.creditPolicy.standardAllowance, 30);
+  assert.equal(loaded.body.creditPolicy.maximumCreditHours, 30);
+
+  const overWithoutApproval = await call(`/schedules/advising/${profiles.advising._id}/draft?termId=${term.code}`, {
+    role: "advisor", method: "PUT", body: { version: 0, courses: makeSelection([{ offering: offerings[0] }, { offering: offerings[1] }, twentyOne]) },
+  });
+  assert.equal(overWithoutApproval.status, 409);
+  assert.match(overWithoutApproval.body.message, /above the allowed 30/);
+
+  await ExtraHoursRequest.create({
+    student: profiles.advising._id,
+    advisor: users.advisor._id,
+    term: term._id,
+    courses: [{ course: three.course._id, hours: 3, isRepeated: false, pricePerHour: 800, subtotal: 2400 }],
+    requestedHours: 3,
+    totalCost: 2400,
+    eligibilitySnapshot: { standardAllowance: 30, hoursBeforeRequest: 30, hoursAfterRequest: 33, isProbation: false, graduatingWithinOneYear: false },
+    decisionStatus: "approved",
+    settlementStatus: "awaitingChoice",
+  });
+  const notActivated = await call(`/schedules/advising/${profiles.advising._id}/draft?termId=${term.code}`, {
+    role: "advisor", method: "PUT", body: { version: 0, courses: makeSelection([{ offering: offerings[0] }, { offering: offerings[1] }, twenty, three]) },
+  });
+  assert.equal(notActivated.status, 409, "approval without payment/deferred settlement grants no hours");
+
+  await ExtraHoursRequest.updateOne({ student: profiles.advising._id, term: term._id }, { $set: { settlementStatus: "deferred", settlementOption: "deferred" } });
+  const activated = await call(`/schedules/advising/${profiles.advising._id}/draft?termId=${term.code}`, {
+    role: "advisor", method: "PUT", body: { version: 0, courses: makeSelection([{ offering: offerings[0] }, { offering: offerings[1] }, twenty, three]) },
+  });
+  assert.equal(activated.status, 201);
+  assert.equal(activated.body.schedule.courses.reduce((sum, course) => sum + course.creditHoursSnapshot, 0), 33);
+  assert.equal(activated.body.schedule.courses.find((course) => String(course.course) === String(three.course._id)).isExtraHours, true);
+
+  await StudentSchedule.deleteMany({ student: profiles.advising._id, term: term._id });
+  await ExtraHoursRequest.deleteMany({ student: profiles.advising._id, term: term._id });
+  await ExtraHoursRequest.create({
+    student: profiles.advising._id,
+    advisor: users.advisor._id,
+    term: term._id,
+    courses: [{ course: four.course._id, hours: 4, isRepeated: false, pricePerHour: 800, subtotal: 3200 }],
+    requestedHours: 4,
+    totalCost: 3200,
+    eligibilitySnapshot: { standardAllowance: 30, hoursBeforeRequest: 30, hoursAfterRequest: 34, isProbation: false, graduatingWithinOneYear: true },
+    decisionStatus: "approved",
+    settlementStatus: "paid",
+    settlementOption: "wallet",
+  });
+  const graduating = await call(`/schedules/advising/${profiles.advising._id}/draft?termId=${term.code}`, {
+    role: "advisor", method: "PUT", body: { version: 0, courses: makeSelection([{ offering: offerings[0] }, { offering: offerings[1] }, twenty, four]) },
+  });
+  assert.equal(graduating.status, 201, "a paid approved request can reach the 34-hour graduation ceiling");
+  assert.equal(graduating.body.schedule.courses.reduce((sum, course) => sum + course.creditHoursSnapshot, 0), 34);
+
+  await StudentSchedule.deleteMany({ student: profiles.advising._id, term: term._id });
+  await ExtraHoursRequest.deleteMany({ student: profiles.advising._id, term: term._id });
+  await StudentProfile.updateOne({ _id: profiles.advising._id }, { $set: { advisingReason: "probation", academicStanding: "probation" } });
+  const probation = await call(`/schedules/advising/${profiles.advising._id}/draft?termId=${term.code}`, { role: "coordinator" });
+  assert.equal(probation.body.creditPolicy.baseAllowance, 23, "30 hours reduced by 25%, rounded up");
+  const overProbation = await call(`/schedules/advising/${profiles.advising._id}/draft?termId=${term.code}`, {
+    role: "coordinator", method: "PUT", body: { version: 0, courses: makeSelection([twentyFour]) },
+  });
+  assert.equal(overProbation.status, 409);
+  assert.match(overProbation.body.message, /allowed 23 probation hours/);
+});
+
+test("advising drafts preserve failed-course requirements unless removal is approved", async () => {
+  await CourseAttempt.create({ student: profiles.advising._id, course: courses[0]._id, term: term._id, attendance: "attended", result: "failed", grade: "F" });
+  const loaded = await call(`/schedules/advising/${profiles.advising._id}/draft?termId=${term.code}`, { role: "advisor" });
+  assert.deepEqual(loaded.body.mandatoryCourses.map((course) => course.code), [courses[0].code]);
+
+  const omitted = await call(`/schedules/advising/${profiles.advising._id}/draft?termId=${term.code}`, {
+    role: "advisor", method: "PUT", body: { version: 0, courses: [{ courseOffering: String(offerings[1]._id), groups: [{ componentType: "lecture", groupNumber: "1" }] }] },
+  });
+  assert.equal(omitted.status, 409);
+  assert.match(omitted.body.message, /Add the required failed\/unattended courses/);
+
+  const valid = await call(`/schedules/advising/${profiles.advising._id}/draft?termId=${term.code}`, {
+    role: "advisor", method: "PUT", body: { version: 0, courses: [{ courseOffering: String(offerings[0]._id), groups: [{ componentType: "lecture", groupNumber: "1" }] }] },
+  });
+  assert.equal(valid.status, 201);
+  assert.equal(valid.body.schedule.courses[0].isMandatory, true);
+  await MandatoryCourseRemovalRequest.create({ student: profiles.advising._id, course: courses[0]._id, advisor: users.advisor._id, term: term._id, reason: "completedHours", explanation: "Approved removal for the test scenario.", status: "approved" });
+  const afterApproval = await call(`/schedules/advising/${profiles.advising._id}/draft?termId=${term.code}`, { role: "advisor" });
+  assert.deepEqual(afterApproval.body.mandatoryCourses, []);
+  const updated = await call(`/schedules/advising/${profiles.advising._id}/draft?termId=${term.code}`, {
+    role: "advisor", method: "PUT", body: { version: 1, courses: [{ courseOffering: String(offerings[1]._id), groups: [{ componentType: "lecture", groupNumber: "1" }] }] },
+  });
+  assert.equal(updated.status, 200);
+});
+
+test("advising drafts reject clashes, full groups, passed courses and unmet prerequisites", async () => {
+  await Course.updateOne({ _id: courses[0]._id }, { $set: { prerequisites: [courses[1]._id] } });
+  const prerequisite = await call(`/schedules/advising/${profiles.advising._id}/draft?termId=${term.code}`, {
+    role: "advisor", method: "PUT", body: { version: 0, courses: [{ courseOffering: String(offerings[0]._id), groups: [{ componentType: "lecture", groupNumber: "1" }] }] },
+  });
+  assert.equal(prerequisite.status, 409);
+  assert.match(prerequisite.body.message, /requires previously passed/);
+
+  await CourseAttempt.create({ student: profiles.advising._id, course: courses[1]._id, term: term._id, attendance: "attended", result: "passed", grade: "A" });
+  await CourseOffering.updateOne({ _id: offerings[0]._id }, { $set: { "slots.0.assignedStudentCount": 2 } });
+  const full = await call(`/schedules/advising/${profiles.advising._id}/draft?termId=${term.code}`, {
+    role: "advisor", method: "PUT", body: { version: 0, courses: [{ courseOffering: String(offerings[0]._id), groups: [{ componentType: "lecture", groupNumber: "1" }] }] },
+  });
+  assert.equal(full.status, 409);
+  assert.match(full.body.message, /is full/);
+
+  await Course.updateOne({ _id: courses[0]._id }, { $set: { prerequisites: [] } });
+  await CourseAttempt.deleteMany({ student: profiles.advising._id });
+  await CourseOffering.updateOne({ _id: offerings[0]._id }, { $set: { "slots.0.assignedStudentCount": 0 } });
+  await CourseOffering.updateOne({ _id: offerings[1]._id }, { $set: { "slots.0.day": "Saturday", "slots.0.startMinute": 500, "slots.0.endMinute": 580 } });
+  const clash = await call(`/schedules/advising/${profiles.advising._id}/draft?termId=${term.code}`, {
+    role: "advisor", method: "PUT", body: { version: 0, courses: [
+      { courseOffering: String(offerings[0]._id), groups: [{ componentType: "lecture", groupNumber: "1" }] },
+      { courseOffering: String(offerings[1]._id), groups: [{ componentType: "lecture", groupNumber: "1" }] },
+    ] },
+  });
+  assert.equal(clash.status, 409);
+  assert.match(clash.body.message, /Selected groups overlap/);
+  assert.equal(await StudentSchedule.countDocuments({ student: profiles.advising._id, term: term._id }), 0);
 });
 
 test("assignment rejects inactive/non-normal students, unknown terms, unpublished templates and full slots", async () => {

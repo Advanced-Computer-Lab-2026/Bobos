@@ -44,7 +44,7 @@ export const User = registerModel("User", userSchema);
 // B1: Req. 6-8 directory identity fields; workflow state is in academics.js.
 const studentProfileSchema = withTimestamps({
   user: ref("User", { required: true, unique: true }),
-  studentId: { type: String, required: true, trim: true, unique: true, match: /^\d{2}-\d{5}$/ },
+  studentId: { type: String, required: true, trim: true, unique: true, match: /^\d{2}-\d{4,5}$/ },
   studentType: { type: String, required: true, enum: ["normal", "advising"] },
   faculty: { type: String, default: "MET", trim: true },
   major: { type: String, trim: true, default: "undeclared" },

@@ -179,6 +179,7 @@ td strong, td .secondary-text { display: block; }
 .status-pill, .role-pill, .new-pill { display: inline-flex; align-items: center; justify-content: center; padding: 4px 7px; border-radius: 20px; font-size: 8px; font-weight: 600; white-space: nowrap; }
 .status-pill.good { color: #36775a; background: #eaf5ee; }
 .status-pill.muted { color: #818c87; background: #f0f2f1; }
+.status-pill.warning { color: #886b2b; background: #fff4d9; }
 .role-pill { margin-top: 9px; color: #287569; background: #eaf5f1; }
 .new-pill { padding: 3px 6px; color: #8a6d2a; background: #fbf2df; }
 .loading-state { display: flex; min-height: 100px; align-items: center; justify-content: center; gap: 10px; color: #7d8983; font-size: 10px; }
@@ -238,13 +239,25 @@ td strong, td .secondary-text { display: block; }
 .advisor-card a:not(.primary-button) { font-size: 10px; }
 .preference-toolbar { display: flex; align-items: end; gap: 13px; flex-wrap: wrap; }
 .preference-toolbar .field { flex: 1; min-width: 220px; }
+.preference-student-lookup { display: flex; align-items: end; gap: 10px; flex: 1 1 360px; }
+.preference-student-lookup .field { flex: 1; }
+.preference-student-selected, .preference-student-results { flex: 1 0 100%; }
+.preference-student-selected { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid #dcebe5; border-radius: 8px; background: #f6fbf8; }
+.preference-student-selected strong { color: #175f56; }
+.preference-student-selected span { flex: 1; color: #718078; font-size: 10px; }
+.preference-student-results { display: grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); gap: 8px; }
+.preference-student-result { display: grid; gap: 4px; padding: 10px 12px; border: 1px solid #e0e7e3; border-radius: 8px; color: #34443d; background: white; text-align: left; cursor: pointer; }
+.preference-student-result:hover, .preference-student-result:focus-visible { border-color: #80b9ac; background: #f3faf7; }
+.preference-student-result span { color: #718078; font-size: 10px; }
 .preference-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 17px; }
 .preference-grid .panel { display: grid; align-content: start; gap: 12px; }
 .preference-groups { grid-column: span 2; }
+.preference-conflict-feedback { margin: 12px 0; font-size: 13px; }
 .preference-offering { padding: 11px 0; border-top: 1px solid #edf0ee; }
 .preference-offering > strong { color: #46544e; font-size: 10px; }
 .group-chip-list { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 9px; }
-.group-chip { padding: 6px 9px; border: 1px solid #e0e7e3; border-radius: 20px; color: #64716b; background: #fff; cursor: pointer; font-size: 9px; }
+.group-chip { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 190px; padding: 9px 11px; border: 1px solid #e0e7e3; border-radius: 10px; color: #46544e; background: #fff; cursor: pointer; text-align: left; font-size: 10px; }
+.group-chip > small { color: #718078; font-size: 9px; font-weight: 400; line-height: 1.45; }
 .group-chip.selected { border-color: #80b9ac; color: #1b7267; background: #eaf5f1; }
 .preference-grid .form-footer { grid-column: span 2; }
 .modal-backdrop { position: fixed; z-index: 60; inset: 0; display: grid; place-items: center; overflow: auto; padding: 24px; background: rgba(28,42,37,.42); backdrop-filter: blur(3px); }
@@ -353,8 +366,31 @@ td strong, td .secondary-text { display: block; }
 .weekly-schedule.compact { grid-template-columns: repeat(3, minmax(110px, 1fr)); gap: 6px; margin-top: 13px; }
 .weekly-schedule.compact .schedule-day { min-width: 110px; padding: 7px; }
 .weekly-schedule.compact .schedule-slot { padding: 6px; }
-.staff-schedule-result { overflow: hidden; }
+.staff-schedule-result { overflow: hidden; scroll-margin-top: 120px; }
 .scheduling-page tfoot th { padding: 12px 11px; border-top: 1px solid #e6ebe8; color: #35433d; background: #f8faf8; font-size: 9px; }
+.draft-summary { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
+.draft-summary h2 { margin: 0; color: #35433d; font-size: 15px; }
+.draft-summary .helper-text { margin: 7px 0 0; }
+.draft-preference-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; margin-top: 14px; }
+.draft-preference-item { display: grid; align-content: start; gap: 6px; min-height: 60px; padding: 10px 12px; border: 1px solid #e8edeb; border-radius: 8px; background: #fbfcfb; }
+.draft-preference-item strong { color: #53615b; font-size: 9px; }
+.draft-preference-item span { color: #78857e; font-size: 9px; line-height: 1.5; }
+.draft-student-note { margin: 12px 0 0; padding: 10px 12px; border-left: 3px solid #1f8a78; border-radius: 4px; color: #53615b; background: #f1f8f5; font-size: 10px; line-height: 1.55; }
+.draft-mandatory-list { display: flex; flex-wrap: wrap; gap: 7px; }
+.draft-timetable .weekly-schedule { margin-top: 14px; }
+.draft-course-list { display: grid; gap: 9px; margin-top: 14px; }
+.draft-course { padding: 12px; border: 1px solid #e8edeb; border-radius: 9px; background: #fff; }
+.draft-course.selected { border-color: #a8d4ca; background: #fbfdfc; }
+.draft-course-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.draft-course-heading > div { display: grid; gap: 4px; }
+.draft-course-heading strong { color: #35433d; font-size: 10px; }
+.draft-course-heading .secondary-text { font-size: 8px; }
+.draft-component-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+.draft-component-grid select { min-height: 39px; font-size: 9px; }
+.draft-course-editor > .feedback { margin-top: 11px; }
+.draft-course-editor .form-footer { align-items: end; }
+.draft-course-editor .form-footer .helper-text { max-width: 660px; line-height: 1.5; }
+.draft-course-editor .form-footer .primary-button { flex: 0 0 auto; }
 
 @media print {
   body { background: white; }
@@ -428,6 +464,8 @@ td strong, td .secondary-text { display: block; }
   .scheduling-filters { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .scheduling-filters .field:first-child { grid-column: span 2; }
   .swap-group-grid { grid-template-columns: minmax(0,1fr); }
+  .draft-preference-grid, .draft-component-grid { grid-template-columns: minmax(0,1fr); }
+  .draft-summary { align-items: start; flex-direction: column; }
   .weekly-schedule.compact { grid-template-columns: repeat(2,minmax(110px,1fr)); }
   .component-grid { grid-template-columns: minmax(0,1fr); }
   .current-group-panel { align-items: start; flex-direction: column; }

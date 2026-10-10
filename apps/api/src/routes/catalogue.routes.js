@@ -24,8 +24,9 @@ const router = express.Router();
 // Req 22: Create a course offering with its slots
 router.post('/offerings', requireAuth, requireRole('administrator'), createOffering);
 
-// Req 23: View course offerings for an academic term
-router.get('/offerings', requireAuth, requireRole('administrator', 'coordinator'), getOfferings);
+// Req 23 and Req 57–58: students need published groups for preferences;
+// advisors also need published groups when reviewing those preferences.
+router.get('/offerings', requireAuth, requireRole('administrator', 'coordinator', 'advisor', 'advisingStudent'), getOfferings);
 
 // Req 23: Select an offering to view all of its details and slots
 router.get('/offerings/:id', requireAuth, requireRole('administrator', 'coordinator'), getOfferingById);

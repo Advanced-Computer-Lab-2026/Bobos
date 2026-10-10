@@ -1,9 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api, explainApiError } from "../api.js";
+import { greetingName } from "../greeting.js";
+import { findPreferenceConflict, preferenceConflictMessage, preferenceGroupOptions, preferenceMeetingLabel } from "../preference-groups.js";
 
 const roleTitle = (role = "") => ({ normalStudent: "Normal student", advisingStudent: "Advising student", advisor: "Advisor", coordinator: "Coordinator", administrator: "Administrator" }[role] || role);
 const humanize = (value = "") => String(value || "—").replace(/([a-z])([A-Z])/g, "$1 $2").replace(/^./, (letter) => letter.toUpperCase());
 const formatDate = (value) => value ? new Date(value).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "—";
+const formatDateTime = (value) => value ? new Date(value).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : null;
 const initials = (value = "") => value.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "B";
 
 export function OverviewPage({ profile, onOpen }) {
@@ -24,7 +27,7 @@ export function OverviewPage({ profile, onOpen }) {
 
   return <div className="page-stack">
     <section className="welcome-banner">
-      <div><p className="eyebrow">YOUR ACADEMIC WORKSPACE</p><h1>Good day, {profile.fullName?.split(" ")[0] || "there"}.</h1><p>Here’s a snapshot of your university workspace.</p></div>
+      <div><p className="eyebrow">YOUR ACADEMIC WORKSPACE</p><h1>Good day, {greetingName(profile.fullName)}.</h1><p>Here’s a snapshot of your university workspace.</p></div>
       <span className="welcome-orbit orbit-a" /><span className="welcome-orbit orbit-b" /><span className="welcome-seal">B</span>
     </section>
     <section className="stat-grid" aria-label="Account summary">
@@ -58,16 +61,26 @@ export function ProfilePage({ profile }) {
 export function NotificationsPage({ token, notify }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [creatingTest, setCreatingTest] = useState(false);
   const [error, setError] = useState("");
   const load = async () => {
     setLoading(true); setError("");
     try {
       const result = await api("/api/notifications", { token });
       setItems(result.notifications || []);
-    } catch (requestError) { setError(explainApiError(requestError, "Notifications")); }
+      return true;
+    } catch (requestError) { setError(explainApiError(requestError, "Notifications")); return false; }
     finally { setLoading(false); }
   };
   useEffect(() => { load(); }, [token]);
+  const createTest = async () => {
+    setCreatingTest(true); setError("");
+    try {
+      await api("/api/notifications/test", { token, method: "POST", body: {} });
+      if (await load()) notify("success", "Test notification created. Check the newest item in your inbox.");
+    } catch (requestError) { setError(explainApiError(requestError, "Test notification")); }
+    finally { setCreatingTest(false); }
+  };
   const markRead = async (item) => {
     try {
       await api(`/api/notifications/${item._id}/read`, { token, method: "PATCH", body: {} });
@@ -75,9 +88,9 @@ export function NotificationsPage({ token, notify }) {
     } catch (requestError) { notify("error", requestError.message); }
   };
 
-  return <div className="page-stack"><PageTitle eyebrow="YOUR INBOX" title="Notifications" description="Updates and reminders sent to your university account." action={<button className="outline-button" type="button" onClick={load}>↻ Refresh</button>} />
+  return <div className="page-stack"><PageTitle eyebrow="YOUR INBOX" title="Notifications" description="Updates and reminders sent to your university account." action={<div className="inline-controls"><button className="outline-button" type="button" onClick={load} disabled={loading}>↻ Refresh</button>{import.meta.env.DEV && <button className="primary-button" type="button" onClick={createTest} disabled={creatingTest || loading}>{creatingTest ? "Creating…" : "Create test notification"}</button>}</div>} />
     {error && <div className="feedback error" role="alert">{error}</div>}
-    <section className="panel notification-panel" aria-busy={loading}>{loading ? <Loading /> : items.length === 0 ? <EmptyState title="You’re all caught up" text="New updates for your account will appear here." icon="◌" /> : items.map((item) => <article className={`notification-row ${item.isRead ? "read" : "unread"}`} key={item._id}><span className={`notification-symbol ${item.isRead ? "muted" : ""}`}>{item.isRead ? "✓" : "•"}</span><div className="notification-copy"><div className="notification-title"><h3>{item.title}</h3>{!item.isRead && <span className="new-pill">New</span>}</div><p>{item.message}</p><small>{formatDate(item.createdAt)} · {humanize(item.type)}</small></div>{!item.isRead && <button className="text-button" type="button" onClick={() => markRead(item)}>Mark read</button>}</article>)}</section>
+    <section className="panel notification-panel" aria-busy={loading}>{loading ? <Loading /> : items.length === 0 ? <EmptyState title="You’re all caught up" text="New updates for your account will appear here." icon="◌" /> : items.map((item) => <article className={`notification-row ${item.isRead ? "read" : "unread"}`} key={item._id}><span className={`notification-symbol ${item.isRead ? "muted" : ""}`}>{item.isRead ? "✓" : "•"}</span><div className="notification-copy"><div className="notification-title"><h3>{item.title}</h3>{!item.isRead && <span className="new-pill">New</span>}</div><p>{item.message}</p><small>{formatDate(item.createdAt)} · {item.title === "Test notification" ? "Test" : humanize(item.type)}</small></div>{!item.isRead && <button className="text-button" type="button" onClick={() => markRead(item)}>Mark read</button>}</article>)}</section>
   </div>;
 }
 
@@ -134,9 +147,14 @@ export function StudentRecordsPage({ token, profile, profileId: targetProfileId,
   </div>;
 }
 
-export function PreferencesPage({ token, profile, profileId: passedProfileId, notify }) {
-  const [studentId, setStudentId] = useState(passedProfileId || "");
+export function PreferencesPage({ token, profile, profileId: passedProfileId, studentTarget, notify }) {
+  const [selectedStudent, setSelectedStudent] = useState(studentTarget || (passedProfileId ? { _id: passedProfileId } : null));
+  const [studentSearch, setStudentSearch] = useState(studentTarget?.studentId || "");
+  const [studentMatches, setStudentMatches] = useState([]);
+  const [studentLookupLoading, setStudentLookupLoading] = useState(false);
   const [termId, setTermId] = useState("");
+  const [terms, setTerms] = useState([]);
+  const [termsLoading, setTermsLoading] = useState(true);
   const [preferredDays, setPreferredDays] = useState("");
   const [avoidedDays, setAvoidedDays] = useState("");
   const [daysOff, setDaysOff] = useState("");
@@ -145,19 +163,38 @@ export function PreferencesPage({ token, profile, profileId: passedProfileId, no
   const [note, setNote] = useState("");
   const [groups, setGroups] = useState([]);
   const [offerings, setOfferings] = useState([]);
+  const [preferencesLoaded, setPreferencesLoaded] = useState(false);
+  const [hasSubmittedPreferences, setHasSubmittedPreferences] = useState(false);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [selectionError, setSelectionError] = useState("");
+  const conflictNoticeRef = useRef(null);
+  const groupConflict = findPreferenceConflict(groups, offerings);
+  const conflictMessage = selectionError || preferenceConflictMessage(groupConflict);
   const isStudent = profile.role === "advisingStudent";
-  const effectiveId = isStudent ? (passedProfileId || profile.studentProfileId || studentId) : studentId;
+  const selectedStudentProfileId = selectedStudent?._id || selectedStudent?.id || selectedStudent?.profileId || selectedStudent?.studentProfileId || "";
+  const effectiveId = isStudent
+    ? (passedProfileId || profile.studentProfileId || profile.studentProfile?._id || "")
+    : (selectedStudentProfileId || (!studentTarget ? passedProfileId : "") || "");
 
-  const termQuery = termId.trim() ? `?term=${encodeURIComponent(termId.trim())}` : "";
-  const load = async () => {
-    if (!effectiveId) { setError("Enter the student's profile ID to load preferences."); return; }
-    setLoading(true); setError("");
+  const resetLoadedPreferences = () => {
+    setPreferredDays(""); setAvoidedDays(""); setDaysOff(""); setPreferredTimes(""); setAvoidedTimes(""); setNote("");
+    setGroups([]); setOfferings([]); setPreferencesLoaded(false); setHasSubmittedPreferences(false); setLastUpdatedAt(null); setSelectionError(""); setError("");
+  };
+
+  const termQuery = termId ? `?term=${encodeURIComponent(termId)}` : "";
+  const load = async (selectedTermId = termId) => {
+    if (!effectiveId) { setError(isStudent ? "Your student profile is not available." : "Find and select a student before loading preferences."); return; }
+    setLoading(true); setError(""); setSelectionError("");
     try {
-      const result = await api(`/api/identity/students/${encodeURIComponent(effectiveId)}/preferences${termQuery}`, { token });
+      const selectedTermQuery = selectedTermId ? `?term=${encodeURIComponent(selectedTermId)}` : "";
+      const result = await api(`/api/identity/students/${encodeURIComponent(effectiveId)}/preferences${selectedTermQuery}`, { token });
       const current = result.preferences || {};
+      setPreferencesLoaded(true);
+      setHasSubmittedPreferences(Boolean(result.submitted));
+      setLastUpdatedAt(result.lastUpdatedAt || null);
       setPreferredDays((current.preferredDays || []).map((entry) => entry.day).join(", "));
       setAvoidedDays((current.avoidedDays || []).map((entry) => entry.day).join(", "));
       setDaysOff((current.desiredDaysOff || []).map((entry) => entry.day).join(", "));
@@ -165,18 +202,42 @@ export function PreferencesPage({ token, profile, profileId: passedProfileId, no
       setAvoidedTimes((current.avoidedTimes || []).map((entry) => `${minutesToTime(entry.startMinute)}-${minutesToTime(entry.endMinute)}`).join(", "));
       setNote(current.note || "");
       setGroups((current.preferredGroups || []).map((entry) => ({ course: entry.course?._id || entry.course, componentType: entry.componentType, groupNumber: entry.groupNumber })));
-      if (termId.trim()) {
-        const available = await api(`/api/catalogue/offerings?termId=${encodeURIComponent(termId.trim())}&publishedOnly=true`, { token });
+      if (selectedTermId) {
+        const available = await api(`/api/catalogue/offerings?termId=${encodeURIComponent(selectedTermId)}&publishedOnly=true`, { token });
         setOfferings(available.offerings || []);
-      }
+      } else setOfferings([]);
+      setSelectionError("");
     } catch (requestError) { setError(explainApiError(requestError, "Scheduling preferences")); }
     finally { setLoading(false); }
   };
-  useEffect(() => { setStudentId(passedProfileId || profile.studentProfileId || ""); }, [passedProfileId, profile.studentProfileId]);
+  useEffect(() => {
+    setSelectedStudent(studentTarget || (passedProfileId ? { _id: passedProfileId } : null));
+    setStudentSearch(studentTarget?.studentId || "");
+    setStudentMatches([]);
+    resetLoadedPreferences();
+  }, [passedProfileId, studentTarget]);
+  useEffect(() => {
+    if (conflictMessage) conflictNoticeRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [conflictMessage]);
+  useEffect(() => {
+    let cancelled = false;
+    api("/api/academic-terms/academicTerm", { token })
+      .then((availableTerms) => {
+        if (cancelled) return;
+        const rows = Array.isArray(availableTerms) ? availableTerms : [];
+        setTerms(rows);
+        const activeTerms = rows.filter((term) => term.isActive);
+        if (activeTerms.length === 1) setTermId((current) => current || activeTerms[0]._id);
+      })
+      .catch((requestError) => { if (!cancelled) setError(explainApiError(requestError, "Academic terms")); })
+      .finally(() => { if (!cancelled) setTermsLoading(false); });
+    return () => { cancelled = true; };
+  }, [token]);
 
   const save = async (event) => {
     event.preventDefault();
-    if (!effectiveId) { setError("The student profile ID is required."); return; }
+    if (!effectiveId) { setError(isStudent ? "Your student profile is not available." : "Find and select a student before saving preferences."); return; }
+    if (groupConflict) { setError(preferenceConflictMessage(groupConflict)); return; }
     setSaving(true); setError("");
     try {
       const body = {
@@ -185,30 +246,76 @@ export function PreferencesPage({ token, profile, profileId: passedProfileId, no
         preferredGroups: groups.map((group, index) => ({ ...group, priority: index + 1 })), note,
       };
       const result = await api(`/api/identity/students/${encodeURIComponent(effectiveId)}/preferences${termQuery}`, { token, method: "PUT", body });
+      setPreferencesLoaded(true);
+      setHasSubmittedPreferences(true);
+      setLastUpdatedAt(result.lastUpdatedAt || new Date().toISOString());
+      setSelectionError("");
       notify("success", `Preferences saved${result.lastUpdatedAt ? ` · ${new Date(result.lastUpdatedAt).toLocaleString()}` : ""}. These are scheduling hints only.`);
     } catch (requestError) { setError(explainApiError(requestError, "Scheduling preferences")); }
     finally { setSaving(false); }
   };
 
-  const toggleGroup = (offering, slot) => {
-    const entry = { course: offering.course?._id || offering.course, componentType: slot.componentType, groupNumber: slot.groupNumber };
-    setGroups((current) => current.some((group) => group.course === entry.course && group.componentType === entry.componentType && group.groupNumber === entry.groupNumber)
-      ? current.filter((group) => !(group.course === entry.course && group.componentType === entry.componentType && group.groupNumber === entry.groupNumber))
-      : [...current, entry]);
+  const toggleGroup = (offering, option) => {
+    const entry = { course: String(offering.course?._id || offering.course), componentType: option.componentType, groupNumber: option.groupNumber };
+    const sameGroup = (group) => String(group.course?._id || group.course) === entry.course && group.componentType === entry.componentType && group.groupNumber === entry.groupNumber;
+    const alreadySelected = groups.some(sameGroup);
+    if (alreadySelected) {
+      setGroups((current) => current.filter((group) => !sameGroup(group)));
+      setSelectionError("");
+      setError("");
+      return;
+    }
+    const conflict = findPreferenceConflict([...groups, entry], offerings);
+    if (conflict) {
+      setSelectionError(preferenceConflictMessage(conflict));
+      return;
+    }
+    setSelectionError("");
+    setError("");
+    setGroups((current) => [...current, entry]);
   };
 
-  return <div className="page-stack"><PageTitle eyebrow="GROUP A · REQUIREMENTS 57–58" title={isStudent ? "Schedule preferences" : "Student preferences"} description="Share scheduling preferences as optional hints. Academic rules, prerequisites, seats, and payments still govern the final schedule." />
+  const findStudent = async (event) => {
+    event?.preventDefault();
+    const query = studentSearch.trim();
+    if (!query) { setError("Enter a student ID, name, or email to search."); return; }
+    setStudentLookupLoading(true); setStudentMatches([]); setSelectedStudent(null); resetLoadedPreferences();
+    try {
+      const result = await api(`/api/advisor/students?search=${encodeURIComponent(query)}&limit=100`, { token });
+      const matches = result.data || [];
+      const exactIdMatch = matches.find((student) => String(student.studentId).toLowerCase() === query.toLowerCase());
+      if (exactIdMatch) {
+        setSelectedStudent(exactIdMatch);
+        setStudentSearch(exactIdMatch.studentId);
+      } else if (matches.length) {
+        setStudentMatches(matches);
+      } else {
+        setError(`No advising student matched “${query}”. Search by the student number shown on their profile, name, or email.`);
+      }
+    } catch (requestError) { setError(explainApiError(requestError, "Student lookup")); }
+    finally { setStudentLookupLoading(false); }
+  };
+
+  return <div className="page-stack"><PageTitle eyebrow="GROUP A · REQUIREMENTS 57–58" title={isStudent ? "Schedule preferences" : "Student preferences"} description={isStudent ? "Share ranked scheduling preferences as optional hints. Academic rules, prerequisites, seats, and payments still govern the final schedule." : selectedStudent ? `View ${selectedStudent.user?.fullName || selectedStudent.studentId}’s latest submitted scheduling preferences.` : "Search for an advising student to view their latest scheduling preferences."} />
     <section className="panel preference-toolbar">
-      {!isStudent && <label className="field"><span>Student profile ID</span><input value={studentId} onChange={(event) => setStudentId(event.target.value)} placeholder="MongoDB student profile ID" /></label>}
-      <label className="field"><span>Academic term ID <small>(optional when one term is active)</small></span><input value={termId} onChange={(event) => setTermId(event.target.value)} placeholder="Paste term ID if needed" /></label>
-      <button type="button" className="outline-button" onClick={load} disabled={loading}>{loading ? "Loading…" : "Load saved preferences"}</button>
+      {!isStudent && <>
+        <form className="preference-student-lookup" onSubmit={findStudent}>
+          <label className="field"><span>Find advising student</span><input value={studentSearch} onChange={(event) => { setStudentSearch(event.target.value); setSelectedStudent(null); setStudentMatches([]); resetLoadedPreferences(); }} placeholder="Student ID, name, or email" disabled={studentLookupLoading} /></label>
+          <button className="outline-button" type="submit" disabled={studentLookupLoading}>{studentLookupLoading ? "Searching…" : "Find student"}</button>
+        </form>
+        {selectedStudent && <div className="preference-student-selected" role="status"><strong>{selectedStudent.user?.fullName || "Selected student"}</strong><span>{selectedStudent.studentId || "Student profile"}{selectedStudent.user?.email ? ` · ${selectedStudent.user.email}` : ""}</span><button className="text-button" type="button" onClick={() => { setSelectedStudent(null); setStudentSearch(""); setStudentMatches([]); resetLoadedPreferences(); }}>Change</button></div>}
+        {studentMatches.length > 0 && <div className="preference-student-results" aria-label="Matching students">{studentMatches.map((student) => <button className="preference-student-result" key={student._id} type="button" onClick={() => { setSelectedStudent(student); setStudentSearch(student.studentId); setStudentMatches([]); resetLoadedPreferences(); }}><strong>{student.studentId} · {student.user?.fullName || "Student"}</strong><span>{student.user?.email || student.major || "Advising student"}</span></button>)}</div>}
+      </>}
+      <label className="field"><span>Academic term</span><select value={termId} onChange={(event) => { setTermId(event.target.value); resetLoadedPreferences(); }} disabled={termsLoading || terms.length === 0}><option value="">{termsLoading ? "Loading terms…" : "Select a term"}</option>{terms.map((term) => <option key={term._id} value={term._id}>{term.code} · {term.academicYear} · {humanize(term.season)}{term.isActive ? " (Active)" : ""}</option>)}</select></label>
+      <button type="button" className="outline-button" onClick={() => load()} disabled={loading || termsLoading}>{loading ? "Loading…" : termsLoading ? "Loading terms…" : "Load saved preferences"}</button>
     </section>
     {error && <div className="feedback error" role="alert">{error}</div>}
-    <form onSubmit={save} className="preference-grid">
-      <section className="panel"><div className="panel-heading"><div><p className="eyebrow">DAY PREFERENCES</p><h2>Ranked day hints</h2></div><span className="panel-count">01</span></div><p className="helper-text">Enter full weekday names separated by commas. The order sets priority.</p><label className="field"><span>Preferred days</span><input value={preferredDays} onChange={(event) => setPreferredDays(event.target.value)} placeholder="Monday, Wednesday" /></label><label className="field"><span>Days to avoid</span><input value={avoidedDays} onChange={(event) => setAvoidedDays(event.target.value)} placeholder="Friday" /></label><label className="field"><span>Desired days off</span><input value={daysOff} onChange={(event) => setDaysOff(event.target.value)} placeholder="Thursday" /></label></section>
-      <section className="panel"><div className="panel-heading"><div><p className="eyebrow">TIME PREFERENCES</p><h2>Preferred time ranges</h2></div><span className="panel-count">02</span></div><p className="helper-text">Use 24-hour times, such as 09:00-12:00. Separate ranges with commas.</p><label className="field"><span>Preferred times</span><input value={preferredTimes} onChange={(event) => setPreferredTimes(event.target.value)} placeholder="09:00-12:00, 13:00-15:00" /></label><label className="field"><span>Times to avoid</span><input value={avoidedTimes} onChange={(event) => setAvoidedTimes(event.target.value)} placeholder="08:00-09:00" /></label><label className="field"><span>Note for advising staff</span><textarea value={note} maxLength={1000} onChange={(event) => setNote(event.target.value)} rows={3} placeholder="Optional note (up to 1000 characters)" /></label></section>
-      <section className="panel preference-groups"><div className="panel-heading"><div><p className="eyebrow">COURSE GROUPS</p><h2>Preferred groups</h2></div><span className="panel-count">03</span></div><p className="helper-text">Available groups load after you enter a term ID. Click to add a group; selected order becomes priority.</p>{offerings.length === 0 ? <button className="outline-button" type="button" onClick={load}>Load published groups</button> : offerings.map((offering) => <div className="preference-offering" key={offering._id}><strong>{offering.course?.code} · {offering.course?.name}</strong><div className="group-chip-list">{(offering.slots || []).map((slot) => { const checked = groups.some((group) => group.course === (offering.course?._id || offering.course) && group.componentType === slot.componentType && group.groupNumber === slot.groupNumber); return <button type="button" className={`group-chip ${checked ? "selected" : ""}`} key={slot._id} onClick={() => toggleGroup(offering, slot)}>{slot.componentType} {slot.groupNumber}{checked && <span> · #{groups.findIndex((group) => group.course === (offering.course?._id || offering.course) && group.componentType === slot.componentType && group.groupNumber === slot.groupNumber) + 1}</span>}</button>; })}</div></div>)}{groups.length > 0 && <p className="helper-text">{groups.length} group{groups.length === 1 ? "" : "s"} selected · selection order determines priority</p>}</section>
-      <div className="form-footer"><span className="helper-text">Submitting replaces this term’s saved preferences.</span><button className="primary-button" disabled={saving}>{saving ? "Saving…" : "Save preferences"}<span>→</span></button></div>
+    {preferencesLoaded && <div className={`feedback ${hasSubmittedPreferences ? "info" : "warning"}`} role="status">{hasSubmittedPreferences ? `Latest submission${formatDateTime(lastUpdatedAt) ? ` · last updated ${formatDateTime(lastUpdatedAt)}` : ""}.` : "No preferences were submitted for this term. The student can still receive a schedule."}</div>}
+    <form onSubmit={isStudent ? save : (event) => event.preventDefault()} className="preference-grid">
+      <section className="panel"><div className="panel-heading"><div><p className="eyebrow">DAY PREFERENCES</p><h2>Ranked day hints</h2></div><span className="panel-count">01</span></div><p className="helper-text">{isStudent ? "Enter full weekday names separated by commas. The order sets priority." : "Comma-separated values are shown in priority order."}</p><label className="field"><span>Preferred days{isStudent ? "" : " · priority order"}</span><input value={preferredDays} onChange={(event) => setPreferredDays(event.target.value)} placeholder="Monday, Wednesday" readOnly={!isStudent} /></label><label className="field"><span>Days to avoid{isStudent ? "" : " · priority order"}</span><input value={avoidedDays} onChange={(event) => setAvoidedDays(event.target.value)} placeholder="Friday" readOnly={!isStudent} /></label><label className="field"><span>Desired days off{isStudent ? "" : " · priority order"}</span><input value={daysOff} onChange={(event) => setDaysOff(event.target.value)} placeholder="Thursday" readOnly={!isStudent} /></label></section>
+      <section className="panel"><div className="panel-heading"><div><p className="eyebrow">TIME PREFERENCES</p><h2>Preferred time ranges</h2></div><span className="panel-count">02</span></div><p className="helper-text">{isStudent ? "Use 24-hour times, such as 09:00-12:00. Separate ranges with commas." : "Ranges are shown in priority order (24-hour time)."}</p><label className="field"><span>Preferred times{isStudent ? "" : " · priority order"}</span><input value={preferredTimes} onChange={(event) => setPreferredTimes(event.target.value)} placeholder="09:00-12:00, 13:00-15:00" readOnly={!isStudent} /></label><label className="field"><span>Times to avoid{isStudent ? "" : " · priority order"}</span><input value={avoidedTimes} onChange={(event) => setAvoidedTimes(event.target.value)} placeholder="08:00-09:00" readOnly={!isStudent} /></label><label className="field"><span>Note for advising staff</span><textarea value={note} maxLength={1000} onChange={(event) => setNote(event.target.value)} rows={3} placeholder="Optional note (up to 1000 characters)" readOnly={!isStudent} /></label></section>
+      <section className="panel preference-groups"><div className="panel-heading"><div><p className="eyebrow">COURSE GROUPS</p><h2>Preferred groups</h2></div><span className="panel-count">03</span></div><p className="helper-text">{isStudent ? `${offerings.length ? `${offerings.length} subjects loaded. ` : ""}Choose a term above, then load its published groups. Each option shows its meeting day, time, and room. Click groups to rank them; selections across different subjects cannot overlap.` : "Selected groups are listed in priority order with their meeting time and room when currently published."}</p>{conflictMessage && <div ref={conflictNoticeRef} className="feedback error preference-conflict-feedback" role="alert" aria-live="assertive">{conflictMessage}</div>}{isStudent ? (offerings.length === 0 ? <button className="outline-button" type="button" onClick={() => load()} disabled={loading || !termId || !effectiveId}>{loading ? "Loading…" : "Load published groups"}</button> : offerings.map((offering) => <div className="preference-offering" key={offering._id}><strong>{offering.course?.code} · {offering.course?.name}</strong><div className="group-chip-list">{preferenceGroupOptions(offering).map((option) => { const courseId = String(offering.course?._id || offering.course); const groupIndex = groups.findIndex((group) => String(group.course?._id || group.course) === courseId && group.componentType === option.componentType && group.groupNumber === option.groupNumber); const checked = groupIndex !== -1; return <button type="button" aria-pressed={checked} className={`group-chip ${checked ? "selected" : ""}`} key={`${option.componentType}-${option.groupNumber}`} onClick={() => toggleGroup(offering, option)}><strong>{option.componentType} {option.groupNumber}{checked && ` · #${groupIndex + 1}`}</strong><small>{option.sessions.map(preferenceMeetingLabel).join(" / ")}</small></button>; })}</div></div>)) : groups.length ? groups.map((group, index) => { const offering = offerings.find((item) => String(item.course?._id || item.course) === String(group.course)); const option = offering && preferenceGroupOptions(offering).find((item) => item.componentType === group.componentType && item.groupNumber === group.groupNumber); return <div className="preference-offering" key={`${group.course}-${group.componentType}-${group.groupNumber}`}><strong>Priority #{index + 1} · {offering?.course?.code || "Course"} {offering?.course?.name ? `· ${offering.course.name}` : ""}</strong><div className="group-chip-list"><span className="group-chip selected"><strong>{group.componentType} {group.groupNumber}</strong><small>{option?.sessions.map(preferenceMeetingLabel).join(" / ") || "This group is no longer published for the term."}</small></span></div></div>; }) : preferencesLoaded && <p className="helper-text">No preferred course groups were submitted.</p>}</section>
+      <div className="form-footer">{isStudent ? <><span className="helper-text">Submitting replaces this term’s saved preferences.</span><button className="primary-button" disabled={saving || Boolean(groupConflict)}>{saving ? "Saving…" : "Save preferences"}<span>→</span></button></> : <span className="helper-text">Advisor/coordinator view only. Students submit and update their own preferences.</span>}</div>
     </form>
   </div>;
 }

@@ -451,7 +451,10 @@ export const getOfferings = async (req, res) => {
     }
 
     const offeringFilter = { term: term._id };
-    if (publishedOnly === 'true') offeringFilter.isPublished = true;
+    // Students need published groups to submit Req. 57 preferences, and
+    // advisors need them to review those preferences for Req. 58. Never expose
+    // draft offerings through either role's read-only catalogue access.
+    if (publishedOnly === 'true' || ['advisingStudent', 'advisor'].includes(req.user?.role)) offeringFilter.isPublished = true;
     const offerings = await CourseOffering.find(offeringFilter)
       .populate('course', 'code name creditHours courseType facultyMajors')
       .populate('term', 'code academicYear season');

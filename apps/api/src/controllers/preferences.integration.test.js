@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import test, { before, beforeEach, after } from 'node:test';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { join } from 'node:path';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import app from '../app.js';
@@ -9,9 +11,10 @@ import { SchedulingPreference, StudentSchedule, CourseAttempt } from '../models/
 import { FinancialTransaction } from '../models/finance.js';
 import { generateToken } from '../middleware/auth.middleware.js';
 
-let database, server, origin, users, students, term, course, offering;
+let database, databasePath, server, origin, users, students, term, course, offering;
 before(async () => {
-  database = await MongoMemoryServer.create();
+  databasePath = await mkdtemp(join(process.cwd(), '.mongo-preferences-'));
+  database = await MongoMemoryServer.create({ instance: { dbPath: databasePath } });
   await mongoose.connect(database.getUri());
   await SchedulingPreference.init();
   server = app.listen(0, '127.0.0.1');
@@ -22,6 +25,7 @@ after(async () => {
   if (server) await new Promise(resolve => server.close(resolve));
   await mongoose.disconnect();
   if (database) await database.stop();
+  if (databasePath) await rm(databasePath, { recursive: true, force: true });
 });
 beforeEach(async () => {
   await Promise.all([User, StudentProfile, AcademicTerm, Course, CourseOffering, SchedulingPreference, StudentSchedule, CourseAttempt, FinancialTransaction].map(model => model.deleteMany({})));
@@ -91,6 +95,26 @@ test('58: no preferences returns a successful null result and does not create a 
     assert.deepEqual(read.body, { success: true, submitted: false, advisoryOnly: true, preferences: null, lastUpdatedAt: null });
   }
   assert.equal(await SchedulingPreference.countDocuments(), 0);
+});
+
+test('57–58: advising students and advisors can load published preference groups without seeing drafts', async () => {
+  const draftCourse = await Course.create({ code: 'PREF102', name: 'Draft course', creditHours: 3, courseType: 'core', facultyMajors: ['CS'] });
+  await CourseOffering.create({ course: draftCourse._id, academicYear: term.academicYear, term: term._id, isPublished: false, instructors: [{ fullName: 'Professor' }], eligibleGroups: [{ major: 'CS', semester: 4 }], slots: [{ componentType: 'lecture', groupNumber: '2', day: 'Tuesday', startMinute: 600, endMinute: 660, room: 'C2', capacity: 20 }] });
+  const catalogueOrigin = origin.replace('/identity/students', '/catalogue');
+  for (const role of ['advisingStudent', 'advisor']) {
+    const response = await fetch(`${catalogueOrigin}/offerings?termId=${term._id}`, {
+      headers: { Authorization: `Bearer ${generateToken(users[role])}` },
+    });
+    const body = await response.json();
+
+    assert.equal(response.status, 200, `${role} can load groups for preferences`);
+    assert.equal(body.count, 1, `${role} cannot see draft offerings`);
+    assert.equal(body.offerings[0].isPublished, true);
+  }
+  const normalStudentResponse = await fetch(`${catalogueOrigin}/offerings?termId=${term._id}`, {
+    headers: { Authorization: `Bearer ${generateToken(users.normalStudent)}` },
+  });
+  assert.equal(normalStudentResponse.status, 403);
 });
 
 test('57/58: role and ownership matrix covers both read and write', async (t) => {
@@ -192,6 +216,35 @@ test('group hints must reference an actual published group in this term', async 
   await CourseOffering.updateOne({ _id: offering._id }, { $set: { isPublished: false } });
   assert.equal((await request({ body: payload() })).status, 400);
   assert.equal(await SchedulingPreference.countDocuments(), 0);
+});
+
+test('group hints reject cross-course time clashes but allow adjacent meetings and same-course alternatives', async () => {
+  const secondCourse = await Course.create({ code: 'PREF102', name: 'Algorithms', creditHours: 3, courseType: 'core', facultyMajors: ['CS'] });
+  await CourseOffering.create({
+    course: secondCourse._id,
+    academicYear: term.academicYear,
+    term: term._id,
+    isPublished: true,
+    instructors: [{ fullName: 'Professor' }],
+    eligibleGroups: [{ major: 'CS', semester: 4 }],
+    slots: [
+      { componentType: 'lecture', groupNumber: '1', day: 'Monday', startMinute: 570, endMinute: 630, room: 'C2', capacity: 20 },
+      { componentType: 'lecture', groupNumber: '2', day: 'Monday', startMinute: 600, endMinute: 660, room: 'C3', capacity: 20 },
+    ],
+  });
+  const firstCourseGroup = { course: String(course._id), componentType: 'lecture', groupNumber: '1' };
+  const conflictingGroup = { course: String(secondCourse._id), componentType: 'lecture', groupNumber: '1' };
+  const rejected = await request({ body: { preferredGroups: [firstCourseGroup, conflictingGroup] } });
+  assert.equal(rejected.status, 400);
+  assert.match(rejected.body.message, /overlap.*Monday, 09:30–10:00/);
+  assert.equal(await SchedulingPreference.countDocuments(), 0);
+
+  const adjacentGroup = { course: String(secondCourse._id), componentType: 'lecture', groupNumber: '2' };
+  assert.equal((await request({ body: { preferredGroups: [firstCourseGroup, adjacentGroup] } })).status, 200);
+
+  await CourseOffering.updateOne({ _id: offering._id }, { $push: { slots: { componentType: 'lecture', groupNumber: '2', day: 'Monday', startMinute: 570, endMinute: 630, room: 'C4', capacity: 20 } } });
+  const sameCourseAlternative = { course: String(course._id), componentType: 'lecture', groupNumber: '2' };
+  assert.equal((await request({ body: { preferredGroups: [firstCourseGroup, sameCourseAlternative] } })).status, 200);
 });
 
 test('group hints reject inactive courses and offerings belonging to another term', async () => {
