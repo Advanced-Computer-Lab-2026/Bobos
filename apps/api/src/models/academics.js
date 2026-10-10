@@ -1,5 +1,6 @@
 import { ACADEMIC_STANDINGS, DAYS_OF_WEEK, STUDENT_TYPES, WORKFLOW_STATUSES, ref, registerModel, Schema, withTimestamps } from "./shared.js";
 import mongoose from 'mongoose';
+import "./finance.js";
 
 // ## Sprint 1 schemas
 // ScheduleTemplate: Req. 28-29; StudentSchedule: Req. 30-34, 49; CourseAttempt: Req. 54-56, 61.
@@ -237,7 +238,6 @@ export const getTranscriptByYear = async (studentId, year) => {
     .exec();
 
   const validAttempts = attempts.filter(attempt => attempt.term !== null);
-  if (validAttempts.length === 0) return null;
 
   const transcript = {
     studentId,

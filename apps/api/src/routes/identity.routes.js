@@ -62,7 +62,7 @@ router.get('/students/:studentId/transcript/years', advisingRecords, getAcademic
 router.get('/students/:studentId/transcript/download', advisingRecords, downloadTranscriptPDF);
 
 // Req 61:
-router.get('/students/:studentId/failed-courses', studentRecordAccess(['advisor', 'coordinator']), getFailedCourses);
+router.get('/students/:studentId/failed-courses', advisingRecords, getFailedCourses);
 
 //Req 89:
 router.get('/students/:studentId/wallet', studentRecordAccess(['advisingStudent']), getWallet);
