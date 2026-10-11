@@ -14,23 +14,30 @@ function readCsv(text) {
   let row = [];
   let field = "";
   let quoted = false;
+  let lineNumber = 1;
+  let rowLineNumber = 1;
   for (let i = 0; i < text.length; i += 1) {
     const char = text[i];
     if (quoted) {
       if (char === '"' && text[i + 1] === '"') { field += '"'; i += 1; }
       else if (char === '"') quoted = false;
-      else field += char;
+      else {
+        field += char;
+        if (char === '\n') lineNumber += 1;
+      }
     } else if (char === '"' && field.length === 0) quoted = true;
     else if (char === ',') { row.push(field); field = ""; }
     else if (char === '\n' || char === '\r') {
       if (char === '\r' && text[i + 1] === '\n') i += 1;
       row.push(field); field = "";
-      if (row.some(value => value.trim())) rows.push(row);
+      if (row.some(value => value.trim())) rows.push({ values: row, lineNumber: rowLineNumber });
       row = [];
+      lineNumber += 1;
+      rowLineNumber = lineNumber;
     } else field += char;
   }
   if (quoted) throw new Error("CSV contains an unterminated quoted field");
-  if (field.length || row.length) { row.push(field); if (row.some(value => value.trim())) rows.push(row); }
+  if (field.length || row.length) { row.push(field); if (row.some(value => value.trim())) rows.push({ values: row, lineNumber: rowLineNumber }); }
   return rows;
 }
 
@@ -38,7 +45,7 @@ function normalizeCode(value) {
   return value.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
 }
 
-export function parseCurriculumCsv(text) {
+export function parseCurriculumCsv(text, { validatePrerequisites = true } = {}) {
   const rows = readCsv(text);
   const courses = new Map();
   let mergedListings = 0;
@@ -47,7 +54,7 @@ export function parseCurriculumCsv(text) {
   let major;
   let skippedPlaceholders = 0;
 
-  rows.forEach((row, index) => {
+  rows.forEach(({ values: row, lineNumber: rowNumber }) => {
     const firstCell = (row[0] ?? "").trim();
     const semesterMatch = firstCell.match(/^(\d+)(?:st|nd|rd|th)\s+Semester$/i);
     if (semesterMatch) {
@@ -70,7 +77,6 @@ export function parseCurriculumCsv(text) {
     }
     if (/^Course Code$/i.test(firstCell) || !firstCell || !row[1]?.trim() || !row[2]?.trim()) return;
 
-    const rowNumber = index + 1;
     const localCode = row[1].trim();
     if (/xxxx/i.test(localCode) || firstCell.includes("/")) {
       skippedPlaceholders += 1;
@@ -115,8 +121,11 @@ export function parseCurriculumCsv(text) {
       .map(value => (value ?? "").trim())
       .filter(value => value && value.toUpperCase() !== "X")
       .map(normalizeCode);
+    const languageSemester = Number(localCode.match(/^\D*(\d)/)?.[1]);
+    const recommendedSemester = semester || (humanitiesSection && languageSemester >= 1 && languageSemester <= 4 ? languageSemester : undefined);
     const course = {
       code,
+      sourceRow: rowNumber,
       name: row[2].trim(),
       creditHours,
       courseType: humanitiesSection || normalizeCode(firstCell) === "HUMA" ? "huma" : "core",
@@ -125,7 +134,7 @@ export function parseCurriculumCsv(text) {
       tutorialHours,
       labHours,
       prerequisites,
-      ...(semester && { recommendedSemester: semester }),
+      ...(recommendedSemester && { recommendedSemester }),
     };
 
     if (courses.has(code)) {
@@ -143,13 +152,15 @@ export function parseCurriculumCsv(text) {
   });
 
   if (!courses.size) throw new Error("No importable course rows found in courses.csv");
-  const codes = new Set(courses.keys());
-  for (const course of courses.values()) {
-    for (const prerequisite of course.prerequisites) {
-      if (!codes.has(prerequisite)) {
-        throw new Error(`Course ${course.code} refers to prerequisite ${prerequisite}, which is not in this CSV`);
+  if (validatePrerequisites) {
+    const codes = new Set(courses.keys());
+    for (const course of courses.values()) {
+      for (const prerequisite of course.prerequisites) {
+        if (!codes.has(prerequisite)) {
+          throw new Error(`CSV row ${course.sourceRow}: course ${course.code} refers to prerequisite ${prerequisite}, which is not in this CSV`);
+        }
+        if (prerequisite === course.code) throw new Error(`CSV row ${course.sourceRow}: course ${course.code} cannot be its own prerequisite`);
       }
-      if (prerequisite === course.code) throw new Error(`Course ${course.code} cannot be its own prerequisite`);
     }
   }
   return { courses: [...courses.values()], mergedListings, skippedPlaceholders };
@@ -171,7 +182,7 @@ async function main() {
   console.log("Connected to MongoDB");
   try {
     for (const course of courses) {
-      const { prerequisites, ...courseData } = course;
+      const { prerequisites, sourceRow, ...courseData } = course;
       await Course.findOneAndUpdate(
         { code: course.code },
         { $set: courseData },

@@ -97,19 +97,7 @@ async function seedCurriculum() {
       isActive: true,
     };
   });
-  const evaluationCourses = Array.from({ length: 9 }, (_, index) => index + 2).flatMap((semester) =>
-    ['A', 'B', 'C', 'D', 'E', 'F', 'G'].map((letter, courseIndex) => ({
-      code: `EVAL${semester}${letter}`,
-      name: `Evaluation Schedule Course ${semester}${letter}`,
-      creditHours: courseIndex === 0 ? 3 : 4,
-      courseType: 'elective',
-      facultyMajors: ['CS', 'DMET'],
-      recommendedSemester: semester,
-      offeringSeasons: ['winter', 'spring'],
-      isActive: true,
-    })),
-  );
-  const allCourses = [...curriculumCourses, ...electives, ...evaluationCourses];
+  const allCourses = [...curriculumCourses, ...electives];
 
   for (const course of allCourses) {
     const { prerequisites, ...fields } = course;
@@ -130,7 +118,7 @@ async function seedCurriculum() {
     );
   }
 
-  return { curriculumCount: curriculumCourses.length, electiveCount: electives.length, evaluationCourseCount: evaluationCourses.length, mergedListings, skippedPlaceholders };
+  return { curriculumCount: curriculumCourses.length, electiveCount: electives.length, mergedListings, skippedPlaceholders };
 }
 
 function evaluationMajors(course) {
@@ -293,6 +281,7 @@ async function seedCurrentTermOfferings(term) {
   const explicitlySeededCodes = new Set(specs.map(({ courseCode }) => courseCode));
   const curriculumCourses = await Course.find({
     isActive: true,
+    code: { $not: /^EVAL/ },
     recommendedSemester: { $gte: 2, $lte: 10 },
   }).lean();
   for (const course of curriculumCourses) {
@@ -333,7 +322,7 @@ async function seedEvaluationData() {
 
     console.log('Evaluation seed completed (idempotent; no collections were cleared).');
     console.log(`Advising students: ${accounts.students.length}; advisors: ${accounts.advisors.length}; coordinator: 1; administrator: 1`);
-    console.log(`Courses: ${courses.curriculumCount} curriculum courses from courses.csv + ${courses.electiveCount} electives + ${courses.evaluationCourseCount} evaluation courses`);
+    console.log(`Courses: ${courses.curriculumCount} curriculum courses from courses.csv + ${courses.electiveCount} electives`);
     console.log(`Terms added/updated: ${terms.map(({ code }) => code).join(', ')}; total terms in database: ${totalTermCount}; active term: 60-`);
     console.log(`Active term advising deadline: ${terms.find(({ code }) => code === '60-').advisingDeadline.toISOString()}`);
     console.log(`Offerings in active term 60-: ${offerings.length} seeded; ${offerings.filter(({ isPublished }) => isPublished).length} published and eligible for the seeded major/semester combinations`);

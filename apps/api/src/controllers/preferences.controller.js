@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import { AcademicTerm, Course, CourseOffering } from "../models/catalogue.js";
-import { SchedulingPreference } from "../models/academics.js";
+import { CourseAttempt, SchedulingPreference, StudentSchedule } from "../models/academics.js";
 import { DAYS_OF_WEEK } from "../models/shared.js";
 
 const dayFields = ["preferredDays", "avoidedDays", "desiredDaysOff"];
@@ -76,15 +76,28 @@ async function resolveTerm(req, res) {
   return terms[0];
 }
 
+async function currentCourseIds(student, term) {
+  const [schedule, currentAttempts] = await Promise.all([
+    StudentSchedule.findOne({ student, term, scheduleType: "advising" }).select("courses.course").lean(),
+    CourseAttempt.distinct("course", { student, term, result: "current" }),
+  ]);
+  return [...new Set([
+    ...(schedule?.courses || []).map(entry => String(entry.course)),
+    ...currentAttempts.map(String),
+  ])];
+}
+
 async function preferenceResponse(student, term) {
-  const preferences = await SchedulingPreference.findOne({ student, term })
-    .populate("preferredGroups.course", "code name").lean();
+  const [preferences, eligibleCourseIds] = await Promise.all([
+    SchedulingPreference.findOne({ student, term }).populate("preferredGroups.course", "code name").lean(),
+    currentCourseIds(student, term),
+  ]);
   if (preferences) {
     for (const field of fields.filter(field => field !== 'note')) {
       preferences[field].sort((a, b) => a.priority - b.priority);
     }
   }
-  return { success: true, submitted: Boolean(preferences), advisoryOnly: true, preferences, lastUpdatedAt: preferences?.updatedAt ?? null };
+  return { success: true, submitted: Boolean(preferences), advisoryOnly: true, preferences, eligibleCourseIds, lastUpdatedAt: preferences?.updatedAt ?? null };
 }
 
 function findPreferredGroupConflict(preferredGroups, offerings) {
@@ -158,6 +171,10 @@ export async function savePreferences(req, res) {
     }
     if (preferences.preferredGroups.length) {
       const ids = [...new Set(preferences.preferredGroups.map(group => group.course))];
+      const eligibleCourseIds = new Set(await currentCourseIds(req.studentProfile._id, term._id));
+      if (ids.some(id => !eligibleCourseIds.has(id))) {
+        return res.status(400).json({ success: false, message: "Preferred groups must belong to courses in your current schedule or current course records for this term." });
+      }
       const [courses, offerings] = await Promise.all([
         Course.find({ _id: { $in: ids }, isActive: true }).select('_id code').lean(),
         CourseOffering.find({ term: term._id, course: { $in: ids }, isPublished: true }).select('course slots.componentType slots.groupNumber slots.day slots.startMinute slots.endMinute').lean(),

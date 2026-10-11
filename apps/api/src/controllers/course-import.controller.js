@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { Course } from "../models/catalogue.js";
 import { ACADEMIC_SEASONS } from "../models/shared.js";
+import { parseCurriculumCsv } from "../scripts/importCourses.js";
 
 const MAX_CSV_BYTES = 2 * 1024 * 1024;
 const MAX_CSV_ROWS = 5000;
@@ -68,6 +69,19 @@ function csvError(row, field, message) {
   return { row, field, message };
 }
 
+function isCurriculumCsv(rows) {
+  return rows.some((row) => normalizeHeader(row[0]) === "course code"
+    && ["course", "course title"].includes(normalizeHeader(row[2]))
+    && normalizeHeader(row[3]) === "lecture hours"
+    && normalizeHeader(row[4]) === "tutorial hours"
+    && normalizeHeader(row[5]) === "lab hours");
+}
+
+function normalizeSeasons(values) {
+  const byNormalized = new Map(ACADEMIC_SEASONS.map((season) => [season.toLowerCase().replace(/[\s_-]+/g, ""), season]));
+  return values.map((value) => byNormalized.get(String(value).trim().toLowerCase().replace(/[\s_-]+/g, "")) || String(value).trim());
+}
+
 export async function importCoursesCsv(req, res) {
   const csvText = req.body?.csvText;
   if (typeof csvText !== "string" || !csvText.trim()) {
@@ -90,61 +104,108 @@ export async function importCoursesCsv(req, res) {
     return res.status(400).json({ success: false, message: `A file can contain at most ${MAX_CSV_ROWS} course rows.` });
   }
 
-  const headerIndexes = new Map();
   const errors = [];
-  const headers = rows[0].map(normalizeHeader);
-  for (const [field, aliases] of Object.entries(HEADER_ALIASES)) {
-    const matches = headers.flatMap((header, index) => aliases.includes(header) ? [index] : []);
-    if (!matches.length) errors.push(csvError(1, field, `Missing required column: ${aliases[0]}.`));
-    else if (matches.length > 1) errors.push(csvError(1, field, `Column appears more than once: ${aliases[0]}.`));
-    else headerIndexes.set(field, matches[0]);
-  }
-  if (errors.length) return res.status(400).json({ success: false, errors });
-
   const parsedCourses = [];
   const rowByCode = new Map();
-  for (const [index, row] of rows.slice(1).entries()) {
-    const rowNumber = index + 2;
-    if (row.length !== headers.length) {
-      errors.push(csvError(rowNumber, "CSV", `Expected ${headers.length} columns but found ${row.length}.`));
-      continue;
-    }
-    const value = (field) => String(row[headerIndexes.get(field)] ?? "").trim();
-    const code = normalizeCode(value("code"));
-    const name = value("name");
-    const courseTypeInput = value("courseType").toLowerCase();
-    const courseType = courseTypeInput === "humanities" ? "huma" : courseTypeInput;
-    const creditText = value("creditHours");
-    const semesterText = value("recommendedSemester");
-    const creditHours = creditText === "" ? Number.NaN : Number(creditText);
-    const recommendedSemester = semesterText === "" ? Number.NaN : Number(semesterText);
-    const facultyMajorsText = value("facultyMajors");
-    const allMajors = /^(all|all majors|all faculties)$/i.test(facultyMajorsText);
-    const facultyMajors = allMajors ? [] : splitList(facultyMajorsText);
-    const seasonsText = value("offeringSeasons");
-    const seasonInputs = splitList(seasonsText);
-    const seasonByNormalized = new Map(ACADEMIC_SEASONS.map((season) => [season.toLowerCase().replace(/\s+/g, ""), season]));
-    const offeringSeasons = seasonInputs.map((season) => seasonByNormalized.get(season.toLowerCase().replace(/[\s_-]+/g, "")) || season);
-    const prerequisiteCodes = splitList(value("prerequisites")).map(normalizeCode);
+  const curriculumFormat = isCurriculumCsv(rows);
+  let skippedPlaceholders = 0;
 
-    if (!code) errors.push(csvError(rowNumber, "code", "Course code is required."));
-    else if (!/^[A-Z0-9][A-Z0-9._-]*$/.test(code)) errors.push(csvError(rowNumber, "code", "Course code may contain only letters, numbers, dots, underscores, and hyphens."));
-    if (!name) errors.push(csvError(rowNumber, "name", "Course name is required."));
-    if (!creditText || !Number.isFinite(creditHours) || creditHours < 0) errors.push(csvError(rowNumber, "creditHours", "Credit hours must be a number greater than or equal to 0."));
-    if (!["core", "elective", "huma"].includes(courseType)) errors.push(csvError(rowNumber, "courseType", "Course type must be core, elective, or huma."));
-    if (!semesterText || !Number.isInteger(recommendedSemester) || recommendedSemester < 1 || recommendedSemester > 10) {
-      errors.push(csvError(rowNumber, "recommendedSemester", "Recommended semester must be a whole number from 1 to 10."));
+  if (curriculumFormat) {
+    const requestedSeasons = req.body?.curriculumOfferingSeasons;
+    const defaultSeasons = normalizeSeasons(Array.isArray(requestedSeasons) ? requestedSeasons : ["winter", "spring"]);
+    if (!defaultSeasons.length) errors.push(csvError(1, "offeringSeasons", "Choose at least one default offering season for this curriculum file."));
+    for (const season of defaultSeasons) {
+      if (!ACADEMIC_SEASONS.includes(season)) errors.push(csvError(1, "offeringSeasons", `Unknown season "${season}". Use: ${ACADEMIC_SEASONS.join(", ")}.`));
     }
-    if (!facultyMajorsText || (!allMajors && !facultyMajors.length)) errors.push(csvError(rowNumber, "facultyMajors", 'Faculty/Major is required; use "All" if the course is open to everyone.'));
-    if (!offeringSeasons.length) errors.push(csvError(rowNumber, "offeringSeasons", "At least one offering season is required."));
-    for (const season of offeringSeasons) {
-      if (!ACADEMIC_SEASONS.includes(season)) errors.push(csvError(rowNumber, "offeringSeasons", `Unknown season "${season}". Use: ${ACADEMIC_SEASONS.join(", ")}.`));
-    }
-    if (new Set(prerequisiteCodes).size !== prerequisiteCodes.length) errors.push(csvError(rowNumber, "prerequisites", "Prerequisites cannot contain duplicate course codes."));
-    if (code && rowByCode.has(code)) errors.push(csvError(rowNumber, "code", `Course code ${code} is duplicated in this file (first used on row ${rowByCode.get(code)}).`));
-    else if (code) rowByCode.set(code, rowNumber);
+    if (errors.length) return res.status(400).json({ success: false, errors });
 
-    parsedCourses.push({ row: rowNumber, code, name, creditHours, courseType, facultyMajors, recommendedSemester, offeringSeasons, prerequisiteCodes });
+    let curriculum;
+    try {
+      curriculum = parseCurriculumCsv(csvText, { validatePrerequisites: false });
+    } catch (error) {
+      const row = Number(error.message.match(/CSV row (\d+)/i)?.[1] || 1);
+      const message = error.message.replace(/^CSV row \d+:\s*/i, "");
+      return res.status(400).json({ success: false, errors: [csvError(row, "CSV", message)] });
+    }
+    skippedPlaceholders = curriculum.skippedPlaceholders;
+    for (const course of curriculum.courses) {
+      const parsed = {
+        row: course.sourceRow,
+        code: course.code,
+        name: course.name,
+        creditHours: course.creditHours,
+        courseType: course.courseType,
+        facultyMajors: course.facultyMajors,
+        recommendedSemester: course.recommendedSemester,
+        offeringSeasons: defaultSeasons,
+        prerequisiteCodes: course.prerequisites,
+        lectureHours: course.lectureHours,
+        tutorialHours: course.tutorialHours,
+        labHours: course.labHours,
+      };
+      if (!parsed.code) errors.push(csvError(parsed.row, "code", "Course code is required."));
+      else if (!/^[A-Z0-9][A-Z0-9._-]*$/.test(parsed.code)) errors.push(csvError(parsed.row, "code", "Course code may contain only letters, numbers, dots, underscores, and hyphens."));
+      if (!parsed.name) errors.push(csvError(parsed.row, "name", "Course name is required."));
+      if (!Number.isFinite(parsed.creditHours) || parsed.creditHours < 0) errors.push(csvError(parsed.row, "creditHours", "Credit hours must be a number greater than or equal to 0."));
+      if (!["core", "elective", "huma"].includes(parsed.courseType)) errors.push(csvError(parsed.row, "courseType", "Course type must be core, elective, or huma."));
+      if (parsed.recommendedSemester !== undefined && (!Number.isInteger(parsed.recommendedSemester) || parsed.recommendedSemester < 1 || parsed.recommendedSemester > 10)) {
+        errors.push(csvError(parsed.row, "recommendedSemester", "Recommended semester must be a whole number from 1 to 10."));
+      }
+      if (new Set(parsed.prerequisiteCodes).size !== parsed.prerequisiteCodes.length) errors.push(csvError(parsed.row, "prerequisites", "Prerequisites cannot contain duplicate course codes."));
+      rowByCode.set(parsed.code, parsed.row);
+      parsedCourses.push(parsed);
+    }
+  } else {
+    const headerIndexes = new Map();
+    const headers = rows[0].map(normalizeHeader);
+    for (const [field, aliases] of Object.entries(HEADER_ALIASES)) {
+      const matches = headers.flatMap((header, index) => aliases.includes(header) ? [index] : []);
+      if (!matches.length) errors.push(csvError(1, field, `Missing required column: ${aliases[0]}.`));
+      else if (matches.length > 1) errors.push(csvError(1, field, `Column appears more than once: ${aliases[0]}.`));
+      else headerIndexes.set(field, matches[0]);
+    }
+    if (errors.length) return res.status(400).json({ success: false, errors });
+
+    for (const [index, row] of rows.slice(1).entries()) {
+      const rowNumber = index + 2;
+      if (row.length !== headers.length) {
+        errors.push(csvError(rowNumber, "CSV", `Expected ${headers.length} columns but found ${row.length}.`));
+        continue;
+      }
+      const value = (field) => String(row[headerIndexes.get(field)] ?? "").trim();
+      const code = normalizeCode(value("code"));
+      const name = value("name");
+      const courseTypeInput = value("courseType").toLowerCase();
+      const courseType = courseTypeInput === "humanities" ? "huma" : courseTypeInput;
+      const creditText = value("creditHours");
+      const semesterText = value("recommendedSemester");
+      const creditHours = creditText === "" ? Number.NaN : Number(creditText);
+      const recommendedSemester = semesterText === "" ? Number.NaN : Number(semesterText);
+      const facultyMajorsText = value("facultyMajors");
+      const allMajors = /^(all|all majors|all faculties)$/i.test(facultyMajorsText);
+      const facultyMajors = allMajors ? [] : splitList(facultyMajorsText);
+      const offeringSeasons = normalizeSeasons(splitList(value("offeringSeasons")));
+      const prerequisiteCodes = splitList(value("prerequisites")).map(normalizeCode);
+
+      if (!code) errors.push(csvError(rowNumber, "code", "Course code is required."));
+      else if (!/^[A-Z0-9][A-Z0-9._-]*$/.test(code)) errors.push(csvError(rowNumber, "code", "Course code may contain only letters, numbers, dots, underscores, and hyphens."));
+      if (!name) errors.push(csvError(rowNumber, "name", "Course name is required."));
+      if (!creditText || !Number.isFinite(creditHours) || creditHours < 0) errors.push(csvError(rowNumber, "creditHours", "Credit hours must be a number greater than or equal to 0."));
+      if (!["core", "elective", "huma"].includes(courseType)) errors.push(csvError(rowNumber, "courseType", "Course type must be core, elective, or huma."));
+      if (!semesterText || !Number.isInteger(recommendedSemester) || recommendedSemester < 1 || recommendedSemester > 10) {
+        errors.push(csvError(rowNumber, "recommendedSemester", "Recommended semester must be a whole number from 1 to 10."));
+      }
+      if (!facultyMajorsText || (!allMajors && !facultyMajors.length)) errors.push(csvError(rowNumber, "facultyMajors", 'Faculty/Major is required; use "All" if the course is open to everyone.'));
+      if (!offeringSeasons.length) errors.push(csvError(rowNumber, "offeringSeasons", "At least one offering season is required."));
+      for (const season of offeringSeasons) {
+        if (!ACADEMIC_SEASONS.includes(season)) errors.push(csvError(rowNumber, "offeringSeasons", `Unknown season "${season}". Use: ${ACADEMIC_SEASONS.join(", ")}.`));
+      }
+      if (new Set(prerequisiteCodes).size !== prerequisiteCodes.length) errors.push(csvError(rowNumber, "prerequisites", "Prerequisites cannot contain duplicate course codes."));
+      if (code && rowByCode.has(code)) errors.push(csvError(rowNumber, "code", `Course code ${code} is duplicated in this file (first used on row ${rowByCode.get(code)}).`));
+      else if (code) rowByCode.set(code, rowNumber);
+
+      parsedCourses.push({ row: rowNumber, code, name, creditHours, courseType, facultyMajors, recommendedSemester, offeringSeasons, prerequisiteCodes });
+    }
   }
 
   if (errors.length) return res.status(400).json({ success: false, errors });
@@ -186,8 +247,11 @@ export async function importCoursesCsv(req, res) {
   const existingCodes = new Set(existingCourses.map((course) => normalizeCode(course.code)));
   const now = new Date();
   const operations = validated.map((course) => {
-    const { _id, code, name, creditHours, courseType, facultyMajors, recommendedSemester, offeringSeasons, prerequisites } = course;
+    const { _id, code, name, creditHours, courseType, facultyMajors, recommendedSemester, offeringSeasons, prerequisites, lectureHours, tutorialHours, labHours } = course;
     const fields = { name, creditHours, courseType, facultyMajors, recommendedSemester, offeringSeasons, prerequisites, updatedAt: now };
+    if (lectureHours !== undefined) fields.lectureHours = lectureHours;
+    if (tutorialHours !== undefined) fields.tutorialHours = tutorialHours;
+    if (labHours !== undefined) fields.labHours = labHours;
     return {
       updateOne: {
         filter: { code },
@@ -208,5 +272,5 @@ export async function importCoursesCsv(req, res) {
   }
 
   const created = parsedCourses.filter((course) => !existingCodes.has(course.code)).length;
-  res.json({ success: true, total: parsedCourses.length, created, updated: parsedCourses.length - created });
+  res.json({ success: true, total: parsedCourses.length, created, updated: parsedCourses.length - created, format: curriculumFormat ? "curriculum" : "standard", skippedPlaceholders });
 }
