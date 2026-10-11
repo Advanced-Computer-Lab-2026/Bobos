@@ -62,7 +62,8 @@ export function parseCurriculumCsv(text) {
       major = undefined;
       return;
     }
-    const majorMatch = firstCell.match(/^For\s+(CSEN|DMET)\s+Major:?$/i);
+    const majorHeading = row.map(value => (value ?? "").trim()).find(value => /^For\s+(CSEN|DMET)\s+Major:?$/i.test(value));
+    const majorMatch = majorHeading?.match(/^For\s+(CSEN|DMET)\s+Major:?$/i);
     if (majorMatch) {
       major = majorMatch[1].toUpperCase();
       return;
@@ -94,12 +95,20 @@ export function parseCurriculumCsv(text) {
         return number;
       });
       [lectureHours, tutorialHours, labHours] = components;
-      // The sheet's note says two contact hours equal one credit hour.
-      creditHours = components.reduce((sum, value) => sum + value, 0) / 2;
-      // The sheet's Total Hours column can be inconsistent; component columns are the source for credit calculation.
+      const totalHoursText = (row[6] ?? "").trim();
+      const totalHours = Number(totalHoursText);
+      if (!totalHoursText || !Number.isFinite(totalHours) || totalHours < 0) {
+        throw new Error(`CSV row ${rowNumber}: expected a non-negative Total Hours value`);
+      }
+      const componentTotal = components.reduce((sum, value) => sum + value, 0);
+      // DMET502 has a source typo: 2 lecture + 2 tutorial + 2 lab hours, but Total Hours is 0.
+      if (Math.abs(totalHours - componentTotal) > 1e-9 && !(code === "DMET502" && totalHours === 0 && componentTotal === 6)) {
+        throw new Error(`CSV row ${rowNumber}: Total Hours does not match lecture, tutorial, and lab hours`);
+      }
+      creditHours = componentTotal;
     } else {
       if (!standaloneHours) throw new Error(`CSV row ${rowNumber}: course has no readable hours value`);
-      creditHours = Number(standaloneHours[1]) / 2;
+      creditHours = Number(standaloneHours[1]);
     }
 
     const prerequisites = row.slice(7, 10)
@@ -121,7 +130,10 @@ export function parseCurriculumCsv(text) {
 
     if (courses.has(code)) {
       const existing = courses.get(code);
-      existing.facultyMajors = [...new Set([...existing.facultyMajors, ...course.facultyMajors])];
+      // An unscoped curriculum listing means the course is shared by all majors.
+      existing.facultyMajors = existing.facultyMajors.length === 0 || course.facultyMajors.length === 0
+        ? []
+        : [...new Set([...existing.facultyMajors, ...course.facultyMajors])];
       existing.prerequisites = [...new Set([...existing.prerequisites, ...course.prerequisites])];
       // recommendedSemester is singular in the model, so retain the first curriculum listing.
       mergedListings += 1;

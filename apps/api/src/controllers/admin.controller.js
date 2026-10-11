@@ -5,6 +5,7 @@ import { Notification, ScheduleActivity } from "../models/communications.js";
 import { AcademicTerm } from "../models/catalogue.js";
 import { ACADEMIC_STANDINGS, STUDENT_TYPES, WORKFLOW_STATUSES } from "../models/shared.js";
 import { AdvisorAssignment, StudentProfile, User } from "../models/identity.js";
+import { canonicalMajor } from "../utils/major.js";
 import {
   ExtraHoursRequest,
   MandatoryCourseRemovalRequest,
@@ -25,6 +26,12 @@ const filterKeys = [
 ];
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const displayMajor = (value) => {
+  const canonical = canonicalMajor(value);
+  if (canonical === "cs") return "CS";
+  if (canonical === "dmet") return "DMET";
+  return String(value ?? "").trim();
+};
 
 export function buildStudentSearchFilter(searchPattern, searchUserIds, accountUserIds) {
   const filter = {};
@@ -103,7 +110,6 @@ export async function getStudents(req, res) {
 
     if (studentType) profileFilter.studentType = studentType;
     if (advisor) profileFilter.assignedAdvisor = advisor;
-    if (major) profileFilter.major = major;
     if (currentSemester) profileFilter.currentSemester = Number(currentSemester);
     if (academicStanding) profileFilter.academicStanding = academicStanding;
 
@@ -115,8 +121,17 @@ export async function getStudents(req, res) {
       : null;
     Object.assign(profileFilter, buildStudentSearchFilter(searchPattern, searchUserIds, accountUserIds));
 
-    const assignedAdvisorIds = await StudentProfile.distinct("assignedAdvisor", { assignedAdvisor: { $ne: null } });
-    const [profiles, advisors, majors] = await Promise.all([
+    const [assignedAdvisorIds, storedMajors] = await Promise.all([
+      StudentProfile.distinct("assignedAdvisor", { assignedAdvisor: { $ne: null } }),
+      StudentProfile.distinct("major", { major: { $nin: [null, ""] } }),
+    ]);
+    if (major) {
+      const requestedMajor = canonicalMajor(major);
+      const matchingStoredMajors = storedMajors.filter((value) => canonicalMajor(value) === requestedMajor);
+      profileFilter.major = matchingStoredMajors.length ? { $in: matchingStoredMajors } : major;
+    }
+
+    const [profiles, advisors] = await Promise.all([
       StudentProfile.find(profileFilter)
         .select("user studentId studentType major currentSemester academicStanding assignedAdvisor")
         .populate("user", "fullName email isActive")
@@ -127,7 +142,6 @@ export async function getStudents(req, res) {
         .select("fullName email")
         .sort({ fullName: 1 })
         .lean(),
-      StudentProfile.distinct("major", { major: { $nin: [null, ""] } }),
     ]);
 
     const studentIds = profiles.map((profile) => profile._id);
@@ -206,8 +220,11 @@ export async function getStudents(req, res) {
     }
     if (activeTerm) {
       for (const profile of profiles) {
-        if (profile.studentType === "advising" && !workflowByStudent.has(String(profile._id))) {
+        if (workflowByStudent.has(String(profile._id))) continue;
+        if (profile.studentType === "advising") {
           applyWorkflow(profile._id, "notStarted", "Create advising schedule", null, 1);
+        } else {
+          applyWorkflow(profile._id, "notStarted", "Assign standard schedule", null, 1);
         }
       }
     }
@@ -293,7 +310,7 @@ export async function getStudents(req, res) {
           email: profile.user?.email ?? "",
           accountStatus: profile.user ? (profile.user.isActive ? "active" : "inactive") : null,
           studentType: profile.studentType,
-          major: profile.major,
+          major: displayMajor(profile.major),
           currentSemester: profile.currentSemester,
           academicStanding: profile.academicStanding,
           assignedAdvisor: profile.assignedAdvisor ? {
@@ -311,7 +328,7 @@ export async function getStudents(req, res) {
         academicStandings: ACADEMIC_STANDINGS,
         workflowStatuses: WORKFLOW_STATUSES,
         advisors: advisors.map((user) => ({ id: String(user._id), fullName: user.fullName, email: user.email })),
-        majors: majors.filter(Boolean).sort(),
+        majors: [...new Set(storedMajors.map(displayMajor).filter(Boolean))].sort(),
         blockingSteps,
       },
     });
@@ -348,10 +365,17 @@ function advisorEmail(value) {
 }
 
 export async function lookupAdvisor(req, res) {
-  const email = advisorEmail(req.query.email);
-  if (!email) return res.status(400).json({ message: "Enter a valid GUC email" });
-  const advisor = await User.findOne({ email, role: "advisor" }).select("fullName email isAdvisorInSystem").lean();
+  const email = typeof req.query.email === "string" ? req.query.email.trim().toLowerCase() : "";
+  if (!/^[^\s@]+@(?:student\.)?guc\.edu\.eg$/i.test(email)) {
+    return res.status(400).json({ message: "Enter a valid GUC email" });
+  }
+  if (email.endsWith("@student.guc.edu.eg")) {
+    return res.status(404).json({ message: "Not an advisor" });
+  }
+  const advisor = await User.findOne({ email }).select("fullName email role isAdvisorInSystem").lean();
   if (!advisor) return res.status(404).json({ message: "Advisor not found" });
+  if (advisor.role !== "advisor") return res.status(404).json({ message: "Not an advisor" });
+  delete advisor.role;
   res.json(advisor);
 }
 

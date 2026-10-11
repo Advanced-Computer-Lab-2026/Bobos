@@ -79,12 +79,12 @@ async function seed() {
 
     // 5. CS and DMET Courses
     const coreCourses = [
-      { code: "CSEN102", name: "Introduction to Computer Science", creditHours: 4, courseType: "core", facultyMajors: ["CS", "DMET"], recommendedSemester: 1, offeringSeasons: ["winter", "spring"] },
-      { code: "CSEN202", name: "Introduction to Computer Programming", creditHours: 4, courseType: "core", facultyMajors: ["CS", "DMET"], recommendedSemester: 2, offeringSeasons: ["winter", "spring"] },
-      { code: "CSEN301", name: "Data Structures and Algorithms", creditHours: 4, courseType: "core", facultyMajors: ["CS", "DMET"], recommendedSemester: 3, offeringSeasons: ["winter", "spring"] },
+      { code: "CSEN102", name: "Introduction to Computer Science", creditHours: 6, courseType: "core", facultyMajors: ["CS", "DMET"], recommendedSemester: 1, offeringSeasons: ["winter", "spring"] },
+      { code: "CSEN202", name: "Introduction to Computer Programming", creditHours: 6, courseType: "core", facultyMajors: ["CS", "DMET"], recommendedSemester: 2, offeringSeasons: ["winter", "spring"] },
+      { code: "CSEN301", name: "Data Structures and Algorithms", creditHours: 6, courseType: "core", facultyMajors: ["CS", "DMET"], recommendedSemester: 3, offeringSeasons: ["winter", "spring"] },
       { code: "DMET501", name: "Introduction to Media Engineering", creditHours: 4, courseType: "core", facultyMajors: ["DMET"], recommendedSemester: 5, offeringSeasons: ["winter"] },
       { code: "CSEN401", name: "Computer Programming Lab", creditHours: 4, courseType: "core", facultyMajors: ["CS"], recommendedSemester: 4, offeringSeasons: ["winter", "spring"] },
-      { code: "MATH103", name: "Maths", creditHours: 6, courseType: "core", facultyMajors: ["CS", "DMET"], recommendedSemester: 1, offeringSeasons: ["winter", "spring"] },
+      { code: "MATH103", name: "Maths", creditHours: 8, courseType: "core", facultyMajors: ["CS", "DMET"], recommendedSemester: 1, offeringSeasons: ["winter", "spring"] },
     ];
     const insertedCourses = await Course.insertMany(coreCourses);
 

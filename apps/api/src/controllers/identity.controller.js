@@ -313,7 +313,7 @@ export const seedDemoUsers = async (req, res) => {
         studentId: "26-54321",
         studentType: "advising",
         faculty: "MET",
-        major: "Digital Media Engineering",
+        major: "DMET",
         currentSemester: 6,
         gpa: 1.85,
         academicStanding: "probation",

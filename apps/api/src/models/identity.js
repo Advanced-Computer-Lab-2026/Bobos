@@ -1,4 +1,5 @@
 import { ACADEMIC_STANDINGS, USER_ROLES, Schema, ref, registerModel, withTimestamps } from "./shared.js";
+import { majorLabel } from "../utils/major.js";
 
 // ## Sprint 1 schemas
 // User: Req. 1-3, 10-12; StudentProfile: Req. 4, 6-9, 14-15, 50-53.
@@ -47,7 +48,7 @@ const studentProfileSchema = withTimestamps({
   studentId: { type: String, required: true, trim: true, unique: true, match: /^\d{2}-\d{4,5}$/ },
   studentType: { type: String, required: true, enum: ["normal", "advising"] },
   faculty: { type: String, default: "MET", trim: true },
-  major: { type: String, trim: true, default: "undeclared" },
+  major: { type: String, trim: true, default: "undeclared", set: majorLabel },
   currentSemester: { type: Number, required: true, min: 1, max: 10 },
   gpa: { type: Number, required: true, min: 0 },
   academicStanding: { type: String, required: true, enum: ACADEMIC_STANDINGS },

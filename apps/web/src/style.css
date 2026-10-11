@@ -350,6 +350,7 @@ td strong, td .secondary-text { display: block; }
 .schedule-slot.lab { border-left-color: #c18d47; background: #fbf3e7; }
 .schedule-slot strong { color: #35433d; font-size: 9px; }
 .schedule-slot span { color: #53645c; font-size: 8px; }
+.schedule-slot .schedule-course-name { color: #35433d; font-size: 8px; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
 .schedule-slot small { color: #87928c; font-size: 8px; }
 .empty-day { margin: 0; padding: 9px 2px; color: #a0aaa4; font-size: 8px; text-align: center; }
 .component-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 16px; }
@@ -363,6 +364,12 @@ td strong, td .secondary-text { display: block; }
 .swap-deadline small { color: #87938d; font-size: 8px; }
 .swap-deadline strong { color: #35433d; font-size: 10px; }
 .swap-group-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; }
+.swap-option { padding: 16px; border: 1px solid #e0e9e5; border-radius: 10px; background: #fff; }
+.swap-option-heading { display: flex; align-items: flex-start; gap: 11px; margin-bottom: 14px; cursor: pointer; }
+.swap-option-heading input { width: 17px; height: 17px; margin-top: 2px; accent-color: var(--green); }
+.swap-option-heading span { display: grid; gap: 3px; }
+.swap-option-heading strong { font-size: 14px; }
+.swap-option-heading small { color: #71817a; font-size: 11px; }
 .weekly-schedule.compact { grid-template-columns: repeat(3, minmax(110px, 1fr)); gap: 6px; margin-top: 13px; }
 .weekly-schedule.compact .schedule-day { min-width: 110px; padding: 7px; }
 .weekly-schedule.compact .schedule-slot { padding: 6px; }

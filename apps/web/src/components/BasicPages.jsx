@@ -296,7 +296,7 @@ export function PreferencesPage({ token, profile, profileId: passedProfileId, st
     finally { setStudentLookupLoading(false); }
   };
 
-  return <div className="page-stack"><PageTitle eyebrow="GROUP A · REQUIREMENTS 57–58" title={isStudent ? "Schedule preferences" : "Student preferences"} description={isStudent ? "Share ranked scheduling preferences as optional hints. Academic rules, prerequisites, seats, and payments still govern the final schedule." : selectedStudent ? `View ${selectedStudent.user?.fullName || selectedStudent.studentId}’s latest submitted scheduling preferences.` : "Search for an advising student to view their latest scheduling preferences."} />
+  return <div className="page-stack"><PageTitle eyebrow="SCHEDULING PREFERENCES" title={isStudent ? "Schedule preferences" : "Student preferences"} description={isStudent ? "Share ranked scheduling preferences as optional hints. Academic rules, prerequisites, seats, and payments still govern the final schedule." : selectedStudent ? `View ${selectedStudent.user?.fullName || selectedStudent.studentId}’s latest submitted scheduling preferences.` : "Search for an advising student to view their latest scheduling preferences."} />
     <section className="panel preference-toolbar">
       {!isStudent && <>
         <form className="preference-student-lookup" onSubmit={findStudent}>

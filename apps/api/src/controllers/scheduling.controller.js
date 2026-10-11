@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 import { AcademicTerm, Course, CourseOffering } from "../models/catalogue.js";
 import { StudentProfile, User } from "../models/identity.js";
 import { CourseAttempt, ScheduleTemplate, SchedulingPreference, StudentSchedule } from "../models/academics.js";
-import { ExtraHoursRequest, MandatoryCourseRemovalRequest } from "../models/requests.js";
+import { ExtraHoursRequest, MandatoryCourseRemovalRequest, WholeScheduleSwapRequest } from "../models/requests.js";
 import { calculateDraftCreditPolicy } from "../utils/credit-allowance.js";
 import { majorMatches } from "../utils/major.js";
 import { buildWeeklyCalendar } from "../../../../server/src/utils/weeklyCalendar.js";
@@ -988,34 +988,23 @@ export async function listStudentsWithSchedules(req, res, next) {
   } catch (error) { next(error); }
 }
 
-export async function getEligibleGroups(req, res, next) {
-  try {
-    if (req.user.role !== "normalStudent") {
-      const message = req.user.role === "advisingStudent"
-        ? "Advising students cannot swap schedule groups. Ask your academic advisor for a change request instead."
-        : "Only normal students can swap their whole schedule with another standard schedule group.";
-      return res.status(403).json({ message });
-    }
-    const student = await StudentProfile.findOne({ user: req.user._id }).populate("user", "fullName").lean();
-    if (!student) return res.status(404).json({ message: "No student record is linked to this account." });
-    const { term, error } = await resolveTerm(req.query.termId);
-    if (error) return res.status(error.status).json({ message: error.message });
-    const schedule = await findStudentSchedule(student, term);
-    if (!schedule || schedule.status !== "processed") return res.status(404).json({ message: NO_VISIBLE_SCHEDULE });
-    const ownResolved = await resolveStoredSchedule(schedule);
-    if (ownResolved.error) return res.status(409).json({ message: ownResolved.error });
-    const templates = await ScheduleTemplate.find({ term: term._id, isPublished: true }).lean();
-    const matchingTemplates = templates.filter((template) => template.major === student.major && Number(template.semester) === Number(student.currentSemester));
-    const resolvedById = await resolveTemplates(matchingTemplates, { student });
-    const currentCourseCodes = ownResolved.entries.map((entry) => String(entry.courseCode || "").trim().toUpperCase()).filter(Boolean);
-    const currentSet = new Set(currentCourseCodes);
+function matchingCourseCodes(left, right) {
+  const a = left.map(code => String(code || "").trim().toUpperCase());
+  const b = right.map(code => String(code || "").trim().toUpperCase());
+  return a.length === b.length && new Set(a).size === a.length && new Set(b).size === b.length && a.every(code => b.includes(code));
+}
+
+async function eligibleSwapOptions(student, term, schedule, ownResolved) {
+    const templates = await ScheduleTemplate.find({ term: term._id, isPublished: true, major: student.major, semester: student.currentSemester }).lean();
+    const resolvedById = await resolveTemplates(templates, { student });
+    const currentCourseCodes = ownResolved.entries.map(entry => entry.courseCode);
     const candidates = [];
-    for (const template of matchingTemplates) {
+    for (const template of templates) {
       if (idOf(template._id) === idOf(schedule.template)) continue;
       const resolved = resolvedById.get(idOf(template._id));
       if (!resolved || resolved.error || resolved.entries.length !== currentCourseCodes.length) continue;
-      const codes = resolved.entries.map((entry) => String(entry.courseCode || "").trim().toUpperCase()).filter(Boolean);
-      if (codes.length !== currentCourseCodes.length || new Set(codes).size !== currentSet.size || codes.some((code) => !currentSet.has(code))) continue;
+      const codes = resolved.entries.map(entry => entry.courseCode);
+      if (!matchingCourseCodes(codes, currentCourseCodes)) continue;
       const calendar = buildWeeklyCalendar(resolved.entries);
       const capacities = resolved.slots.map((slot) => Math.max(0, slot.capacity - slot.assignedStudentCount));
       candidates.push({
@@ -1032,6 +1021,27 @@ export async function getEligibleGroups(req, res, next) {
       });
     }
     candidates.sort((a, b) => Number(a.studyGroup) - Number(b.studyGroup) || String(a.studyGroup).localeCompare(String(b.studyGroup)));
+    return { currentCourseCodes, candidates };
+}
+
+export async function getEligibleGroups(req, res, next) {
+  try {
+    if (req.user.role !== "normalStudent") {
+      const message = req.user.role === "advisingStudent"
+        ? "Advising students cannot swap schedule groups. Ask your academic advisor for a change request instead."
+        : "Only normal students can swap their whole schedule with another standard schedule group.";
+      return res.status(403).json({ message });
+    }
+    const student = await StudentProfile.findOne({ user: req.user._id }).populate("user", "fullName").lean();
+    if (!student) return res.status(404).json({ message: "No student record is linked to this account." });
+    const { term, error } = await resolveTerm(req.query.termId);
+    if (error) return res.status(error.status).json({ message: error.message });
+    const schedule = await findStudentSchedule(student, term);
+    if (!schedule || schedule.status !== "processed") return res.status(404).json({ message: NO_VISIBLE_SCHEDULE });
+    const ownResolved = await resolveStoredSchedule(schedule);
+    if (ownResolved.error) return res.status(409).json({ message: ownResolved.error });
+    const { currentCourseCodes, candidates } = await eligibleSwapOptions(student, term, schedule, ownResolved);
+    const currentCalendar = buildWeeklyCalendar(ownResolved.entries);
     res.json({
       term: termView(term),
       student: studentView(student),
@@ -1042,9 +1052,191 @@ export async function getEligibleGroups(req, res, next) {
         semester: student.currentSemester,
         courseCodes: currentCourseCodes,
         totalCreditHours: ownResolved.entries.reduce((sum, entry) => sum + (Number(entry.creditHours) || 0), 0),
+        week: currentCalendar.week,
+        daysOff: currentCalendar.daysOff,
       },
       eligibleGroups: candidates,
       count: candidates.length,
     });
   } catch (error) { next(error); }
+}
+
+function swapFailure(status, message) {
+  const error = new Error(message);
+  error.status = status;
+  return error;
+}
+
+function sendSwapFailure(error, res, next) {
+  return error.status ? res.status(error.status).json({ message: error.message }) : next(error);
+}
+
+function assertSwapDeadline(term) {
+  if (!term?.wholeScheduleSwapDeadline || Date.now() > new Date(term.wholeScheduleSwapDeadline).getTime()) {
+    throw swapFailure(409, "The whole-schedule swap deadline has passed.");
+  }
+}
+
+async function ownNormalSwapContext(req) {
+  if (req.user.role !== "normalStudent") throw swapFailure(403, "Only normal students can swap whole schedules.");
+  const student = await StudentProfile.findOne({ user: req.user._id }).lean();
+  if (!student) throw swapFailure(404, "No student record is linked to this account.");
+  const { term, error } = await resolveTerm(req.query.termId);
+  if (error) throw swapFailure(error.status, error.message);
+  const schedule = await findStudentSchedule(student, term);
+  if (!schedule || schedule.status !== "processed") throw swapFailure(404, NO_VISIBLE_SCHEDULE);
+  const resolved = await resolveStoredSchedule(schedule);
+  if (resolved.error) throw swapFailure(409, resolved.error);
+  return { student, term, schedule, resolved };
+}
+
+async function ownSwapHistoryContext(req) {
+  if (req.user.role !== "normalStudent") throw swapFailure(403, "Only normal students can view swap requests.");
+  const student = await StudentProfile.findOne({ user: req.user._id }).lean();
+  if (!student) throw swapFailure(404, "No student record is linked to this account.");
+  const { term, error } = await resolveTerm(req.query.termId);
+  if (error) throw swapFailure(error.status, error.message);
+  return { student, term };
+}
+
+export async function createSwapRequest(req, res, next) {
+  try {
+    const { student, term, schedule, resolved } = await ownNormalSwapContext(req);
+    assertSwapDeadline(term);
+    const desiredGroups = req.body?.desiredGroups;
+    if (!Array.isArray(desiredGroups) || !desiredGroups.length || desiredGroups.length > 20 ||
+        desiredGroups.some(group => typeof group !== "string" || !group.trim())) {
+      throw swapFailure(400, "Select at least one eligible destination group.");
+    }
+    const selected = [...new Set(desiredGroups.map(group => group.trim()))];
+    const { currentCourseCodes, candidates } = await eligibleSwapOptions(student, term, schedule, resolved);
+    if (selected.some(group => !candidates.some(candidate => candidate.studyGroup === group))) {
+      throw swapFailure(409, "A selected group is no longer eligible. Refresh the available groups.");
+    }
+    await WholeScheduleSwapRequest.updateMany({ student: student._id, term: term._id, status: "open", expiresAt: { $lte: new Date() } }, { $set: { status: "expired" } });
+    if (await WholeScheduleSwapRequest.exists({ student: student._id, term: term._id, status: "open" })) {
+      throw swapFailure(409, "You already have an open swap request. Withdraw it before creating another.");
+    }
+    const request = await WholeScheduleSwapRequest.create({
+      student: student._id,
+      term: term._id,
+      currentSchedule: schedule._id,
+      currentGroup: schedule.template?.studyGroup || student.studyGroup,
+      desiredGroups: selected,
+      courseCodesSnapshot: currentCourseCodes,
+      expiresAt: term.wholeScheduleSwapDeadline,
+    });
+    res.status(201).json({ request: { _id: request._id, status: request.status, currentGroup: request.currentGroup, desiredGroups: request.desiredGroups }, message: "Swap request submitted. A student in one of your selected groups can complete the exchange." });
+  } catch (error) {
+    if (error.code === 11000) return res.status(409).json({ message: "You already have an open swap request." });
+    return sendSwapFailure(error, res, next);
+  }
+}
+
+export async function getMySwapRequests(req, res, next) {
+  try {
+    const { student, term } = await ownSwapHistoryContext(req);
+    const requests = await WholeScheduleSwapRequest.find({ student: student._id, term: term._id }).sort({ createdAt: -1 }).lean();
+    res.json({ requests: requests.map(request => ({
+      _id: request._id,
+      currentGroup: request.currentGroup,
+      desiredGroups: request.desiredGroups,
+      status: request.status === "open" && request.expiresAt < new Date() ? "expired" : request.status,
+      createdAt: request.createdAt,
+      completedAt: request.completedAt,
+    })) });
+  } catch (error) { return sendSwapFailure(error, res, next); }
+}
+
+export async function getOpenSwapRequests(req, res, next) {
+  try {
+    const { student, term, schedule, resolved } = await ownNormalSwapContext(req);
+    const currentGroup = schedule.template?.studyGroup || student.studyGroup;
+    const requests = await WholeScheduleSwapRequest.find({
+      term: term._id, status: "open", expiresAt: { $gt: new Date() },
+      student: { $ne: student._id }, desiredGroups: currentGroup,
+    }).lean();
+    const courseCodes = resolved.entries.map(entry => entry.courseCode);
+    const available = [];
+    for (const request of requests) {
+      if (!matchingCourseCodes(request.courseCodesSnapshot, courseCodes)) continue;
+      const requesterSchedule = await StudentSchedule.findById(request.currentSchedule).populate("template", "studyGroup");
+      if (!requesterSchedule || requesterSchedule.status !== "processed" || idOf(requesterSchedule.student) !== idOf(request.student) ||
+          requesterSchedule.template?.studyGroup !== request.currentGroup) continue;
+      const requesterResolved = await resolveStoredSchedule(requesterSchedule);
+      if (requesterResolved.error || !matchingCourseCodes(requesterResolved.entries.map(entry => entry.courseCode), courseCodes)) continue;
+      const calendar = buildWeeklyCalendar(requesterResolved.entries);
+      available.push({ _id: request._id, currentGroup: request.currentGroup, desiredGroups: request.desiredGroups, courseCodes: request.courseCodesSnapshot, week: calendar.week, daysOff: calendar.daysOff });
+    }
+    res.json({ requests: available });
+  } catch (error) { return sendSwapFailure(error, res, next); }
+}
+
+export async function withdrawSwapRequest(req, res, next) {
+  try {
+    const { student, term } = await ownSwapHistoryContext(req);
+    if (!isId(req.params.id)) throw swapFailure(400, "Invalid swap request ID.");
+    const request = await WholeScheduleSwapRequest.findOneAndUpdate(
+      { _id: req.params.id, student: student._id, term: term._id, status: "open" },
+      { $set: { status: "withdrawn", withdrawnAt: new Date() } },
+      { new: true },
+    );
+    if (!request) throw swapFailure(409, "Only your open swap request can be withdrawn.");
+    res.json({ message: "Swap request withdrawn." });
+  } catch (error) { return sendSwapFailure(error, res, next); }
+}
+
+export async function completeSwapRequest(req, res, next) {
+  if (!isId(req.params.id)) return res.status(400).json({ message: "Invalid swap request ID." });
+  const session = await mongoose.startSession();
+  try {
+    let result;
+    await session.withTransaction(async () => {
+      if (req.user.role !== "normalStudent") throw swapFailure(403, "Only normal students can complete swaps.");
+      const viewer = await StudentProfile.findOne({ user: req.user._id }).session(session).lean();
+      const request = await WholeScheduleSwapRequest.findById(req.params.id).session(session).lean();
+      if (!viewer || !request || request.status !== "open" || idOf(request.student) === idOf(viewer._id)) throw swapFailure(409, "This swap request is no longer available.");
+      const term = await AcademicTerm.findById(request.term).session(session).lean();
+      assertSwapDeadline(term);
+      if (new Date(request.expiresAt) < new Date()) throw swapFailure(409, "This swap request has expired.");
+      const requester = await StudentProfile.findById(request.student).session(session).lean();
+      const viewerSchedule = await StudentSchedule.findOne({ student: viewer._id, term: term._id, scheduleType: "normal", status: "processed" }).session(session).lean();
+      const requesterSchedule = await StudentSchedule.findOne({ _id: request.currentSchedule, student: request.student, term: term._id, scheduleType: "normal", status: "processed" }).session(session).lean();
+      if (!requester || !viewerSchedule || !requesterSchedule || viewer.major !== requester.major || Number(viewer.currentSemester) !== Number(requester.currentSemester)) throw swapFailure(409, "The students or processed schedules are no longer eligible.");
+      const viewerTemplate = await ScheduleTemplate.findById(viewerSchedule.template).session(session).lean();
+      const requesterTemplate = await ScheduleTemplate.findById(requesterSchedule.template).session(session).lean();
+      if (!viewerTemplate?.isPublished || !requesterTemplate?.isPublished ||
+          viewerTemplate.studyGroup === requesterTemplate.studyGroup ||
+          !request.desiredGroups.includes(viewerTemplate.studyGroup) ||
+          requesterTemplate.studyGroup !== request.currentGroup ||
+          idOf(viewerTemplate.term) !== idOf(term._id) || idOf(requesterTemplate.term) !== idOf(term._id)) {
+        throw swapFailure(409, "The requested groups have changed. Refresh the swap page.");
+      }
+      const allIds = [...new Set([...viewerSchedule.courses, ...requesterSchedule.courses].map(entry => idOf(entry.course)))];
+      const courses = await Course.find({ _id: { $in: allIds } }, { code: 1 }).session(session).lean();
+      const codeById = new Map(courses.map(course => [idOf(course._id), course.code]));
+      const viewerCodes = viewerSchedule.courses.map(entry => codeById.get(idOf(entry.course)));
+      const requesterCodes = requesterSchedule.courses.map(entry => codeById.get(idOf(entry.course)));
+      if (viewerCodes.some(code => !code) || requesterCodes.some(code => !code) ||
+          !matchingCourseCodes(viewerCodes, requesterCodes) || !matchingCourseCodes(requesterCodes, request.courseCodesSnapshot)) {
+        throw swapFailure(409, "The registered course sets no longer match.");
+      }
+      const now = new Date();
+      const viewerUpdate = await StudentSchedule.updateOne({ _id: viewerSchedule._id, status: "processed", version: viewerSchedule.version },
+        { $set: { template: requesterTemplate._id, courses: requesterSchedule.courses }, $inc: { version: 1 } }, { session });
+      const requesterUpdate = await StudentSchedule.updateOne({ _id: requesterSchedule._id, status: "processed", version: requesterSchedule.version },
+        { $set: { template: viewerTemplate._id, courses: viewerSchedule.courses }, $inc: { version: 1 } }, { session });
+      if (viewerUpdate.modifiedCount !== 1 || requesterUpdate.modifiedCount !== 1) throw swapFailure(409, "A schedule changed during the swap. Please refresh and try again.");
+      await StudentProfile.updateOne({ _id: viewer._id }, { $set: { studyGroup: requesterTemplate.studyGroup } }, { session });
+      await StudentProfile.updateOne({ _id: requester._id }, { $set: { studyGroup: viewerTemplate.studyGroup } }, { session });
+      const completed = await WholeScheduleSwapRequest.updateOne({ _id: request._id, status: "open" },
+        { $set: { status: "completed", completedWith: viewer._id, completedAt: now } }, { session });
+      if (completed.modifiedCount !== 1) throw swapFailure(409, "Another student completed this request first.");
+      await WholeScheduleSwapRequest.updateMany({ _id: { $ne: request._id }, term: term._id, status: "open", student: { $in: [viewer._id, requester._id] } },
+        { $set: { status: "expired" } }, { session });
+      result = { message: `Swap completed. You are now in Group ${requesterTemplate.studyGroup}.`, studyGroup: requesterTemplate.studyGroup };
+    });
+    res.json(result);
+  } catch (error) { return sendSwapFailure(error, res, next); }
+  finally { await session.endSession(); }
 }

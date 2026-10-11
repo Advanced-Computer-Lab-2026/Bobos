@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import { ScheduleTemplate, StudentSchedule } from '../models/academics.js';
 import { CourseOffering, AcademicTerm, Course } from '../models/catalogue.js';
+import { majorMatches } from '../utils/major.js';
 
 const isId = (value) => typeof value === 'string' && mongoose.isValidObjectId(value);
 const idOf = (value) => String(value?._id || value || '');
@@ -13,7 +14,7 @@ async function findAcademicTerm(identifier) {
 
 function eligibleForTemplate(offering, major, semester, studyGroup) {
   return (offering.eligibleGroups || []).some((group) =>
-    group.major === major &&
+    majorMatches(group.major, major) &&
     (group.semester == null || Number(group.semester) === Number(semester)) &&
     (!group.studyGroup || String(group.studyGroup) === String(studyGroup))
   );
@@ -52,6 +53,9 @@ async function validateTemplateCourses(courses, { term, major, semester, studyGr
     }
     if (!offering.isPublished) {
       return { error: `The offering for ${course.code} is not published. Only published offerings can be used in a template.` };
+    }
+    if (course.facultyMajors?.length && !course.facultyMajors.some((courseMajor) => majorMatches(courseMajor, major))) {
+      return { error: `${course.code} is not listed for the template major ${major}.` };
     }
     if (!eligibleForTemplate(offering, major, semester, studyGroup)) {
       return { error: `${course.code} is not eligible for ${major}, semester ${semester}, group ${studyGroup}.` };

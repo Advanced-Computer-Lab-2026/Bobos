@@ -52,8 +52,8 @@ export async function api(path, { token, method = "GET", body, signal, responseT
 }
 
 export function explainApiError(error, feature) {
-  if (error?.status === 404) {
+  if (error?.status === 404 && !error?.data?.message) {
     return `${feature} is not available on the current Development backend yet (${error.path}).`;
   }
-  return error?.message || "Something went wrong. Please try again.";
+  return error?.data?.message || error?.message || "Something went wrong. Please try again.";
 }

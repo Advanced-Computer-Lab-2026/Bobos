@@ -100,6 +100,7 @@ export default function AuthPage({ onLogin }) {
             <label className="field"><span>New password</span><input type="password" autoComplete="new-password" minLength={8} maxLength={72} required value={newPassword} onChange={(event) => setNewPassword(event.target.value)} placeholder="At least 8 characters" /></label>
             <button className="primary-button full-button" disabled={busy}>{busy ? "Updating…" : "Update password"}<span>→</span></button>
             <button className="text-button centered" type="button" onClick={() => { setMode("forgot"); setError(""); setMessage(""); }}>Send another code</button>
+            <button className="outline-button full-button" type="button" onClick={() => { setMode("login"); setError(""); setMessage(""); setOtp(""); setNewPassword(""); }}>Back to sign in</button>
           </form>}
           {mode === "login" && (
             <div style={{ marginTop: "1.25rem", borderTop: "1px dashed var(--border, #e2e8f0)", paddingTop: "1rem" }}>
