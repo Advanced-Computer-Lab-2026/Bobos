@@ -1,0 +1,7 @@
+Course Code,Course Name,Credit Hours,Course Type,Faculty/Major,Recommended Semester,Offering Season,Prerequisites
+CSEN101,Introduction to Computer Science,4,core,CS; DMET,1,winter; spring,
+CSEN201,Introduction to Computer Programming,4,core,CS; DMET,2,winter; spring,CSEN101
+CSEN301,Data Structures and Algorithms,4,core,CS; DMET,3,winter; spring,CSEN201
+CSEN401,Database Systems,4,core,CS,4,winter; spring,CSEN301
+ELEC001,Mobile Application Development,4,elective,CS; DMET,6,spring,CSEN201
+HUMA101,Communication and Presentation Skills,2,huma,All,1,winter; spring,

@@ -1,0 +1,282 @@
+# C3 notes — requirement 30 (assign / reassign normal students to a schedule group)
+
+Author: C3 (Team C — catalogue & schedules). Sprint 1.
+
+## What I built
+
+**Repo scaffolding** (the repo was empty apart from `README.md` and `agents.md`): root
+`package.json` + `.gitignore`, the whole `server/` tree, the whole `client/` tree (hand-written Vite
+setup), `docs/`.
+
+**Server core** — `src/index.js`, `src/app.js`, `src/config/db.js`. `app.js` exports the Express app
+**without connecting to Mongo** so tests can import it; `index.js` connects and then listens.
+
+**Requirement 30** — `src/controllers/groupAssignmentController.js` +
+`src/routes/groupAssignments.js`, mounted at `/api/group-assignments`, plus
+`src/middleware/auth.js` and `src/utils/timetable.js`.
+
+**Front end** — `client/src/pages/coordinator/AssignScheduleGroups.jsx` plus a reusable component
+set (`Layout`, `ProtectedRoute`, `Button`, `Card`, `Table`, `Modal`, `Spinner`, `EmptyState`,
+`Alert`, `Toast`, `WeeklyPreview`), `api/client.js`, `context/AuthContext.jsx`, and one `index.css`
+with CSS variables. **Please reuse these components** rather than adding a UI library — the UI/UX
+mark rewards a consistent look.
+
+**Seed** — `src/seed/seed.js` + `src/seed/curriculumData.js`.
+
+**Tests** — `server/tests/groupAssignments.test.js` (29 tests) and `server/tests/timetable.test.js`
+(6 tests), with `server/tests/helpers.js` holding the fixture builder.
+
+## Models I had to define on other teams' behalf
+
+Requirement 30 depends on requirement 27, and templates come from 28/29 — none of which existed when
+I started. Rather than block, I created the models exactly as the shared architecture brief
+specifies. **They are yours to extend, not mine to own.** Extend the existing file; do not replace it.
+
+| Model | Really owned by | Why I needed it |
+| ----- | --------------- | --------------- |
+| `User` | A1 (req 1 login) | `requireAuth` needs a role, and the seed needs accounts |
+| `Student` | A1/A2 (reqs 4, 6–9) | requirement 30 is about **normal** students specifically |
+| `AcademicTerm` | Administrator team (reqs 16/17) | an assignment is always *for a term* |
+| `Course` | Administrator team (reqs 18–21) | course code / name / credit hours in the schedule snapshot |
+| `CourseOffering` | Administrator team (reqs 22–27) | slots, capacity and the published flag |
+| `ScheduleTemplate` | C2 (reqs 28/29) | the "standard schedule group" requirement 30 assigns from |
+| `StudentSchedule` | **mine** (reqs 30–34, 49) | the processed schedule |
+
+Two details that matter to whoever picks these up:
+
+1. **A `CourseOffering` slot's auto `_id` is the stable slot id** used by `ScheduleTemplate.entries`
+   and by `StudentSchedule.entries[].slots[].slotId`. If you rebuild an offering's `slots` array
+   from scratch you will orphan every template and schedule that points into it. Update slots in
+   place (`$set` on `slots.$`), and when you delete a slot, check `assignedCount` first (requirement 26
+   already says so).
+2. **`StudentSchedule.entries` is a denormalised snapshot** (course code, name, credit hours, and the
+   day/time/room of each slot copied in). That is deliberate: requirements 31, 32, 33, 34 and 49 can
+   render a weekly calendar, a credit-hour total and slot details with no joins. The cost is that
+   editing an offering's slot does **not** update already-processed schedules — requirement 25 should
+   either refuse such an edit or re-process the affected schedules.
+
+## Where to plug in
+
+**Requirement 1 (login) — team A1.** Create `/api/auth/login` under your own `/api/auth` namespace.
+Your token payload must stay `{ id, role, email }` so `src/middleware/auth.js` keeps working, and
+sign it with `process.env.JWT_SECRET`. Then delete the dev shim (below), swap the
+`<Navigate to="/dev-login">` in `client/src/components/ProtectedRoute.jsx` for `/login`, remove the
+`/dev-login` route and the `dev-banner` div in `client/src/components/Layout.jsx`. Note the seed
+stores bcrypt hashes in `User.password` and the email rule is staff `@guc.edu.eg`, students
+`@student.guc.edu.eg`.
+
+**The temporary dev-login shim — DELETE IT when requirement 1 lands.** Three places, all marked with
+a loud comment:
+- `server/src/controllers/devController.js`
+- `server/src/routes/dev.js`
+- the `if (process.env.NODE_ENV !== 'production') app.use('/api/dev', devRoutes)` block in
+  `server/src/app.js`
+- client: `client/src/pages/DevLogin.jsx`
+
+`GET /api/dev/users` lists the seeded accounts; `POST /api/dev/token { email }` returns a signed JWT
+with **no password check**. It is never mounted when `NODE_ENV === 'production'`, but it is still a
+hole: remove it as soon as the real login exists.
+
+**Requirement 27 (publish/unpublish offerings) — Administrator team.** Build it on
+`CourseOffering.isPublished`. My assignment logic already refuses to schedule an unpublished
+offering (409, naming the course). For the "unpublishing is blocked when it would invalidate a
+processed schedule" rule: query `StudentSchedule` for `entries.offering === <offeringId>`.
+
+**Requirements 28/29 (create/update standard schedule templates) — C2.** Build on
+`ScheduleTemplate` under your own `/api/templates` namespace. The contract requirement 30 relies on:
+- unique on `(term, major, semester, studyGroup)`;
+- one `entries[]` item per course, each pointing at a `CourseOffering` plus up to three slot ids;
+- `lectureSlotId` / `tutorialSlotId` / `labSlotId` may be `null` when the course has no such
+  component — that is legal and simply skipped. A **non-null id that does not resolve** is treated as
+  a data error (409);
+- `isPublished` is the gate: requirement 30 refuses to assign from an unpublished template;
+- when updating a published template that students are already assigned to, remember their
+  `StudentSchedule` snapshots will not follow. Re-assigning a student (`POST /api/group-assignments`
+  with the same group) rebuilds their schedule from the current template, which is the simplest
+  re-process path.
+
+**Requirement 16/17 (terms) — Administrator team.** I added a temporary
+`GET /api/group-assignments/terms` purely so the requirement-30 screen has a term selector. When
+`/api/terms` exists, delete `listTerms` from my controller, its route line, and switch the one
+`api.get('/group-assignments/terms')` call in `AssignScheduleGroups.jsx`.
+
+**Namespaces reserved by C3:** `/api/group-assignments` (req 30), `/api/schedules` (reqs 31/32/33/49),
+`/api/swaps` (req 34).
+
+## Design decisions worth knowing
+
+**`POST` is both assign and reassign.** One endpoint, `201` for a first assignment and `200` for a
+reassignment. A reassignment decrements `assignedCount` on every slot of the old schedule, increments
+on the new ones, replaces `entries`, and appends a `'reassigned'` history entry recording
+`fromGroup`/`toGroup`. Reassigning into the same group is allowed and simply re-processes the
+schedule from the current template.
+
+**Capacity check skips slots the student already occupies.** Otherwise reassigning between two groups
+that share a slot would report that shared slot as full.
+
+**`DELETE` removes the schedule document.** The `'unassigned'` history entry is returned in the
+response but **not** persisted, because keeping the document would leave requirements 31/32/33
+rendering a stale processed schedule. A durable audit trail across unassignment belongs to the
+activity-history requirement (48) — when you build it, write there instead of resurrecting the doc.
+
+**Clash detection.** `src/utils/timetable.js` exports `slotsOverlap`, `findFirstClash`, `toMinutes`,
+`describeSlot` and `DAYS`. Overlap is same-day and half-open `[start, end)`, so 10:00–12:00 and
+12:00–14:00 do **not** clash. Requirements 31 and 34 should reuse these rather than re-implement them.
+
+## Atomicity caveat — please read before "fixing" the controller
+
+The project runs against a **standalone `mongod`**, so multi-document transactions are unavailable
+and `assignStudentToGroup` **is not atomic**. What it does instead:
+
+- every capacity change is a *conditional* `updateOne` — increments require
+  `assignedCount < maxCapacity`, decrements require `assignedCount > 0` — so a lost race is detected
+  rather than silently overbooking or driving a count negative;
+- every applied change is recorded and rolled back with an inverse `$inc` if a later step fails.
+
+A process crash between two updates can still leave an `assignedCount` off by one. The honest fix is
+a reconciliation job that recounts `assignedCount` from `StudentSchedule`, or moving MongoDB to a
+single-node replica set and wrapping the apply step in a session transaction. Both are out of scope
+for Sprint 1. **Do not reword the comment in the controller to claim atomicity we do not have.**
+
+## Seed notes
+
+`npm run seed` wipes and repopulates the seven collections listed above and prints a summary.
+
+- **76 courses**: all CS and DMET curriculum courses for semesters 1–10 (semester 8 is the bachelor
+  project and has none), the four English courses, the four German courses, and 10 electives.
+- `Course.creditHours` is the sheet's **Total Hours** column. The per-component hour columns live in
+  `src/seed/curriculumData.js`, not in the model, because the architecture brief fixes the `Course`
+  schema. The seed uses them to derive slots via the sheet's rule *2 hours = 1 lecture/tutorial/lab*:
+  `sessionsPerWeek = ceil(hours / 2)`, and a component with ≥2 derived sessions is seeded as one block
+  spanning two consecutive periods. A `ScheduleTemplate` entry holds exactly **one** slot id per
+  component, so a multi-session component cannot be split across two separate slots.
+- **`DMET 502` appears twice in the sheet** (semester 5 for DMET, semester 7 for CSEN). Course codes
+  are unique, so the catalogue holds one course (`major: 'ALL'`, `recommendedSemester: 5`) and the
+  per-cohort course sets in `COHORT_COURSES` decide who takes it when.
+- **Offerings and templates cover semesters 5 and 7 of both majors** — 4 cohorts, 15 published
+  offerings, 188 slots, `maxCapacity: 30`.
+- **Slot group numbers are cohort-scoped**, e.g. `CS7-1`, `DMET5-2`. Courses shared by two cohorts
+  (e.g. `CSEN 501` in both CS-5 and DMET-5) therefore get separate slots per cohort, which keeps each
+  cohort's timetable independently clash-free.
+- **4 study groups per cohort: `1`, `2`, `3` published and `4` deliberately UNPUBLISHED**, so the
+  "cannot assign to an unpublished group" rule is demonstrable live.
+- The timetable is generated programmatically and the seed **asserts** every template is clash-free
+  before inserting.
+- The 16 normal students are left **unassigned** so requirement 30 can be demoed from scratch.
+- Several normal students share the same `(major, currentSemester)` so requirement 34 (whole-schedule
+  swap) will have candidates.
+- All passwords are bcrypt hashes of one shared dev password, printed at the end of the run.
+
+## Known gaps
+
+- No `/api/auth/login`, no `/api/terms`, `/api/offerings` or `/api/templates` — those are reqs 1, 16/17,
+  22–27 and 28/29.
+- `StudentSchedule.status` only has `'processed'`. The advising workflow (reqs 56+) will need more
+  values (`draft`, `review-ready`, …); add them to the enum rather than creating a second model.
+- `Course.major` is a single value, so a course taken by both majors is `'ALL'`. If a later
+  requirement needs per-major curriculum placement, that belongs in a separate curriculum model.
+- Unassigning does not persist an audit record (see above).
+- No reconciliation job for `assignedCount`.
+
+
+# Requirement 31 — view a student's current weekly schedule
+
+**Files:** `server/src/controllers/scheduleController.js`, `server/src/routes/schedules.js` (mounted at
+`/api/schedules`), `server/src/utils/scheduleAccess.js`, `server/src/utils/weeklyCalendar.js`,
+`server/tests/schedules.test.js`, `server/tests/scheduleUtils.test.js`; client
+`components/WeeklyCalendar.jsx`, `components/ScheduleView.jsx`, `pages/student/MySchedule.jsx`,
+`pages/staff/StudentSchedules.jsx`, `pages/staff/StudentSchedule.jsx`. `resolveTerm` / `resolveStudent`
+are now exported from `groupAssignmentController.js` and reused.
+
+**`StudentSchedule.status` enum extended** (same model, default still `'processed'`):
+`'draft'` → `'ready_for_student_review'` → `'processed'`. The advising workflow (reqs 62+) owns creating
+drafts and moving them between states — including deciding that a draft is *complete* (every required
+course and slot assigned, no blocking validation issue) before marking it ready. Requirement 31 only
+reads the status.
+
+**Visibility matrix** (`checkScheduleAccess(viewer, student, schedule)` in `utils/scheduleAccess.js`):
+
+| Viewer | Whose schedule | Visible statuses | Otherwise |
+| ------ | -------------- | ---------------- | --------- |
+| student (normal) | own only (`Student.user === req.user.id`) | `processed` | other student → 403; else 404 |
+| student (advising) | own only | `ready_for_student_review`, `processed` | `draft` → 404 with the same neutral "No schedule is available to view yet." (no leak) |
+| advisor | advising students only (any advisor, per req 50) | all | normal student → 403 |
+| coordinator | anyone | all | — |
+| administrator | anyone | all, `readOnly: true` | — (endpoints are GET only) |
+
+**Response shape:** `{ term, student, schedule: { _id, status, studyGroup, assignedAt, totalCreditHours,
+courses[{courseCode, courseName, creditHours, slots[{type, groupNumber, day, startTime, endTime, room}]}],
+week{Saturday..Thursday: [{courseCode, courseName, type, groupNumber, startTime, endTime, room}] sorted by
+startTime}, daysOff[Friday + empty teaching days, week order] }, readOnly }`.
+
+**For reqs 32/33/49:** reuse `buildWeeklyCalendar(entries)` (credit-hour total, per-day grouping) and
+`checkScheduleAccess` so the same rules apply; add new routes in `routes/schedules.js`.
+
+**Seed changes:** advising students Laila Mostafa (CS) and Ahmed Fathy (DMET) moved from semester 6
+to 5, because seeded templates only exist for semesters 5 and 7. Four demo schedules are created from
+published templates, with `assignedCount` incremented for every slot (drafts hold seats too — the
+advising workflow may decide otherwise):
+
+| Student | Email | Status | Demonstrates |
+| ------- | ----- | ------ | ------------ |
+| 52-0001 Aliaa Faramawy (normal, CS 7, group 1) | `aliaa.faramawy.n1@student.guc.edu.eg` | processed | normal student sees own schedule |
+| 49-0010 Farida Sameh (advising, CS 7, group 1) | `farida.sameh.a10@student.guc.edu.eg` | processed | advising student sees final schedule |
+| 49-0008 Laila Mostafa (advising, CS 5, group 2) | `laila.mostafa.a8@student.guc.edu.eg` | ready_for_student_review | review-ready draft visible |
+| 49-0009 Ahmed Fathy (advising, DMET 5, group 1) | `ahmed.fathy.a9@student.guc.edu.eg` | draft | hidden from student, visible to advisors/coordinator/admin |
+
+The other 15 normal students stay unassigned for the requirement-30 demo.
+
+## Requirement 32 — registered courses and credit hours
+
+- `GET /api/schedules/me/courses?termId=` (students only; staff → 403, same message as `/me`). Reuses
+  `checkScheduleAccess` / `NO_VISIBLE_SCHEDULE`, so a hidden draft is indistinguishable from "no schedule".
+- `utils/registeredCourses.js` → `buildRegisteredCourses(entries, courseTypeById)`: maps `course` →
+  `courseId`, sorts by code, sums credit hours (empty → 0). `courseType` comes from one `Course.find`.
+- `ownStudentOr403` in `scheduleController.js` is shared by `/me` and `/me/courses`.
+- Front end `/courses` (`MyCourses.jsx`), nav link + Home card for students. **Req 33 hook:** the
+  `courseCode` column in `MyCourses.jsx` is where a link to course details (by `courseId`) goes.
+- Tests: `server/tests/registeredCourses.test.js` (9 tests).
+
+## Requirement 33 — a registered course's lecture / tutorial / lab
+
+- `GET /api/schedules/me/courses/:courseId?termId=` (students only, via `ownStudentOr403`; declared
+  after `/me/courses` and is a distinct path from `/student/:studentId`). Order: 403 staff → 400 bad
+  `courseId` → term (400/404) → `checkScheduleAccess` (neutral 404) → course not in my entries → 404
+  `This course is not in your registered courses.` (same body for unknown ids and other students' courses).
+- `utils/courseDetails.js` → `findCourseEntry`, `buildCourseDetails(entry, {courseType, instructors})`:
+  components come from the **snapshot** (not the live offering); missing type → `null`; extra slots of the
+  same type: component = first, `sessions` = all (sorted Sat→Thu, then start time).
+- `instructors` from the entry's `CourseOffering` (`[]` if missing). Seed already sets one per offering.
+- Front end `/courses/:courseId` (`CourseDetails.jsx`); `MyCourses.jsx` code column links there plus a
+  "View details" button; `CourseTypeBadge` exported from `MyCourses.jsx`.
+- Tests: `server/tests/courseDetails.test.js` (16 tests).
+
+## Requirement 34 — eligible destination groups for a whole-schedule swap
+
+- `GET /api/swaps/eligible-groups?termId=` (`routes/swaps.js`, `controllers/swapController.js`). Order: non-student
+  → 403 → no Student → 404 → advising → 403 → term (400/404) → no `processed` schedule → 404 `NO_VISIBLE_SCHEDULE`.
+- Rule (`utils/swapEligibility.js`, pure): published templates of the same term, own template excluded **by id**
+  (group "1" exists in every cohort), course-code set (trimmed, case-insensitive) **exactly** equal to the student's.
+  A template with a missing/unpublished offering or stale slot id is skipped (reuses the now-exported
+  `resolveTemplateSlots` from `groupAssignmentController.js`). Calendar via `buildWeeklyCalendar`.
+- Two queries for all candidates (templates + offerings populated with course), no N+1.
+- Not filtered: capacity (`minRemainingCapacity` informational), `swapDeadline` (returned), major.
+  **Reqs 35/37:** re-run `findEligibleGroups` for the chosen `templateId` server-side, then check deadline/capacity;
+  the "request swap" control goes at the marked comment in `SwapGroups.jsx` `GroupCard`, routes in `routes/swaps.js`.
+- Seed: no decoy templates (they would show up as assignable groups in the req-30 list); the near-miss cases are
+  built inside the tests. Aliaa (52-0001, CS7 group 1) sees groups 2 and 3 only.
+- Tests: `server/tests/swapEligibleGroups.test.js` (16 tests).
+
+## Requirement 49 — download / print the processed schedule
+
+- `GET /api/schedules/me/download?termId=` (`downloadMySchedule` in `scheduleController.js`, route declared next to
+  the other `/me/*` routes, before `/student/:studentId`). Order: `ownStudentOr403` → term (400/404) →
+  `checkScheduleAccess` (neutral 404) → `ready_for_student_review` → 409 `NOT_FINAL_YET` → not `processed` → 404.
+- `utils/schedulePdf.js`: `buildPdfModel(...)` (pure; every string/row the PDF is drawn from, fed by
+  `buildWeeklyCalendar` so totals match req 31) + `renderSchedulePdf({model}|{student,term,schedule,calendar})`
+  → `Promise<Buffer>` (pdfkit, A4 landscape, nothing written to disk). Course names clipped to 160 chars,
+  overlapping sessions laid out side by side, course table paginates, footer "Page i of n".
+- Client: `download(path)` in `api/client.js` (Bearer fetch → `{blob, fileName}` from Content-Disposition);
+  `MySchedule.jsx` action bar (Download PDF / Print, disabled with a hint unless `processed`), print-only heading;
+  `@media print` + `@page { size: A4 landscape }` appended to `index.css`.
+- Tests: `server/tests/scheduleDownload.test.js` (13 tests).
