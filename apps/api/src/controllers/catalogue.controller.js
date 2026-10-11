@@ -340,6 +340,11 @@ export const deleteCourse = async (req, res) => {
     if (!course) return res.status(404).json({ message: 'Course not found' });
     const usedAsPrerequisite = await Course.exists({ prerequisites: id });
     if (usedAsPrerequisite) return res.status(409).json({ message: 'Cannot delete this course because another course uses it as a prerequisite' });
+    // Requirement 21: deleting a course that still has offerings would leave
+    // them pointing at a missing course, which breaks every later read of that
+    // offering. Delete the offerings first (requirement 26).
+    const offeringCount = await CourseOffering.countDocuments({ course: id });
+    if (offeringCount > 0) return res.status(409).json({ message: `Cannot delete this course because ${offeringCount} course offering(s) still use it. Delete those offerings first.` });
     await course.deleteOne();
     res.json({ message: 'Course deleted successfully' });
   } catch (error) {
