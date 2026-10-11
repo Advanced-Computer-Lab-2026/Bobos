@@ -266,23 +266,23 @@ function SwapManagement({ token, data, onChanged }) {
   </>;
 }
 
-export function StaffSchedulesPage({ token, role, notify }) {
+export function StaffSchedulesPage({ token, role, notify, initialStudent = null, initialTermId = "" }) {
   const [search, setSearch] = useState("");
   const [students, setStudents] = useState([]);
   const [selected, setSelected] = useState(null);
   const [schedule, setSchedule] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [termId, setTermId] = useState("");
+  const [termId, setTermId] = useState(initialTermId);
   const [terms, setTerms] = useState([]);
-  const [draftStudent, setDraftStudent] = useState(null);
+  const [draftStudent, setDraftStudent] = useState(initialStudent);
   const scheduleResultRef = useRef(null);
 
   useEffect(() => {
     let alive = true;
     api("/api/group-assignments/terms", { token }).then(({ terms: rows = [] }) => {
       if (!alive) return;
-      setTerms(rows); setTermId(rows.find((term) => term.isActive)?.code || rows[0]?.code || "");
+      setTerms(rows); setTermId((current) => current || rows.find((term) => term.isActive)?.code || rows[0]?.code || "");
     }).catch(() => { /* Advisors can use the active term without directory access. */ });
     return () => { alive = false; };
   }, [token]);
