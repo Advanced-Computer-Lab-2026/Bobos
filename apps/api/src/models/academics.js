@@ -182,7 +182,6 @@ export const StudentTermStanding = registerModel("StudentTermStanding", studentT
 
 //Added for Req 54: View academic history
 export const getAcademicHistory = async (studentId) => {
-// mongoose is needed to access other models if they aren't explicitly imported here
   const StudentProfile = mongoose.model('StudentProfile');
   const Course = mongoose.model('Course');
 
@@ -191,33 +190,32 @@ export const getAcademicHistory = async (studentId) => {
     return null;
   }
 
-  const attempts = await CourseAttempt.find({ student: studentId }).populate('course').lean();
-
-
-  const completedCourses = [];
-  const currentCourses = [];
-  const takenCourseIds = new Set(); //this will help figuring out the remaining courses
-
-  attempts.forEach(attempt => {
-    if(attempt.course){
-      if (attempt.result === 'passed' || attempt.result === 'current') takenCourseIds.add(attempt.course._id.toString());
-
-      if(attempt.result === 'current'){
-        currentCourses.push(attempt);
-      }else{
-        completedCourses.push(attempt);
-      }
-    }
-  });
-
-  const remainingCourses = await Course.find({ isActive: true, facultyMajors: profile.major, _id: { $nin: Array.from(takenCourseIds) } }).select('code name creditHours prerequisites offeringSeasons').lean();
+  const attempts = await CourseAttempt.find({ student: studentId })
+    .populate('course', 'code name creditHours')
+    .populate('term', 'code academicYear season termStart')
+    .sort({ createdAt: -1 })
+    .lean();
+  const completedCourses = attempts.filter(attempt => attempt.course && attempt.result === 'passed');
+  const currentCourses = attempts.filter(attempt => attempt.course && attempt.result === 'current');
+  const takenCourseIds = [...new Set([...completedCourses, ...currentCourses].map(attempt => String(attempt.course._id)))];
+  const majorCodes = profile.major === 'CS' ? ['CS', 'CSEN'] : [profile.major];
+  const remainingCourses = await Course.find({
+    isActive: true,
+    $or: [{ facultyMajors: { $in: majorCodes } }, { facultyMajors: { $size: 0 } }],
+    _id: { $nin: takenCourseIds },
+  })
+    .select('code name creditHours prerequisites offeringSeasons recommendedSemester')
+    .populate('prerequisites', 'code name')
+    .sort({ recommendedSemester: 1, code: 1 })
+    .lean();
 
   return{
     studentProfile: {
+      studentId: profile.studentId,
       advisor: profile.assignedAdvisor?.fullName ?? 'Unassigned',
       major: profile.major,
       gpa: profile.gpa,
-      completedHours: [...new Map(completedCourses.filter(a => a.result === 'passed').map(a => [String(a.course._id), a.course.creditHours])).values()].reduce((sum, hours) => sum + hours, 0),
+      completedHours: [...new Map(completedCourses.map(a => [String(a.course._id), a.course.creditHours])).values()].reduce((sum, hours) => sum + hours, 0),
       currentSemester: profile.currentSemester
     },
     completedCourses,
@@ -238,6 +236,7 @@ export const getTranscriptByYear = async (studentId, year) => {
     .exec();
 
   const validAttempts = attempts.filter(attempt => attempt.term !== null);
+  if (validAttempts.length === 0) return null;
 
   const transcript = {
     studentId,

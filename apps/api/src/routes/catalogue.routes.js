@@ -36,9 +36,12 @@ router.post('/offerings/:id/slots', requireAuth, requireRole('administrator'), a
 
 // Courses managment
 router.post('/courses/import', express.json({ limit: "2mb" }), requireAuth, requireRole('administrator'), importCoursesCsv);
+// Requirements 18/20/21: only an Administrator may create, update or delete a
+// catalogue course. Reading the catalogue (requirement 19) stays open to every
+// signed-in role, because advising, preferences and planning all read it.
 router.post('/courses', requireAuth, requireRole('administrator'), createCourse);
-router.get('/courses/:id', getCourseById);
-router.get('/courses', getCourses);
+router.get('/courses/:id', requireAuth, getCourseById);
+router.get('/courses', requireAuth, getCourses);
 router.put('/courses/:id', requireAuth, requireRole('administrator'), updateCourse);
 router.delete('/courses/:id', requireAuth, requireRole('administrator'), deleteCourse);
 // Req 25: Update a course offering (top-level fields)
