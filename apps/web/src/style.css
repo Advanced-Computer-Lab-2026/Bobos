@@ -1,35 +1,110 @@
+/* ==========================================================================
+   BOBOs Design System — Claude-Inspired Typography & Palette
+   - Typography: Tiempos Text (Headings/Reading) + Styrene B (UI/Labels)
+   - Palette: Original 07 (Cherry, Ice & Clay)
+   ========================================================================== */
+
+@font-face {
+  font-family: 'Tiempos Text';
+  src: url('/fonts/TiemposText-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Tiempos Text';
+  src: url('/fonts/TiemposText-Semibold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Tiempos Headline';
+  src: url('/fonts/TiemposHeadline-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Styrene B';
+  src: url('/fonts/StyreneB-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Styrene B';
+  src: url('/fonts/StyreneB-Medium.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Styrene B';
+  src: url('/fonts/StyreneB-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
-  font-family: "DM Sans", Inter, ui-sans-serif, system-ui, sans-serif;
-  color: #202a29;
-  background: #f5f6f4;
+  font-family: 'Styrene B', -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+  color: #28262B;
+  background: #FAFAFA;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   font-weight: 400;
-  --ink: #202a29;
-  --muted: #71807b;
-  --line: #e7ebe8;
-  --paper: #fff;
-  --canvas: #f5f6f4;
-  --green: #167b70;
-  --green-dark: #11655c;
-  --green-pale: #e9f4f1;
-  --red: #b74a49;
-  --shadow: 0 12px 34px rgba(24, 43, 38, .055);
+
+  /* Typography Tokens */
+  --font-serif: 'Tiempos Text', Georgia, serif;
+  --font-sans: 'Styrene B', -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+
+  /* Core Canvas & Surfaces */
+  --ink: #28262B;
+  --muted: #6B6D76;
+  --line: #DDE0E5;
+  --border: #DDE0E5;
+  --paper: #FFFFFF;
+  --canvas: #FAFAFA;
+  --surface: #E7E8EB;
+  --surface-subtle: #F3F4F6;
+
+  /* Accent Color System: Cherry, Ice & Clay */
+  --cherry: #EDA9BA;
+  --cherry-dark: #B84265;
+  --cherry-pale: #FCEEF1;
+  --ice: #ACCAE3;
+  --ice-dark: #396FAD;
+  --ice-pale: #EDF4FA;
+  --clay: #D8B097;
+  --clay-dark: #966246;
+  --clay-pale: #FFF8F4;
+  --teal: #88BDB3;
+  --teal-dark: #287E73;
+  --teal-pale: #EEF6F4;
+  --amber: #D9C79E;
+
+  /* Legacy variable bridges for full backwards compatibility */
+  --green: #287E73;
+  --green-dark: #1F635A;
+  --green-pale: #EDF4FA;
+  --red: #B84265;
+  --shadow: 0 10px 30px rgba(40, 38, 43, 0.05);
 }
 
 * { box-sizing: border-box; }
-body { min-width: 320px; min-height: 100vh; margin: 0; background: var(--canvas); }
+body { min-width: 320px; min-height: 100vh; margin: 0; background: var(--canvas); color: var(--ink); }
 button, input, select, textarea { font: inherit; }
 button { color: inherit; }
-button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid rgba(22, 123, 112, .2); outline-offset: 2px; }
-a { color: var(--green); }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid rgba(57, 111, 173, 0.25); outline-offset: 2px; }
+a { color: var(--ice-dark); }
 h1, h2, h3, p { margin-top: 0; }
-h1, h2, h3 { font-family: Manrope, "DM Sans", sans-serif; letter-spacing: -.025em; }
+h1, h2, h3 { font-family: var(--font-serif); letter-spacing: -0.025em; font-weight: 400; }
 
 .app-shell { min-height: 100vh; display: grid; grid-template-columns: 252px minmax(0, 1fr); }
 .sidebar { position: sticky; top: 0; display: flex; flex-direction: column; height: 100vh; padding: 25px 17px 18px; background: #fff; border-right: 1px solid var(--line); }
-.brand { display: flex; align-items: center; gap: 11px; padding: 2px 9px 29px; color: #1d2a27; font: 800 22px Manrope, sans-serif; letter-spacing: -.06em; }
-.brand-mark { display: inline-grid; flex: 0 0 38px; width: 38px; height: 38px; place-items: center; border-radius: 12px; color: white; background: var(--green); font: 800 21px Manrope, sans-serif; box-shadow: 0 6px 15px rgba(22, 123, 112, .2); }
+.brand { display: flex; align-items: center; gap: 11px; padding: 2px 9px 29px; color: var(--ink); font-family: var(--font-serif); font-size: 26px; font-weight: 500; letter-spacing: -.04em; }
+.brand-mark { display: inline-grid; flex: 0 0 38px; width: 38px; height: 38px; place-items: center; border-radius: 10px; color: white; background: var(--ink); font-family: var(--font-serif); font-size: 22px; font-weight: 500; box-shadow: 0 4px 12px rgba(40, 38, 43, 0.15); }
 .brand-dot { color: var(--green); }
 .brand small { display: block; margin-top: 1px; color: #89948f; font: 700 8px "DM Sans", sans-serif; letter-spacing: .13em; }
 .sidebar-label { padding: 0 11px; color: #a3ada8; font-size: 9px; font-weight: 700; letter-spacing: .14em; }
@@ -38,8 +113,8 @@ h1, h2, h3 { font-family: Manrope, "DM Sans", sans-serif; letter-spacing: -.025e
 .nav-group-title { margin: 13px 11px 7px; color: #919d97; font-size: 11px; font-weight: 600; }
 .nav-item { position: relative; display: flex; align-items: center; gap: 12px; width: 100%; min-height: 39px; margin: 2px 0; padding: 0 11px; border: 0; border-radius: 7px; color: #52615c; background: transparent; cursor: pointer; text-align: left; font-size: 12px; transition: .16s ease; }
 .nav-item:hover { color: var(--green-dark); background: #f5f8f6; }
-.nav-item.active { color: var(--green-dark); background: var(--green-pale); font-weight: 600; }
-.nav-item.active::before { position: absolute; inset: 9px auto 9px 0; width: 3px; border-radius: 0 5px 5px 0; background: var(--green); content: ""; }
+.nav-item.active { color: var(--ink); background: var(--surface); font-weight: 600; }
+.nav-item.active::before { position: absolute; inset: 9px auto 9px 0; width: 3px; border-radius: 0 5px 5px 0; background: var(--cherry-dark); content: ""; }
 .nav-icon { display: inline-grid; width: 19px; height: 19px; place-items: center; color: #87938e; font-size: 17px; }
 .nav-item.active .nav-icon { color: var(--green); }
 .sidebar-bottom { display: flex; align-items: center; gap: 7px; padding: 14px 8px 0; border-top: 1px solid #eef1ef; color: #7a8782; font-size: 10px; }
@@ -75,8 +150,8 @@ h1, h2, h3 { font-family: Manrope, "DM Sans", sans-serif; letter-spacing: -.025e
 .panel-heading .eyebrow { margin-bottom: 4px; }
 .panel-count { color: #9ca9a3; font: 700 10px Manrope, sans-serif; }
 .content-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(260px, .85fr); gap: 18px; align-items: start; }
-.welcome-banner { position: relative; display: flex; min-height: 173px; align-items: center; overflow: hidden; padding: 26px 31px; border-radius: 11px; color: white; background: linear-gradient(110deg, #14786d 0%, #258b7c 62%, #3a9c8c 100%); box-shadow: 0 13px 26px rgba(20, 120, 109, .16); }
-.welcome-banner .eyebrow { color: rgba(255,255,255,.68); }
+.welcome-banner { position: relative; display: flex; min-height: 173px; align-items: center; overflow: hidden; padding: 26px 31px; border-radius: 11px; color: var(--ink); background: linear-gradient(135deg, #ACCAE3 0%, #CDE0EF 45%, #EAD6CE 100%); border: 1px solid var(--border); box-shadow: var(--shadow); }
+.welcome-banner .eyebrow { color: var(--muted); }
 .welcome-banner h1 { margin: 0; font-size: 25px; font-weight: 700; letter-spacing: -.04em; }
 .welcome-banner p:last-child { margin: 8px 0 0; color: rgba(255,255,255,.76); font-size: 12px; }
 .welcome-orbit { position: absolute; display: block; border: 1px solid rgba(255,255,255,.13); border-radius: 50%; }
