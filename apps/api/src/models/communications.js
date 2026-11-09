@@ -46,6 +46,8 @@ const calendarConnectionSchema = withTimestamps({
   scopes: { type: [String], default: [] },
   syncEnabled: { type: Boolean, default: true },
   lastSyncedAt: Date,
+  calendarId: { type: String, default: "primary" },
+  lastSyncedEventIds: { type: [String], default: [] },
 });
 
 calendarConnectionSchema.index({ user: 1, provider: 1 }, { unique: true });

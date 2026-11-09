@@ -338,6 +338,57 @@ export async function getStudents(req, res) {
   }
 }
 
+// Dashboard data reuses the directory's derived workflow states so staff never edit statuses by hand.
+export async function getPendingWork(req, res) {
+  let directoryResponse;
+  const proxy = {
+    status(code) { this.code = code; return this; },
+    json(body) { directoryResponse = { code: this.code || 200, body }; return this; },
+  };
+  await getStudents({ ...req, query: {} }, proxy);
+  if (!directoryResponse || directoryResponse.code !== 200) {
+    return res.status(directoryResponse?.code || 500).json(directoryResponse?.body || { message: "Unable to load workflow dashboard" });
+  }
+  const students = directoryResponse.body.students;
+  const ids = students.map((student) => student.id);
+  const term = directoryResponse.body.term;
+  let termId = null;
+  if (term) termId = await AcademicTerm.findOne({ isActive: true }).sort({ termStart: -1 }).select("_id").lean().then((value) => value?._id);
+  const requests = termId && ids.length ? await Promise.all([
+    WholeScheduleSwapRequest.find({ term: termId, student: { $in: ids } }).select("student status expiresAt updatedAt").lean()
+      .then((rows) => rows.map((row) => ({ ...row, type: "wholeScheduleSwap" }))),
+    SlotChangeRequest.find({ term: termId, student: { $in: ids } }).select("student status updatedAt").lean()
+      .then((rows) => rows.map((row) => ({ ...row, type: "slotChange" }))),
+    MandatoryCourseRemovalRequest.find({ term: termId, student: { $in: ids } }).select("student status updatedAt").lean()
+      .then((rows) => rows.map((row) => ({ ...row, type: "mandatoryCourseRemoval" }))),
+    ExtraHoursRequest.find({ term: termId, student: { $in: ids } }).select("student decisionStatus settlementStatus updatedAt").lean()
+      .then((rows) => rows.map((row) => ({ ...row, type: "extraHours" }))),
+  ]).then((groups) => groups.flat()) : [];
+  const requestsByStudent = new Map();
+  for (const request of requests) {
+    const id = String(request.student);
+    const list = requestsByStudent.get(id) || [];
+    const status = request.type === "extraHours"
+      ? `${request.decisionStatus}${request.settlementStatus && request.settlementStatus !== "none" ? `:${request.settlementStatus}` : ""}`
+      : request.status;
+    list.push({ type: request.type, status, updatedAt: request.updatedAt });
+    requestsByStudent.set(id, list);
+  }
+  const rows = students.map((student) => ({ ...student, requests: requestsByStudent.get(student.id) || [] }));
+  const countBy = (key) => Object.fromEntries([...new Set(rows.map((row) => key(row) || "unassigned"))]
+    .sort().map((value) => [value, rows.filter((row) => (key(row) || "unassigned") === value).length]));
+  res.json({
+    term: directoryResponse.body.term,
+    students: rows,
+    groups: {
+      studentType: countBy((row) => row.studentType),
+      advisor: countBy((row) => row.assignedAdvisor?.fullName),
+      requestType: Object.fromEntries(["wholeScheduleSwap", "slotChange", "mandatoryCourseRemoval", "extraHours"]
+        .map((type) => [type, requests.filter((request) => request.type === type).length])),
+    },
+  });
+}
+
 export async function getStudentDetails(req, res) {
   if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ message: "Invalid student ID" });
   const student = await StudentProfile.findById(req.params.id)

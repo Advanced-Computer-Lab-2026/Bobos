@@ -12,6 +12,7 @@ import StudentDirectoryPage from "./components/StudentDirectoryPage.jsx";
 import AdvisingPage, { MyAdvisorPage } from "./components/AdvisingPage.jsx";
 import AcademicWorkspace from "./components/AcademicWorkspace.jsx";
 import { GroupAssignmentsPage, StaffSchedulesPage, StudentSchedulingPage } from "./components/SchedulingPages.jsx";
+import { CalendarSyncPage, PendingWorkPage, ScheduleActivityPage } from "./components/B1Pages.jsx";
 
 const roleNames = {
   normalStudent: "Normal student",
@@ -33,11 +34,14 @@ const navGroups = (role) => {
       ...(role === "normalStudent" ? [{ id: "schedule-swap", label: "Eligible swap groups", icon: "⇄" }] : []),
       ...(role === "advisingStudent" ? [{ id: "preferences", label: "Schedule preferences", icon: "☷" }] : []),
       { id: "my-advisor", label: "My advisor", icon: "♧" },
+      { id: "calendar-sync", label: "Calendar sync", icon: "▦" },
     ] }] : []),
     ...(staff ? [{ title: "People", items: [
       ...(["coordinator", "administrator"].includes(role) ? [{ id: "directory", label: "Student directory", icon: "♙" }] : []),
       ...(role === "advisor" || role === "coordinator" ? [{ id: "advising", label: "Advising students", icon: "♧" }] : []),
       ...(role === "advisor" || role === "coordinator" ? [{ id: "preferences", label: "Student preferences", icon: "☷" }] : []),
+      ...(role === "coordinator" ? [{ id: "pending-work", label: "Pending work", icon: "◷" }] : []),
+      ...(["coordinator", "administrator"].includes(role) ? [{ id: "schedule-activity", label: "Schedule activity", icon: "↻" }] : []),
       { id: "student-schedules", label: "Student schedules", icon: "◷" },
     ] }] : []),
     ...(["coordinator", "administrator"].includes(role) ? [{ title: "Academic setup", items: [
@@ -57,6 +61,7 @@ const titleByScreen = {
   terms: "Academic terms", offerings: "Course offerings", templates: "Schedule templates",
   "my-schedule": "My schedule", "my-courses": "Registered courses", "schedule-swap": "Eligible swap groups",
   "student-schedules": "Student schedules", "group-assignments": "Schedule group assignments",
+  "calendar-sync": "Calendar sync", "pending-work": "Pending work", "schedule-activity": "Schedule activity",
 };
 
 export default function App() {
@@ -120,6 +125,16 @@ export default function App() {
     setScreenContext(context);
   };
 
+  useEffect(() => {
+    const result = new URLSearchParams(window.location.search).get("calendar");
+    if (!result) return;
+    setActiveScreen("calendar-sync");
+    setNotice(result === "connected"
+      ? { type: "success", text: "Google Calendar connected." }
+      : { type: "error", text: "Google Calendar connection could not be completed." });
+    window.history.replaceState({}, "", window.location.pathname);
+  }, []);
+
   if (!token) return <AuthPage onLogin={acceptLogin} />;
   if (profileLoading) return <div className="app-loading"><span className="loader" />Loading your workspace…</div>;
   if (!profile) return <AuthPage onLogin={acceptLogin} />;
@@ -173,6 +188,9 @@ export default function App() {
           {activeScreen === "directory" && <StudentDirectoryPage token={token} role={profile.role} notify={notify} />}
           {activeScreen === "advising" && <AdvisingPage token={token} role={profile.role} onOpenPreferences={(student) => openScreen("preferences", student)} />}
           {activeScreen === "my-advisor" && <MyAdvisorPage token={token} />}
+          {activeScreen === "calendar-sync" && <CalendarSyncPage token={token} />}
+          {activeScreen === "pending-work" && profile.role === "coordinator" && <PendingWorkPage token={token} />}
+          {activeScreen === "schedule-activity" && ["coordinator", "administrator"].includes(profile.role) && <ScheduleActivityPage token={token} />}
           {activeScreen === "group-assignments" && <GroupAssignmentsPage token={token} canAssign={profile.role === "coordinator"} notify={notify} />}
           {activeScreen === "student-schedules" && <StaffSchedulesPage token={token} role={profile.role} notify={notify} initialStudent={screenContext?.draftStudent} initialTermId={screenContext?.termId} />}
           {["my-schedule", "my-courses", "schedule-swap"].includes(activeScreen) && <StudentSchedulingPage token={token} section={activeScreen} />}
