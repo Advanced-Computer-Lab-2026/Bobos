@@ -391,7 +391,7 @@ export const getTranscript = async (req, res) => {
         return res.status(404).json({ message: "No transcript found for this academic year." });
     }
 
-    res.status(200).json({ ...transcript, studentNumber: req.params.studentId });
+    res.status(200).json({ ...transcript, studentNumber: req.studentProfile.studentId });
 
 }catch (error) {
     res.status(500).json({message: "Could not retrieve transcript."});
@@ -414,17 +414,18 @@ export const downloadTranscriptPDF = async (req, res) => {
             return res.status(404).json({ message: "No transcript found to export." });
         }
 
+        const universityStudentId = req.studentProfile.studentId;
         const doc = new PDFDocument({margin: 50});
 
        res.setHeader('Content-Type', 'application/pdf');
-       res.setHeader('Content-Disposition', `attachment; filename="transcript_${req.params.studentId}_${year.replace('/', '-')}.pdf"`);
+       res.setHeader('Content-Disposition', `attachment; filename="transcript_${universityStudentId}_${year.replace('/', '-')}.pdf"`);
 
          doc.pipe(res);// Pipe the PDF to the response
 
         //Building the PDF content
         doc.fontSize(20).text('University Academic Transcript', { align: 'center' });
         doc.moveDown();
-        doc.fontSize(12).text(`Student ID: ${req.params.studentId}`);
+        doc.fontSize(12).text(`Student ID: ${universityStudentId}`);
         doc.text(`Academic Year: ${year}`);
         doc.text(`Generated On: ${new Date().toLocaleDateString('en-GB', { timeZone: 'Africa/Cairo' })}`);
         doc.moveDown(2);
@@ -447,7 +448,7 @@ export const downloadTranscriptPDF = async (req, res) => {
                     doc.fontSize(10);
                     if (doc.y + doc.heightOfString(row) > doc.page.height - doc.page.margins.bottom) {
                         doc.addPage();
-                        doc.fontSize(12).text(`Student ID: ${req.studentProfile.studentId} | Academic Year: ${year}`);
+                        doc.fontSize(12).text(`Student ID: ${universityStudentId} | Academic Year: ${year}`);
                         doc.moveDown();
                         doc.fontSize(14).text(`${formattedTerm} Term (continued)`, { underline: true });
                         doc.moveDown(0.5);

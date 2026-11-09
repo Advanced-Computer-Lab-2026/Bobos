@@ -121,6 +121,7 @@ const courseOfferingSchema = withTimestamps({
   isPublished: { type: Boolean, default: false, index: true },
   slots: { type: [offeringSlotSchema], default: [] },
 });
+courseOfferingSchema.set("optimisticConcurrency", true);
 
 courseOfferingSchema.pre("validate", function () {
   if (!this.isPublished) return;

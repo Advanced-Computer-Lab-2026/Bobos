@@ -8,7 +8,12 @@
     "seed": "node --env-file-if-exists=../../.env src/seed/index.js",
     "seed:c2": "node --env-file-if-exists=../../.env src/seed/c2.js",
     "seed:evaluation": "node --env-file-if-exists=../../.env src/seed/evaluation.js",
+    "seed:pending-requests": "node --env-file-if-exists=../../.env src/seed/pending-requests.js",
+    "seed:academic-history": "node --env-file-if-exists=../../.env src/seed/academic-history.js",
+    "seed:wallet-history": "node --env-file-if-exists=../../.env src/seed/wallet-history.js",
+    "seed:replace-eval-courses": "node --env-file-if-exists=../../.env src/seed/replace-eval-courses.js",
     "seed:unpublish-review": "node --env-file-if-exists=../../.env src/seed/unpublish-review.js",
+    "seed:preference-clash": "node --env-file-if-exists=../../.env src/seed/preference-clash.js",
     "seed:advising": "node --env-file-if-exists=../../.env seed.js",
     "import:courses": "node src/scripts/importCourses.js"
   },

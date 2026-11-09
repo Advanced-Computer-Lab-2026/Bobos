@@ -4,6 +4,7 @@ import {
   User,
   AdvisorAssignment,
   StudentWorkflowState,
+  StudentSchedule,
   SlotChangeRequest,
   ExtraHoursRequest,
   MandatoryCourseRemovalRequest,
@@ -203,7 +204,7 @@ export const listAdvisingStudents = async (req, res) => {
     const skip = (pageNum - 1) * limitNum;
     if (!Number.isSafeInteger(skip)) return res.status(400).json({ message: 'Page is too large' });
 
-    const baseMatch = { studentType: 'advising' };
+    const baseMatch = { studentType: pendingRequestType === 'scheduleSwap' ? 'normal' : 'advising' };
     if (advisorId) {
       baseMatch.assignedAdvisor = new Types.ObjectId(advisorId);
     }
@@ -261,10 +262,31 @@ export const listAdvisingStudents = async (req, res) => {
       {
         $addFields: { workflowState: { $arrayElemAt: ['$workflowDocs', 0] } },
       },
+      {
+        $lookup: {
+          from: StudentSchedule.collection.name,
+          let: { sid: '$_id' },
+          pipeline: [
+            { $match: { $expr: { $and: [
+              { $eq: ['$student', '$$sid'] },
+              { $eq: ['$term', activeTerm?._id ?? null] },
+              { $eq: ['$scheduleType', pendingRequestType === 'scheduleSwap' ? 'normal' : 'advising'] },
+            ] } } },
+            { $sort: { updatedAt: -1 } },
+            { $limit: 1 },
+          ],
+          as: 'scheduleDocs',
+        },
+      },
+      { $addFields: { currentSchedule: { $arrayElemAt: ['$scheduleDocs', 0] } } },
+      { $addFields: { effectiveWorkflowStatus: { $ifNull: [
+        '$workflowState.status',
+        { $ifNull: ['$currentSchedule.status', activeTerm ? 'notStarted' : null] },
+      ] } } },
     );
 
     if (scheduleStatus) {
-      pipeline.push({ $match: { 'workflowState.status': scheduleStatus } });
+      pipeline.push({ $match: { effectiveWorkflowStatus: scheduleStatus } });
     }
 
     if (pendingRequestType) {
@@ -310,6 +332,7 @@ export const listAdvisingStudents = async (req, res) => {
     const projectStage = {
       $project: {
         studentId: 1,
+        studentType: 1,
         major: 1,
         advisingReason: 1,
         enrollmentStatus: 1,
@@ -330,9 +353,9 @@ export const listAdvisingStudents = async (req, res) => {
             else: null,
           },
         },
-        workflowStatus: '$workflowState.status',
+        workflowStatus: '$effectiveWorkflowStatus',
         blockingStep: '$workflowState.blockingStep',
-        lastActivityAt: '$workflowState.lastActivityAt',
+        lastActivityAt: { $ifNull: ['$workflowState.lastActivityAt', '$currentSchedule.updatedAt'] },
       },
     };
 
@@ -351,6 +374,7 @@ export const listAdvisingStudents = async (req, res) => {
     return res.json({
       currentUserId: String(req.user._id),
       currentUserRole: req.user.role,
+      activeTerm: Boolean(activeTerm),
       data: students,
       pagination: {
         total,
@@ -386,9 +410,13 @@ export const getAdvisingStudent = async (req, res) => {
       .sort({ termStart: -1 })
       .select('_id')
       .lean();
-    const [workflowState, assignmentHistory] = await Promise.all([
+    const [workflowState, schedule, assignmentHistory] = await Promise.all([
       activeTerm
-        ? StudentWorkflowState.findOne({ student: profileId, term: activeTerm._id })
+        ? StudentWorkflowState.findOne({ student: profileId, term: activeTerm._id }).lean()
+        : null,
+      activeTerm
+        ? StudentSchedule.findOne({ student: profileId, term: activeTerm._id, scheduleType: 'advising' })
+          .select('status updatedAt').lean()
         : null,
       AdvisorAssignment.find({ student: profileId })
         .sort({ createdAt: -1 })
@@ -399,7 +427,13 @@ export const getAdvisingStudent = async (req, res) => {
 
     return res.json({
       profile,
-      workflowState: workflowState ?? null,
+      workflowState: workflowState ?? (activeTerm ? {
+        status: schedule?.status ?? 'notStarted',
+        blockingStep: schedule?.status === 'draft' ? 'Complete draft schedule' :
+          schedule ? null : 'Create advising schedule',
+        lastActivityAt: schedule?.updatedAt ?? null,
+      } : null),
+      activeTerm: Boolean(activeTerm),
       assignmentHistory,
     });
   } catch (err) {

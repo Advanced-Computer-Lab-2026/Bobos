@@ -25,9 +25,9 @@ const navGroups = (role) => {
   const student = ["normalStudent", "advisingStudent"].includes(role);
   const staff = ["advisor", "coordinator", "administrator"].includes(role);
   return [
-    { title: "Workspace", items: [{ id: "overview", label: "Overview", icon: "⌂" }, { id: "profile", label: "My profile", icon: "◉" }, { id: "notifications", label: "Notifications", icon: "◌" }] },
+    { title: "Workspace", items: [{ id: "overview", label: "Overview", icon: "⌂" }, { id: "notifications", label: "Notifications", icon: "◌" }] },
     ...(student ? [{ title: "Student services", items: [
-      { id: "records", label: "Academic records", icon: "▤" },
+      ...(role === "advisingStudent" ? [{ id: "records", label: "Academic records", icon: "▤" }] : []),
       { id: "my-schedule", label: "My schedule", icon: "◷" },
       { id: "my-courses", label: "Registered courses", icon: "▦" },
       ...(role === "normalStudent" ? [{ id: "schedule-swap", label: "Eligible swap groups", icon: "⇄" }] : []),
@@ -155,7 +155,10 @@ export default function App() {
           <div className="topbar-actions">
             <button className="icon-button" type="button" aria-label="Open notifications" title="Notifications" onClick={() => openScreen("notifications")}>♧</button>
             <span className="topbar-divider" />
-            <div className="user-chip"><span className="avatar">{(profile.fullName || "U").trim().slice(0, 1).toUpperCase()}</span><span><strong>{profile.fullName}</strong><small>{roleNames[profile.role] || profile.role}</small></span></div>
+            <button className="user-chip" type="button" aria-label="My profile" title="My profile" aria-current={activeScreen === "profile" ? "page" : undefined} onClick={() => openScreen("profile")}>
+              <span className="avatar" aria-hidden="true">{(profile.fullName || "U").trim().slice(0, 1).toUpperCase()}</span>
+              <span><strong>{profile.fullName}</strong><small>{roleNames[profile.role] || profile.role}</small></span>
+            </button>
             <button className="signout-button" type="button" onClick={signOut}>Sign out</button>
           </div>
         </header>
@@ -165,16 +168,16 @@ export default function App() {
           {activeScreen === "overview" && <OverviewPage profile={profile} onOpen={openScreen} />}
           {activeScreen === "profile" && <ProfilePage profile={profile} />}
           {activeScreen === "notifications" && <NotificationsPage token={token} notify={notify} />}
-          {activeScreen === "records" && <StudentRecordsPage token={token} profile={profile} notify={notify} />}
-          {activeScreen === "preferences" && <PreferencesPage token={token} profile={profile} profileId={screenContext?.id || screenContext?._id || profile.studentProfileId} studentTarget={screenContext?._id ? screenContext : undefined} notify={notify} />}
+          {activeScreen === "records" && profile.role !== "normalStudent" && <StudentRecordsPage token={token} profile={profile} notify={notify} />}
+          {activeScreen === "preferences" && <PreferencesPage token={token} profile={profile} profileId={screenContext?.id || screenContext?._id || profile.studentProfileId} studentTarget={screenContext?._id ? screenContext : undefined} notify={notify} onOpenDraftSchedule={(student, selectedTermId) => openScreen("student-schedules", { draftStudent: student, termId: selectedTermId })} />}
           {activeScreen === "directory" && <StudentDirectoryPage token={token} role={profile.role} notify={notify} />}
           {activeScreen === "advising" && <AdvisingPage token={token} role={profile.role} onOpenPreferences={(student) => openScreen("preferences", student)} />}
           {activeScreen === "my-advisor" && <MyAdvisorPage token={token} />}
           {activeScreen === "group-assignments" && <GroupAssignmentsPage token={token} canAssign={profile.role === "coordinator"} notify={notify} />}
-          {activeScreen === "student-schedules" && <StaffSchedulesPage token={token} role={profile.role} notify={notify} />}
+          {activeScreen === "student-schedules" && <StaffSchedulesPage token={token} role={profile.role} notify={notify} initialStudent={screenContext?.draftStudent} initialTermId={screenContext?.termId} />}
           {["my-schedule", "my-courses", "schedule-swap"].includes(activeScreen) && <StudentSchedulingPage token={token} section={activeScreen} />}
           {["courses", "terms", "offerings", "templates"].includes(activeScreen) && <AcademicWorkspace token={token} role={profile.role} section={activeScreen} onNavigate={openScreen} notify={notify} />}
-          {!allNavItems.some((item) => item.id === activeScreen) && <OverviewPage profile={profile} onOpen={openScreen} />}
+          {activeScreen !== "profile" && !allNavItems.some((item) => item.id === activeScreen) && <OverviewPage profile={profile} onOpen={openScreen} />}
         </div>
       </main>
     </div>
