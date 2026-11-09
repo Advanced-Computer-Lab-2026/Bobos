@@ -6,6 +6,7 @@ import {
   updateCourse,
   deleteCourse,
   createOffering,
+  duplicateOfferings,
   getOfferings,
   getOfferingById,
   addOfferingSlots,
@@ -23,6 +24,7 @@ const router = express.Router();
 
 // Req 22: Create a course offering with its slots
 router.post('/offerings', requireAuth, requireRole('administrator'), createOffering);
+router.post('/offerings/duplicate', requireAuth, requireRole('administrator'), duplicateOfferings);
 
 // Req 23 and Req 57–58: students need published groups for preferences;
 // advisors also need published groups when reviewing those preferences.

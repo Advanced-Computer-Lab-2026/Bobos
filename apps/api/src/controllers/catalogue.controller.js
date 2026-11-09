@@ -57,27 +57,111 @@ function validSlotInput(slot) {
     Number.isInteger(slot.capacity) && slot.capacity >= 0;
 }
 
-function conflictMessage(candidateOffering, candidateSlot, otherOffering, otherSlot) {
-  if (!overlaps(candidateSlot, otherSlot)) return null;
-  const sameOffering = String(candidateOffering._id || '') === String(otherOffering._id || '');
+function resourceConflicts(candidateOffering, candidateSlot, otherOffering, otherSlot) {
+  if (!overlaps(candidateSlot, otherSlot)) return [];
+  const conflicts = [];
   const candidateRoom = String(candidateSlot.room || '').trim().toLowerCase();
   const otherRoom = String(otherSlot.room || '').trim().toLowerCase();
   if (candidateRoom && candidateRoom === otherRoom) {
-    return `Room ${candidateSlot.room} is already booked on ${candidateSlot.day} from ${otherSlot.startMinute} to ${otherSlot.endMinute}.`;
+    conflicts.push({ type: 'room', message: `Room ${candidateSlot.room} is already booked on ${candidateSlot.day} from ${otherSlot.startMinute} to ${otherSlot.endMinute}.` });
   }
-  if (!sameOffering && sharesInstructor(candidateOffering, otherOffering)) {
+  if (String(candidateOffering._id) !== String(otherOffering._id) && sharesInstructor(candidateOffering, otherOffering)) {
     const instructor = (candidateOffering.instructors || []).find((candidate) =>
       (otherOffering.instructors || []).some((other) =>
         (candidate.email && other.email && candidate.email.toLowerCase() === other.email.toLowerCase()) ||
         (candidate.fullName && other.fullName && candidate.fullName.trim().toLowerCase() === other.fullName.trim().toLowerCase())
       )
     );
-    return `Instructor ${instructor?.fullName || instructor?.email} already has a class on ${candidateSlot.day} from ${otherSlot.startMinute} to ${otherSlot.endMinute}.`;
+    conflicts.push({ type: 'instructor', message: `Instructor ${instructor?.fullName || instructor?.email} already has a class on ${candidateSlot.day} from ${otherSlot.startMinute} to ${otherSlot.endMinute}.` });
   }
+  return conflicts;
+}
+
+function conflictMessage(candidateOffering, candidateSlot, otherOffering, otherSlot) {
+  if (!overlaps(candidateSlot, otherSlot)) return null;
+  const [conflict] = resourceConflicts(candidateOffering, candidateSlot, otherOffering, otherSlot);
+  if (conflict) return conflict.message;
+  const sameOffering = String(candidateOffering._id || '') === String(otherOffering._id || '');
   if (!sameOffering && groupsOverlap(candidateOffering, otherOffering)) {
     return `Eligible student groups have another class on ${candidateSlot.day} from ${otherSlot.startMinute} to ${otherSlot.endMinute}.`;
   }
   return null;
+}
+
+export async function duplicateOfferings(req, res, next) {
+  try {
+    const { sourceAcademicYear, sourceSeason, targetTermId, offeringIds } = req.body || {};
+    if (typeof sourceAcademicYear !== 'string' || !sourceAcademicYear.trim() ||
+      !['winter', 'spring', 'summer'].includes(sourceSeason) || typeof targetTermId !== 'string' || !targetTermId.trim()) {
+      return res.status(400).json({ message: 'Select a source academic year and season and an existing target term.' });
+    }
+    const [source, target] = await Promise.all([
+      AcademicTerm.findOne({ academicYear: sourceAcademicYear.trim(), season: sourceSeason }),
+      findAcademicTerm(targetTermId),
+    ]);
+    if (!source || !target) return res.status(404).json({ message: 'Source or target academic term was not found.' });
+    if (source.termStart >= target.termStart) return res.status(400).json({ message: 'The source term must start before the target term.' });
+
+    const filter = { term: source._id };
+    if (offeringIds !== undefined) {
+      if (!Array.isArray(offeringIds) || !offeringIds.length || offeringIds.some((id) => typeof id !== 'string' || !mongoose.isValidObjectId(id))) {
+        return res.status(400).json({ message: 'Select at least one valid source offering.' });
+      }
+      filter._id = { $in: offeringIds };
+    }
+    const sourceOfferings = await CourseOffering.find(filter).populate('course', 'code').lean();
+    if (offeringIds && sourceOfferings.length !== new Set(offeringIds.map((id) => id.toLowerCase())).size) {
+      return res.status(400).json({ message: 'Every selected offering must belong to the source term. Reload the preview and try again.' });
+    }
+    const existing = await CourseOffering.distinct('course', { term: target._id });
+    const targetCourses = new Set(existing.map(String));
+    const created = [];
+    const skipped = [];
+    for (const offering of sourceOfferings) {
+      const courseCode = offering.course?.code;
+      if (!courseCode) continue;
+      if (!targetCourses.has(String(offering.course._id))) {
+        try {
+          const copy = await CourseOffering.create({
+            course: offering.course._id,
+            academicYear: target.academicYear,
+            term: target._id,
+            isPublished: false,
+            instructors: offering.instructors.map(({ fullName, email }) => ({ fullName, email })),
+            eligibleGroups: offering.eligibleGroups.map(({ major, semester, studyGroup }) => ({ major, semester, studyGroup })),
+            slots: offering.slots.map(({ componentType, groupNumber, day, startMinute, endMinute, room, capacity }) => ({
+              componentType, groupNumber, day, startMinute, endMinute, room, capacity,
+            })),
+          });
+          created.push({ ...copy.toJSON(), courseCode });
+          continue;
+        } catch (error) {
+          if (error.code !== 11000) throw error;
+        }
+      }
+      skipped.push(courseCode);
+    }
+
+    const targetOfferings = await CourseOffering.find({ term: target._id }).populate('course', 'code').lean();
+    const conflicts = [];
+    const reported = new Set();
+    for (const copy of created) {
+      for (const slot of copy.slots) {
+        for (const other of targetOfferings) {
+          for (const otherSlot of other.slots) {
+            if (String(slot._id) === String(otherSlot._id)) continue;
+            const pair = [String(slot._id), String(otherSlot._id)].sort().join(':');
+            if (reported.has(pair)) continue;
+            for (const conflict of resourceConflicts(copy, slot, other, otherSlot)) {
+              reported.add(pair);
+              conflicts.push({ ...conflict, courseCode: copy.courseCode, otherCourseCode: other.course?.code, componentType: slot.componentType, groupNumber: slot.groupNumber });
+            }
+          }
+        }
+      }
+    }
+    res.status(created.length ? 201 : 200).json({ created, skipped, conflicts });
+  } catch (error) { next(error); }
 }
 
 async function findOfferingSlotConflict(candidateOffering, candidateSlot, skipSlotId) {
@@ -470,6 +554,7 @@ export const getOfferings = async (req, res) => {
         code: term.code,
         academicYear: term.academicYear,
         season: term.season,
+        termStart: term.termStart,
       },
       count: offerings.length,
       offerings,
@@ -720,7 +805,8 @@ export const deleteOffering = async (req, res) => {
       return res.status(409).json({ message: `Cannot delete this offering because it is referenced by ${usedBy}. Remove or update those references first.` });
     }
 
-    await CourseOffering.findByIdAndDelete(req.params.id);
+    const deleted = await CourseOffering.deleteOne({ _id: offering._id, __v: offering.__v });
+    if (!deleted.deletedCount) return res.status(409).json({ message: 'This offering changed. Reload it and try again.' });
 
     res.json({ message: `Course offering for ${offering.course.code} deleted successfully` });
   } catch (error) {
