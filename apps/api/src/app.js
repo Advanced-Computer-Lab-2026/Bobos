@@ -11,6 +11,7 @@ import advisorRoutes from "./routes/advisor.routes.js";
 import groupAssignmentRoutes from "./routes/group-assignments.routes.js";
 import scheduleRoutes from "./routes/schedules.routes.js";
 import swapRoutes from "./routes/swaps.routes.js";
+import financeRoutes from "./routes/finance.routes.js";
 import { requireAuth } from "./middleware/auth.middleware.js";
 import { getProfile } from "./controllers/identity.controller.js";
 import { apiErrorHandler } from "./middleware/error.middleware.js";
@@ -54,6 +55,7 @@ app.use("/api/advisor", requireAuth, advisorRoutes);
 app.use("/api/group-assignments", groupAssignmentRoutes);
 app.use("/api/schedules", scheduleRoutes);
 app.use("/api/swaps", swapRoutes);
+app.use("/api/finance", financeRoutes);
 app.get("/api/profile", requireAuth, getProfile);
 app.get("/api/health", (_req, res) => {
   res.json({

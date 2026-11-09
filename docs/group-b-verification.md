@@ -12,6 +12,10 @@ Group B's student directory and advisor-management APIs are mounted in the share
 | `GET /api/advisor/advisors`, `/students`, `/students/:profileId` | Advisor, Coordinator | Lists advisors and advising students, applies validated filters/pagination, and returns assignment/workflow details. |
 | `GET /api/advisor/my-advisor` | Normal Student, Advising Student | Returns only the signed-in student's assigned advisor. |
 | `PATCH /api/advisor/students/:profileId/advisor` | Coordinator | Assigns only an active advisor who is registered in the advising system; records assignment and reassignment history and treats repeating the current assignment as idempotent. |
+| `GET /api/finance/records` | Coordinator, Administrator, Advising Student | Paginated ledger (Req 97, 98), multi-field search (Req 98), dynamic filtering by type, status, term, settlement option, date range (Req 99). Advising students can view their own records only. |
+| `GET /api/finance/:id` | Coordinator, Administrator, Advising Student | Detailed record breakdown (Req 100) with populated student details, line items, reference numbers, timestamps, and linked request metadata. |
+| `POST /api/finance/:id/refund` | Coordinator, Administrator | Refund processing (Req 101, 102). Validates completed status, prevents duplicate refunds, atomically updates ledger balance, marks transaction as REFUNDED, and logs audit metadata. |
+| `GET /api/finance/export` | Coordinator, Administrator | CSV dataset export (Req 127) supporting all dynamic filters and search terms with downloadable attachment headers. |
 
 Adding and removing advisors updates roster membership; only active advisors in the roster can be assigned or appear in the active advisor list. Advisor assignment and removal use MongoDB transactions, so local MongoDB must run as a single-node replica set. Account status changes increment the authentication version, invalidating all existing sessions. Advisor email notices use the same `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, and `SMTP_FROM` configuration as password reset; when SMTP is not configured, the in-app notification remains pending and the API reports that status.
 

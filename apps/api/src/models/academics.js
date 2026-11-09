@@ -238,6 +238,7 @@ export const getTranscriptByYear = async (studentId, year) => {
     .exec();
 
   const validAttempts = attempts.filter(attempt => attempt.term !== null);
+  if (validAttempts.length === 0) return null;
 
   const transcript = {
     studentId,
