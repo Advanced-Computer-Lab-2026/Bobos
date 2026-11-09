@@ -1,5 +1,5 @@
 import express from "express";
-import { downloadMySchedule, getAdvisingDraft, getMyCourseDetails, getMyRegisteredCourses, getMySchedule, getStudentSchedule, listStudentsWithSchedules, saveAdvisingDraft } from "../controllers/scheduling.controller.js";
+import { downloadMySchedule, getAdvisingDraft, getMyCourseDetails, getMyRegisteredCourses, getMySchedule, getStudentSchedule, listStudentsWithSchedules, saveAdvisingDraft, validateAdvisingDraft } from "../controllers/scheduling.controller.js";
 import { requireAuth } from "../middleware/auth.middleware.js";
 import { requireRole } from "../middleware/require-role.js";
 
@@ -12,6 +12,7 @@ router.get("/me/courses/:courseId", requireRole("normalStudent", "advisingStuden
 router.get("/students", requireRole("advisor", "coordinator", "administrator"), listStudentsWithSchedules);
 router.get("/advising/:studentId/draft", requireRole("advisor", "coordinator"), getAdvisingDraft);
 router.put("/advising/:studentId/draft", requireRole("advisor", "coordinator"), saveAdvisingDraft);
+router.post("/advising/:studentId/draft/validate", requireRole("advisor", "coordinator"), validateAdvisingDraft);
 router.get("/student/:studentId", getStudentSchedule);
 
 export default router;

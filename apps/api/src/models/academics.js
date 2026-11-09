@@ -64,6 +64,8 @@ const studentScheduleSchema = withTimestamps({
   },
   template: ref("ScheduleTemplate", { default: null }),
   courses: { type: [scheduledCourseSchema], default: [] },
+  // Older advising drafts stored slot choices without updating seat counts.
+  seatsReserved: { type: Boolean, default: false },
   version: { type: Number, default: 1, min: 1 },
   createdBy: ref("User", { required: true }),
   processedBy: ref("User", { default: null }),

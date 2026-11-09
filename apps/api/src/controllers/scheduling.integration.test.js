@@ -3,7 +3,7 @@ import test, { after, before, beforeEach } from "node:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { join } from "node:path";
 import mongoose from "mongoose";
-import { MongoMemoryServer } from "mongodb-memory-server";
+import { MongoMemoryReplSet } from "mongodb-memory-server";
 import app from "../app.js";
 import { AcademicTerm, Course, CourseOffering } from "../models/catalogue.js";
 import { CourseAttempt, ScheduleTemplate, SchedulingPreference, StudentSchedule } from "../models/academics.js";
@@ -15,7 +15,7 @@ let database, databasePath, server, base, users, profiles, term, courses, offeri
 
 before(async () => {
   databasePath = await mkdtemp(join(process.cwd(), ".mongo-scheduling-"));
-  database = await MongoMemoryServer.create({ instance: { dbPath: databasePath } });
+  database = await MongoMemoryReplSet.create({ instanceOpts: [{ dbPath: databasePath }], replSet: { count: 1 } });
   await mongoose.connect(database.getUri());
   await Promise.all([User.init(), StudentProfile.init(), AcademicTerm.init(), Course.init(), CourseOffering.init(), ScheduleTemplate.init(), StudentSchedule.init(), SchedulingPreference.init(), CourseAttempt.init(), ExtraHoursRequest.init()]);
   server = app.listen(0, "127.0.0.1");
@@ -240,7 +240,7 @@ test("Req 58: staff see the latest ranked preferences while creating and updatin
   assert.equal(firstSave.status, 201);
   assert.equal(firstSave.body.schedule.status, "draft");
   assert.equal(firstSave.body.schedule.version, 1);
-  assert.equal((await CourseOffering.findById(offerings[0]._id)).slots.find((slot) => slot.groupNumber === "2").assignedStudentCount, 0, "drafts do not reserve seats");
+  assert.equal((await CourseOffering.findById(offerings[0]._id)).slots.find((slot) => slot.groupNumber === "2").assignedStudentCount, 1, "a saved draft reserves its selected seat");
 
   const reopened = await call(`/schedules/advising/${profiles.advising._id}/draft?termId=${term.code}`, { role: "advisor" });
   assert.equal(reopened.body.schedule.version, 1);
@@ -421,6 +421,140 @@ test("advising drafts reject clashes, full groups, passed courses and unmet prer
   assert.equal(clash.status, 409);
   assert.match(clash.body.message, /Selected groups overlap/);
   assert.equal(await StudentSchedule.countDocuments({ student: profiles.advising._id, term: term._id }), 0);
+});
+
+test("C2 Req 24 copies only offering structure, reports both conflicts, and skips existing courses on retry", async () => {
+  const target = await AcademicTerm.create({
+    ...term.toObject(), _id: undefined, code: "W27", academicYear: "2027/2028", isActive: false,
+    termStart: new Date("2027-10-01"), termEnd: new Date("2028-02-01"),
+    teachingStart: new Date("2027-10-05"), teachingEnd: new Date("2028-01-20"),
+  });
+  const source = offerings[0];
+  const targetExisting = await CourseOffering.create({
+    term: target._id, academicYear: target.academicYear, course: courses[1]._id,
+    instructors: source.instructors, eligibleGroups: source.eligibleGroups, isPublished: true,
+    slots: [{ ...source.slots[0].toObject(), _id: undefined, capacity: 7, assignedStudentCount: 1 }],
+  });
+  await CourseOffering.updateOne({ _id: source._id }, { $set: { "slots.0.assignedStudentCount": 2 } });
+  const path = "/catalogue/offerings/duplicate";
+  const body = { sourceAcademicYear: term.academicYear, sourceSeason: term.season, targetTermId: String(target._id) };
+  assert.equal((await call(path, { role: "coordinator", method: "POST", body })).status, 403);
+  assert.equal((await call(path, { role: "administrator", method: "POST", body: { ...body, targetTermId: term.code } })).status, 400);
+  const copySelection = (offeringIds) => call(path, { role: "administrator", method: "POST", body: { ...body, offeringIds } });
+  assert.equal((await copySelection([])).status, 400);
+  assert.equal((await copySelection([String(source._id), String(targetExisting._id)])).status, 400);
+  assert.equal(await CourseOffering.countDocuments({ term: target._id }), 1);
+
+  const copied = await copySelection([String(source._id)]);
+  assert.equal(copied.status, 201);
+  assert.deepEqual(copied.body.skipped, [], "unselected offerings are omitted from the copy and skip report");
+  assert.deepEqual(copied.body.conflicts.map(({ type }) => type).sort(), ["instructor", "room"]);
+  const [draft] = copied.body.created;
+  assert.equal(draft.course, String(courses[0]._id));
+  assert.equal(draft.term, String(target._id));
+  assert.equal(draft.academicYear, target.academicYear);
+  assert.equal(draft.isPublished, false);
+  assert.deepEqual(draft.instructors, source.instructors.map((item) => item.toObject()));
+  assert.deepEqual(draft.eligibleGroups, source.eligibleGroups.map((item) => item.toObject()));
+  for (const [index, slot] of draft.slots.entries()) {
+    const original = source.slots[index];
+    assert.notEqual(slot._id, String(original._id));
+    for (const key of ["componentType", "groupNumber", "day", "startMinute", "endMinute", "room", "capacity"]) {
+      assert.equal(slot[key], original[key]);
+    }
+    assert.equal(slot.assignedStudentCount, 0);
+    assert.equal(slot.remainingCapacity, slot.capacity);
+  }
+  const visible = await call(`/catalogue/offerings?termId=${target.code}`, { role: "advisor" });
+  assert.deepEqual(visible.body.offerings.map(({ _id }) => _id), [String(targetExisting._id)]);
+  assert.equal((await CourseOffering.findById(targetExisting._id)).slots[0].assignedStudentCount, 1);
+  assert.equal((await CourseOffering.findById(source._id)).slots[0].assignedStudentCount, 2);
+
+  const retry = await call(path, { role: "administrator", method: "POST", body });
+  assert.equal(retry.status, 200);
+  assert.deepEqual(retry.body.created, []);
+  assert.deepEqual(retry.body.skipped.sort(), courses.map(({ code }) => code).sort());
+  assert.equal(await CourseOffering.countDocuments({ term: target._id }), 2);
+});
+
+test("C2 Req 74–78 resumes partial drafts and reserves, changes, and releases seats", async () => {
+  const offering = offerings[0];
+  offering.slots[0].capacity = 1;
+  offering.slots.push({ componentType: "lab", groupNumber: "L1", day: "Tuesday", startMinute: 600, endMinute: 660, room: "LAB", capacity: 1 });
+  await offering.save();
+  const path = `/schedules/advising/${profiles.advising._id}/draft?termId=${term.code}`;
+  const selection = (groupNumber) => [{ courseOffering: String(offering._id), groups: groupNumber ? [{ componentType: "lecture", groupNumber }] : [] }];
+  const save = (version, groupNumber, submitForReview = false) => call(path, {
+    role: "advisor", method: "PUT", body: { version, courses: selection(groupNumber), submitForReview },
+  });
+  const counts = async () => (await CourseOffering.findById(offering._id)).slots.map((slot) => slot.assignedStudentCount);
+
+  assert.equal((await save(0)).status, 201);
+  const resumed = await call(path, { role: "coordinator" });
+  assert.deepEqual(resumed.body.schedule.courses, selection());
+  assert.deepEqual(resumed.body.validationIssues.map(({ code }) => code), ["missingSlot", "missingSlot"]);
+  assert.equal((await save(1, "1", true)).status, 409);
+  assert.deepEqual(await counts(), [0, 0, 0, 0]);
+  assert.equal((await save(1, "1")).status, 200);
+  const assigned = await call(path, { role: "advisor" });
+  assert.deepEqual(assigned.body.schedule.courses, selection("1"));
+  const lecture = assigned.body.offerings.find(({ _id }) => _id === String(offering._id)).groups[0];
+  assert.equal(lecture.availableSeats, 0);
+  assert.equal(lecture.slots[0].remainingCapacity, 0);
+  assert.equal(lecture.reservedForStudent, true);
+
+  assert.equal((await save(2, "1")).status, 200, "retaining the last reserved seat succeeds");
+  assert.deepEqual(await counts(), [1, 0, 0, 0]);
+  assert.equal((await save(3, "2")).status, 200);
+  assert.deepEqual(await counts(), [0, 1, 0, 0]);
+  assert.equal((await save(4)).status, 200);
+  assert.deepEqual(await counts(), [0, 0, 0, 0]);
+  assert.deepEqual((await call(path, { role: "advisor" })).body.schedule.courses, selection());
+});
+
+test("C2 Req 76–77 concurrent draft edits award the last seat once and roll back the losing edit", async () => {
+  const otherUser = await User.create({ email: "other@student.guc.edu.eg", fullName: "Other Student", passwordHash: "test-hash", role: "advisingStudent" });
+  const other = await StudentProfile.create({ user: otherUser._id, studentId: "49-00002", studentType: "advising", advisingReason: "probation", major: "CS", currentSemester: 5, gpa: 2, academicStanding: "probation" });
+  const offering = offerings[0];
+  await CourseOffering.updateOne({ _id: offering._id }, { $set: { "slots.0.capacity": 1 } });
+  const save = (student, version, groupNumber) => call(`/schedules/advising/${student._id}/draft?termId=${term.code}`, {
+    role: "coordinator", method: "PUT", body: { version, courses: [{ courseOffering: String(offering._id), groups: [{ componentType: "lecture", groupNumber }] }] },
+  });
+  const students = [profiles.advising, other];
+  for (const [index, student] of students.entries()) assert.equal((await save(student, 0, String(index + 2))).status, 201);
+  const race = await Promise.all(students.map((student) => save(student, 1, "1")));
+  assert.deepEqual(race.map(({ status }) => status).sort(), [200, 409]);
+  const loser = race.findIndex(({ status }) => status === 409);
+  assert.match(race[loser].body.message, /is full/);
+  const saved = await StudentSchedule.findOne({ student: students[loser]._id, term: term._id });
+  assert.equal(saved.version, 1);
+  assert.equal(String(saved.courses[0].slots[0].slotGroupId), String(offering.slots[loser + 1]._id));
+  const updated = await CourseOffering.findById(offering._id);
+  assert.deepEqual(updated.slots.map((slot) => slot.assignedStudentCount), loser === 0 ? [1, 1, 0] : [1, 0, 1]);
+});
+
+test("C2 Req 79 previews simultaneous issues without mutating the draft or reserving seats", async () => {
+  const required = await Course.create({ code: "REQ 100", name: "Required Course", creditHours: 4, courseType: "core" });
+  await CourseAttempt.create({ student: profiles.advising._id, course: required._id, term: term._id, attendance: "attended", result: "failed", grade: "F" });
+  await Course.updateOne({ _id: courses[0]._id }, { $set: { prerequisites: [required._id], creditHours: 22 } });
+  offerings[0].slots[0].assignedStudentCount = 2;
+  offerings[0].slots.push({ componentType: "tutorial", groupNumber: "T1", day: "Monday", startMinute: 600, endMinute: 660, room: "T1", capacity: 2 });
+  await offerings[0].save();
+  await CourseOffering.updateOne({ _id: offerings[1]._id }, { $set: { "slots.0.day": "Saturday" } });
+  const draftOffering = await CourseOffering.create({ course: required._id, term: term._id, academicYear: term.academicYear });
+  const selected = [
+    ...offerings.map((offering) => ({ courseOffering: String(offering._id), groups: [{ componentType: "lecture", groupNumber: "1" }] })),
+    { courseOffering: String(draftOffering._id), groups: [] },
+  ];
+  const path = `/schedules/advising/${profiles.advising._id}/draft/validate?termId=${term.code}`;
+  const result = await call(path, { role: "advisor", method: "POST", body: { courses: selected } });
+  assert.equal(result.status, 200);
+  assert.deepEqual(result.body.validationIssues.map(({ code }) => code).sort(), [
+    "capacity", "creditHours", "missingMandatoryCourse", "missingSlot", "prerequisites", "timetableClash", "unavailableOffering",
+  ]);
+  assert.equal((await call(path, { role: "advisingStudent", method: "POST", body: { courses: selected } })).status, 403);
+  assert.equal(await StudentSchedule.countDocuments({}), 0);
+  assert.equal((await CourseOffering.findById(offerings[1]._id)).slots[0].assignedStudentCount, 0);
 });
 
 test("assignment rejects inactive/non-normal students, unknown terms, unpublished templates and full slots", async () => {
