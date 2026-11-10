@@ -106,6 +106,16 @@ const extraHoursCourseSchema = new Schema(
   { _id: false },
 );
 
+const extraHoursHistorySchema = new Schema({
+  action: { type: String, required: true, enum: ["submitted", "approved", "rejected", "withdrawn", "paymentChoice", "paymentAttempt", "paid", "deferred"] },
+  actor: ref("User", { default: null }),
+  note: { type: String, trim: true, maxlength: 1000 },
+  settlementOption: { type: String, enum: ["wallet", "gateway", "deferred", null], default: null },
+  settlementStatus: { type: String, enum: ["none", "awaitingChoice", "paid", "deferred", "failed", "cancelled", "refunded", null], default: null },
+  amount: { type: Number, min: 0 },
+  occurredAt: { type: Date, default: Date.now },
+}, { _id: true });
+
 const extraHoursRequestSchema = withTimestamps({
   student: ref("StudentProfile", { required: true }),
   advisor: ref("User", { required: true, index: true }),
@@ -141,6 +151,7 @@ const extraHoursRequestSchema = withTimestamps({
     default: "none",
   },
   settlementOption: { type: String, enum: ["wallet", "gateway", "deferred", null], default: null },
+  history: { type: [extraHoursHistorySchema], default: [] },
 });
 
 extraHoursRequestSchema.index({ term: 1, decisionStatus: 1, settlementStatus: 1, createdAt: -1 });
