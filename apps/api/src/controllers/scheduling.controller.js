@@ -1,8 +1,8 @@
 import mongoose from "mongoose";
 import { AcademicTerm, Course, CourseOffering } from "../models/catalogue.js";
 import { StudentProfile, User } from "../models/identity.js";
-import { CourseAttempt, ScheduleTemplate, SchedulingPreference, StudentSchedule } from "../models/academics.js";
-import { ExtraHoursRequest, MandatoryCourseRemovalRequest, WholeScheduleSwapRequest } from "../models/requests.js";
+import { CourseAttempt, ScheduleTemplate, SchedulingPreference, StudentSchedule, StudentWorkflowState } from "../models/academics.js";
+import { ExtraHoursRequest, MandatoryCourseRemovalRequest, SlotChangeRequest, WholeScheduleSwapRequest } from "../models/requests.js";
 import { ScheduleActivity } from "../models/communications.js";
 import { calculateDraftCreditPolicy } from "../utils/credit-allowance.js";
 import { majorMatches } from "../utils/major.js";
@@ -277,11 +277,48 @@ export async function processAdvisingSchedule(req, res) {
   if (termResult.error) return res.status(termResult.error.status).json({ message: termResult.error.message });
   const schedule = await StudentSchedule.findOne({ student: student._id, term: termResult.term._id, scheduleType: "advising" });
   if (!schedule || schedule.status !== "readyForStudentReview") return res.status(409).json({ message: "Only a schedule ready for student review can be processed" });
+
+  const pendingSlotChange = await SlotChangeRequest.findOne({
+    student: student._id,
+    term: termResult.term._id,
+    status: "pending",
+  });
+  if (pendingSlotChange) {
+    return res.status(400).json({ message: "Cannot process: Student has a pending slot-change request" });
+  }
+
+  const unresolvedExtraHours = await ExtraHoursRequest.findOne({
+    student: student._id,
+    term: termResult.term._id,
+    $or: [
+      { decisionStatus: "pending" },
+      { settlementStatus: "awaitingChoice" },
+    ],
+  });
+  if (unresolvedExtraHours) {
+    return res.status(400).json({ message: "Cannot process: Student has an unresolved extra-hours approval or payment choice" });
+  }
+
   schedule.status = "processed";
   schedule.processedBy = req.user._id;
   schedule.processedAt = new Date();
   await schedule.save();
-  await ScheduleActivity.create({ student: student._id, term: schedule.term, schedule: schedule._id, action: "processed", scheduleVersion: schedule.version, actor: req.user._id, actorName: req.user.fullName, actorEmail: req.user.email, actorRole: req.user.role });
+
+  await ScheduleActivity.create({ student: student._id, term: schedule.term, schedule: schedule._id, action: "processed", scheduleVersion: schedule.version, actor: req.user._id, actorName: req.user.fullName, actorEmail: req.user.email, actorRole: req.user.role, occurredAt: new Date() });
+
+  await StudentWorkflowState.findOneAndUpdate(
+    { student: student._id, term: termResult.term._id },
+    {
+      $set: {
+        status: "processed",
+        studentType: "advising",
+        lastActivityAt: new Date(),
+        calculatedAt: new Date(),
+      },
+    },
+    { upsert: true }
+  );
+
   res.json({ message: "Advising schedule processed", schedule });
 }
 
@@ -301,7 +338,22 @@ export async function reopenAdvisingSchedule(req, res) {
   schedule.processedBy = null;
   schedule.processedAt = null;
   await schedule.save();
-  await ScheduleActivity.create({ student: student._id, term: schedule.term, schedule: schedule._id, action: "reopened", scheduleVersion: schedule.version, actor: req.user._id, actorName: req.user.fullName, actorEmail: req.user.email, actorRole: req.user.role, reason });
+
+  await ScheduleActivity.create({ student: student._id, term: schedule.term, schedule: schedule._id, action: "reopened", scheduleVersion: schedule.version, actor: req.user._id, actorName: req.user.fullName, actorEmail: req.user.email, actorRole: req.user.role, reason, occurredAt: new Date() });
+
+  await StudentWorkflowState.findOneAndUpdate(
+    { student: student._id, term: termResult.term._id },
+    {
+      $set: {
+        status: "draft",
+        studentType: "advising",
+        lastActivityAt: new Date(),
+        calculatedAt: new Date(),
+      },
+    },
+    { upsert: true }
+  );
+
   res.json({ message: "Advising schedule reopened", schedule });
 }
 
@@ -827,6 +879,20 @@ export async function saveAdvisingDraft(req, res, next) {
         const [schedule] = await StudentSchedule.create([{
           student: student._id, term: term._id, scheduleType: "advising", createdBy: req.user._id, ...changes,
         }], { session });
+        if (submitForReview) {
+          await StudentWorkflowState.findOneAndUpdate(
+            { student: student._id, term: term._id },
+            {
+              $set: {
+                status: "readyForStudentReview",
+                studentType: student.studentType || "advising",
+                lastActivityAt: new Date(),
+                calculatedAt: new Date(),
+              },
+            },
+            { upsert: true, session },
+          );
+        }
         return { schedule, created: true };
       }
       const schedule = await StudentSchedule.findOneAndUpdate(
@@ -835,6 +901,20 @@ export async function saveAdvisingDraft(req, res, next) {
         { session, returnDocument: "after", runValidators: true },
       );
       if (!schedule) throw draftError(409, "This draft changed while it was being saved. Reload it and try again.");
+      if (submitForReview) {
+        await StudentWorkflowState.findOneAndUpdate(
+          { student: student._id, term: term._id },
+          {
+            $set: {
+              status: "readyForStudentReview",
+              studentType: student.studentType || "advising",
+              lastActivityAt: new Date(),
+              calculatedAt: new Date(),
+            },
+          },
+          { upsert: true, session },
+        );
+      }
       return { schedule, created: false };
     });
     const message = submitForReview ? "Schedule saved and sent for student review." : created ? "Draft schedule created." : "Draft schedule updated.";
