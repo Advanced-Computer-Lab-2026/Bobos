@@ -18,8 +18,7 @@ export default function RequestRemovalModal({
 }) {
   const [students, setStudents] = useState([]);
   const [terms, setTerms] = useState([]);
-  const [catalogueCourses, setCatalogueCourses] = useState([]);
-  const [mandatoryCourses, setMandatoryCourses] = useState([]);
+  const [failedCourses, setFailedCourses] = useState([]);
 
   const [studentProfileId, setStudentProfileId] = useState(initialStudent?._id || "");
   const [termId, setTermId] = useState(initialTermId || "");
@@ -28,20 +27,19 @@ export default function RequestRemovalModal({
   const [explanation, setExplanation] = useState("");
 
   const [loadingInitial, setLoadingInitial] = useState(true);
-  const [loadingDraft, setLoadingDraft] = useState(false);
+  const [loadingCourses, setLoadingCourses] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
     let alive = true;
-    async function loadData() {
+    async function loadInitialData() {
       setLoadingInitial(true);
       setError("");
       try {
-        const [studentRes, termRes, courseRes] = await Promise.all([
+        const [studentRes, termRes] = await Promise.all([
           api("/api/advisor/students?limit=100", { token }).catch(() => ({ data: [] })),
           api("/api/academic-terms", { token }).catch(() => []),
-          api("/api/catalogue/courses", { token }).catch(() => ({ courses: [] })),
         ]);
 
         if (!alive) return;
@@ -58,44 +56,62 @@ export default function RequestRemovalModal({
         } else if (!termId && termList.length > 0) {
           setTermId(termList[0]._id);
         }
-
-        const courses = courseRes.courses || (Array.isArray(courseRes) ? courseRes : []);
-        setCatalogueCourses(courses);
       } catch (err) {
         if (alive) setError(explainApiError(err, "Initial data"));
       } finally {
         if (alive) setLoadingInitial(false);
       }
     }
-    loadData();
+    loadInitialData();
     return () => {
       alive = false;
     };
   }, [token, termId]);
 
-  const loadStudentDraftMandatory = useCallback(async (sid, tid) => {
-    if (!sid || !tid) {
-      setMandatoryCourses([]);
+  const loadFailedCourses = useCallback(async (sid, tid) => {
+    if (!sid) {
+      setFailedCourses([]);
+      setCourseId("");
       return;
     }
-    setLoadingDraft(true);
+    setLoadingCourses(true);
+    setError("");
     try {
-      const draft = await api(`/api/schedules/advising/${encodeURIComponent(sid)}/draft?termId=${encodeURIComponent(tid)}`, {
+      const termQuery = tid ? `?term=${encodeURIComponent(tid)}` : "";
+      const res = await api(`/api/identity/students/${encodeURIComponent(sid)}/failed-courses${termQuery}`, {
         token,
       });
-      setMandatoryCourses(draft.mandatoryCourses || []);
-    } catch {
-      setMandatoryCourses([]);
+      const list = Array.isArray(res) ? res : res.failedCourses || [];
+      setFailedCourses(list);
+      setCourseId((prev) => {
+        const exists = list.some((item) => {
+          const cId = String(item.course?._id || item.course || item._id);
+          return cId === String(prev);
+        });
+        if (exists) return prev;
+        if (list.length === 1) {
+          const first = list[0].course && typeof list[0].course === "object" ? list[0].course : list[0];
+          return String(first._id || list[0]._id);
+        }
+        return "";
+      });
+    } catch (err) {
+      setFailedCourses([]);
+      setCourseId("");
+      setError(explainApiError(err, "Failed courses"));
     } finally {
-      setLoadingDraft(false);
+      setLoadingCourses(false);
     }
   }, [token]);
 
   useEffect(() => {
-    if (studentProfileId && termId) {
-      loadStudentDraftMandatory(studentProfileId, termId);
+    if (studentProfileId) {
+      loadFailedCourses(studentProfileId, termId);
+    } else {
+      setFailedCourses([]);
+      setCourseId("");
     }
-  }, [studentProfileId, termId, loadStudentDraftMandatory]);
+  }, [studentProfileId, termId, loadFailedCourses]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -108,7 +124,7 @@ export default function RequestRemovalModal({
       return;
     }
     if (!courseId) {
-      setError("Please select a course to remove.");
+      setError("Please select a mandatory course to remove.");
       return;
     }
     if (!reason) {
@@ -145,6 +161,8 @@ export default function RequestRemovalModal({
     }
   };
 
+  const hasNoMandatoryCourses = Boolean(studentProfileId && !loadingCourses && failedCourses.length === 0);
+
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div
@@ -167,6 +185,12 @@ export default function RequestRemovalModal({
         {error && (
           <div className="feedback error" role="alert" style={{ marginBottom: "14px" }}>
             {error}
+          </div>
+        )}
+
+        {hasNoMandatoryCourses && (
+          <div className="feedback warning" role="alert" style={{ marginBottom: "14px" }}>
+            This student has no mandatory (failed or unattended) courses to remove.
           </div>
         )}
 
@@ -223,30 +247,39 @@ export default function RequestRemovalModal({
             </label>
 
             <label className="field">
-              <span>Course to remove * {loadingDraft && <small>(loading student requirements…)</small>}</span>
+              <span>
+                Mandatory course to remove *{" "}
+                {loadingCourses && <small>(loading failed/unattended courses…)</small>}
+              </span>
               <select
                 value={courseId}
                 onChange={(e) => setCourseId(e.target.value)}
                 required
-                disabled={submitting}
+                disabled={submitting || loadingCourses || hasNoMandatoryCourses || !studentProfileId}
               >
-                <option value="">— Select course to remove —</option>
-                {mandatoryCourses.length > 0 && (
-                  <optgroup label="Failed / Mandatory Courses for Student">
-                    {mandatoryCourses.map((mc) => (
-                      <option key={mc._id} value={mc._id}>
-                        ★ {mc.code} — {mc.name} ({mc.creditHours} cr)
-                      </option>
-                    ))}
-                  </optgroup>
-                )}
-                <optgroup label="All Catalogue Courses">
-                  {catalogueCourses.map((c) => (
-                    <option key={c._id} value={c._id}>
-                      {c.code} — {c.name} ({c.creditHours} cr)
+                <option value="">
+                  {loadingCourses
+                    ? "— Loading mandatory courses… —"
+                    : !studentProfileId
+                    ? "— Select a student first —"
+                    : hasNoMandatoryCourses
+                    ? "— No mandatory courses available —"
+                    : "— Select failed or unattended course —"}
+                </option>
+                {failedCourses.map((item) => {
+                  const c = item.course && typeof item.course === "object" ? item.course : item;
+                  const cId = String(c._id || item._id);
+                  const code = c.code || "Course";
+                  const name = c.name || "";
+                  const cr = c.creditHours != null ? `${c.creditHours} cr` : "";
+                  const tag = item.attendance === "unattended" ? "Unattended" : "Failed";
+                  const grade = item.grade ? ` · Grade: ${item.grade}` : "";
+                  return (
+                    <option key={cId} value={cId}>
+                      {code} — {name} ({cr}) [{tag}{grade}]
                     </option>
-                  ))}
-                </optgroup>
+                  );
+                })}
               </select>
             </label>
 
@@ -256,7 +289,7 @@ export default function RequestRemovalModal({
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 required
-                disabled={submitting}
+                disabled={submitting || hasNoMandatoryCourses}
               >
                 {REASON_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -275,14 +308,17 @@ export default function RequestRemovalModal({
                 maxLength={2000}
                 placeholder="Explain the academic justification for removing this course from the student's mandatory schedule for this term..."
                 required
-                disabled={submitting}
+                disabled={submitting || hasNoMandatoryCourses}
               />
               <small className="secondary-text" style={{ textAlign: "right" }}>
                 {explanation.length} / 2000 characters
               </small>
             </label>
 
-            <div className="form-actions" style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "10px" }}>
+            <div
+              className="form-actions"
+              style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "10px" }}
+            >
               <button
                 type="button"
                 className="outline-button"
@@ -294,7 +330,15 @@ export default function RequestRemovalModal({
               <button
                 type="submit"
                 className="primary-button"
-                disabled={submitting || !studentProfileId || !termId || !courseId || !explanation.trim()}
+                disabled={
+                  submitting ||
+                  loadingCourses ||
+                  hasNoMandatoryCourses ||
+                  !studentProfileId ||
+                  !termId ||
+                  !courseId ||
+                  !explanation.trim()
+                }
               >
                 {submitting ? "Submitting…" : "Submit Removal Request"}
               </button>

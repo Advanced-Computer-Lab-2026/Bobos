@@ -862,7 +862,8 @@ export async function saveAdvisingDraft(req, res, next) {
     if (!context) return;
     const { student, term } = context;
     const status = submitForReview ? "readyForStudentReview" : "draft";
-    const { schedule, created } = await mongoose.connection.transaction(async (session) => {
+    const isSingle = mongoose.connection.client?.topology?.description?.type === 'Single';
+    const executeSave = async (session) => {
       const data = await loadDraftData(student, term, session);
       const existing = data.storedSchedule;
       if (existing && existing.status !== "draft") {
@@ -875,10 +876,11 @@ export async function saveAdvisingDraft(req, res, next) {
 
       await updateDraftReservations(existing, courses, session);
       const changes = { courses, status, seatsReserved: true };
+      const sessOpt = session ? { session } : {};
       if (!existing) {
         const [schedule] = await StudentSchedule.create([{
           student: student._id, term: term._id, scheduleType: "advising", createdBy: req.user._id, ...changes,
-        }], { session });
+        }], sessOpt);
         if (submitForReview) {
           await StudentWorkflowState.findOneAndUpdate(
             { student: student._id, term: term._id },
@@ -890,7 +892,7 @@ export async function saveAdvisingDraft(req, res, next) {
                 calculatedAt: new Date(),
               },
             },
-            { upsert: true, session },
+            { upsert: true, ...sessOpt },
           );
         }
         return { schedule, created: true };
@@ -898,7 +900,7 @@ export async function saveAdvisingDraft(req, res, next) {
       const schedule = await StudentSchedule.findOneAndUpdate(
         { _id: existing._id, version, status: "draft" },
         { $set: changes, $inc: { version: 1 } },
-        { session, returnDocument: "after", runValidators: true },
+        { returnDocument: "after", runValidators: true, ...sessOpt },
       );
       if (!schedule) throw draftError(409, "This draft changed while it was being saved. Reload it and try again.");
       if (submitForReview) {
@@ -912,11 +914,14 @@ export async function saveAdvisingDraft(req, res, next) {
               calculatedAt: new Date(),
             },
           },
-          { upsert: true, session },
+          { upsert: true, ...sessOpt },
         );
       }
       return { schedule, created: false };
-    });
+    };
+    const { schedule, created } = isSingle
+      ? await executeSave(null)
+      : await mongoose.connection.transaction(executeSave);
     const message = submitForReview ? "Schedule saved and sent for student review." : created ? "Draft schedule created." : "Draft schedule updated.";
     res.status(created ? 201 : 200).json({ message, schedule });
   } catch (error) { sendDraftError(error, res, next); }
@@ -934,7 +939,7 @@ async function updateDraftReservations(existing, courses, session) {
     const result = await CourseOffering.updateOne(
       { _id: offeringId, ...(newRef ? { isPublished: true } : {}), "slots._id": slotId },
       { $inc: { __v: 1, ...(delta ? { "slots.$.assignedStudentCount": delta } : {}) } },
-      { session },
+      session ? { session } : {},
     );
     // A retained slot still gets a write so a concurrent change to the
     // offering invalidates the snapshot used for timetable/capacity validation.
@@ -942,7 +947,8 @@ async function updateDraftReservations(existing, courses, session) {
       throw draftError(409, "A selected slot changed while saving. Reload the draft and try again.");
     }
     if (delta < 0 && result.matchedCount) {
-      const invalid = await CourseOffering.exists({ _id: offeringId, slots: { $elemMatch: { _id: slotId, assignedStudentCount: { $lt: 0 } } } }).session(session);
+      const existsQuery = CourseOffering.exists({ _id: offeringId, slots: { $elemMatch: { _id: slotId, assignedStudentCount: { $lt: 0 } } } });
+      const invalid = await (session ? existsQuery.session(session) : existsQuery);
       if (invalid) throw draftError(409, "A previous slot has an inconsistent seat count. Contact an administrator.");
     }
   }

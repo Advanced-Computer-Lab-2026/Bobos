@@ -58,6 +58,7 @@ app.use("/api/schedules", scheduleRoutes);
 app.use("/api/calendar", calendarRoutes);
 app.use("/api/swaps", swapRoutes);
 app.use("/api/advising/mandatory-removal-requests", mandatoryRemovalRoutes);
+app.use("/api/mandatory-removals", mandatoryRemovalRoutes);
 app.get("/api/profile", requireAuth, getProfile);
 app.get("/api/health", (_req, res) => {
   res.json({

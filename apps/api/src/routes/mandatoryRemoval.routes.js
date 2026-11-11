@@ -15,5 +15,6 @@ router.post("/", requireRole("advisor", "coordinator"), createMandatoryRemovalRe
 router.get("/", requireRole("coordinator", "advisor", "administrator"), listMandatoryRemovalRequests);
 router.get("/:id", requireRole("coordinator", "advisor", "administrator"), getMandatoryRemovalRequestById);
 router.patch("/:id/decision", requireRole("coordinator", "administrator"), decideMandatoryRemovalRequest);
+router.put("/:id/decision", requireRole("coordinator", "administrator"), decideMandatoryRemovalRequest);
 
 export default router;

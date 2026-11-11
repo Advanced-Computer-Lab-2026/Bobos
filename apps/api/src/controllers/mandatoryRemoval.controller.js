@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 import { MandatoryCourseRemovalRequest } from "../models/requests.js";
 import { StudentProfile, User } from "../models/identity.js";
 import { Course, CourseOffering, AcademicTerm } from "../models/catalogue.js";
-import { StudentSchedule } from "../models/academics.js";
+import { StudentSchedule, CourseAttempt } from "../models/academics.js";
 
 const VALID_REASONS = [
   "incorrectMandatoryDesignation",
@@ -73,6 +73,17 @@ export async function createMandatoryRemovalRequest(req, res) {
     if (existingPending) {
       return res.status(409).json({
         message: "A pending removal request for this course already exists for this student and term.",
+      });
+    }
+
+    const failedOrUnattended = await CourseAttempt.findOne({
+      student: student._id,
+      course: course._id,
+      $or: [{ result: "failed" }, { attendance: "unattended" }],
+    });
+    if (!failedOrUnattended) {
+      return res.status(400).json({
+        message: "Course is not in the student's failed or unattended history.",
       });
     }
 
