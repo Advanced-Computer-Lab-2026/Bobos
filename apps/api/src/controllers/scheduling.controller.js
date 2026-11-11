@@ -3,6 +3,7 @@ import { AcademicTerm, Course, CourseOffering } from "../models/catalogue.js";
 import { StudentProfile, User } from "../models/identity.js";
 import { CourseAttempt, ScheduleTemplate, SchedulingPreference, StudentSchedule } from "../models/academics.js";
 import { ExtraHoursRequest, MandatoryCourseRemovalRequest, WholeScheduleSwapRequest } from "../models/requests.js";
+import { ScheduleActivity } from "../models/communications.js";
 import { calculateDraftCreditPolicy } from "../utils/credit-allowance.js";
 import { majorMatches } from "../utils/major.js";
 import { buildWeeklyCalendar } from "../../../../server/src/utils/weeklyCalendar.js";
@@ -265,6 +266,43 @@ async function resolveStoredSchedule(schedule) {
     });
   }
   return { entries };
+}
+
+export async function processAdvisingSchedule(req, res) {
+  if (!isId(req.params.studentId)) return res.status(400).json({ message: "Invalid student ID" });
+  const student = await StudentProfile.findById(req.params.studentId).select("_id studentType assignedAdvisor studentId");
+  if (!student || student.studentType !== "advising") return res.status(404).json({ message: "Advising student not found" });
+  if (req.user.role === "advisor" && idOf(student.assignedAdvisor) !== idOf(req.user._id)) return res.status(403).json({ message: "You may only process schedules for your assigned students" });
+  const termResult = await resolveTerm(req.body?.termId);
+  if (termResult.error) return res.status(termResult.error.status).json({ message: termResult.error.message });
+  const schedule = await StudentSchedule.findOne({ student: student._id, term: termResult.term._id, scheduleType: "advising" });
+  if (!schedule || schedule.status !== "readyForStudentReview") return res.status(409).json({ message: "Only a schedule ready for student review can be processed" });
+  schedule.status = "processed";
+  schedule.processedBy = req.user._id;
+  schedule.processedAt = new Date();
+  await schedule.save();
+  await ScheduleActivity.create({ student: student._id, term: schedule.term, schedule: schedule._id, action: "processed", scheduleVersion: schedule.version, actor: req.user._id, actorName: req.user.fullName, actorEmail: req.user.email, actorRole: req.user.role });
+  res.json({ message: "Advising schedule processed", schedule });
+}
+
+export async function reopenAdvisingSchedule(req, res) {
+  if (!isId(req.params.studentId)) return res.status(400).json({ message: "Invalid student ID" });
+  const reason = typeof req.body?.reason === "string" ? req.body.reason.trim() : "";
+  if (!reason || reason.length > 2000) return res.status(400).json({ message: "Provide a reopening reason of at most 2,000 characters" });
+  const student = await StudentProfile.findById(req.params.studentId).select("_id studentType assignedAdvisor");
+  if (!student || student.studentType !== "advising") return res.status(404).json({ message: "Advising student not found" });
+  if (req.user.role === "advisor" && idOf(student.assignedAdvisor) !== idOf(req.user._id)) return res.status(403).json({ message: "You may only reopen schedules for your assigned students" });
+  const termResult = await resolveTerm(req.body?.termId);
+  if (termResult.error) return res.status(termResult.error.status).json({ message: termResult.error.message });
+  const schedule = await StudentSchedule.findOne({ student: student._id, term: termResult.term._id, scheduleType: "advising" });
+  if (!schedule || schedule.status !== "processed") return res.status(409).json({ message: "Only a processed advising schedule can be reopened" });
+  schedule.status = "draft";
+  schedule.version += 1;
+  schedule.processedBy = null;
+  schedule.processedAt = null;
+  await schedule.save();
+  await ScheduleActivity.create({ student: student._id, term: schedule.term, schedule: schedule._id, action: "reopened", scheduleVersion: schedule.version, actor: req.user._id, actorName: req.user.fullName, actorEmail: req.user.email, actorRole: req.user.role, reason });
+  res.json({ message: "Advising schedule reopened", schedule });
 }
 
 function accessToSchedule(viewer, student, schedule) {
