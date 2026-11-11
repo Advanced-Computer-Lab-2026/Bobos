@@ -135,7 +135,6 @@ export function StudentSchedulingPage({ token, section }) {
   const [schedule, setSchedule] = useState(null);
   const [courses, setCourses] = useState(null);
   const [courseDetails, setCourseDetails] = useState(null);
-  const [swapData, setSwapData] = useState(null);
   const [selectedCourse, setSelectedCourse] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -143,13 +142,12 @@ export function StudentSchedulingPage({ token, section }) {
 
   const loadSchedule = useCallback(() => api("/api/schedules/me", { token }), [token]);
   useEffect(() => {
+    if (section === "schedule-swap") return;
     let alive = true;
     setLoading(true); setError("");
-    const tasks = section === "schedule-swap"
-      ? api("/api/swaps/eligible-groups", { token }).then((data) => alive && setSwapData(data))
-      : section === "my-courses"
-        ? api("/api/schedules/me/courses", { token }).then((data) => { if (alive) setCourses(data); })
-        : loadSchedule().then((data) => { if (alive) setSchedule(data); });
+    const tasks = section === "my-courses"
+      ? api("/api/schedules/me/courses", { token }).then((data) => { if (alive) setCourses(data); })
+      : loadSchedule().then((data) => { if (alive) setSchedule(data); });
     tasks.catch((err) => alive && setError(err.message)).finally(() => alive && setLoading(false));
     return () => { alive = false; };
   }, [token, section, loadSchedule]);
@@ -175,8 +173,9 @@ export function StudentSchedulingPage({ token, section }) {
     finally { setDownloadBusy(false); }
   }
 
+  if (section === "schedule-swap") return <SwapManagement token={token} />;
   if (loading) return <Loading />;
-  const titles = { "my-schedule": ["MY SCHEDULE", "My weekly schedule"], "my-courses": ["REGISTERED COURSES", "Registered courses"], "schedule-swap": ["SCHEDULE GROUPS", "Eligible schedule groups"] };
+  const titles = { "my-schedule": ["MY SCHEDULE", "My weekly schedule"], "my-courses": ["REGISTERED COURSES", "Registered courses"] };
   const [eyebrow, title] = titles[section] || titles["my-schedule"];
   const scheduleNotReleased = section === "my-schedule" && error === "No schedule is available to view yet.";
   return <div className="page-stack scheduling-page">
@@ -195,11 +194,26 @@ export function StudentSchedulingPage({ token, section }) {
       </section>
       {courseDetails && <CourseDetailPanel details={courseDetails} />}
     </>}
-    {section === "schedule-swap" && swapData && <SwapManagement token={token} data={swapData} onChanged={async () => setSwapData(await api("/api/swaps/eligible-groups", { token }))} />}
   </div>;
 }
 
-function SwapManagement({ token, data, onChanged }) {
+const swapStatuses = {
+  open: { label: "Open", tone: "good" },
+  completed: { label: "Completed", tone: "good" },
+  withdrawn: { label: "Withdrawn", tone: "muted" },
+  expired: { label: "Expired", tone: "warning" },
+};
+
+function swapGroup(group) {
+  return group == null ? "—" : `Group ${group}`;
+}
+
+function swapGroups(groups) {
+  return groups?.length ? groups.map(swapGroup).join(", ") : "—";
+}
+
+function SwapManagement({ token }) {
+  const [data, setData] = useState(null);
   const [mine, setMine] = useState([]);
   const [open, setOpen] = useState([]);
   const [selected, setSelected] = useState([]);
@@ -208,62 +222,204 @@ function SwapManagement({ token, data, onChanged }) {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(true);
-  const deadlinePassed = !data.term?.swapDeadline || new Date(data.term.swapDeadline).getTime() <= Date.now();
-  const active = mine.find(request => request.status === "open");
+  const [loadErrors, setLoadErrors] = useState({});
+  const deadline = data?.term?.swapDeadline;
+  const deadlinePassed = !deadline || new Date(deadline).getTime() <= Date.now();
+  const active = mine.find(request => request.role !== "accepter" && request.status === "open");
+  const confirmingWithdrawal = confirm?.action === "withdraw";
+  const submissionDisabled = busy || loading || Boolean(active) || deadlinePassed;
 
-  const refresh = useCallback(async () => {
-    const [myData, openData] = await Promise.all([
-      api("/api/swaps/requests/me", { token }),
-      api("/api/swaps/requests/open", { token }),
+  const refresh = useCallback(async (signal) => {
+    setLoading(true);
+    const [scheduleResult, historyResult, openResult] = await Promise.allSettled([
+      api("/api/swaps/eligible-groups", { token, signal }),
+      api("/api/swaps/requests/me", { token, signal }),
+      api("/api/swaps/requests/open", { token, signal }),
     ]);
-    setMine(myData.requests || []);
-    setOpen(openData.requests || []);
+    if (signal?.aborted) return;
+    const scheduleData = scheduleResult.status === "fulfilled" ? scheduleResult.value : null;
+    const eligibleGroups = new Set(scheduleData?.eligibleGroups?.map(group => group.studyGroup));
+    setData(scheduleData);
+    setSelected(previous => previous.filter(group => eligibleGroups.has(group)));
+    setMine(historyResult.status === "fulfilled" ? historyResult.value.requests || [] : []);
+    setOpen(openResult.status === "fulfilled" ? openResult.value.requests || [] : []);
+    setLoadErrors({
+      schedule: scheduleResult.status === "rejected" ? scheduleResult.reason : null,
+      history: historyResult.status === "rejected" ? historyResult.reason.message : "",
+      open: openResult.status === "rejected" ? openResult.reason.message : "",
+    });
+    setLoading(false);
   }, [token]);
   useEffect(() => {
-    let alive = true;
-    setLoading(true);
-    refresh().catch(err => alive && setError(err.message)).finally(() => alive && setLoading(false));
-    return () => { alive = false; };
+    const controller = new AbortController();
+    void refresh(controller.signal);
+    return () => controller.abort();
   }, [refresh]);
 
   async function perform(path, body) {
-    setBusy(true); setError(""); setNotice("");
+    if (busy || loading) return;
+    setBusy(true);
+    setError("");
+    setNotice("");
     try {
       const result = await api(path, { token, method: "POST", body });
       setNotice(result.message);
       setSelected([]);
       setConfirm(null);
-      await Promise.all([refresh(), onChanged()]);
-    } catch (err) { setError(err.message); }
-    finally { setBusy(false); }
+      await refresh();
+    } catch (err) {
+      setError(err.message);
+      if (err.status === 404 || err.status === 409) {
+        setConfirm(null);
+        await refresh();
+      }
+    } finally {
+      setBusy(false);
+    }
   }
 
   function toggle(group) {
     setSelected(previous => previous.includes(group) ? previous.filter(item => item !== group) : [...previous, group]);
   }
 
-  return <>
-    {error && <Feedback tone="error">{error}</Feedback>}
+  function openConfirmation(action, request) {
+    setError("");
+    setConfirm({ action, request });
+  }
+
+  function closeConfirmation() {
+    setConfirm(null);
+    setError("");
+  }
+
+  function submitRequest() {
+    const query = data?.term?._id ? `?termId=${encodeURIComponent(data.term._id)}` : "";
+    void perform(`/api/swaps/requests${query}`, { desiredGroups: selected });
+  }
+
+  function refreshPage() {
+    setError("");
+    setNotice("");
+    void refresh();
+  }
+
+  return <div className="page-stack scheduling-page">
+    <div className="page-title-row">
+      <div><p className="eyebrow">SCHEDULE GROUPS</p><h1>Eligible schedule groups</h1></div>
+      <button className="outline-button" type="button" disabled={busy || loading} onClick={refreshPage}>Refresh</button>
+    </div>
+    {error && !confirm && <Feedback tone="error">{error}</Feedback>}
     {notice && <Feedback tone="success">{notice}</Feedback>}
-    <section className="panel current-group-panel"><div><p className="eyebrow">Your current group</p><h2>Group {data.currentGroup?.studyGroup || "—"}</h2><p className="page-description">{data.currentGroup?.major} · semester {data.currentGroup?.semester} · {data.currentGroup?.totalCreditHours} credit hours</p></div><div className="swap-deadline"><small>Swap deadline</small><strong>{data.term?.swapDeadline ? new Date(data.term.swapDeadline).toLocaleDateString() : "Not set"}</strong></div></section>
-    <section className="panel"><div className="results-heading"><div><p className="eyebrow">Destination groups</p><h2>Request a whole schedule swap</h2></div></div>
-      <p className="page-description">Select one or more groups with exactly your registered courses. A student in a selected group can complete the exchange.</p>
-      {active && <Feedback tone="info">Your request is open for Group {active.desiredGroups.join(", Group ")}. Withdraw it before making a different request.</Feedback>}
-      {data.eligibleGroups?.length ? <div className="swap-group-grid">{data.eligibleGroups.map(group => <section className="swap-option" key={group.templateId}>
-        <label className="swap-option-heading"><input type="checkbox" checked={selected.includes(group.studyGroup)} disabled={busy || Boolean(active) || deadlinePassed} onChange={() => toggle(group.studyGroup)} /><span><strong>Group {group.studyGroup}</strong><small>{group.courseCodes.length} courses · {group.totalCreditHours} credit hours · {group.minRemainingCapacity ?? 0} seats available</small></span></label>
-        <WeeklySchedule week={group.week} daysOff={group.daysOff} compact />
-      </section>)}</div> : <Empty title="No eligible groups" text="The other published groups must contain exactly the same registered courses as your current schedule." />}
-      {deadlinePassed && <Feedback tone="warning">The swap deadline has passed.</Feedback>}
-      <div className="form-footer"><button className="primary-button" type="button" disabled={busy || Boolean(active) || deadlinePassed || !selected.length} onClick={() => perform("/api/swaps/requests", { desiredGroups: selected })}>{busy ? "Submitting…" : "Submit swap request"}</button></div>
+    {!data && !loading && loadErrors.schedule && (
+      <Feedback tone={loadErrors.schedule.status === 404 ? "info" : "error"}>{loadErrors.schedule.message}</Feedback>
+    )}
+    {data?.currentGroup && (
+      <section className="panel" aria-labelledby="current-swap-schedule">
+        <div className="results-heading">
+          <h2 id="current-swap-schedule">Your current weekly schedule</h2>
+        </div>
+        <WeeklySchedule
+          week={data.currentGroup.week}
+          daysOff={data.currentGroup.daysOff}
+        />
+      </section>
+    )}
+    {data && <>
+      <section className="panel current-group-panel">
+        <div>
+          <p className="eyebrow">Your current group</p>
+          <h2>{swapGroup(data.currentGroup?.studyGroup)}</h2>
+          <p className="page-description">{data.currentGroup?.major} · semester {data.currentGroup?.semester} · {data.currentGroup?.totalCreditHours} credit hours</p>
+        </div>
+        <div className="swap-deadline"><small>Swap deadline</small><strong>{deadline ? new Date(deadline).toLocaleDateString() : "Not set"}</strong></div>
+      </section>
+      <section className="panel">
+        <div className="results-heading"><div><p className="eyebrow">Destination groups</p><h2>Request a whole schedule swap</h2></div></div>
+        <p className="page-description">Select one or more groups with exactly your registered courses. A student in a selected group can complete the exchange.</p>
+        {active && <Feedback tone="info">Your request for {swapGroups(active.desiredGroups)} is open{active.term?.code ? ` in ${active.term.code}` : ""}. Withdraw it before making a different request.</Feedback>}
+        {data.eligibleGroups?.length ? <div className="swap-group-grid">
+          {data.eligibleGroups.map(group => <section className="swap-option" key={group.templateId}>
+            <label className="swap-option-heading">
+              <input type="checkbox" checked={selected.includes(group.studyGroup)} disabled={submissionDisabled} onChange={() => toggle(group.studyGroup)} />
+              <span><strong>{swapGroup(group.studyGroup)}</strong><small>{group.courseCodes.length} courses · {group.totalCreditHours} credit hours · {group.minRemainingCapacity ?? 0} seats available</small></span>
+            </label>
+            <WeeklySchedule week={group.week} daysOff={group.daysOff} compact />
+          </section>)}
+        </div> : <Empty title="No eligible groups" text="The other published groups must contain exactly the same registered courses as your current schedule." />}
+        {deadlinePassed && <Feedback tone="warning">The swap deadline has passed.</Feedback>}
+        <div className="form-footer">
+          <button className="primary-button" type="button" disabled={submissionDisabled || !selected.length} onClick={submitRequest}>Submit swap request</button>
+        </div>
+      </section>
+      <section className="panel">
+        <div className="results-heading"><div><p className="eyebrow">Student requests</p><h2>Open requests from other groups</h2></div></div>
+        {loading ? <Loading /> : loadErrors.open ? <Feedback tone="error">{loadErrors.open}</Feedback> : open.length ? (
+          <div className="swap-group-grid">
+            {open.map(request => (
+              <section className="swap-option" key={request._id}>
+                <div className="results-heading">
+                  <div><p className="eyebrow">Anonymous student</p><h3>{swapGroup(request.currentGroup)}</h3></div>
+                  <span className="status-pill good">Open</span>
+                </div>
+                <p className="page-description">
+                  <strong>Desired groups</strong> · {swapGroups(request.desiredGroups)}
+                </p>
+                <WeeklySchedule week={request.week} daysOff={request.daysOff} compact />
+                <div className="form-footer">
+                  <button className="primary-button" type="button" disabled={busy || deadlinePassed} onClick={() => openConfirmation("complete", request)}>
+                    Exchange schedules
+                  </button>
+                </div>
+              </section>
+            ))}
+          </div>
+        ) : <Empty title="No open swap requests" text="Requests for your group with the same registered courses in this term will appear here." />}
+      </section>
+    </>}
+    <section className="panel">
+      <div className="results-heading"><div><p className="eyebrow">Your activity</p><h2>My swap requests</h2></div></div>
+      {loading ? <Loading /> : loadErrors.history ? <Feedback tone="error">{loadErrors.history}</Feedback> : mine.length ? (
+        <div className="table-scroll">
+          <table>
+            <thead><tr><th>Term</th><th>Activity</th><th>From</th><th>Requested groups</th><th>New group</th><th>Status</th><th>Last activity</th><th>Actions</th></tr></thead>
+            <tbody>{mine.map(request => {
+              const isRequester = request.role !== "accepter";
+              const status = swapStatuses[request.status];
+              const lastActivity = request.completedAt || request.withdrawnAt || request.createdAt;
+              return <tr key={request._id}>
+                <td>{request.term?.code || "—"}</td>
+                <td>{isRequester ? "Submitted" : "Accepted"}</td>
+                <td>{swapGroup(request.fromGroup ?? (isRequester ? request.currentGroup : null))}</td>
+                <td>{swapGroups(request.desiredGroups)}</td>
+                <td>{swapGroup(request.toGroup)}</td>
+                <td><span className={`status-pill ${status?.tone || "muted"}`}>{status?.label || "—"}</span></td>
+                <td>{lastActivity ? new Date(lastActivity).toLocaleString() : "—"}</td>
+                <td>{isRequester && request.status === "open" && <button className="outline-button small-button" type="button" disabled={busy} onClick={() => openConfirmation("withdraw", request)}>Withdraw</button>}</td>
+              </tr>;
+            })}</tbody>
+          </table>
+        </div>
+      ) : <Empty title="No requests yet" text="Requests you submit or accept will appear here." />}
     </section>
-    <section className="panel"><div className="results-heading"><div><p className="eyebrow">Student requests</p><h2>Open requests from other groups</h2></div></div>
-      {loading ? <Loading /> : open.length ? <div className="swap-group-grid">{open.map(request => <section className="swap-option" key={request._id}><div className="results-heading"><div><p className="eyebrow">Anonymous student</p><h3>Group {request.currentGroup}</h3></div><span className="status-pill good">Open</span></div><p className="helper-text">Their complete weekly schedule</p><WeeklySchedule week={request.week} daysOff={request.daysOff} compact /><div className="form-footer"><button className="primary-button" type="button" disabled={busy || deadlinePassed} onClick={() => setConfirm(request)}>Exchange schedules</button></div></section>)}</div> : <Empty title="No open swap requests" text="Requests from students whose course set matches yours will appear here." />}
-    </section>
-    <section className="panel"><div className="results-heading"><div><p className="eyebrow">Your activity</p><h2>My swap requests</h2></div></div>
-      {loading ? <Loading /> : mine.length ? <div className="table-scroll"><table><thead><tr><th>From</th><th>Requested groups</th><th>Submitted</th><th>Status</th><th /></tr></thead><tbody>{mine.map(request => <tr key={request._id}><td>Group {request.currentGroup}</td><td>{request.desiredGroups.map(group => `Group ${group}`).join(", ")}</td><td>{new Date(request.createdAt).toLocaleString()}</td><td>{request.status}</td><td>{request.status === "open" && <button className="outline-button small-button" type="button" disabled={busy} onClick={() => perform(`/api/swaps/requests/${request._id}/withdraw`)}>Withdraw</button>}</td></tr>)}</tbody></table></div> : <Empty title="No requests yet" text="Your swap requests and their status will appear here." />}
-    </section>
-    {confirm && <div className="modal-backdrop" onMouseDown={event => event.target === event.currentTarget && !busy && setConfirm(null)}><section className="modal-card narrow-modal" role="dialog" aria-modal="true" aria-labelledby="swap-confirm-heading"><div className="modal-heading"><div><p className="eyebrow">WHOLE SCHEDULE SWAP</p><h2 id="swap-confirm-heading">Exchange schedules?</h2></div><button className="icon-button" type="button" aria-label="Close" disabled={busy} onClick={() => setConfirm(null)}>×</button></div><p className="page-description">Your Group {data.currentGroup?.studyGroup} schedule will be exchanged with the anonymous student in Group {confirm.currentGroup}. All course meeting times will change to that group’s schedule.</p><div className="form-footer"><button className="outline-button" type="button" disabled={busy} onClick={() => setConfirm(null)}>Cancel</button><button className="primary-button" type="button" disabled={busy} onClick={() => perform(`/api/swaps/requests/${confirm._id}/complete`)}>{busy ? "Exchanging…" : "Confirm exchange"}</button></div></section></div>}
-  </>;
+    {confirm && <div className="modal-backdrop" onMouseDown={event => event.target === event.currentTarget && !busy && closeConfirmation()}>
+      <section className="modal-card narrow-modal" role="dialog" aria-modal="true" aria-labelledby="swap-confirm-heading" onKeyDown={event => event.key === "Escape" && !busy && closeConfirmation()}>
+        <div className="modal-heading">
+          <h2 id="swap-confirm-heading">{confirmingWithdrawal ? "Withdraw swap request?" : "Exchange schedules?"}</h2>
+          <button className="icon-button" type="button" aria-label="Close" disabled={busy} onClick={closeConfirmation}>×</button>
+        </div>
+        <p className="page-description">{confirmingWithdrawal
+          ? `Withdraw your request for ${swapGroups(confirm.request.desiredGroups)}?`
+          : `Exchange your ${swapGroup(data?.currentGroup?.studyGroup)} timetable with the anonymous student in ${swapGroup(confirm.request.currentGroup)}. This exchanges all lecture, tutorial, and lab slots.`}</p>
+        {error && <Feedback tone="error">{error}</Feedback>}
+        <div className="form-footer">
+          <button className="outline-button" type="button" disabled={busy} onClick={closeConfirmation} autoFocus>Cancel</button>
+          <button className={confirmingWithdrawal ? "primary-button destructive-action" : "primary-button"} type="button" disabled={busy} onClick={() => perform(`/api/swaps/requests/${confirm.request._id}/${confirm.action}`)}>
+            {confirmingWithdrawal ? (busy ? "Withdrawing…" : "Confirm withdrawal") : (busy ? "Exchanging…" : "Confirm exchange")}
+          </button>
+        </div>
+      </section>
+    </div>}
+  </div>;
 }
 
 export function StaffSchedulesPage({ token, role, notify, initialStudent = null, initialTermId = "" }) {
