@@ -326,6 +326,20 @@ export async function listMyExtraHoursRequests(req, res) {
   } catch (err) { return res.status(500).json({ message: err.message }); }
 }
 
+/** Req. 96: Advisors can review and withdraw requests they submitted. */
+export async function listAdvisorExtraHoursRequests(req, res) {
+  try {
+    const rows = await ExtraHoursRequest.find({ advisor: req.user._id })
+      .sort({ createdAt: -1 })
+      .populate({ path: "student", populate: { path: "user", select: "fullName email" } })
+      .populate("advisor", "fullName email")
+      .populate("decidedBy", "fullName email")
+      .populate("term", "code season academicYear")
+      .populate("courses.course", "code name creditHours");
+    return res.json(rows);
+  } catch (err) { return res.status(500).json({ message: err.message }); }
+}
+
 /** Req. 90-94: Student confirms payment now or defers to the next installment. */
 export async function chooseExtraHoursSettlement(req, res) {
   const session = await mongoose.startSession();

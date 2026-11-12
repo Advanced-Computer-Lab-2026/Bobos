@@ -15,6 +15,8 @@ export default function ExtraHoursPage({ token, role, notify }) {
       if (student) {
         const [requests, records, wallet] = await Promise.all([api("/api/extra-hours/mine", { token }), api("/api/extra-hours/mine/financial-history", { token }), api("/api/extra-hours/mine/wallet", { token })]);
         setRows(requests); setHistory(records); setWalletBalance(Number(wallet.balance || 0));
+      } else if (role === "advisor") {
+        setRows(await api("/api/extra-hours/advisor/mine", { token }));
       } else {
         const params = new URLSearchParams(Object.entries(filters).filter(([, value]) => value));
         const [requests, advisorRows] = await Promise.all([api(`/api/extra-hours?${params}`, { token }), api("/api/advisor/advisors", { token })]);
@@ -22,7 +24,7 @@ export default function ExtraHoursPage({ token, role, notify }) {
       }
     } catch (e) { setError(e.message || "Unable to load extra-hours requests."); }
     finally { setLoading(false); }
-  }, [token, student, filters]);
+  }, [token, student, role, filters]);
   useEffect(() => { load(); }, [load]);
 
   const decision = async (row, value) => {

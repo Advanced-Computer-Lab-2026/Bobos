@@ -6,6 +6,7 @@ import {
   listExtraHoursRequests,
   decideExtraHoursRequest,
   listMyExtraHoursRequests,
+  listAdvisorExtraHoursRequests,
   chooseExtraHoursSettlement,
   getExtraHoursFinancialHistory,
   getExtraHoursWallet,
@@ -20,6 +21,7 @@ router.use(requireAuth);
 
 router.get("/", requireRole("coordinator", "administrator"), listExtraHoursRequests);
 router.get("/mine", requireRole("advisingStudent"), listMyExtraHoursRequests);
+router.get("/advisor/mine", requireRole("advisor"), listAdvisorExtraHoursRequests);
 router.get("/mine/financial-history", requireRole("advisingStudent"), getExtraHoursFinancialHistory);
 router.get("/mine/wallet", requireRole("advisingStudent"), getExtraHoursWallet);
 router.get("/mine/financial-history/:transactionId/download", requireRole("advisingStudent"), downloadExtraHoursConfirmation);

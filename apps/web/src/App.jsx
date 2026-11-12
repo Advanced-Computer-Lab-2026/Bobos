@@ -41,6 +41,7 @@ const navGroups = (role) => {
     ...(staff ? [{ title: "People", items: [
       ...(["coordinator", "administrator"].includes(role) ? [{ id: "directory", label: "Student directory", icon: "♙" }] : []),
       ...(role === "advisor" || role === "coordinator" ? [{ id: "advising", label: "Advising students", icon: "♧" }] : []),
+      ...(role === "advisor" ? [{ id: "extra-hours", label: "Extra-hours requests", icon: "＋" }] : []),
       ...(role === "advisor" || role === "coordinator" ? [{ id: "preferences", label: "Student preferences", icon: "☷" }] : []),
       ...(role === "coordinator" ? [{ id: "pending-work", label: "Pending work", icon: "◷" }] : []),
       ...(role === "coordinator" ? [{ id: "extra-hours", label: "Extra-hours requests", icon: "＋" }] : []),
