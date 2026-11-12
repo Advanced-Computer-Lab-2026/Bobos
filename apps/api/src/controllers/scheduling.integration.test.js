@@ -7,8 +7,9 @@ import { MongoMemoryReplSet } from "mongodb-memory-server";
 import app from "../app.js";
 import { AcademicTerm, Course, CourseOffering } from "../models/catalogue.js";
 import { CourseAttempt, ScheduleTemplate, SchedulingPreference, StudentSchedule } from "../models/academics.js";
+import { Notification } from "../models/communications.js";
 import { StudentProfile, User } from "../models/identity.js";
-import { ExtraHoursRequest, MandatoryCourseRemovalRequest, WholeScheduleSwapRequest } from "../models/requests.js";
+import { ExitExamRequest, ExtraHoursRequest, GraduationPlan, MandatoryCourseRemovalRequest, SlotChangeRequest, WholeScheduleSwapRequest } from "../models/requests.js";
 import { generateToken } from "../middleware/auth.middleware.js";
 
 let database, databasePath, server, base, users, profiles, term, courses, offerings, templates;
@@ -17,7 +18,7 @@ before(async () => {
   databasePath = await mkdtemp(join(process.cwd(), ".mongo-scheduling-"));
   database = await MongoMemoryReplSet.create({ instanceOpts: [{ dbPath: databasePath }], replSet: { count: 1 } });
   await mongoose.connect(database.getUri());
-  await WholeScheduleSwapRequest.init();
+  await Promise.all([WholeScheduleSwapRequest.init(), Notification.init()]);
   await Promise.all([User.init(), StudentProfile.init(), AcademicTerm.init(), Course.init(), CourseOffering.init(), ScheduleTemplate.init(), StudentSchedule.init(), SchedulingPreference.init(), CourseAttempt.init(), ExtraHoursRequest.init()]);
   server = app.listen(0, "127.0.0.1");
   await new Promise((resolve) => server.once("listening", resolve));
@@ -33,7 +34,7 @@ after(async () => {
 
 beforeEach(async () => {
   await WholeScheduleSwapRequest.deleteMany({});
-  await Promise.all([StudentSchedule.deleteMany({}), SchedulingPreference.deleteMany({}), CourseAttempt.deleteMany({}), ExtraHoursRequest.deleteMany({}), MandatoryCourseRemovalRequest.deleteMany({}), ScheduleTemplate.deleteMany({}), CourseOffering.deleteMany({}), Course.deleteMany({}), AcademicTerm.deleteMany({}), StudentProfile.deleteMany({}), User.deleteMany({})]);
+  await Promise.all([StudentSchedule.deleteMany({}), SchedulingPreference.deleteMany({}), CourseAttempt.deleteMany({}), ExtraHoursRequest.deleteMany({}), MandatoryCourseRemovalRequest.deleteMany({}), ScheduleTemplate.deleteMany({}), CourseOffering.deleteMany({}), Course.deleteMany({}), AcademicTerm.deleteMany({}), StudentProfile.deleteMany({}), User.deleteMany({}), Notification.deleteMany({}), SlotChangeRequest.deleteMany({}), GraduationPlan.deleteMany({}), ExitExamRequest.deleteMany({})]);
   users = {};
   for (const role of ["coordinator", "administrator", "advisor", "normalStudent", "advisingStudent"]) {
     const studentRole = ["normalStudent", "advisingStudent"].includes(role);
@@ -110,6 +111,12 @@ async function call(path, { role, method = "GET", body } = {}) {
   const contentType = response.headers.get("content-type") || "";
   const result = contentType.includes("application/json") ? await response.json() : Buffer.from(await response.arrayBuffer());
   return { status: response.status, body: result, headers: response.headers };
+}
+
+async function inbox(role) {
+  const response = await call("/notifications", { role });
+  assert.equal(response.status, 200, response.body.message);
+  return response.body.notifications;
 }
 
 test("Group C schedule requirements use the active Development API and shared models", async () => {
@@ -233,11 +240,32 @@ test("Req 36 lists only eligible open swaps and keeps the requester anonymous", 
     assert.equal(assigned.status, 201);
   }
 
+  users.differentCourses = await User.create({
+    email: "different.courses@student.guc.edu.eg", fullName: "Different Courses",
+    passwordHash: "test-hash", role: "normalStudent",
+  });
+  const different = await StudentProfile.create({
+    user: users.differentCourses._id, studentId: "52-00003", studentType: "normal",
+    major: "CS", currentSemester: 5, gpa: 3, academicStanding: "goodAcademicStanding",
+  });
+  const viewerSchedule = await StudentSchedule.findOne({ student: profiles.normal._id, term: term._id });
+  await StudentSchedule.create({
+    student: different._id, term: term._id, scheduleType: "normal", status: "processed",
+    template: viewerSchedule.template, courses: viewerSchedule.courses.slice(0, 1), createdBy: users.coordinator._id,
+  });
+
   const created = await call(`/swaps/requests?termId=${term._id}`, {
     role: "swapRequester", method: "POST", body: { desiredGroups: ["1", "3"] },
   });
   assert.equal(created.status, 201);
   const requestId = created.body.request._id;
+  const alerts = await inbox("normalStudent");
+  assert.deepEqual(alerts.map(item => item.type), ["scheduleSwapOpened"]);
+  assert.match(alerts[0].message, /Group 2/);
+  assert.doesNotMatch(alerts[0].message, /Swap Requester|52-00002|swap\.requester/);
+  for (const role of ["swapRequester", "differentCourses", "advisingStudent", "coordinator"]) {
+    assert.deepEqual(await inbox(role), []);
+  }
   const requesterSchedule = await StudentSchedule.findOne({ student: requester._id, term: term._id });
   const requesterTimetable = await call(`/schedules/me?termId=${term._id}`, { role: "swapRequester" });
   assert.equal(requesterTimetable.status, 200);
@@ -371,6 +399,8 @@ test("Req 37 revalidates eligibility when the student confirms a swap", async ()
   }
   assert.deepEqual(await readSwapTimetable("normalStudent"), before);
   assert.equal((await WholeScheduleSwapRequest.findById(requestId)).status, "open");
+  assert.deepEqual((await inbox("normalStudent")).map(item => item.type), ["scheduleSwapOpened"]);
+  assert.deepEqual(await inbox("swapRequester"), []);
 });
 
 test("Req 37–38 swaps all slots once and records the groups for both participants", async () => {
@@ -414,6 +444,10 @@ test("Req 37–38 swaps all slots once and records the groups for both participa
   assert.deepEqual((await call("/swaps/requests/me", { role: loser.role })).body.requests, []);
   assert.deepEqual((await call("/swaps/requests/open", { role: loser.role })).body.requests, []);
   assert.equal((await call(`/swaps/requests/${requestId}/withdraw`, { role: requester.role, method: "POST" })).status, 409);
+  for (const { role } of [requester, winner]) {
+    assert.equal((await inbox(role)).filter(item => item.type === "scheduleSwapCompleted").length, 1);
+  }
+  assert.deepEqual((await inbox(loser.role)).map(item => item.type), ["scheduleSwapOpened"]);
 });
 
 test("Req 38–39 shows history across terms and only withdraws the owner's open requests", async () => {
@@ -491,6 +525,73 @@ test("Req 58 lets staff send a validated advising draft to student review", asyn
     role: "coordinator", method: "PUT", body: { version: 1, courses: [], submitForReview: false },
   });
   assert.equal(editClosedDraft.status, 409);
+});
+
+test("Req 117 notifies the advising student when their schedule moves through review, processing and reopening", async () => {
+  const schedulePath = `/schedules/advising/${profiles.advising._id}`;
+  const courses = [{ courseOffering: String(offerings[0]._id), groups: [{ componentType: "lecture", groupNumber: "2" }] }];
+  const draft = await call(`${schedulePath}/draft`, { role: "advisor", method: "PUT", body: { version: 0, courses } });
+  assert.equal(draft.status, 201, draft.body.message);
+  assert.deepEqual(await inbox("advisingStudent"), []);
+  const review = await call(`${schedulePath}/draft`, {
+    role: "advisor", method: "PUT", body: { version: draft.body.schedule.version, courses, submitForReview: true },
+  });
+  assert.equal(review.status, 200, review.body.message);
+  assert.deepEqual((await inbox("advisingStudent")).map(item => item.type), ["scheduleReadyForReview"]);
+
+  const processed = await Promise.all(["advisor", "coordinator"].map(role => call(`${schedulePath}/process`, { role, method: "POST" })));
+  assert.deepEqual(processed.map(result => result.status).sort(), [200, 409]);
+  const reopen = (reason) => call(`${schedulePath}/reopen`, { role: "coordinator", method: "POST", body: { reason } });
+  assert.equal((await reopen("")).status, 400);
+  assert.equal((await reopen("Review the lab assignment.")).status, 200);
+  assert.equal((await reopen("Review the lab assignment.")).status, 409);
+
+  const notifications = await inbox("advisingStudent");
+  assert.deepEqual(notifications.map(item => item.type), ["scheduleReopened", "scheduleProcessed", "scheduleReadyForReview"]);
+  assert.match(notifications[0].message, /Review the lab assignment/);
+  assert.equal((await call(`/notifications/${notifications[0]._id}/read`, { role: "normalStudent", method: "PATCH" })).status, 403);
+  assert.equal((await call(`/notifications/${notifications[0]._id}/read`, { role: "advisingStudent", method: "PATCH" })).status, 200);
+  assert.equal((await inbox("advisingStudent"))[0].isRead, true);
+  assert.deepEqual(await inbox("normalStudent"), []);
+});
+
+test("Req 117 delivers stored slot-change, graduation plan and exit-exam decisions once to their owner", async () => {
+  const owner = { student: profiles.advising._id, advisor: users.advisor._id };
+  const [slotChange, plan, exam] = await Promise.all([
+    SlotChangeRequest.create({
+      student: owner.student, term: term._id, schedule: new mongoose.Types.ObjectId(),
+      course: courses[0]._id, componentType: "lecture", currentOffering: offerings[0]._id,
+      currentSlotGroupId: offerings[0].slots[0]._id,
+    }),
+    GraduationPlan.create({ ...owner, termPlans: [{ term: term._id, courses: [courses[0]._id] }] }),
+    ExitExamRequest.create({ ...owner, course: courses[0]._id, reason: "One failed course remains." }),
+  ]);
+  assert.deepEqual(await inbox("advisingStudent"), []);
+  const decision = { decidedAt: new Date(), decidedBy: users.coordinator._id };
+  await Promise.all([
+    SlotChangeRequest.updateOne({ _id: slotChange._id }, { ...decision, status: "rejected", responseNote: "The requested slot is full." }),
+    GraduationPlan.updateOne({ _id: plan._id }, { ...decision, status: "draft", responseNote: "Revise the summer course list." }),
+    ExitExamRequest.updateOne({ _id: exam._id }, { ...decision, status: "approved", responseNote: "Exam approved." }),
+  ]);
+  const expected = ["exitExamDecision", "graduationPlanDecision", "slotChangeDecision"];
+  const requests = await Promise.all([inbox("advisingStudent"), inbox("advisingStudent")]);
+  for (const notifications of requests) {
+    assert.deepEqual(notifications.map(item => item.type).sort(), expected);
+    assert.ok(notifications.every(item => item.recipient === String(users.advisingStudent._id) && item.channels.join() === "inApp"));
+  }
+  assert.deepEqual(await inbox("normalStudent"), []);
+  assert.deepEqual((await inbox("advisor")).map(item => item.type), ["slotChangeSubmitted"]);
+  const returned = requests[0].find(item => item.type === "graduationPlanDecision");
+  assert.match(returned.message, /returned to your advisor.*Revise the summer course list/);
+  const marked = await call(`/notifications/${returned._id}/read`, { role: "advisingStudent", method: "PATCH" });
+  assert.equal(marked.status, 200);
+  await GraduationPlan.updateOne({ _id: plan._id }, { ...decision, status: "accepted", responseNote: "",
+    decidedAt: new Date(decision.decidedAt.getTime() + 1) });
+  const updated = await inbox("advisingStudent");
+  const planAlerts = updated.filter(item => item.type === "graduationPlanDecision");
+  assert.equal(planAlerts.length, 2);
+  assert.match(planAlerts.find(item => item._id !== returned._id).message, /accepted/);
+  assert.equal(planAlerts.find(item => item._id === returned._id).isRead, true);
 });
 
 test("Req 58: staff see the latest ranked preferences while creating and updating an advising draft", async () => {

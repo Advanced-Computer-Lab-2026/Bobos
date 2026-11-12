@@ -4,6 +4,12 @@ import mongoose from "mongoose";
 import { requireAuth } from "../middleware/auth.middleware.js";
 import { createTestNotification, getMyNotifications, markNotificationAsRead } from "./notifications.controller.js";
 import { Notification } from "../models/communications.js";
+import { AdvisorAssignment, StudentProfile } from "../models/identity.js";
+
+function mockEmptyAdvisorHistory(t) {
+  t.mock.method(AdvisorAssignment, "distinct", async () => []);
+  t.mock.method(StudentProfile, "find", () => ({ select: () => ({ lean: async () => [] }) }));
+}
 
 const createMockReqRes = ({ user = null, headers = {}, query = {}, body = {}, params = {} } = {}) => {
   const req = {
@@ -96,7 +102,9 @@ test("Requirement 5: Unauthenticated user cannot mark a notification as read", a
   assert.match(res2.getBody().message, /Authentication required/i);
 });
 
-test("Requirement 5: Each required role can retrieve their own notifications", async () => {
+test("Requirement 5: Each required role can retrieve their own notifications", async (t) => {
+  t.mock.method(StudentProfile, "findOne", () => ({ select: () => ({ lean: async () => null }) }));
+  mockEmptyAdvisorHistory(t);
   const roles = [
     { role: "normalStudent", email: "student.norm@student.guc.edu.eg", name: "Normal Student" },
     { role: "advisingStudent", email: "student.adv@student.guc.edu.eg", name: "Advising Student" },
@@ -360,7 +368,8 @@ test("Requirement 5: Already-read notification can safely be marked read again (
   }
 });
 
-test("Requirement 5: Unread and read status is correctly returned", async () => {
+test("Requirement 5: Unread and read status is correctly returned", async (t) => {
+  mockEmptyAdvisorHistory(t);
   const userId = new mongoose.Types.ObjectId();
   const user = { _id: userId, email: "test@guc.edu.eg", role: "advisor" };
 

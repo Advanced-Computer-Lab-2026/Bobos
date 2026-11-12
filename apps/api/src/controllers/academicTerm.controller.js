@@ -1,5 +1,9 @@
 import mongoose from 'mongoose';
+import { StudentTermStanding } from '../models/academics.js';
 import { AcademicTerm } from '../models/catalogue.js';
+import { StudentProfile } from '../models/identity.js';
+import { ACADEMIC_STANDINGS } from '../models/shared.js';
+import { probationWarningsEnabled, sendProbationWarnings } from '../services/probation-warnings.js';
 
 const termFields = [
   'code', 'academicYear', 'season', 'termStart', 'termEnd',
@@ -81,3 +85,43 @@ export const getAcademicTermById = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+export async function recordStudentTermStanding(req, res, next) {
+  const { body } = req;
+  if (!body || Array.isArray(body) || Object.keys(body).length !== 1 || !ACADEMIC_STANDINGS.includes(body.academicStanding)) {
+    return res.status(400).json({ message: 'Provide academicStanding as probation or goodAcademicStanding.' });
+  }
+
+  const termId = req.params.id.trim();
+  const studentId = req.params.studentId.trim();
+  const termFilter = mongoose.isValidObjectId(termId) ? { _id: termId } : { code: termId };
+  const studentFilter = mongoose.isValidObjectId(studentId) ? { _id: studentId } : { studentId };
+  try {
+    const [term, student] = await Promise.all([
+      AcademicTerm.findOne(termFilter).select('_id').lean(),
+      StudentProfile.findOne(studentFilter).select('_id').lean(),
+    ]);
+    if (!term) return res.status(404).json({ message: 'Academic term not found.' });
+    if (!student) return res.status(404).json({ message: 'Student not found.' });
+
+    const standing = await StudentTermStanding.findOneAndUpdate(
+      { student: student._id, term: term._id },
+      { $set: { academicStanding: body.academicStanding, calculatedAt: new Date() } },
+      { upsert: true, returnDocument: 'after', runValidators: true },
+    );
+    let warningEmailStatus;
+    if (probationWarningsEnabled()) {
+      try {
+        const { sent, failed } = await sendProbationWarnings({ studentId: student._id });
+        if (sent) warningEmailStatus = 'sent';
+        if (failed) warningEmailStatus = 'failed';
+      } catch (error) {
+        console.error('Could not check probation warning after recording a standing:', error.name);
+        warningEmailStatus = 'pending';
+      }
+    }
+    return res.json({ standing, warningEmailStatus });
+  } catch (error) {
+    return next(error);
+  }
+}

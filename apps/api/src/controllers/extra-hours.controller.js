@@ -11,6 +11,7 @@ import {
   FinancialTransaction,
 } from "../models/index.js";
 import { standardCreditAllowance } from "../utils/credit-allowance.js";
+import { notifyStudents } from "../services/student-notifications.js";
 
 const { Types } = mongoose;
 const populatedRequest = (id) => ExtraHoursRequest.findById(id)
@@ -28,9 +29,25 @@ async function studentAndWallet(userId) {
   return { student, balance: Math.round(balance * 100) / 100 };
 }
 
-function notifyStudentLater(student, requestId, title, message, type = "paymentUpdated") {
-  if (!student?.user) return Promise.resolve();
-  return Notification.create({ recipient: student.user, type, title, message, relatedModel: "ExtraHoursRequest", relatedId: String(requestId) }).catch(() => {});
+function notifyExtraHoursDecision(request, message, session) {
+  return notifyStudents({ _id: request.student, studentType: "advising" }, {
+    type: "extraHoursDecision",
+    title: `Extra-hours request ${request.decisionStatus}`,
+    message,
+    relatedModel: "ExtraHoursRequest", relatedId: request._id,
+  }, session);
+}
+
+function notifyExtraHoursSettlement(transaction, session) {
+  const deferred = transaction.kind === "deferredCharge";
+  const amount = `${transaction.amount} ${transaction.currency}`;
+  return notifyStudents({ _id: transaction.student, studentType: "advising" }, {
+    type: deferred ? "deferredChargeUpdated" : "paymentUpdated",
+    title: deferred ? "Extra-hours charge deferred" : `Extra-hours payment ${transaction.status}`,
+    message: deferred ? `Your extra-hours charge of ${amount} will be added to your next university installment.`
+      : `Your extra-hours payment of ${amount} ${transaction.status === "cancelled" ? "was cancelled" : transaction.status}.`,
+    relatedModel: "FinancialTransaction", relatedId: transaction._id,
+  }, session);
 }
 
 /**
@@ -240,31 +257,23 @@ export async function withdrawExtraHoursRequest(req, res) {
       return res.status(400).json({ message: "Invalid request ID." });
     }
 
-    const request = await ExtraHoursRequest.findById(id);
-    if (!request) {
-      return res.status(404).json({ message: "Extra-hours request not found." });
-    }
+    await mongoose.connection.transaction(async (session) => {
+      const request = await ExtraHoursRequest.findById(id).session(session);
+      if (!request) throw Object.assign(new Error("Extra-hours request not found."), { status: 404 });
+      if (String(request.advisor) !== String(req.user._id) || req.user.role !== "advisor") {
+        throw Object.assign(new Error("You are not authorized to withdraw this request."), { status: 403 });
+      }
+      if (request.decisionStatus !== "pending") {
+        throw Object.assign(new Error("An approved, rejected, paid or deferred request cannot be withdrawn."), { status: 400 });
+      }
 
-    // Check authorization: only the requesting advisor (or coordinator) can withdraw
-    const isOwner = String(request.advisor) === String(req.user._id);
-    if (!isOwner || req.user.role !== "advisor") {
-      return res.status(403).json({ message: "You are not authorized to withdraw this request." });
-    }
+      request.decisionStatus = "withdrawn";
+      request.history.push({ action: "withdrawn", actor: req.user._id, note: "Request withdrawn by its Advisor." });
+      await request.save({ session });
+      await notifyExtraHoursDecision(request, "Your Advisor withdrew the extra-hours request.", session);
+    });
 
-    // Check status: can only withdraw while pending
-    if (request.decisionStatus !== "pending") {
-      return res.status(400).json({
-        message: "An approved, rejected, paid or deferred request cannot be withdrawn.",
-      });
-    }
-
-    request.decisionStatus = "withdrawn";
-    request.history.push({ action: "withdrawn", actor: req.user._id, note: "Request withdrawn by its Advisor." });
-    await request.save();
-    const student = await StudentProfile.findById(request.student).populate("user", "_id");
-    await notifyStudentLater(student, request._id, "Extra-hours request withdrawn", "Your Advisor withdrew the extra-hours request.", "extraHoursDecision");
-
-    const populated = await ExtraHoursRequest.findById(request._id)
+    const populated = await ExtraHoursRequest.findById(id)
       .populate("student")
       .populate("advisor", "fullName email")
       .populate("term", "code season academicYear")
@@ -272,7 +281,7 @@ export async function withdrawExtraHoursRequest(req, res) {
 
     return res.json(populated);
   } catch (err) {
-    return res.status(500).json({ message: err.message || "Unable to withdraw extra-hours request." });
+    return res.status(err.status || 500).json({ message: err.message || "Unable to withdraw extra-hours request." });
   }
 }
 
@@ -300,18 +309,19 @@ export async function decideExtraHoursRequest(req, res) {
     const { decision, responseNote = "" } = req.body || {};
     if (!Types.ObjectId.isValid(id)) return res.status(400).json({ message: "Invalid request ID." });
     if (!["approved", "rejected"].includes(decision)) return res.status(400).json({ message: "Decision must be approved or rejected." });
-    const request = await ExtraHoursRequest.findById(id);
-    if (!request) return res.status(404).json({ message: "Extra-hours request not found." });
-    if (request.decisionStatus !== "pending") return res.status(409).json({ message: "Only pending requests can be decided." });
-    request.decisionStatus = decision;
-    request.decisionNote = String(responseNote).trim();
-    request.decidedBy = req.user._id;
-    request.decidedAt = new Date();
-    request.settlementStatus = decision === "approved" ? "awaitingChoice" : "none";
-    request.history.push({ action: decision, actor: req.user._id, note: request.decisionNote, settlementStatus: request.settlementStatus });
-    await request.save();
-    const student = await StudentProfile.findById(request.student).populate("user", "_id");
-    await notifyStudentLater(student, request._id, "Extra-hours request decision", `Your extra-hours request was ${decision}. ${request.decisionNote}`, "extraHoursDecision");
+    await mongoose.connection.transaction(async (session) => {
+      const request = await ExtraHoursRequest.findById(id).session(session);
+      if (!request) throw Object.assign(new Error("Extra-hours request not found."), { status: 404 });
+      if (request.decisionStatus !== "pending") throw Object.assign(new Error("Only pending requests can be decided."), { status: 409 });
+      request.decisionStatus = decision;
+      request.decisionNote = String(responseNote).trim();
+      request.decidedBy = req.user._id;
+      request.decidedAt = new Date();
+      request.settlementStatus = decision === "approved" ? "awaitingChoice" : "none";
+      request.history.push({ action: decision, actor: req.user._id, note: request.decisionNote, settlementStatus: request.settlementStatus });
+      await request.save({ session });
+      await notifyExtraHoursDecision(request, `Your extra-hours request was ${decision}. ${request.decisionNote}`.trim(), session);
+    });
     return res.json(await populatedRequest(id));
   } catch (err) { return res.status(err.status || 500).json({ message: err.message }); }
 }
@@ -350,28 +360,25 @@ export async function chooseExtraHoursSettlement(req, res) {
     const profile = await StudentProfile.findOne({ user: req.user._id });
     if (!profile) return res.status(404).json({ message: "Student profile not found." });
     let paymentId;
-    let settledStatus;
     await session.withTransaction(async () => {
       const request = await ExtraHoursRequest.findOne({ _id: id, student: profile._id }).session(session);
       if (!request) throw Object.assign(new Error("Extra-hours request not found."), { status: 404 });
       if (request.decisionStatus !== "approved") throw Object.assign(new Error("Only an approved request can be settled."), { status: 409 });
       if (request.settlementStatus === "paid" || request.settlementStatus === "deferred") throw Object.assign(new Error("This request has already been settled."), { status: 409 });
       if (["cancelled", "refunded"].includes(request.settlementStatus)) throw Object.assign(new Error("This request is no longer available for settlement."), { status: 409 });
+      let transaction;
       if (option === "deferred") {
         if (request.settlementStatus !== "awaitingChoice") throw Object.assign(new Error("This request is not awaiting a payment choice."), { status: 409 });
         const installment = `${(await AcademicTerm.findById(request.term).session(session))?.academicYear || "Next"} next installment`;
         const reference = `DEF-${request._id}`;
-        const [txn] = await FinancialTransaction.create([{ student: profile._id, extraHoursRequest: request._id, kind: "deferredCharge", amount: request.totalCost, status: "pending", settlementOption: "deferred", deferredChargeReference: reference, installment, idempotencyKey: `extra-hours:${request._id}:deferred` }], { session });
-        paymentId = txn._id;
+        [transaction] = await FinancialTransaction.create([{ student: profile._id, extraHoursRequest: request._id, kind: "deferredCharge", amount: request.totalCost, status: "pending", settlementOption: "deferred", deferredChargeReference: reference, installment, idempotencyKey: `extra-hours:${request._id}:deferred` }], { session });
         request.settlementOption = "deferred";
         request.settlementStatus = "deferred";
         request.history.push({ action: "deferred", actor: req.user._id, note: `Deferred to ${installment}.`, settlementOption: "deferred", settlementStatus: "deferred", amount: request.totalCost });
-        settledStatus = "deferred";
-        await request.save({ session });
       } else if (option === "now") {
         if (!["wallet", "gateway"].includes(method)) throw Object.assign(new Error("Choose wallet or gateway payment."), { status: 400 });
         let status = "succeeded";
-        let kind = method === "wallet" ? "extraHoursWalletPayment" : "gatewayPayment";
+        const kind = method === "wallet" ? "extraHoursWalletPayment" : "gatewayPayment";
         const transactionReference = `GW-${new mongoose.Types.ObjectId()}`;
         const previousChoice = request.settlementOption;
         request.settlementOption = method;
@@ -387,23 +394,20 @@ export async function chooseExtraHoursSettlement(req, res) {
           const alreadyPaid = await FinancialTransaction.exists({ extraHoursRequest: request._id, status: "succeeded", kind: { $in: ["extraHoursWalletPayment", "gatewayPayment"] } }).session(session);
           if (alreadyPaid) throw Object.assign(new Error("This request has already been paid."), { status: 409 });
           const reference = method === "gateway" ? `GW-${new mongoose.Types.ObjectId()}` : `WAL-${new mongoose.Types.ObjectId()}`;
-          const [txn] = await FinancialTransaction.create([{ student: profile._id, extraHoursRequest: request._id, kind, amount: request.totalCost, status, settlementOption: method, transactionReference: reference, idempotencyKey: `extra-hours:${request._id}:${method}` }], { session });
-          paymentId = txn._id;
+          [transaction] = await FinancialTransaction.create([{ student: profile._id, extraHoursRequest: request._id, kind, amount: request.totalCost, status, settlementOption: method, transactionReference: reference, idempotencyKey: `extra-hours:${request._id}:${method}` }], { session });
           request.settlementStatus = "paid";
           request.history.push({ action: "paid", actor: req.user._id, note: `Paid using ${method}.`, settlementOption: method, settlementStatus: "paid", amount: request.totalCost });
-          settledStatus = "paid";
         } else {
-          const [txn] = await FinancialTransaction.create([{ student: profile._id, extraHoursRequest: request._id, kind, amount: request.totalCost, status, settlementOption: method, transactionReference, idempotencyKey: `extra-hours:${request._id}:${method}:${Date.now()}` }], { session });
-          paymentId = txn._id;
+          [transaction] = await FinancialTransaction.create([{ student: profile._id, extraHoursRequest: request._id, kind, amount: request.totalCost, status, settlementOption: method, transactionReference, idempotencyKey: `extra-hours:${request._id}:${method}:${Date.now()}` }], { session });
           request.settlementStatus = "awaitingChoice";
           request.history.push({ action: "paymentAttempt", actor: req.user._id, note: `Sandbox gateway payment ${status}.`, settlementOption: method, settlementStatus: status, amount: request.totalCost });
-          settledStatus = status;
         }
         if (status !== "succeeded" && !previousChoice) request.settlementOption = null;
-        await request.save({ session });
       } else throw Object.assign(new Error("Choose pay now or defer to your next university installment."), { status: 400 });
+      await request.save({ session });
+      await notifyExtraHoursSettlement(transaction, session);
+      paymentId = transaction._id;
     });
-    if (settledStatus === "paid" || settledStatus === "deferred") await notifyStudentLater(profile, id, "Extra-hours settlement updated", "Your extra-hours settlement choice has been recorded.", settledStatus === "deferred" ? "deferredChargeUpdated" : "paymentUpdated");
     const request = await populatedRequest(id);
     const transaction = paymentId ? await FinancialTransaction.findById(paymentId).lean() : null;
     return res.json({ request, transaction, confirmation: transaction?.kind === "deferredCharge" ? { type: "deferredPaymentConfirmation", installment: transaction.installment, amountDue: transaction.amount, confirmedAt: transaction.occurredAt, reference: transaction.deferredChargeReference } : transaction?.status === "succeeded" ? { type: "paidReceipt", method: transaction.settlementOption, amount: transaction.amount, transactionReference: transaction.transactionReference, paidAt: transaction.occurredAt } : null });

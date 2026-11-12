@@ -11,6 +11,8 @@ import {
   Course,
   CourseAttempt,
   ExtraHoursRequest,
+  FinancialTransaction,
+  Notification,
 } from "../models/index.js";
 import { generateToken } from "../middleware/auth.middleware.js";
 
@@ -32,6 +34,8 @@ before(async () => {
     Course.init(),
     CourseAttempt.init(),
     ExtraHoursRequest.init(),
+    FinancialTransaction.init(),
+    Notification.init(),
   ]);
 
   server = app.listen(0, "127.0.0.1");
@@ -305,4 +309,79 @@ test("Req 96: Advisor can withdraw a pending extra-hours request", async () => {
     userRole: "advisor",
   });
   assert.equal(repeatWithdraw.status, 400);
+});
+
+test("Req 117 delivers extra-hours decisions, payment outcomes, deferred charges and reversals to the owner", async () => {
+  await Promise.all([ExtraHoursRequest.deleteMany({}), Notification.deleteMany({}), FinancialTransaction.deleteMany({})]);
+  const submit = async () => {
+    const response = await apiCall("/extra-hours", {
+      method: "POST",
+      body: { studentId: String(profiles.regular._id), courseIds: [String(courses[0]._id)] },
+    });
+    assert.equal(response.status, 201, response.body.message);
+    return response.body._id;
+  };
+  const decide = (id, decision, responseNote) => apiCall(`/extra-hours/${id}/decision`, {
+    method: "POST", userRole: "coordinator", body: { decision, responseNote },
+  });
+  const settle = (id, body, userRole = "student") => apiCall(`/extra-hours/${id}/settlement`, { method: "POST", userRole, body });
+  const inbox = async (userRole = "student") => {
+    const response = await apiCall("/notifications", { userRole });
+    assert.equal(response.status, 200, response.body.message);
+    return response.body.notifications;
+  };
+
+  const rejectedId = await submit();
+  assert.deepEqual(await inbox(), []);
+  assert.equal((await decide(rejectedId, "rejected", "This course needs a different term.")).status, 200);
+  const paidId = await submit();
+  const approvals = await Promise.all([decide(paidId, "approved", "Approved for this term."), decide(paidId, "approved", "Approved for this term.")]);
+  assert.deepEqual(approvals.map(response => response.status).sort(), [200, 409]);
+
+  const gateway = { option: "now", method: "gateway" };
+  assert.equal((await settle(paidId, gateway, "probationStudent")).status, 404);
+  assert.equal((await settle(paidId, { ...gateway, gatewayResult: "failed" })).body.transaction.status, "failed");
+  const paid = await settle(paidId, gateway);
+  assert.equal(paid.status, 200, paid.body.message);
+  assert.equal(paid.body.transaction.status, "succeeded");
+  assert.equal((await settle(paidId, gateway)).status, 409);
+
+  const walletId = await submit();
+  assert.equal((await decide(walletId, "approved")).status, 200);
+  const wallet = { option: "now", method: "wallet" };
+  assert.equal((await settle(walletId, wallet)).status, 409);
+  await FinancialTransaction.create({ student: profiles.regular._id, kind: "walletTopUp", status: "succeeded", amount: 3000 });
+  const walletPayment = await settle(walletId, wallet);
+  assert.equal(walletPayment.status, 200, walletPayment.body.message);
+  assert.equal(walletPayment.body.transaction.kind, "extraHoursWalletPayment");
+
+  const deferredId = await submit();
+  assert.equal((await decide(deferredId, "approved")).status, 200);
+  const deferred = await settle(deferredId, { option: "deferred" });
+  assert.equal(deferred.status, 200, deferred.body.message);
+  assert.equal(deferred.body.request.settlementStatus, "deferred");
+
+  // The finance workflow publishes the outcome in the ledger when a reversal completes.
+  await FinancialTransaction.create([
+    { student: profiles.regular._id, extraHoursRequest: paidId, kind: "refund", amount: paid.body.transaction.amount,
+      status: "succeeded", settlementOption: "wallet", relatedTransaction: paid.body.transaction._id },
+    { student: profiles.regular._id, extraHoursRequest: deferredId, kind: "deferredChargeCancellation",
+      amount: deferred.body.transaction.amount, status: "succeeded", settlementOption: "deferred",
+      relatedTransaction: deferred.body.transaction._id },
+    { student: profiles.regular._id, extraHoursRequest: paidId, kind: "refund", amount: 100, status: "failed" },
+  ]);
+
+  assert.deepEqual(await inbox("probationStudent"), []);
+  assert.deepEqual(await inbox("normalStudent"), []);
+  const notifications = await inbox();
+  assert.deepEqual((await inbox()).map(item => item._id).sort(), notifications.map(item => item._id).sort());
+  assert.ok(notifications.every(item => item.recipient === String(users.student._id)));
+  const titles = notifications.map(item => item.title).sort();
+  assert.deepEqual(titles, [
+    "Deferred extra-hours charge cancelled", "Extra-hours charge deferred", "Extra-hours payment failed",
+    "Extra-hours payment succeeded", "Extra-hours payment succeeded", "Extra-hours refund issued",
+    "Extra-hours request approved", "Extra-hours request approved", "Extra-hours request approved",
+    "Extra-hours request rejected",
+  ]);
+  assert.match(notifications.find(item => item.title === "Extra-hours request rejected").message, /This course needs a different term/);
 });

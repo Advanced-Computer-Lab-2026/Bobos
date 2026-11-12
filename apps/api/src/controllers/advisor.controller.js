@@ -12,6 +12,7 @@ import {
 } from '../models/index.js';
 import { AcademicTerm } from '../models/catalogue.js';
 import { WORKFLOW_STATUSES } from '../models/shared.js';
+import { notifyAdvisorOfAssignment } from '../services/advisor-notifications.js';
 
 const { Types } = mongoose;
 const ADVISING_REASONS = ['probation', 'failedCourses', 'unattendedCourses', 'undeclaredMajor', 'transfer'];
@@ -104,19 +105,27 @@ export const assignAdvisor = async (req, res) => {
         .populate('assignedAdvisor', 'fullName email');
       return res.json(unchanged);
     }
+    const assignedAt = new Date();
     if (existing) {
-      existing.endedAt = new Date();
+      existing.endedAt = assignedAt;
       existing.endedBy = actorId;
       await existing.save(sessionOpt);
     }
 
-    await AdvisorAssignment.create(
-      [{ student: profileId, advisor: advisorId, assignedBy: actorId }],
+    const [assignment] = await AdvisorAssignment.create(
+      [{ student: profileId, advisor: advisorId, assignedBy: actorId, createdAt: assignedAt }],
       sessionOpt,
     );
 
     profile.assignedAdvisor = advisorId;
     await profile.save(sessionOpt);
+    try {
+      await notifyAdvisorOfAssignment(assignment, profile, session);
+    } catch (error) {
+      if (session) throw error;
+      // The advisor's inbox can recover the event from the saved assignment.
+      console.error('Could not write advisor assignment notification:', error.name);
+    }
 
     if (session?.inTransaction()) await session.commitTransaction();
 

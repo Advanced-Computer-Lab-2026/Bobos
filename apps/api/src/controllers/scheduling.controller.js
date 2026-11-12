@@ -4,6 +4,7 @@ import { StudentProfile, User } from "../models/identity.js";
 import { CourseAttempt, ScheduleTemplate, SchedulingPreference, StudentSchedule } from "../models/academics.js";
 import { ExtraHoursRequest, MandatoryCourseRemovalRequest, WholeScheduleSwapRequest } from "../models/requests.js";
 import { ScheduleActivity } from "../models/communications.js";
+import { notifyStudents } from "../services/student-notifications.js";
 import { calculateDraftCreditPolicy } from "../utils/credit-allowance.js";
 import { majorMatches } from "../utils/major.js";
 import { buildWeeklyCalendar } from "../../../../server/src/utils/weeklyCalendar.js";
@@ -224,13 +225,15 @@ function scheduleCourses(resolvedEntries) {
   }));
 }
 
-async function resolveStoredSchedule(schedule, session = null) {
+async function resolveStoredSchedules(schedules, session = null) {
   const offeringIds = new Set();
   const courseIds = new Set();
-  for (const scheduledCourse of schedule.courses || []) {
-    if (scheduledCourse.course) courseIds.add(idOf(scheduledCourse.course));
-    for (const slot of scheduledCourse.slots || []) if (slot.courseOffering) offeringIds.add(idOf(slot.courseOffering));
-    if (scheduledCourse.courseOffering) offeringIds.add(idOf(scheduledCourse.courseOffering));
+  for (const schedule of schedules) {
+    for (const scheduledCourse of schedule.courses || []) {
+      if (scheduledCourse.course) courseIds.add(idOf(scheduledCourse.course));
+      for (const slot of scheduledCourse.slots || []) if (slot.courseOffering) offeringIds.add(idOf(slot.courseOffering));
+      if (scheduledCourse.courseOffering) offeringIds.add(idOf(scheduledCourse.courseOffering));
+    }
   }
   const offeringQuery = CourseOffering.find({ _id: { $in: [...offeringIds] } }).lean();
   const courseQuery = Course.find({ _id: { $in: [...courseIds] } }).lean();
@@ -239,6 +242,14 @@ async function resolveStoredSchedule(schedule, session = null) {
     : await Promise.all([offeringQuery, courseQuery]);
   const offeringById = new Map(offerings.map((offering) => [idOf(offering._id), offering]));
   const courseById = new Map(courses.map((course) => [idOf(course._id), course]));
+  return new Map(schedules.map(schedule => [idOf(schedule), resolveStoredEntries(schedule, offeringById, courseById)]));
+}
+
+async function resolveStoredSchedule(schedule, session = null) {
+  return (await resolveStoredSchedules([schedule], session)).get(idOf(schedule));
+}
+
+function resolveStoredEntries(schedule, offeringById, courseById) {
   const entries = [];
   for (const scheduledCourse of schedule.courses || []) {
     const course = courseById.get(idOf(scheduledCourse.course));
@@ -269,41 +280,59 @@ async function resolveStoredSchedule(schedule, session = null) {
   return { entries };
 }
 
-export async function processAdvisingSchedule(req, res) {
-  if (!isId(req.params.studentId)) return res.status(400).json({ message: "Invalid student ID" });
-  const student = await StudentProfile.findById(req.params.studentId).select("_id studentType assignedAdvisor studentId");
-  if (!student || student.studentType !== "advising") return res.status(404).json({ message: "Advising student not found" });
-  if (req.user.role === "advisor" && idOf(student.assignedAdvisor) !== idOf(req.user._id)) return res.status(403).json({ message: "You may only process schedules for your assigned students" });
-  const termResult = await resolveTerm(req.body?.termId);
-  if (termResult.error) return res.status(termResult.error.status).json({ message: termResult.error.message });
-  const schedule = await StudentSchedule.findOne({ student: student._id, term: termResult.term._id, scheduleType: "advising" });
-  if (!schedule || schedule.status !== "readyForStudentReview") return res.status(409).json({ message: "Only a schedule ready for student review can be processed" });
-  schedule.status = "processed";
-  schedule.processedBy = req.user._id;
-  schedule.processedAt = new Date();
-  await schedule.save();
-  await ScheduleActivity.create({ student: student._id, term: schedule.term, schedule: schedule._id, action: "processed", scheduleVersion: schedule.version, actor: req.user._id, actorName: req.user.fullName, actorEmail: req.user.email, actorRole: req.user.role });
-  res.json({ message: "Advising schedule processed", schedule });
-}
-
-export async function reopenAdvisingSchedule(req, res) {
+async function changeAdvisingScheduleStatus(req, res, reopening) {
   if (!isId(req.params.studentId)) return res.status(400).json({ message: "Invalid student ID" });
   const reason = typeof req.body?.reason === "string" ? req.body.reason.trim() : "";
-  if (!reason || reason.length > 2000) return res.status(400).json({ message: "Provide a reopening reason of at most 2,000 characters" });
+  if (reopening && (!reason || reason.length > 2000)) return res.status(400).json({ message: "Provide a reopening reason of at most 2,000 characters" });
   const student = await StudentProfile.findById(req.params.studentId).select("_id studentType assignedAdvisor");
   if (!student || student.studentType !== "advising") return res.status(404).json({ message: "Advising student not found" });
-  if (req.user.role === "advisor" && idOf(student.assignedAdvisor) !== idOf(req.user._id)) return res.status(403).json({ message: "You may only reopen schedules for your assigned students" });
-  const termResult = await resolveTerm(req.body?.termId);
-  if (termResult.error) return res.status(termResult.error.status).json({ message: termResult.error.message });
-  const schedule = await StudentSchedule.findOne({ student: student._id, term: termResult.term._id, scheduleType: "advising" });
-  if (!schedule || schedule.status !== "processed") return res.status(409).json({ message: "Only a processed advising schedule can be reopened" });
-  schedule.status = "draft";
-  schedule.version += 1;
-  schedule.processedBy = null;
-  schedule.processedAt = null;
-  await schedule.save();
-  await ScheduleActivity.create({ student: student._id, term: schedule.term, schedule: schedule._id, action: "reopened", scheduleVersion: schedule.version, actor: req.user._id, actorName: req.user.fullName, actorEmail: req.user.email, actorRole: req.user.role, reason });
-  res.json({ message: "Advising schedule reopened", schedule });
+  const verb = reopening ? "reopen" : "process";
+  if (req.user.role === "advisor" && idOf(student.assignedAdvisor) !== idOf(req.user._id)) {
+    return res.status(403).json({ message: `You may only ${verb} schedules for your assigned students` });
+  }
+  const { term, error } = await resolveTerm(req.body?.termId);
+  if (error) return res.status(error.status).json({ message: error.message });
+
+  const action = reopening ? "reopened" : "processed";
+  const schedule = await mongoose.connection.transaction(async (session) => {
+    const current = await StudentSchedule.findOne({
+      student: student._id, term: term._id, scheduleType: "advising",
+      status: reopening ? "processed" : "readyForStudentReview",
+    }).session(session);
+    if (!current) return null;
+
+    current.status = reopening ? "draft" : "processed";
+    current.processedBy = reopening ? null : req.user._id;
+    current.processedAt = reopening ? null : new Date();
+    if (reopening) current.version += 1;
+    await current.save({ session });
+    await ScheduleActivity.create([{
+      student: student._id, term: term._id, schedule: current._id, action, scheduleVersion: current.version,
+      actor: req.user._id, actorName: req.user.fullName, actorEmail: req.user.email, actorRole: req.user.role,
+      reason: reopening ? reason : undefined,
+    }], { session });
+    await notifyStudents({ _id: student._id, studentType: "advising" }, {
+      type: reopening ? "scheduleReopened" : "scheduleProcessed",
+      title: `Advising schedule ${action}`,
+      message: reopening ? `Your advising schedule for ${term.code} was reopened. ${reason}`
+        : `Your advising schedule for ${term.code} was processed. You can now download it from My schedule.`,
+      relatedModel: "StudentSchedule", relatedId: current._id,
+    }, session);
+    return current;
+  });
+  if (!schedule) {
+    return res.status(409).json({ message: reopening ? "Only a processed advising schedule can be reopened"
+      : "Only a schedule ready for student review can be processed" });
+  }
+  res.json({ message: `Advising schedule ${action}`, schedule });
+}
+
+export function processAdvisingSchedule(req, res) {
+  return changeAdvisingScheduleStatus(req, res, false);
+}
+
+export function reopenAdvisingSchedule(req, res) {
+  return changeAdvisingScheduleStatus(req, res, true);
 }
 
 function accessToSchedule(viewer, student, schedule) {
@@ -824,19 +853,28 @@ export async function saveAdvisingDraft(req, res, next) {
 
       await updateDraftReservations(existing, courses, session);
       const changes = { courses, status, seatsReserved: true };
+      let schedule;
       if (!existing) {
-        const [schedule] = await StudentSchedule.create([{
+        [schedule] = await StudentSchedule.create([{
           student: student._id, term: term._id, scheduleType: "advising", createdBy: req.user._id, ...changes,
         }], { session });
-        return { schedule, created: true };
+      } else {
+        schedule = await StudentSchedule.findOneAndUpdate(
+          { _id: existing._id, version, status: "draft" },
+          { $set: changes, $inc: { version: 1 } },
+          { session, returnDocument: "after", runValidators: true },
+        );
+        if (!schedule) throw draftError(409, "This draft changed while it was being saved. Reload it and try again.");
       }
-      const schedule = await StudentSchedule.findOneAndUpdate(
-        { _id: existing._id, version, status: "draft" },
-        { $set: changes, $inc: { version: 1 } },
-        { session, returnDocument: "after", runValidators: true },
-      );
-      if (!schedule) throw draftError(409, "This draft changed while it was being saved. Reload it and try again.");
-      return { schedule, created: false };
+      if (submitForReview) {
+        await notifyStudents({ _id: student._id, studentType: "advising" }, {
+          type: "scheduleReadyForReview",
+          title: "Advising schedule ready for review",
+          message: `Your advising schedule for ${term.code} is ready. Open My schedule to review it.`,
+          relatedModel: "StudentSchedule", relatedId: schedule._id,
+        }, session);
+      }
+      return { schedule, created: !existing };
     });
     const message = submitForReview ? "Schedule saved and sent for student review." : created ? "Draft schedule created." : "Draft schedule updated.";
     res.status(created ? 201 : 200).json({ message, schedule });
@@ -1275,6 +1313,51 @@ async function ownSwapHistoryStudent(req) {
   return student;
 }
 
+function processedSwapGroup(schedule, termId) {
+  const template = schedule?.template;
+  if (schedule?.scheduleType !== "normal" || schedule.status !== "processed" ||
+      !template?.isPublished || idOf(template.term) !== idOf(termId)) return null;
+  return template.studyGroup || null;
+}
+
+function canSwapStoredCourses(resolved, expectedCodes) {
+  return !resolved.error && resolved.entries.length > 0 &&
+    resolved.entries.every(entry => entry.slots.length > 0) &&
+    matchingCourseCodes(resolved.entries.map(entry => entry.courseCode), expectedCodes);
+}
+
+async function notifyOpenSwapStudents(request, requester, term, session) {
+  const requesterSchedule = await StudentSchedule.findById(request.currentSchedule)
+    .session(session).populate("template", "studyGroup term isPublished").lean();
+  if (processedSwapGroup(requesterSchedule, term._id) !== request.currentGroup) return;
+
+  const templates = await ScheduleTemplate.find({
+    term: term._id, major: requester.major, semester: requester.currentSemester, isPublished: true,
+    studyGroup: { $in: request.desiredGroups, $ne: request.currentGroup },
+  }).select("_id").session(session).lean();
+  const schedules = await StudentSchedule.find({
+    student: { $ne: requester._id }, term: term._id, scheduleType: "normal", status: "processed",
+    template: { $in: templates.map(template => template._id) },
+  }).session(session).lean();
+  if (!schedules.length) return;
+
+  const resolved = await resolveStoredSchedules([requesterSchedule, ...schedules], session);
+  if (!canSwapStoredCourses(resolved.get(idOf(requesterSchedule)), request.courseCodesSnapshot)) return;
+  const studentIds = schedules
+    .filter(schedule => canSwapStoredCourses(resolved.get(idOf(schedule)), request.courseCodesSnapshot))
+    .map(schedule => schedule.student);
+  if (!studentIds.length) return;
+
+  await notifyStudents({
+    _id: { $in: studentIds }, studentType: "normal", major: requester.major, currentSemester: requester.currentSemester,
+  }, {
+    type: "scheduleSwapOpened",
+    title: "Eligible schedule swap available",
+    message: `A whole-schedule swap for ${term.code} is available with Group ${request.currentGroup}. Open Eligible swap groups to view it.`,
+    relatedModel: "WholeScheduleSwapRequest", relatedId: request._id,
+  }, session);
+}
+
 export async function createSwapRequest(req, res, next) {
   try {
     const { student, term, schedule, resolved } = await ownNormalSwapContext(req);
@@ -1299,14 +1382,19 @@ export async function createSwapRequest(req, res, next) {
       }
       await WholeScheduleSwapRequest.updateOne({ _id: existing._id, status: "open" }, { $set: { status: "expired" } });
     }
-    const request = await WholeScheduleSwapRequest.create({
-      student: student._id,
-      term: term._id,
-      currentSchedule: schedule._id,
-      currentGroup: schedule.template?.studyGroup || student.studyGroup,
-      desiredGroups: selected,
-      courseCodesSnapshot: currentCourseCodes,
-      expiresAt: term.wholeScheduleSwapDeadline,
+    const request = await mongoose.connection.transaction(async (session) => {
+      assertSwapDeadline(term);
+      const [opened] = await WholeScheduleSwapRequest.create([{
+        student: student._id,
+        term: term._id,
+        currentSchedule: schedule._id,
+        currentGroup: schedule.template?.studyGroup || student.studyGroup,
+        desiredGroups: selected,
+        courseCodesSnapshot: currentCourseCodes,
+        expiresAt: term.wholeScheduleSwapDeadline,
+      }], { session });
+      await notifyOpenSwapStudents(opened, student, term, session);
+      return opened;
     });
     res.status(201).json({ request: { _id: request._id, status: request.status, currentGroup: request.currentGroup, desiredGroups: request.desiredGroups }, message: "Swap request submitted. A student in one of your selected groups can complete the exchange." });
   } catch (error) {
@@ -1352,10 +1440,8 @@ export async function getOpenSwapRequests(req, res, next) {
   try {
     const { student, term, schedule, resolved } = await ownNormalSwapContext(req);
     const now = new Date();
-    const viewerTemplate = schedule.template;
-    const currentGroup = viewerTemplate?.studyGroup;
-    if (schedule.scheduleType !== "normal" || !currentGroup || !viewerTemplate.isPublished ||
-        idOf(viewerTemplate.term) !== idOf(term._id) || swapDeadlinePassed(term, now)) {
+    const currentGroup = processedSwapGroup(schedule, term._id);
+    if (!currentGroup || swapDeadlinePassed(term, now)) {
       return res.json({ requests: [] });
     }
 
@@ -1392,10 +1478,8 @@ export async function getOpenSwapRequests(req, res, next) {
     for (const request of candidates) {
       const requesterId = idOf(request.student);
       const requesterSchedule = schedulesById.get(idOf(request.currentSchedule));
-      const requesterTemplate = requesterSchedule?.template;
       if (!requesterIds.has(requesterId) || idOf(requesterSchedule?.student) !== requesterId ||
-          !requesterTemplate?.isPublished || idOf(requesterTemplate.term) !== idOf(term._id) ||
-          requesterTemplate.studyGroup !== request.currentGroup) continue;
+          processedSwapGroup(requesterSchedule, term._id) !== request.currentGroup) continue;
 
       const requesterResolved = await resolveStoredSchedule(requesterSchedule);
       if (requesterResolved.error || !matchingCourseCodes(requesterResolved.entries.map(entry => entry.courseCode), courseCodes)) continue;
@@ -1516,6 +1600,12 @@ export async function completeSwapRequest(req, res, next) {
       if (completed.modifiedCount !== 1) throw swapFailure(409, "Another student completed this request first.");
       await WholeScheduleSwapRequest.updateMany({ _id: { $ne: request._id }, term: term._id, status: "open", student: { $in: [viewer._id, requester._id] } },
         { $set: { status: "expired" } }, { session });
+      await notifyStudents({ _id: { $in: [viewer._id, requester._id] }, studentType: "normal" }, {
+        type: "scheduleSwapCompleted",
+        title: "Schedule swap completed",
+        message: `Your whole-schedule swap for ${term.code} was completed. Open My schedule to see your updated timetable.`,
+        relatedModel: "WholeScheduleSwapRequest", relatedId: request._id,
+      }, session);
       result = { message: `Swap completed. You are now in Group ${requesterTemplate.studyGroup}.`, studyGroup: requesterTemplate.studyGroup };
     });
     res.json(result);

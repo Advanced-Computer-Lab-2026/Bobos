@@ -58,6 +58,8 @@ export function ProfilePage({ profile }) {
   </div>;
 }
 
+const warningEmailLabels = { sent: "Email sent", failed: "Email delivery failed", pending: "Email pending" };
+
 export function NotificationsPage({ token, notify }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -90,7 +92,22 @@ export function NotificationsPage({ token, notify }) {
 
   return <div className="page-stack"><PageTitle eyebrow="YOUR INBOX" title="Notifications" description="Updates and reminders sent to your university account." action={<div className="inline-controls"><button className="outline-button" type="button" onClick={load} disabled={loading}>↻ Refresh</button>{import.meta.env.DEV && <button className="primary-button" type="button" onClick={createTest} disabled={creatingTest || loading}>{creatingTest ? "Creating…" : "Create test notification"}</button>}</div>} />
     {error && <div className="feedback error" role="alert">{error}</div>}
-    <section className="panel notification-panel" aria-busy={loading}>{loading ? <Loading /> : items.length === 0 ? <EmptyState title="You’re all caught up" text="New updates for your account will appear here." icon="◌" /> : items.map((item) => <article className={`notification-row ${item.isRead ? "read" : "unread"}`} key={item._id}><span className={`notification-symbol ${item.isRead ? "muted" : ""}`}>{item.isRead ? "✓" : "•"}</span><div className="notification-copy"><div className="notification-title"><h3>{item.title}</h3>{!item.isRead && <span className="new-pill">New</span>}</div><p>{item.message}</p><small>{formatDate(item.createdAt)} · {item.title === "Test notification" ? "Test" : humanize(item.type)}</small></div>{!item.isRead && <button className="text-button" type="button" onClick={() => markRead(item)}>Mark read</button>}</article>)}</section>
+    <section className="panel notification-panel" aria-busy={loading}>
+      {loading ? <Loading /> : items.length === 0 ? <EmptyState title="You’re all caught up" text="New updates for your account will appear here." icon="◌" /> : items.map((item) => {
+        const isProbationWarning = item.type === "probationWarning";
+        const typeLabel = item.title === "Test notification" ? "Test" : humanize(item.type);
+        const detail = isProbationWarning ? warningEmailLabels[item.deliveryStatus] ?? typeLabel : typeLabel;
+        return <article className={`notification-row ${item.isRead ? "read" : "unread"}`} key={item._id}>
+          <span className={`notification-symbol ${item.isRead ? "muted" : ""}`}>{item.isRead ? "✓" : "•"}</span>
+          <div className="notification-copy">
+            <div className="notification-title"><h3>{item.title}</h3>{!item.isRead && <span className="new-pill">New</span>}</div>
+            <p className={isProbationWarning ? "notification-email-message" : undefined}>{item.message}</p>
+            <small>{formatDate(item.createdAt)} · {detail}</small>
+          </div>
+          {!item.isRead && <button className="text-button" type="button" onClick={() => markRead(item)}>Mark read</button>}
+        </article>;
+      })}
+    </section>
   </div>;
 }
 

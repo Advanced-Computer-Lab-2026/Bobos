@@ -1,5 +1,7 @@
 import express from 'express';
-import { createAcademicTerm, updateAcademicTerm, listAcademicTerms, getAcademicTermById } from '../controllers/academicTerm.controller.js';
+import {
+  createAcademicTerm, updateAcademicTerm, listAcademicTerms, getAcademicTermById, recordStudentTermStanding,
+} from '../controllers/academicTerm.controller.js';
 import { requireAuth } from '../middleware/auth.middleware.js';
 import { requireRole } from '../middleware/require-role.js';
 
@@ -13,6 +15,7 @@ router.get('/academicTerm', requireAuth, listAcademicTerms);
 router.get('/academicTerm/:id', requireAuth, getAcademicTermById);
 router.post('/academicTerm', requireAuth, requireRole('administrator'), createAcademicTerm);
 router.put('/academicTerm/:id', requireAuth, requireRole('administrator'), updateAcademicTerm);
+router.put('/academicTerm/:id/standings/:studentId', requireAuth, requireRole('administrator'), recordStudentTermStanding);
 
 export default router;
 

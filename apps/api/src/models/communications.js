@@ -12,6 +12,7 @@ const notificationSchema = withTimestamps(
     deliveryStatus: { type: String, enum: ["pending", "sent", "failed"], default: "pending" },
     readAt: { type: Date, default: null },
     sentAt: { type: Date, default: null },
+    deliveryLeaseUntil: { type: Date, select: false },
     relatedModel: { type: String, trim: true },
     relatedId: { type: String, trim: true },
     deduplicationKey: { type: String, trim: true, select: false },
