@@ -1,0 +1,887 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BOBOs — Locked Design System (Cherry, Ice & Clay + Tiempos & Styrene)</title>
+<style>
+@font-face{font-family:'Tiempos Text';src:url('./fonts/TiemposText-Regular.woff2') format('woff2');font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:'Tiempos Text';src:url('./fonts/TiemposText-Semibold.woff2') format('woff2');font-weight:600;font-style:normal;font-display:swap}
+@font-face{font-family:'Tiempos Headline';src:url('./fonts/TiemposHeadline-Bold.woff2') format('woff2');font-weight:700;font-style:normal;font-display:swap}
+@font-face{font-family:'Styrene B';src:url('./fonts/StyreneB-Regular.otf') format('opentype');font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:'Styrene B';src:url('./fonts/StyreneB-Medium.otf') format('opentype');font-weight:500;font-style:normal;font-display:swap}
+@font-face{font-family:'Styrene B';src:url('./fonts/StyreneB-Bold.otf') format('opentype');font-weight:700;font-style:normal;font-display:swap}
+
+:root {
+  --canvas: #FAFAFA;
+  --surface: #E7E8EB;
+  --surface-subtle: #F3F4F6;
+  --ink: #28262B;
+  --muted: #6B6D76;
+  --border: #DDE0E5;
+  --cherry: #EDA9BA;
+  --cherry-dark: #B84265;
+  --ice: #ACCAE3;
+  --ice-dark: #396FAD;
+  --clay: #D8B097;
+  --clay-dark: #966246;
+  --teal: #88BDB3;
+  --teal-dark: #287E73;
+  --amber: #D9C79E;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: #EFEFEA;
+  color: var(--ink);
+  font-family: 'Styrene B', -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+button { font-family: inherit; cursor: pointer; }
+
+/* Top Header Bar */
+.spec-header {
+  background: #FFFFFF;
+  border-bottom: 1px solid var(--border);
+  padding: 20px 36px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.spec-title h1 {
+  font-family: 'Tiempos Text', Georgia, serif;
+  font-size: 26px;
+  font-weight: 600;
+  margin: 0 0 4px;
+  letter-spacing: -0.5px;
+}
+.spec-title p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+.spec-badge {
+  background: #F4EBE3;
+  border: 1px solid #E1CFBF;
+  color: #794326;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Palette Tokens Bar */
+.token-strip {
+  background: #FAF8F5;
+  border-bottom: 1px solid var(--border);
+  padding: 12px 36px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  font-size: 11px;
+}
+.token-strip strong {
+  font-weight: 600;
+  color: var(--ink);
+  margin-right: 6px;
+}
+.token-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: #FFFFFF;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: monospace;
+}
+.token-pill i {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  display: inline-block;
+  border: 1px solid rgba(0,0,0,0.1);
+}
+
+/* Screen Selector Navigation */
+.view-nav {
+  padding: 16px 36px 0;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.view-nav button {
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  transition: all .15s ease;
+}
+.view-nav button[aria-pressed=true] {
+  background: var(--ink);
+  color: #FFFFFF;
+  border-color: var(--ink);
+  font-weight: 600;
+}
+
+/* The Main Mockup Frame */
+.mockup-container {
+  padding: 20px 36px 40px;
+}
+.app-frame {
+  background: var(--canvas);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 210px 1fr;
+  min-height: 720px;
+}
+
+/* App Sidebar */
+.app-sidebar {
+  padding: 32px 24px;
+  background: var(--canvas);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+}
+.app-logo {
+  font-family: 'Tiempos Text', Georgia, serif;
+  font-size: 32px;
+  font-weight: 500;
+  letter-spacing: -1.5px;
+  margin-bottom: 2px;
+}
+.app-sub {
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 36px;
+}
+.app-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.app-nav a {
+  padding: 10px 14px;
+  border-radius: 6px;
+  color: var(--muted);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all .15s ease;
+}
+.app-nav a.active {
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 700;
+}
+.app-user {
+  margin-top: auto;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+  line-height: 1.4;
+}
+.app-user small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+/* App Main Content Area */
+.app-main {
+  padding: 36px 44px;
+  background: var(--canvas);
+}
+.content-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 28px;
+}
+
+/* Typography styles inside App */
+h2.hero-title {
+  font-family: 'Tiempos Text', Georgia, serif;
+  font-size: 38px;
+  font-weight: 400;
+  letter-spacing: -1px;
+  line-height: 1.15;
+  margin: 6px 0 10px;
+}
+p.hero-sub {
+  color: var(--muted);
+  font-size: 15px;
+  margin: 0;
+}
+h3.section-title {
+  font-family: 'Tiempos Text', Georgia, serif;
+  font-size: 22px;
+  font-weight: 400;
+  letter-spacing: -0.4px;
+  margin: 0 0 18px;
+}
+
+/* Stats Row */
+.stats-strip {
+  display: flex;
+  gap: 48px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 22px 0;
+  margin: 28px 0 32px;
+}
+.stat-item {
+  font-size: 13px;
+  color: var(--muted);
+}
+.stat-item b {
+  font-family: 'Tiempos Text', Georgia, serif;
+  font-size: 32px;
+  font-weight: 400;
+  color: var(--ink);
+  margin-right: 10px;
+  vertical-align: middle;
+}
+
+/* Grid Layout */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr 270px;
+  gap: 36px;
+}
+
+/* Mini Week Grid in Overview */
+.week-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+}
+.week-col {
+  text-align: center;
+}
+.col-header {
+  font-size: 12px;
+  color: var(--muted);
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.col-header b {
+  display: block;
+  font-size: 20px;
+  color: var(--ink);
+  font-weight: 500;
+  margin-top: 4px;
+}
+.event-card {
+  border-radius: 6px;
+  padding: 12px 10px;
+  font-size: 12px;
+  margin-top: 14px;
+  text-align: left;
+  line-height: 1.45;
+  min-height: 100px;
+}
+.event-card strong {
+  display: block;
+  font-size: 13px;
+  margin: 6px 0;
+  font-weight: 500;
+}
+.event-card small {
+  opacity: 0.8;
+  font-size: 11px;
+}
+
+/* Color assignments per design */
+.ev-cherry {
+  background: var(--cherry);
+  border-left: 4px solid var(--cherry-dark);
+}
+.ev-ice {
+  background: var(--ice);
+  border-left: 4px solid var(--ice-dark);
+}
+.ev-clay {
+  background: var(--clay);
+  border-left: 4px solid var(--clay-dark);
+}
+.ev-teal {
+  background: var(--teal);
+  border-left: 4px solid var(--teal-dark);
+}
+.ev-neutral {
+  background: var(--surface);
+  border-left: 4px solid var(--ink);
+}
+
+/* Reading Desk Rows */
+.desk-list {
+  margin-top: 24px;
+}
+.desk-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 0;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+}
+.desk-row small {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  margin-top: 4px;
+}
+
+/* Aside Notes & Callouts */
+.aside-card {
+  background: var(--ice);
+  border-radius: 0 36px 0 0;
+  padding: 26px 22px;
+  margin-bottom: 24px;
+}
+.aside-card small {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--ice-dark);
+}
+.aside-card h3 {
+  font-family: 'Tiempos Text', Georgia, serif;
+  font-size: 24px;
+  line-height: 1.25;
+  margin: 12px 0 10px;
+  font-weight: 400;
+}
+.aside-card p {
+  font-size: 13px;
+  margin: 0 0 16px;
+  line-height: 1.5;
+}
+.aside-card button {
+  background: var(--ink);
+  color: #FFFFFF;
+  border: 0;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 4px;
+}
+
+.deadline-pill {
+  border-left: 4px solid var(--clay-dark);
+  background: #FFF8F4;
+  padding: 12px 14px;
+  border-radius: 0 6px 6px 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.deadline-pill strong {
+  display: block;
+  font-size: 13px;
+  color: var(--clay-dark);
+}
+
+/* Full Schedule View */
+.full-schedule-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
+  margin-top: 20px;
+}
+.sched-col {
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  min-height: 400px;
+}
+.sched-col h4 {
+  font-family: 'Tiempos Text', Georgia, serif;
+  font-size: 17px;
+  font-weight: 400;
+  margin: 0 0 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Courses Cards View */
+.courses-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  margin-top: 20px;
+}
+.course-card {
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.course-card-head {
+  padding: 18px 22px;
+  border-top: 5px solid;
+}
+.course-card-head h3 {
+  font-family: 'Tiempos Text', Georgia, serif;
+  font-size: 22px;
+  font-weight: 400;
+  margin: 8px 0 0;
+}
+.course-card-body {
+  padding: 20px 22px;
+}
+.course-card-body p {
+  color: var(--muted);
+  margin: 0 0 16px;
+  font-size: 13px;
+}
+.due-badge {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+}
+.due-pill {
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 11px;
+}
+
+/* Advising View */
+.advising-layout {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 24px;
+  margin-top: 20px;
+}
+.advising-panel {
+  background: #FFFFFF;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 24px;
+}
+.advising-panel.hero-panel {
+  background: var(--ice);
+  border-top: 5px solid var(--ice-dark);
+  border-color: transparent;
+}
+.advising-panel h3 {
+  font-family: 'Tiempos Text', Georgia, serif;
+  font-size: 24px;
+  font-weight: 400;
+  margin: 10px 0 8px;
+}
+
+body.bold-mode h2.hero-title,
+body.bold-mode h3.section-title,
+body.bold-mode .aside-card h3,
+body.bold-mode .course-card-head h3,
+body.bold-mode .advising-panel h3,
+body.bold-mode .stat-item b {
+  font-weight: 600 !important;
+}
+body.bold-mode .event-card strong,
+body.bold-mode .col-header b {
+  font-weight: 700 !important;
+}
+
+</style>
+</head>
+<body>
+
+<header class="spec-header">
+  <div class="spec-title">
+    <h1>BOBOs — Locked Design System</h1>
+    <p>Palette: <strong>Original 07 / Cherry, Ice & Clay</strong> &nbsp;·&nbsp; Typography: <strong>Tiempos Text (Headings) + Styrene B (UI)</strong></p>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <button id="weightToggle" onclick="toggleWeights()" style="background:#FFFFFF;border:1px solid #D1D5DB;padding:7px 14px;border-radius:6px;font-size:12px;font-weight:500;color:#374151;">
+      Weight: <strong>Relaxed Editorial (400)</strong> ▾
+    </button>
+    <div class="spec-badge">
+      ★ 100% Locked & Live
+    </div>
+  </div>
+</header>
+
+<div class="token-strip">
+  <strong>Design Tokens:</strong>
+  <span class="token-pill"><i style="background:#FAFAFA"></i> Canvas #FAFAFA</span>
+  <span class="token-pill"><i style="background:#E7E8EB"></i> Surface #E7E8EB</span>
+  <span class="token-pill"><i style="background:#EDA9BA"></i> Cherry Rose #EDA9BA</span>
+  <span class="token-pill"><i style="background:#ACCAE3"></i> Ice Blue #ACCAE3</span>
+  <span class="token-pill"><i style="background:#D8B097"></i> Clay Orange #D8B097</span>
+  <span class="token-pill"><i style="background:#88BDB3"></i> Accent Teal #88BDB3</span>
+  <span class="token-pill"><i style="background:#28262B"></i> Ink Charcoal #28262B</span>
+</div>
+
+<nav class="view-nav">
+  <button data-view="overview" aria-pressed="true" onclick="setView('overview')">1. Overview Dashboard</button>
+  <button data-view="schedule" aria-pressed="false" onclick="setView('schedule')">2. Weekly Schedule</button>
+  <button data-view="courses" aria-pressed="false" onclick="setView('courses')">3. My Courses</button>
+  <button data-view="advising" aria-pressed="false" onclick="setView('advising')">4. Academic Advising</button>
+</nav>
+
+<div class="mockup-container">
+  <div class="app-frame">
+    <!-- Sidebar -->
+    <aside class="app-sidebar">
+      <div class="app-logo">bobos.</div>
+      <div class="app-sub">GUC · Academic Workspace</div>
+      <nav class="app-nav">
+        <a id="nav-overview" class="active" onclick="setView('overview')">Overview</a>
+        <a id="nav-courses" onclick="setView('courses')">My courses</a>
+        <a id="nav-schedule" onclick="setView('schedule')">Weekly schedule</a>
+        <a id="nav-advising" onclick="setView('advising')">Advising</a>
+      </nav>
+      <div class="app-user">
+        <strong>Laila Mansour</strong><br>
+        <small>Computer Science · Semester 7</small>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="app-main" id="view-root">
+      <!-- Rendered dynamically below -->
+    </main>
+  </div>
+</div>
+
+<script>
+const views = {
+  overview: `
+    <div class="content-top">
+      <span>bobos / Overview</span>
+      <span>Sunday, 8 November · Fall 2026</span>
+    </div>
+    <h2 class="hero-title">A little clarity for your week.</h2>
+    <p class="hero-sub">Three classes today. Room to think in between.</p>
+
+    <div class="stats-strip">
+      <div class="stat-item"><b>5</b>Enrolled courses</div>
+      <div class="stat-item"><b>15</b>Credit hours</div>
+      <div class="stat-item"><b>2</b>Free afternoons</div>
+    </div>
+
+    <div class="dashboard-grid">
+      <section>
+        <h3 class="section-title">This week <span style="font-family:'Styrene B';font-size:12px;font-weight:400;color:var(--muted);float:right;">8 – 12 Nov</span></h3>
+        <div class="week-grid">
+          <div class="week-col">
+            <div class="col-header">Sun<b>8</b></div>
+            <div class="event-card ev-cherry" style="margin-top:20px;">
+              <small>09:00 – 10:30</small>
+              <strong>Software Engineering</strong>
+              <small>C7.201 · Lecture</small>
+            </div>
+          </div>
+          <div class="week-col">
+            <div class="col-header">Mon<b>9</b></div>
+            <div class="event-card ev-ice" style="margin-top:55px;">
+              <small>10:30 – 12:00</small>
+              <strong>Computer Networks</strong>
+              <small>B3.104 · Lecture</small>
+            </div>
+          </div>
+          <div class="week-col">
+            <div class="col-header">Tue<b>10</b></div>
+            <div class="event-card ev-teal" style="margin-top:20px;">
+              <small>09:00 – 10:30</small>
+              <strong>Databases</strong>
+              <small>C6.103 · Tutorial</small>
+            </div>
+          </div>
+          <div class="week-col">
+            <div class="col-header">Wed<b>11</b></div>
+            <div class="event-card ev-ice" style="margin-top:70px;">
+              <small>12:00 – 13:30</small>
+              <strong>Compiler Design</strong>
+              <small>B2.208 · Lecture</small>
+            </div>
+          </div>
+          <div class="week-col">
+            <div class="col-header">Thu<b>12</b></div>
+            <div class="event-card ev-clay" style="margin-top:35px;">
+              <small>10:30 – 12:00</small>
+              <strong>Artificial Intelligence</strong>
+              <small>C7.203 · Lecture</small>
+            </div>
+          </div>
+        </div>
+
+        <h3 class="section-title" style="margin-top:34px;">On your reading desk</h3>
+        <div class="desk-list">
+          <div class="desk-row">
+            <div>
+              <strong>Software Engineering</strong>
+              <small>CSEN 704 · Design patterns & architecture</small>
+            </div>
+            <span style="font-weight:600;color:var(--muted)">Chapter 06</span>
+          </div>
+          <div class="desk-row">
+            <div>
+              <strong>Computer Networks</strong>
+              <small>CSEN 703 · Transport layer fundamentals</small>
+            </div>
+            <span style="font-weight:600;color:var(--muted)">Chapter 04</span>
+          </div>
+        </div>
+      </section>
+
+      <aside>
+        <div class="aside-card">
+          <small>A note for your semester</small>
+          <h3>Make space for<br>what comes next.</h3>
+          <p>Your advising window opens this week. Bring your questions and a rough plan.</p>
+          <button onclick="setView('advising')">Plan an advising visit ↗</button>
+        </div>
+
+        <div class="deadline-pill">
+          <small style="color:var(--muted)">Next critical milestone</small>
+          <strong>Course preferences · 15 November</strong>
+          <small>Fall 2026 advising portal closes at 23:59</small>
+        </div>
+      </aside>
+    </div>
+  `,
+
+  schedule: `
+    <div class="content-top">
+      <span>bobos / Weekly Schedule</span>
+      <span>Fall 2026 · Week 09</span>
+    </div>
+    <h2 class="hero-title">A week with room to breathe.</h2>
+    <p class="hero-sub">Your lectures, tutorials, and free afternoons at a glance.</p>
+
+    <div class="full-schedule-grid">
+      <div class="sched-col">
+        <h4>Sunday · 8</h4>
+        <div class="event-card ev-cherry">
+          <small>09:00 – 10:30</small>
+          <strong>Software Engineering</strong>
+          <small>Lecture · C7.201</small>
+        </div>
+        <div class="event-card ev-ice" style="margin-top:20px;">
+          <small>13:00 – 14:30</small>
+          <strong>Computer Networks</strong>
+          <small>Tutorial · B3.104</small>
+        </div>
+      </div>
+
+      <div class="sched-col">
+        <h4>Monday · 9</h4>
+        <div class="event-card ev-ice">
+          <small>10:30 – 12:00</small>
+          <strong>Computer Networks</strong>
+          <small>Lecture · B3.104</small>
+        </div>
+        <div style="margin-top:40px;padding:16px 12px;border:1px dashed var(--border);border-radius:6px;text-align:center;color:var(--muted);font-size:12px;">
+          Free afternoon · Study time
+        </div>
+      </div>
+
+      <div class="sched-col">
+        <h4>Tuesday · 10</h4>
+        <div class="event-card ev-teal">
+          <small>09:00 – 10:30</small>
+          <strong>Databases</strong>
+          <small>Lecture · C6.103</small>
+        </div>
+        <div class="event-card ev-cherry" style="margin-top:20px;">
+          <small>13:00 – 14:30</small>
+          <strong>Compiler Design</strong>
+          <small>Tutorial · B2.208</small>
+        </div>
+      </div>
+
+      <div class="sched-col">
+        <h4>Wednesday · 11</h4>
+        <div class="event-card ev-ice">
+          <small>12:00 – 13:30</small>
+          <strong>Compiler Design</strong>
+          <small>Lecture · B2.208</small>
+        </div>
+        <div style="margin-top:40px;padding:16px 12px;border:1px dashed var(--border);border-radius:6px;text-align:center;color:var(--muted);font-size:12px;">
+          Free afternoon · Team meeting
+        </div>
+      </div>
+
+      <div class="sched-col">
+        <h4>Thursday · 12</h4>
+        <div class="event-card ev-clay">
+          <small>10:30 – 12:00</small>
+          <strong>Artificial Intelligence</strong>
+          <small>Lecture · C7.203</small>
+        </div>
+        <div class="event-card ev-teal" style="margin-top:20px;">
+          <small>13:00 – 14:30</small>
+          <strong>Databases Lab</strong>
+          <small>Lab · C6.204</small>
+        </div>
+      </div>
+    </div>
+  `,
+
+  courses: `
+    <div class="content-top">
+      <span>bobos / Courses</span>
+      <span>Semester 7 · 15 Credits</span>
+    </div>
+    <h2 class="hero-title">Your semester, subject by subject.</h2>
+    <p class="hero-sub">Five core courses. Fifteen credits. Balanced rhythm.</p>
+
+    <div class="courses-grid">
+      <div class="course-card">
+        <div class="course-card-head" style="background:#FCEEF1;border-color:var(--cherry-dark)">
+          <small style="font-weight:600;color:var(--cherry-dark)">CSEN 704 · 3 credit hours</small>
+          <h3>Software Engineering</h3>
+        </div>
+        <div class="course-card-body">
+          <p>Design patterns, software architecture, refactoring, and agile system development.</p>
+          <div class="due-badge">
+            <span class="due-pill" style="background:var(--cherry);color:var(--ink)">Assignment due 12 Nov</span>
+            <small>Enrolled · Fall 2026</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="course-card">
+        <div class="course-card-head" style="background:#EDF4FA;border-color:var(--ice-dark)">
+          <small style="font-weight:600;color:var(--ice-dark)">CSEN 703 · 3 credit hours</small>
+          <h3>Computer Networks</h3>
+        </div>
+        <div class="course-card-body">
+          <p>Transport layer protocols, flow control, congestion avoidance, and socket programming.</p>
+          <div class="due-badge">
+            <span class="due-pill" style="background:var(--ice);color:var(--ink)">Reading due 10 Nov</span>
+            <small>Enrolled · Fall 2026</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="course-card">
+        <div class="course-card-head" style="background:#EEF6F4;border-color:var(--teal-dark)">
+          <small style="font-weight:600;color:var(--teal-dark)">CSEN 702 · 3 credit hours</small>
+          <h3>Databases</h3>
+        </div>
+        <div class="course-card-body">
+          <p>Relational query processing, normalization, indexing, transaction ACID properties.</p>
+          <div class="due-badge">
+            <span class="due-pill" style="background:var(--teal);color:var(--ink)">Project due 19 Nov</span>
+            <small>Enrolled · Fall 2026</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="course-card">
+        <div class="course-card-head" style="background:#FBF5F0;border-color:var(--clay-dark)">
+          <small style="font-weight:600;color:var(--clay-dark)">CSEN 701 · 3 credit hours</small>
+          <h3>Artificial Intelligence</h3>
+        </div>
+        <div class="course-card-body">
+          <p>Search algorithms, heuristic search, constraint satisfaction, logic, probabilistic models.</p>
+          <div class="due-badge">
+            <span class="due-pill" style="background:var(--clay);color:var(--ink)">Quiz on 18 Nov</span>
+            <small>Enrolled · Fall 2026</small>
+          </div>
+        </div>
+      </div>
+    </div>
+  `,
+
+  advising: `
+    <div class="content-top">
+      <span>bobos / Academic Advising</span>
+      <span>Faculty of Media Engineering & Technology</span>
+    </div>
+    <h2 class="hero-title">Let’s plan what comes next.</h2>
+    <p class="hero-sub">A thoughtful conversation makes your next semester clearer.</p>
+
+    <div class="advising-layout">
+      <div class="advising-panel hero-panel">
+        <small style="color:var(--ice-dark);font-weight:600">Your assigned academic advisor</small>
+        <h3>Dr. Nadia Hassan</h3>
+        <p style="margin:12px 0 20px">Bring your course preferences, scheduling constraints, and semester 8 bachelor thesis questions.</p>
+        <div style="background:#FFFFFF;padding:16px;border-radius:6px;margin-bottom:20px;font-size:13px;">
+          <strong>Monday · 9 November · 11:00 AM</strong><br>
+          <span style="color:var(--muted)">Office C4.212 · 20 minute session</span>
+        </div>
+        <button style="background:var(--ice-dark);color:#FFFFFF;border:0;padding:12px 20px;border-radius:5px;font-weight:600">
+          Confirm advising appointment ↗
+        </button>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:18px;">
+        <div class="advising-panel">
+          <h3 style="font-size:20px;margin-top:0;">Before you meet</h3>
+          <p style="color:var(--muted);font-size:13px;">Three simple checkpoints for a productive session:</p>
+          <div style="display:flex;flex-direction:column;gap:10px;font-size:13px;margin-top:14px;">
+            <label style="display:flex;align-items:center;gap:10px;"><input type="checkbox" checked style="accent-color:var(--teal-dark)"> Review remaining credit requirements</label>
+            <label style="display:flex;align-items:center;gap:10px;"><input type="checkbox" checked style="accent-color:var(--teal-dark)"> Draft preferred lecture groups</label>
+            <label style="display:flex;align-items:center;gap:10px;"><input type="checkbox" style="accent-color:var(--teal-dark)"> Prepare questions for thesis advisor</label>
+          </div>
+        </div>
+
+        <div class="advising-panel" style="background:#FFF9F5;border-left:5px solid var(--clay-dark)">
+          <small style="color:var(--clay-dark);font-weight:600">Preferences Deadline</small>
+          <h3 style="font-size:22px;color:var(--clay-dark);margin:6px 0;">15 November 2026</h3>
+          <p style="color:var(--muted);font-size:13px;margin:0;">Submit your group preferences before the registrar window closes.</p>
+        </div>
+      </div>
+    </div>
+  `
+};
+
+function setView(viewName) {
+  const root = document.getElementById('view-root');
+  if (views[viewName]) {
+    root.innerHTML = views[viewName];
+    document.querySelectorAll('.view-nav button').forEach(b => {
+      b.setAttribute('aria-pressed', b.dataset.view === viewName);
+    });
+    document.querySelectorAll('.app-nav a').forEach(a => {
+      a.classList.toggle('active', a.id === 'nav-' + viewName);
+    });
+  }
+}
+
+// Initial render
+setView('overview');
+
+let isBold = false;
+function toggleWeights() {
+  isBold = !isBold;
+  document.body.classList.toggle('bold-mode', isBold);
+  const btn = document.getElementById('weightToggle');
+  if (btn) {
+    btn.innerHTML = isBold ? 'Weight: <strong>Punchy Bold (600)</strong> ▾' : 'Weight: <strong>Relaxed Editorial (400)</strong> ▾';
+  }
+}
+
+</script>
+</body>
+</html>
