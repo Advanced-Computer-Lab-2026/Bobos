@@ -23,14 +23,15 @@ const wholeScheduleSwapSchema = withTimestamps({
   courseCodesSnapshot: { type: [String], required: true },
   status: { type: String, required: true, enum: ["open", "completed", "withdrawn", "expired"], default: "open" },
   completedWith: ref("StudentProfile", { default: null }),
+  completedFromGroup: { type: String, trim: true, default: null },
   completedAt: { type: Date, default: null },
   withdrawnAt: { type: Date, default: null },
   expiresAt: { type: Date, required: true },
 });
 
 wholeScheduleSwapSchema.index(
-  { student: 1, term: 1 },
-  { unique: true, partialFilterExpression: { status: "open" } },
+  { student: 1 },
+  { name: "one_open_swap_per_student", unique: true, partialFilterExpression: { status: "open" } },
 );
 wholeScheduleSwapSchema.index({ term: 1, status: 1, createdAt: -1 });
 
