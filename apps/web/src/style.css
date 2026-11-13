@@ -593,3 +593,40 @@ td strong, td .secondary-text { display: block; }
   .notification-row { gap: 8px; }
   .notification-row > .text-button { flex: 0 0 auto; }
 }
+
+.slot-request-filters,
+.slot-request-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  gap: 1rem;
+}
+.slot-request-summary p,
+.slot-response { overflow-wrap: anywhere; }
+.slot-response { min-width: 10rem; max-width: 24rem; }
+.slot-alternatives { margin: 0; padding: 0; border: 0; min-inline-size: 0; }
+.slot-alternatives legend { font-weight: 600; margin-bottom: .5rem; }
+.slot-alternative {
+  display: flex;
+  align-items: flex-start;
+  gap: .75rem;
+  padding: .75rem 0;
+  border-bottom: 1px solid var(--line, #ddd);
+}
+.slot-alternative input { margin-top: .25rem; flex: none; }
+.slot-changes-page .field > span,
+.slot-changes-page .secondary-text,
+.slot-changes-page .helper-text { font-size: 12px; }
+.slot-changes-page .field input,
+.slot-changes-page .field select,
+.slot-changes-page .field textarea,
+.slot-changes-page td { font-size: 13px; }
+.slot-changes-page .status-pill { font-size: 11px; }
+.slot-changes-page th { background: transparent; font-size: 12px; }
+.slot-alternative .secondary-text { display: block; margin-top: .25rem; }
+@media (max-width: 640px) {
+  .slot-request-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .slot-request-filters > :first-child { grid-column: 1 / -1; }
+  .slot-changes-page .field input,
+  .slot-changes-page .field select,
+  .slot-changes-page button { min-height: 44px; }
+}

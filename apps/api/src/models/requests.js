@@ -45,6 +45,8 @@ const slotChangeRequestSchema = withTimestamps({
   componentType: { type: String, required: true, enum: ["lecture", "tutorial", "lab"] },
   currentOffering: ref("CourseOffering", { required: true }),
   currentSlotGroupId: { type: Schema.Types.ObjectId, required: true },
+  currentSlotLabel: String,
+  replacementSlotLabel: String,
   preferenceNote: { type: String, trim: true, maxlength: 1000 },
   status: { type: String, required: true, enum: ["pending", "approved", "rejected", "withdrawn"], default: "pending" },
   replacementOffering: ref("CourseOffering", { default: null }),
