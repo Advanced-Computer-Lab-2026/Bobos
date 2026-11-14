@@ -514,6 +514,7 @@ function AdvisingDraftEditor({ token, student, termId, notify, onBack, onSaved }
       {data.mandatoryCourses.length > 0 && <MandatoryCoursesPanel data={data} editable={editable} busy={savingMandatory} onSave={saveMandatory} />}
       {!editable && data.schedule?.status === "readyForStudentReview" && <Feedback tone="success">This schedule is now visible to the advising student for review.</Feedback>}
       <section className="panel draft-timetable" id="draft-timetable"><div className="panel-heading"><div><p className="eyebrow">LIVE PREVIEW</p><h2>Selected timetable</h2></div><span className="result-count">{selectedOfferings.length} subjects</span></div>{selectedOfferings.length ? <WeeklySchedule week={draftWeek} compact /> : <p className="helper-text">Add course groups below to preview their days and times here.</p>}</section>
+      <EligibleCoursesPanel token={token} student={student} termQuery={termQuery} editable={editable} notify={notify} version={data.schedule?.version ?? 0} onChanged={async (status) => { onSaved?.(status); await load(); }} />
       <form className="panel draft-course-editor" id="draft-courses" onSubmit={save}>
         <div className="results-heading draft-course-toolbar">
           <div><p className="eyebrow">DRAFT CONTENT</p><h2>Published course offerings</h2></div>
@@ -525,6 +526,8 @@ function AdvisingDraftEditor({ token, student, termId, notify, onBack, onSaved }
           <div><dt>{creditPolicy.probation ? "Probation allowance" : "Standard allowance"}</dt><dd>{creditPolicy.baseAllowance ?? "—"}</dd></div>
           <div><dt>Activated extra hours</dt><dd>{creditPolicy.approvedExtraHours}</dd></div>
           <div><dt>Maximum credits</dt><dd>{creditPolicy.maximumCreditHours}</dd></div>
+          <div><dt>Remaining credits</dt><dd>{Math.max(0, creditPolicy.maximumCreditHours - credits)}</dd></div>
+          <div><dt>Extra credits used</dt><dd>{Math.max(0, credits - (creditPolicy.baseAllowance ?? creditPolicy.maximumCreditHours))}</dd></div>
         </dl>}
         {creditPolicy && !creditPolicy.policyConfigured && <p className="helper-text">Semester {creditPolicy.semester} uses the 34-hour overall ceiling until its standard allowance is defined.</p>}
         {!editable && <Feedback tone="warning">This schedule has moved beyond draft status and is read-only.</Feedback>}
@@ -711,6 +714,42 @@ function WeeklySchedule({ week = {}, daysOff = [], compact = false }) {
 function Stat({ label, value }) { return <div className="stat-card"><span className="stat-icon">◷</span><div><p>{label}</p><strong>{value}</strong></div></div>; }
 const ADVISING_REASONS = { probation: "Probation", failedCourses: "More than two failed courses in a season", unattendedCourses: "Unattended courses", undeclaredMajor: "Undeclared CS or DMET major", transfer: "Transfer from another major/university" };
 const WORKFLOW_LABELS = { notStarted: "Not started", draft: "Draft", readyForStudentReview: "Ready for student review", changeRequestPending: "Change request pending", pendingApproval: "Pending approval", awaitingPaymentChoice: "Awaiting payment choice", deferredToNextInstallment: "Deferred to next installment", readyToProcess: "Ready to process", processed: "Processed", reopened: "Reopened" };
+
+function EligibleCoursesPanel({ token, student, termQuery, editable, notify, version, onChanged }) {
+  const [result, setResult] = useState(null);
+  const [search, setSearch] = useState("");
+  const [busyId, setBusyId] = useState("");
+  const [error, setError] = useState("");
+  const base = `/api/schedules/advising/${encodeURIComponent(student._id)}`;
+  useEffect(() => {
+    let alive = true;
+    const params = new URLSearchParams(termQuery.replace(/^\?/, "")); if (search.trim()) params.set("search", search.trim());
+    api(`${base}/eligible-courses?${params}`, { token }).then((data) => alive && setResult(data)).catch((requestError) => alive && setError(requestError.message));
+    return () => { alive = false; };
+  }, [base, termQuery, token, search, version]);
+  async function change(entry) {
+    setBusyId(entry.courseOffering); setError("");
+    try {
+      const response = entry.inDraft
+        ? await api(`${base}/courses/${entry.courseOffering}${termQuery}`, { token, method: "DELETE" })
+        : await api(`${base}/courses${termQuery}`, { token, method: "POST", body: { courseOffering: entry.courseOffering } });
+      notify?.("success", response.message);
+      await onChanged?.("draft");
+    } catch (requestError) { setError(requestError.message); }
+    finally { setBusyId(""); }
+  }
+  return <section className="panel eligible-courses" id="draft-eligible"><div className="results-heading"><div><p className="eyebrow">OTHER COURSES</p><h2>Eligible courses this term</h2></div><span className="result-count">{result?.count ?? 0} courses</span></div>
+    <p className="helper-text">Courses the student has not completed, whose prerequisites are met and that are published and offered this season. Add them after the mandatory courses.</p>
+    <label className="field roster-search"><span>Search courses</span><input value={search} onChange={(event) => setSearch(event.target.value)} maxLength={100} placeholder="Course code or name" /></label>
+    {error && <Feedback tone="error">{error}</Feedback>}
+    {!result ? <Loading /> : result.courses.length ? <div className="table-scroll"><table><thead><tr><th>Course</th><th>Credits</th><th>Type</th><th>Prerequisites</th><th /></tr></thead><tbody>{result.courses.map((entry) => <tr key={entry.courseOffering}>
+      <td><strong>{entry.course.code}</strong><span className="secondary-text">{entry.course.name}</span></td><td>{entry.course.creditHours}</td><td>{entry.course.courseType}</td>
+      <td>{entry.course.prerequisites.length ? entry.course.prerequisites.map((item) => item.code).join(", ") : "None"}</td>
+      <td>{editable && <button className={entry.inDraft ? "outline-button" : "primary-button"} type="button" disabled={Boolean(busyId)} onClick={() => change(entry)}>{busyId === entry.courseOffering ? "Working…" : entry.inDraft ? "Remove" : "Add to draft"}</button>}</td>
+    </tr>)}</tbody></table></div> : <Empty title="No eligible courses" text={search ? "No eligible course matches your search." : "There are no other eligible published courses for this student this term."} />}
+    {result?.excluded?.length > 0 && <details className="excluded-courses"><summary>{result.excluded.length} courses not available to this student</summary><ul>{result.excluded.map((entry) => <li key={entry._id}>{entry.message}</li>)}</ul></details>}
+  </section>;
+}
 
 function MandatoryCoursesPanel({ data, editable, busy, onSave }) {
   const available = data.mandatoryCourses.filter((course) => course.availableForTerm);
