@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { api } from "../api.js";
 
+import { ThemeControl, Wordmark } from "./PortalChrome.jsx";
+
 export default function AuthPage({ onLogin }) {
   const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
@@ -48,34 +50,11 @@ export default function AuthPage({ onLogin }) {
 
   return (
     <main className="auth-layout">
-      <section className="auth-aside">
-        <div className="brand brand-light"><span className="brand-mark">B</span><span>bobos<span className="brand-dot">.</span><small>UNIVERSITY SCHEDULING</small></span></div>
-        <div className="auth-message"><p className="eyebrow light-eyebrow">YOUR ACADEMIC WORKSPACE</p><h1>Plan your semester with clarity.</h1><p>One place for your courses, academic records, and advising journey.</p><div className="auth-art" aria-hidden="true"><span className="art-ring ring-one" /><span className="art-ring ring-two" /><span className="art-card"><i /><i /><i /><i /></span><span className="art-check">✓</span></div></div>
-        <p className="auth-footer">German University in Cairo · Academic portal</p>
-      </section>
-
+      <header className="portal-auth-tools"><ThemeControl /></header>
       <section className="auth-main">
         <div className="auth-card">
-          <span className="mobile-brand"><span className="brand-mark">B</span> bobos<span className="brand-dot">.</span></span>
-          <p className="eyebrow">WELCOME TO BOBOS</p>
-          <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
-            <button
-              type="button"
-              className="primary-button full-button"
-              style={{ background: "#2563eb", padding: "0.6rem" }}
-              disabled={busy}
-              onClick={async () => {
-                setBusy(true); setError("");
-                try {
-                  const res = await api("/api/identity/login", { method: "POST", body: { email: "admin@guc.edu.eg", password: "Password123!" } });
-                  onLogin(res.token);
-                } catch (e) { setError(e.message); } finally { setBusy(false); }
-              }}
-            >
-              🚀 Skip Login & Enter App (Admin)
-            </button>
-          </div>
-          <h2>{mode === "login" ? "Sign in to your account" : mode === "forgot" ? "Reset your password" : "Enter your reset code"}</h2>
+          <Wordmark />
+          <h1>{mode === "login" ? "Sign in to your account" : mode === "forgot" ? "Reset your password" : "Enter your reset code"}</h1>
           <p className="auth-subtitle">{mode === "login" ? "Use your GUC account to continue." : mode === "forgot" ? "We’ll email a one-time code to your GUC address." : "Enter the six-digit code from your email and choose a new password."}</p>
 
           {error && <div className="feedback error" role="alert">{error}</div>}
@@ -102,91 +81,25 @@ export default function AuthPage({ onLogin }) {
             <button className="text-button centered" type="button" onClick={() => { setMode("forgot"); setError(""); setMessage(""); }}>Send another code</button>
             <button className="outline-button full-button" type="button" onClick={() => { setMode("login"); setError(""); setMessage(""); setOtp(""); setNewPassword(""); }}>Back to sign in</button>
           </form>}
-          {mode === "login" && (
-            <div style={{ marginTop: "1.25rem", borderTop: "1px dashed var(--border, #e2e8f0)", paddingTop: "1rem" }}>
-              <p style={{ fontSize: "0.8rem", fontWeight: "600", color: "#64748b", marginBottom: "0.5rem", textAlign: "center" }}>
-                ⚡ QUICK LOGIN / DEMO BYPASS:
-              </p>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
-                <button
-                  type="button"
-                  className="secondary-button"
-                  style={{ fontSize: "0.75rem", padding: "0.4rem 0.5rem" }}
-                  disabled={busy}
-                  onClick={async () => {
-                    setBusy(true); setError("");
-                    try {
-                      const res = await api("/api/identity/login", { method: "POST", body: { email: "admin@guc.edu.eg", password: "Password123!" } });
-                      onLogin(res.token);
-                    } catch (e) { setError(e.message); } finally { setBusy(false); }
-                  }}
-                >
-                  👑 Admin
-                </button>
-                <button
-                  type="button"
-                  className="secondary-button"
-                  style={{ fontSize: "0.75rem", padding: "0.4rem 0.5rem" }}
-                  disabled={busy}
-                  onClick={async () => {
-                    setBusy(true); setError("");
-                    try {
-                      const res = await api("/api/identity/login", { method: "POST", body: { email: "nadia.coordinator@guc.edu.eg", password: "Password123!" } });
-                      onLogin(res.token);
-                    } catch (e) { setError(e.message); } finally { setBusy(false); }
-                  }}
-                >
-                  📋 Coordinator
-                </button>
-                <button
-                  type="button"
-                  className="secondary-button"
-                  style={{ fontSize: "0.75rem", padding: "0.4rem 0.5rem" }}
-                  disabled={busy}
-                  onClick={async () => {
-                    setBusy(true); setError("");
-                    try {
-                      const res = await api("/api/identity/login", { method: "POST", body: { email: "sherif.advisor@guc.edu.eg", password: "Password123!" } });
-                      onLogin(res.token);
-                    } catch (e) { setError(e.message); } finally { setBusy(false); }
-                  }}
-                >
-                  🎓 Advisor
-                </button>
-                <button
-                  type="button"
-                  className="secondary-button"
-                  style={{ fontSize: "0.75rem", padding: "0.4rem 0.5rem" }}
-                  disabled={busy}
-                  onClick={async () => {
-                    setBusy(true); setError("");
-                    try {
-                      const res = await api("/api/identity/login", { method: "POST", body: { email: "karim.normal@student.guc.edu.eg", password: "Password123!" } });
-                      onLogin(res.token);
-                    } catch (e) { setError(e.message); } finally { setBusy(false); }
-                  }}
-                >
-                  👤 Normal Student
-                </button>
-                <button
-                  type="button"
-                  className="secondary-button"
-                  style={{ fontSize: "0.75rem", padding: "0.4rem 0.5rem", gridColumn: "span 2" }}
-                  disabled={busy}
-                  onClick={async () => {
-                    setBusy(true); setError("");
-                    try {
-                      const res = await api("/api/identity/login", { method: "POST", body: { email: "layla.advising@student.guc.edu.eg", password: "Password123!" } });
-                      onLogin(res.token);
-                    } catch (e) { setError(e.message); } finally { setBusy(false); }
-                  }}
-                >
-                  📌 Advising Student
-                </button>
+          {import.meta.env.DEV && mode === "login" && (
+            <details className="portal-demo">
+              <summary>Local demo accounts</summary>
+              <div className="portal-demo-accounts">
+                {[
+                  ["Administrator", "admin@guc.edu.eg"],
+                  ["Coordinator", "nadia.coordinator@guc.edu.eg"],
+                  ["Advisor", "sherif.advisor@guc.edu.eg"],
+                  ["Normal student", "karim.normal@student.guc.edu.eg"],
+                  ["Advising student", "layla.advising@student.guc.edu.eg"],
+                ].map(([label, account]) => (
+                  <button key={account} className="outline-button" type="button" disabled={busy}
+                    onClick={() => { setEmail(account); setError(""); }}>
+                    {label}
+                  </button>
+                ))}
               </div>
-            </div>
+            </details>
           )}
-          <div className="auth-note"><span>🔒</span> Secure access for the GUC community</div>
         </div>
       </section>
     </main>

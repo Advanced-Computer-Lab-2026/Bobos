@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
-import { api, explainApiError } from "./api.js";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { api } from "./api.js";
+import { ChromeIcon, ThemeControl, Wordmark } from "./components/PortalChrome.jsx";
 import AuthPage from "./components/AuthPage.jsx";
 import {
   OverviewPage,
@@ -28,34 +29,33 @@ const navGroups = (role) => {
   const student = ["normalStudent", "advisingStudent"].includes(role);
   const staff = ["advisor", "coordinator", "administrator"].includes(role);
   return [
-    { title: "Workspace", items: [{ id: "overview", label: "Overview", icon: "⌂" }, { id: "notifications", label: "Notifications", icon: "◌" }] },
+    { title: "Home", items: [{ id: "overview", label: "Overview" }, { id: "notifications", label: "Notifications" }, ...(role === "coordinator" ? [{ id: "pending-work", label: "Pending work" }] : [])] },
     ...(student ? [{ title: "Student services", items: [
-      ...(role === "advisingStudent" ? [{ id: "records", label: "Academic records", icon: "▤" }] : []),
-      { id: "my-schedule", label: "My schedule", icon: "◷" },
-      { id: "my-courses", label: "Registered courses", icon: "▦" },
-      ...(role === "normalStudent" ? [{ id: "schedule-swap", label: "Eligible swap groups", icon: "⇄" }] : []),
-      ...(role === "advisingStudent" ? [{ id: "preferences", label: "Schedule preferences", icon: "☷" }] : []),
-      { id: "my-advisor", label: "My advisor", icon: "♧" },
-      { id: "calendar-sync", label: "Calendar sync", icon: "▦" },
+      ...(role === "advisingStudent" ? [{ id: "records", label: "Academic records" }] : []),
+      { id: "my-schedule", label: "My schedule" },
+      { id: "my-courses", label: "Registered courses" },
+      ...(role === "normalStudent" ? [{ id: "schedule-swap", label: "Eligible swap groups" }] : []),
+      ...(role === "advisingStudent" ? [{ id: "preferences", label: "Schedule preferences" }] : []),
+      { id: "my-advisor", label: "My advisor" },
+      { id: "calendar-sync", label: "Calendar sync" },
     ] }] : []),
-    ...(staff ? [{ title: "People", items: [
+    ...(staff ? [{ title: "Student services", items: [
       ...(["coordinator", "administrator"].includes(role) ? [
-        { id: "directory", label: "Student directory", icon: "♙" },
-        { id: "financial-records", label: "Financial Records", icon: "💳" },
+        { id: "directory", label: "Student directory" },
+        { id: "financial-records", label: "Financial records" },
       ] : []),
-      ...(role === "advisor" || role === "coordinator" ? [{ id: "advising", label: "Advising students", icon: "♧" }] : []),
-      ...(role === "advisor" || role === "coordinator" ? [{ id: "preferences", label: "Student preferences", icon: "☷" }] : []),
-      ...(role === "coordinator" ? [{ id: "pending-work", label: "Pending work", icon: "◷" }] : []),
-      ...(["coordinator", "administrator"].includes(role) ? [{ id: "schedule-activity", label: "Schedule activity", icon: "↻" }] : []),
-      ...(["coordinator", "administrator", "advisor"].includes(role) ? [{ id: "mandatory-removals", label: "Course removals", icon: "▤" }] : []),
-      { id: "student-schedules", label: "Student schedules", icon: "◷" },
+      ...(role === "advisor" || role === "coordinator" ? [{ id: "advising", label: "Advising students" }] : []),
+      ...(role === "advisor" || role === "coordinator" ? [{ id: "preferences", label: "Student preferences" }] : []),
+      ...(["coordinator", "administrator"].includes(role) ? [{ id: "schedule-activity", label: "Schedule activity" }] : []),
+      ...(["coordinator", "administrator", "advisor"].includes(role) ? [{ id: "mandatory-removals", label: "Course removals" }] : []),
+      { id: "student-schedules", label: "Student schedules" },
     ] }] : []),
     ...(["coordinator", "administrator"].includes(role) ? [{ title: "Academic setup", items: [
-      { id: "courses", label: "Course catalogue", icon: "▦" },
-      { id: "terms", label: "Academic terms", icon: "◷" },
-      ...(role === "administrator" ? [{ id: "offerings", label: "Course offerings", icon: "▤" }] : []),
-      ...(role === "coordinator" ? [{ id: "templates", label: "Schedule templates", icon: "▧" }] : []),
-      { id: "group-assignments", label: "Schedule group assignments", icon: "⇄" },
+      { id: "courses", label: "Course catalogue" },
+      { id: "terms", label: "Academic terms" },
+      ...(role === "administrator" ? [{ id: "offerings", label: "Course offerings" }] : []),
+      ...(role === "coordinator" ? [{ id: "templates", label: "Schedule templates" }] : []),
+      { id: "group-assignments", label: "Schedule group assignments" },
     ] }] : []),
   ];
 };
@@ -63,7 +63,7 @@ const navGroups = (role) => {
 const titleByScreen = {
   overview: "Overview", profile: "My profile", notifications: "Notifications",
   records: "Academic records", preferences: "Schedule preferences", directory: "Student directory",
-  "financial-records": "Financial Records",
+  "financial-records": "Financial records",
   advising: "Advising students", "my-advisor": "My advisor", courses: "Course catalogue",
   terms: "Academic terms", offerings: "Course offerings", templates: "Schedule templates",
   "my-schedule": "My schedule", "my-courses": "Registered courses", "schedule-swap": "Eligible swap groups",
@@ -79,6 +79,9 @@ export default function App() {
   const [activeScreen, setActiveScreen] = useState("overview");
   const [screenContext, setScreenContext] = useState(null);
   const [notice, setNotice] = useState(null);
+  const [navQuery, setNavQuery] = useState("");
+  const navigation = useRef(null);
+  const account = useRef(null);
 
   useEffect(() => {
     if (!token) {
@@ -131,6 +134,14 @@ export default function App() {
   const openScreen = (screen, context = null) => {
     setActiveScreen(screen);
     setScreenContext(context);
+    navigation.current?.close();
+    if (account.current) account.current.open = false;
+    window.scrollTo(0, 0);
+  };
+
+  const openNavigation = () => {
+    setNavQuery("");
+    navigation.current?.showModal();
   };
 
   useEffect(() => {
@@ -147,48 +158,79 @@ export default function App() {
   if (profileLoading) return <div className="app-loading"><span className="loader" />Loading your workspace…</div>;
   if (!profile) return <AuthPage onLogin={acceptLogin} />;
 
+  const renderNavigation = (search = "") => {
+    const query = search.trim().toLowerCase();
+    const matchingGroups = groups.map(({ title, items }) => ({
+      title,
+      items: items.filter((item) => item.label.toLowerCase().includes(query)),
+    })).filter((group) => group.items.length);
+    return matchingGroups.length ? matchingGroups.map((group) => (
+      <div className="nav-group" key={group.title}>
+        <p className="nav-group-title">{group.title}</p>
+        {group.items.map((item) => (
+          <button
+            className={`nav-item ${activeScreen === item.id ? "active" : ""}`}
+            aria-current={activeScreen === item.id ? "page" : undefined}
+            type="button"
+            key={item.id}
+            onClick={() => openScreen(item.id)}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+    )) : <p className="page-description">No pages match your search.</p>;
+  };
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <div className="brand"><span className="brand-mark">B</span><span>bobos<span className="brand-dot">.</span><small>UNIVERSITY SCHEDULING</small></span></div>
-        <div className="sidebar-label">MENU</div>
-        <nav aria-label="Main navigation">
-          {groups.map((group) => (
-            <div className="nav-group" key={group.title}>
-              <p className="nav-group-title">{group.title}</p>
-              {group.items.map((item) => (
-                <button
-                  className={`nav-item ${activeScreen === item.id ? "active" : ""}`}
-                  type="button"
-                  key={item.id}
-                  onClick={() => openScreen(item.id)}
-                >
-                  <span className="nav-icon" aria-hidden="true">{item.icon}</span><span>{item.label}</span>
-                </button>
-              ))}
-            </div>
-          ))}
-        </nav>
-        <div className="sidebar-bottom"><span className="online-dot" />Academic portal <span className="version">Development</span></div>
+        <button className="portal-home" type="button" onClick={() => openScreen("overview")}><Wordmark /></button>
+        <p className="portal-scope">Academic workspace</p>
+        <button className="portal-find outline-button" type="button" onClick={openNavigation}><ChromeIcon name="search" /> Find a page</button>
+        <nav aria-label="Main navigation">{renderNavigation()}</nav>
       </aside>
+
+      <dialog ref={navigation} className="portal-navigation" aria-labelledby="portal-navigation-heading">
+        <header>
+          <h2 id="portal-navigation-heading">Navigation</h2>
+          <button type="button" className="outline-button" onClick={() => navigation.current.close()}>Close</button>
+        </header>
+        <label className="field"><span>Find a page</span><input type="search" value={navQuery} onChange={(event) => setNavQuery(event.target.value)} /></label>
+        <nav aria-label="Pages">{renderNavigation(navQuery)}</nav>
+      </dialog>
 
       <main className="main-area">
         <header className="topbar">
-          <div className="breadcrumbs"><span>Workspace</span><span className="crumb-separator">/</span><strong>{titleByScreen[activeScreen] || "Overview"}</strong></div>
+          <button className="portal-home portal-mobile-brand" type="button" onClick={() => openScreen("overview")}><Wordmark /></button>
+          <strong className="portal-screen-title">{titleByScreen[activeScreen] || "Overview"}</strong>
           <div className="topbar-actions">
-            <button className="icon-button" type="button" aria-label="Open notifications" title="Notifications" onClick={() => openScreen("notifications")}>♧</button>
-            <span className="topbar-divider" />
-            <button className="user-chip" type="button" aria-label="My profile" title="My profile" aria-current={activeScreen === "profile" ? "page" : undefined} onClick={() => openScreen("profile")}>
-              <span className="avatar" aria-hidden="true">{(profile.fullName || "U").trim().slice(0, 1).toUpperCase()}</span>
-              <span><strong>{profile.fullName}</strong><small>{roleNames[profile.role] || profile.role}</small></span>
-            </button>
-            <button className="signout-button" type="button" onClick={signOut}>Sign out</button>
+            <button className="icon-button portal-menu-button" type="button" aria-label="Open navigation" onClick={openNavigation}><ChromeIcon name="menu" /></button>
+            <ThemeControl />
+            <button className="icon-button portal-notifications" type="button" aria-label="Open notifications" title="Notifications" onClick={() => openScreen("notifications")}><ChromeIcon name="bell" /></button>
+            <details className="portal-account" ref={account} onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                event.currentTarget.open = false;
+                event.currentTarget.querySelector("summary").focus();
+              }
+            }}>
+              <summary className="user-chip" aria-label="Account options">
+                <span className="avatar" aria-hidden="true">{(profile.fullName || "U").trim().slice(0, 1).toUpperCase()}</span>
+                <strong>{profile.fullName}</strong>
+              </summary>
+              <div className="portal-account-menu">
+                <strong>{profile.fullName}</strong>
+                <small>{roleNames[profile.role] || profile.role}</small>
+                <button className="nav-item" type="button" onClick={() => openScreen("profile")}>My profile</button>
+                <button className="nav-item" type="button" onClick={signOut}>Sign out</button>
+              </div>
+            </details>
           </div>
         </header>
 
         <div className="page-content">
           {notice && <div className={`toast ${notice.type}`} role={notice.type === "error" ? "alert" : "status"}>{notice.text}<button type="button" aria-label="Dismiss" onClick={() => setNotice(null)}>×</button></div>}
-          {activeScreen === "overview" && <OverviewPage profile={profile} onOpen={openScreen} />}
+          {activeScreen === "overview" && <OverviewPage token={token} profile={profile} onOpen={openScreen} />}
           {activeScreen === "profile" && <ProfilePage profile={profile} />}
           {activeScreen === "notifications" && <NotificationsPage token={token} notify={notify} />}
           {activeScreen === "records" && profile.role !== "normalStudent" && <StudentRecordsPage token={token} profile={profile} notify={notify} />}
@@ -205,7 +247,7 @@ export default function App() {
           {activeScreen === "student-schedules" && <StaffSchedulesPage token={token} role={profile.role} notify={notify} initialStudent={screenContext?.draftStudent} initialTermId={screenContext?.termId} />}
           {["my-schedule", "my-courses", "schedule-swap"].includes(activeScreen) && <StudentSchedulingPage token={token} section={activeScreen} />}
           {["courses", "terms", "offerings", "templates"].includes(activeScreen) && <AcademicWorkspace token={token} role={profile.role} section={activeScreen} onNavigate={openScreen} notify={notify} />}
-          {activeScreen !== "profile" && !allNavItems.some((item) => item.id === activeScreen) && <OverviewPage profile={profile} onOpen={openScreen} />}
+          {!["profile", "overview"].includes(activeScreen) && !allNavItems.some((item) => item.id === activeScreen) && <OverviewPage token={token} profile={profile} onOpen={openScreen} />}
         </div>
       </main>
     </div>

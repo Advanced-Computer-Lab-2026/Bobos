@@ -9,42 +9,116 @@ const formatDate = (value) => value ? new Date(value).toLocaleDateString(undefin
 const formatDateTime = (value) => value ? new Date(value).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : null;
 const initials = (value = "") => value.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "B";
 
-export function OverviewPage({ profile, onOpen }) {
-  const isStudent = ["normalStudent", "advisingStudent"].includes(profile.role);
-  const stats = isStudent
+export function OverviewPage({ token, profile, onOpen }) {
+  const student = ["normalStudent", "advisingStudent"].includes(profile.role);
+  const coordinator = profile.role === "coordinator";
+  const managesTerms = coordinator || profile.role === "administrator";
+  const [work, setWork] = useState(null);
+  const [terms, setTerms] = useState(null);
+  const [activity, setActivity] = useState(null);
+  const [unavailable, setUnavailable] = useState({});
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const load = (key, path, apply) => api(path, { token, signal: controller.signal })
+      .then((data) => { if (!controller.signal.aborted) apply(data); })
+      .catch(() => {
+        if (!controller.signal.aborted) setUnavailable((current) => ({ ...current, [key]: true }));
+      });
+    if (coordinator) load("work", "/api/admin/pending-work", setWork);
+    if (managesTerms) {
+      load("terms", "/api/academic-terms/academicTerm", setTerms);
+      load("activity", "/api/admin/schedule-activity?limit=3", setActivity);
+    }
+    return () => controller.abort();
+  }, [token, coordinator, managesTerms]);
+
+  const term = Array.isArray(terms) ? terms.find((item) => item.isActive) : null;
+  const ready = (work?.students || []).filter((item) => item.workflowStatus === "readyToProcess");
+  const removals = work?.students?.reduce((total, item) => total + (item.requests || []).filter(
+    (request) => request.type === "mandatoryCourseRemoval" && request.status === "pending",
+  ).length, 0);
+  const queue = student
     ? [
-      { label: "Student ID", value: profile.studentId || "Not assigned", icon: "#" },
-      { label: "Current semester", value: profile.currentSemester || "—", icon: "◷" },
-      { label: "Academic standing", value: humanize(profile.academicStanding), icon: "↗" },
-      { label: "Schedule status", value: humanize(profile.scheduleStatus), icon: "▤" },
+      ["Registered courses", "Review the courses on your schedule.", "my-courses"],
+      profile.role === "advisingStudent"
+        ? ["Schedule preferences", "Choose preferred days off and course groups.", "preferences"]
+        : ["Eligible swap groups", "See other available schedule groups.", "schedule-swap"],
     ]
     : [
-      { label: "Your role", value: roleTitle(profile.role), icon: "◉" },
-      { label: "Account", value: "Active session", icon: "✓" },
-      { label: "Academic term", value: "Use Academic setup", icon: "◷" },
-      { label: "Notifications", value: "Check your inbox", icon: "◌" },
+      [removals > 0 ? `Review ${removals} course removal ${removals === 1 ? "request" : "requests"}` : "Course removal requests", "Mandatory courses", "mandatory-removals"],
+      managesTerms
+        ? ["Schedule group assignments", "Assign students to schedule groups.", "group-assignments"]
+        : ["Advising students", "Review preferences and advising progress.", "advising"],
     ];
 
-  return <div className="page-stack">
-    <section className="welcome-banner">
-      <div><p className="eyebrow">YOUR ACADEMIC WORKSPACE</p><h1>Good day, {greetingName(profile.fullName)}.</h1><p>Here’s a snapshot of your university workspace.</p></div>
-      <span className="welcome-orbit orbit-a" /><span className="welcome-orbit orbit-b" /><span className="welcome-seal">B</span>
-    </section>
-    <section className="stat-grid" aria-label="Account summary">
-      {stats.map((stat) => <article className="stat-card" key={stat.label}><span className="stat-icon">{stat.icon}</span><div><p>{stat.label}</p><strong>{stat.value}</strong></div></article>)}
-    </section>
-    <div className="content-grid overview-grid">
-      <section className="panel quick-panel"><div className="panel-heading"><div><p className="eyebrow">QUICK ACCESS</p><h2>Continue where you left off</h2></div><span className="panel-count">01</span></div>
-        <div className="quick-links">
-          <button type="button" onClick={() => onOpen("profile")}><span className="quick-icon teal">◉</span><span><strong>Review your profile</strong><small>Check your account and academic details</small></span><b>→</b></button>
-          <button type="button" onClick={() => onOpen("notifications")}><span className="quick-icon violet">◌</span><span><strong>Open notifications</strong><small>See the latest updates for your account</small></span><b>→</b></button>
-          {profile.role === "advisingStudent" && <button type="button" onClick={() => onOpen("records")}><span className="quick-icon amber">▤</span><span><strong>View academic records</strong><small>History, transcripts, and wallet activity</small></span><b>→</b></button>}
-          {!isStudent && ["coordinator", "administrator"].includes(profile.role) && <button type="button" onClick={() => onOpen("courses")}><span className="quick-icon amber">▦</span><span><strong>Manage academic setup</strong><small>Courses, terms, offerings, and templates</small></span><b>→</b></button>}
+  return <div className="page-stack folio-overview">
+    <header className="folio-greeting">
+      <h1>Good day, {greetingName(profile.fullName)}.</h1>
+      <p>{new Intl.DateTimeFormat(undefined, { dateStyle: "full" }).format(new Date())}</p>
+    </header>
+    <div className="folio-desk">
+      <section className="folio-feature">
+        <div>
+          <p className="folio-caption">{student ? "This semester" : "Advising review"}</p>
+          <h2>{student ? "Your weekly schedule" : ready.length ? `${ready.length} ${ready.length === 1 ? "schedule" : "schedules"} ready to process` : "Student schedules"}</h2>
+          <p>{student ? "See your classes, times, and rooms." : "Open a student’s schedule to review its status and next steps."}</p>
+          <button className="primary-button" type="button" onClick={() => onOpen(student ? "my-schedule" : "student-schedules")}>{student ? "View schedule" : "Review schedules"}</button>
         </div>
+        {coordinator && <div className="folio-review-list">
+          {ready.slice(0, 3).map((item) => <div className="folio-review-person" key={item.id}>
+            <span className="avatar" aria-hidden="true">{initials(item.fullName)}</span>
+            <div><strong>{item.fullName || item.studentId}</strong><small>{item.studentId}</small></div>
+            <button className="outline-button" type="button" aria-label={`Review schedule for ${item.fullName || item.studentId}`} onClick={() => onOpen("student-schedules", {
+              draftStudent: { ...item, _id: item.id },
+              termId: work.term?.code,
+            })}>Review</button>
+          </div>)}
+          {!ready.length && <p>{unavailable.work ? "Schedule counts unavailable." : work ? "No schedules ready to process." : "Checking schedule status…"}</p>}
+        </div>}
       </section>
-      <section className="panel profile-summary"><p className="eyebrow">ACCOUNT</p><div className="summary-person"><span className="avatar avatar-large">{initials(profile.fullName)}</span><div><h2>{profile.fullName}</h2><p>{roleTitle(profile.role)}</p></div></div><dl className="summary-list"><div><dt>Email</dt><dd>{profile.email}</dd></div>{profile.major && <div><dt>Major</dt><dd>{profile.major}</dd></div>}{profile.assignedAdvisor && <div><dt>Advisor</dt><dd>{profile.assignedAdvisor.fullName}</dd></div>}</dl><button className="outline-button" type="button" onClick={() => onOpen("profile")}>View profile <span>→</span></button></section>
+
+      <section className="folio-registration">
+        <h2>{managesTerms ? "Registration" : student ? "Academic details" : "My profile"}</h2>
+        {managesTerms ? <>
+          <p>{term?.code || (unavailable.terms ? "Registration dates unavailable." : terms ? "No active academic term." : "Loading the academic term…")}</p>
+          {term && <dl>
+            <div><dt>Opens</dt><dd>{formatDate(term.registrationStart)}</dd></div>
+            <div><dt>Closes</dt><dd>{formatDate(term.registrationEnd)}</dd></div>
+            <div><dt>Schedule swaps close</dt><dd>{formatDate(term.wholeScheduleSwapDeadline)}</dd></div>
+          </dl>}
+          <button type="button" className="outline-button folio-term-button" onClick={() => onOpen("terms")}>{coordinator ? "View academic term" : "Manage academic term"}</button>
+        </> : <>
+          <dl>
+            <div><dt>{student ? "Student ID" : "Role"}</dt><dd>{student ? profile.studentId || "—" : roleTitle(profile.role)}</dd></div>
+            {student && <div><dt>Semester</dt><dd>{profile.currentSemester || "—"}</dd></div>}
+            {profile.major && <div><dt>Major</dt><dd>{profile.major}</dd></div>}
+          </dl>
+          <button type="button" className="outline-button" onClick={() => onOpen("profile")}>View profile</button>
+        </>}
+      </section>
+
+      <section className="folio-queue">
+        <h2>{student ? "Student services" : "Work queue"}</h2>
+        {queue.map(([title, description, screen]) => <div className="folio-queue-row" key={screen}>
+          <div><strong>{title}</strong><p>{description}</p></div>
+          <button className="outline-button" type="button" aria-label={`Open ${title}`} onClick={() => onOpen(screen)}>Open</button>
+        </div>)}
+        {coordinator && <button type="button" className="outline-button" onClick={() => onOpen("pending-work")}>All pending work</button>}
+      </section>
+
+      <section className="folio-activity">
+        <h2>{managesTerms ? "Recent activity" : "Notifications"}</h2>
+        {managesTerms ? <>
+          {activity?.activities?.slice(0, 3).map((entry) => <div className="folio-activity-row" key={entry.id}>
+            <time dateTime={entry.occurredAt}>{entry.occurredAt ? new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(new Date(entry.occurredAt)) : "—"}</time>
+            <div><strong>{entry.studentName || entry.studentId || "Student schedule"}</strong><p>{humanize(entry.action)} · {entry.staffName}</p></div>
+          </div>)}
+          {!activity?.activities?.length && <p>{unavailable.activity ? "Schedule activity unavailable." : activity ? "No schedule activity recorded." : "Loading schedule activity…"}</p>}
+          <button className="outline-button" type="button" onClick={() => onOpen("schedule-activity")}>View schedule activity</button>
+        </> : <button className="outline-button" type="button" onClick={() => onOpen("notifications")}>Open notifications</button>}
+      </section>
     </div>
-    <p className="page-footnote">Bobos University Scheduling System <span>·</span> Development workspace</p>
   </div>;
 }
 
