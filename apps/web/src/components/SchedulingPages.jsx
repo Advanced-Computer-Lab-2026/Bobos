@@ -337,6 +337,7 @@ function AdvisingDraftEditor({ token, student, termId, notify, onBack, onSaved }
   const [validationIssues, setValidationIssues] = useState(null);
   const [overview, setOverview] = useState(null);
   const [creating, setCreating] = useState(false);
+  const [savingMandatory, setSavingMandatory] = useState(false);
   const [validating, setValidating] = useState(false);
   const validationHeading = useRef(null);
   const [loading, setLoading] = useState(true);
@@ -407,6 +408,17 @@ function AdvisingDraftEditor({ token, student, termId, notify, onBack, onSaved }
       validationHeading.current?.focus();
     } catch (failure) { setError(failure.message); }
     finally { setValidating(false); }
+  }
+
+  async function saveMandatory(courseIds) {
+    setSavingMandatory(true); setError(""); setMessage("");
+    try {
+      const result = await api(`/api/schedules/advising/${encodeURIComponent(student._id)}/mandatory-courses${termQuery}`, { token, method: "PUT", body: { courses: courseIds } });
+      notify?.("success", result.message);
+      onSaved?.("draft");
+      await load();
+    } catch (requestError) { setError(requestError.message); }
+    finally { setSavingMandatory(false); }
   }
 
   async function createDraft() {
@@ -499,7 +511,7 @@ function AdvisingDraftEditor({ token, student, termId, notify, onBack, onSaved }
           {preferences.note && <p className="draft-student-note"><strong>Student note:</strong> {preferences.note}</p>}
         </>}
       </section>
-      {data.mandatoryCourses.length > 0 && <section className="panel"><div className="panel-heading"><div><p className="eyebrow">ACADEMIC RECORD</p><h2>Failed or unattended courses</h2></div></div><p className="helper-text">These courses are marked mandatory unless a removal was approved for this term. Include the available offerings in the draft when required.</p><div className="draft-mandatory-list">{data.mandatoryCourses.map((course) => <span className={`status-pill ${course.availableForTerm ? "warning" : "muted"}`} key={course._id}>{course.code}{course.availableForTerm ? " · mandatory" : " · no eligible published offering"}</span>)}</div></section>}
+      {data.mandatoryCourses.length > 0 && <MandatoryCoursesPanel data={data} editable={editable} busy={savingMandatory} onSave={saveMandatory} />}
       {!editable && data.schedule?.status === "readyForStudentReview" && <Feedback tone="success">This schedule is now visible to the advising student for review.</Feedback>}
       <section className="panel draft-timetable" id="draft-timetable"><div className="panel-heading"><div><p className="eyebrow">LIVE PREVIEW</p><h2>Selected timetable</h2></div><span className="result-count">{selectedOfferings.length} subjects</span></div>{selectedOfferings.length ? <WeeklySchedule week={draftWeek} compact /> : <p className="helper-text">Add course groups below to preview their days and times here.</p>}</section>
       <form className="panel draft-course-editor" id="draft-courses" onSubmit={save}>
@@ -699,6 +711,28 @@ function WeeklySchedule({ week = {}, daysOff = [], compact = false }) {
 function Stat({ label, value }) { return <div className="stat-card"><span className="stat-icon">◷</span><div><p>{label}</p><strong>{value}</strong></div></div>; }
 const ADVISING_REASONS = { probation: "Probation", failedCourses: "More than two failed courses in a season", unattendedCourses: "Unattended courses", undeclaredMajor: "Undeclared CS or DMET major", transfer: "Transfer from another major/university" };
 const WORKFLOW_LABELS = { notStarted: "Not started", draft: "Draft", readyForStudentReview: "Ready for student review", changeRequestPending: "Change request pending", pendingApproval: "Pending approval", awaitingPaymentChoice: "Awaiting payment choice", deferredToNextInstallment: "Deferred to next installment", readyToProcess: "Ready to process", processed: "Processed", reopened: "Reopened" };
+
+function MandatoryCoursesPanel({ data, editable, busy, onSave }) {
+  const available = data.mandatoryCourses.filter((course) => course.availableForTerm);
+  const [picked, setPicked] = useState(() => new Set(available.filter((course) => course.inDraft).map((course) => course._id)));
+  useEffect(() => { setPicked(new Set(available.filter((course) => course.inDraft).map((course) => course._id))); }, [data.schedule?.version]);
+  const summary = data.mandatorySummary;
+  const pickedHours = available.filter((course) => picked.has(course._id)).reduce((sum, course) => sum + Number(course.creditHours || 0), 0);
+  const toggle = (id) => setPicked((current) => { const next = new Set(current); next.has(id) ? next.delete(id) : next.add(id); return next; });
+  return <section className="panel mandatory-panel" id="draft-mandatory"><div className="panel-heading"><div><p className="eyebrow">MANDATORY COURSES</p><h2>Failed or unattended courses</h2></div>
+    <span className="status-pill good">{summary?.mandatoryHours ?? 0} / {summary?.allowedHours ?? data.creditPolicy.maximumCreditHours} h used</span></div>
+    <p className="helper-text">Select the mandatory courses to include before adding any other course. They use up the student’s allowed credit hours.</p>
+    <ul className="mandatory-list">{data.mandatoryCourses.map((course) => <li key={course._id}>
+      {course.availableForTerm
+        ? <label><input type="checkbox" checked={picked.has(course._id)} disabled={!editable || busy} onChange={() => toggle(course._id)} /> <strong>{course.code}</strong> {course.name} · {course.creditHours} h</label>
+        : <span><strong>{course.code}</strong> {course.name} · <span className="status-pill muted">no eligible published offering</span></span>}
+    </li>)}</ul>
+    {summary && summary.mandatoryHours > 0 && (summary.otherCoursesNeedExtraHours
+      ? <Feedback tone="warning">Mandatory courses use all {summary.allowedHours} allowed hours. No other course can be added without approved extra hours.</Feedback>
+      : <p className="helper-text">{summary.remainingAllowedHours} allowed hours remain for other courses.</p>)}
+    {editable && <div className="form-footer"><span className="helper-text">{pickedHours} credit hours selected.</span><button className="primary-button" type="button" disabled={busy} onClick={() => onSave([...picked])}>{busy ? "Saving…" : "Save mandatory courses"}</button></div>}
+  </section>;
+}
 
 function AdvisingOverviewPanel({ overview, token, student, termQuery, canEdit, notify, onChanged }) {
   const hours = overview.creditHours, bachelor = overview.bachelorProject;

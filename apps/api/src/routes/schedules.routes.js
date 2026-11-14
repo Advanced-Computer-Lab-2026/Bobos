@@ -1,5 +1,5 @@
 import express from "express";
-import { downloadMySchedule, createAdvisingDraft, getAdvisingDraft, getAdvisingOverview, removeBachelorProject, setBachelorProject, getMyCourseDetails, getMyRegisteredCourses, getMySchedule, getStudentSchedule, listStudentsWithSchedules, saveAdvisingDraft, validateAdvisingDraft } from "../controllers/scheduling.controller.js";
+import { downloadMySchedule, createAdvisingDraft, selectMandatoryCourses, getAdvisingDraft, getAdvisingOverview, removeBachelorProject, setBachelorProject, getMyCourseDetails, getMyRegisteredCourses, getMySchedule, getStudentSchedule, listStudentsWithSchedules, saveAdvisingDraft, validateAdvisingDraft } from "../controllers/scheduling.controller.js";
 import { requireAuth } from "../middleware/auth.middleware.js";
 import { requireRole } from "../middleware/require-role.js";
 
@@ -14,6 +14,7 @@ router.get("/advising/:studentId/overview", requireRole("advisor", "coordinator"
 router.put("/advising/:studentId/bachelor-project", requireRole("advisor", "coordinator"), setBachelorProject);
 router.delete("/advising/:studentId/bachelor-project", requireRole("advisor", "coordinator"), removeBachelorProject);
 router.post("/advising/:studentId/draft", requireRole("advisor", "coordinator"), createAdvisingDraft);
+router.put("/advising/:studentId/mandatory-courses", requireRole("advisor", "coordinator"), selectMandatoryCourses);
 router.get("/advising/:studentId/draft", requireRole("advisor", "coordinator"), getAdvisingDraft);
 router.put("/advising/:studentId/draft", requireRole("advisor", "coordinator"), saveAdvisingDraft);
 router.post("/advising/:studentId/draft/validate", requireRole("advisor", "coordinator"), validateAdvisingDraft);

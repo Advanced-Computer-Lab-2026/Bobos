@@ -599,3 +599,5 @@ td strong, td .secondary-text { display: block; }
 .advising-overview .overview-grid dd { margin: 0; color: #35433d; font-size: 13px; font-weight: 700; }
 .bachelor-project-actions { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; margin-top: 14px; }
 .bachelor-project-actions .field { min-width: 160px; }
+.mandatory-list { display: grid; gap: 8px; margin: 0 0 12px; padding: 0; list-style: none; font-size: 11px; color: #35433d; }
+.mandatory-list label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
