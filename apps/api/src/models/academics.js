@@ -67,6 +67,15 @@ const studentScheduleSchema = withTimestamps({
   // Older advising drafts stored slot choices without updating seat counts.
   seatsReserved: { type: Boolean, default: false },
   version: { type: Number, default: 1, min: 1 },
+  // Req. 60: bachelor project chosen by staff for an eligible advising student; it has no lecture/tutorial/lab slots.
+  bachelorProject: {
+    type: new Schema({
+      season: { type: String, required: true, enum: ["winter", "spring"] },
+      addedBy: ref("User", { required: true }),
+      addedAt: { type: Date, required: true, default: Date.now },
+    }, { _id: false }),
+    default: null,
+  },
   createdBy: ref("User", { required: true }),
   processedBy: ref("User", { default: null }),
   processedAt: { type: Date, default: null },
