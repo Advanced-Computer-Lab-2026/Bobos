@@ -18,6 +18,7 @@ import { GroupAssignmentsPage, StaffSchedulesPage, StudentSchedulingPage } from 
 import { CalendarSyncPage, PendingWorkPage, ScheduleActivityPage } from "./components/B1Pages.jsx";
 import MandatoryRemovalDashboard from "./components/MandatoryRemovalDashboard.jsx";
 import ExtraHoursPage from "./components/ExtraHoursPage.jsx";
+import GraduationReview, { StudentGraduation } from "./components/GraduationReview.jsx";
 
 const roleNames = {
   normalStudent: "Normal student",
@@ -36,6 +37,7 @@ const navGroups = (role) => {
       ...(role === "advisingStudent" ? [{ id: "records", label: "Academic records" }] : []),
       { id: "my-schedule", label: "My schedule" },
       { id: "my-courses", label: "Registered courses" },
+      ...(role === "advisingStudent" ? [{ id: "my-graduation", label: "My graduation" }] : []),
       ...(role === "advisingStudent" ? [{ id: "extra-hours", label: "Extra-hours requests" }] : []),
       ...(role === "advisingStudent" ? [{ id: "slot-changes", label: "Slot change requests" }] : []),
       ...(role === "normalStudent" ? [{ id: "schedule-swap", label: "Eligible swap groups" }] : []),
@@ -53,6 +55,7 @@ const navGroups = (role) => {
       ...(["coordinator", "administrator"].includes(role) ? [{ id: "schedule-activity", label: "Schedule activity" }] : []),
       ...(["coordinator", "administrator", "advisor"].includes(role) ? [{ id: "mandatory-removals", label: "Course removals" }] : []),
       { id: "student-schedules", label: "Student schedules" },
+      ...(["advisor", "coordinator"].includes(role) ? [{ id: "graduation-review", label: role === "coordinator" ? "Graduation review" : "My submitted plans" }] : []),
       ...(["advisor", "coordinator"].includes(role) ? [{ id: "extra-hours", label: "Extra-hours requests" }] : []),
       ...(["advisor", "coordinator"].includes(role) ? [{ id: "slot-changes", label: "Slot change requests" }] : []),
     ] }] : []),
@@ -78,6 +81,7 @@ const titleByScreen = {
   "calendar-sync": "Calendar sync", "pending-work": "Pending work", "schedule-activity": "Schedule activity",
   "mandatory-removals": "Mandatory-course removals",
   "extra-hours": "Extra-hours requests",
+  "my-graduation": "My graduation", "graduation-review": "Graduation plans",
 };
 
 export default function App() {
@@ -246,6 +250,8 @@ export default function App() {
           {activeScreen === "directory" && <StudentDirectoryPage token={token} role={profile.role} notify={notify} />}
           {activeScreen === "financial-records" && <FinancialRecordsPage token={token} role={profile.role} notify={notify} />}
           {activeScreen === "advising" && <AdvisingPage token={token} role={profile.role} onOpenPreferences={(student) => openScreen("preferences", student)} />}
+          {activeScreen === "graduation-review" && ["advisor", "coordinator"].includes(profile.role) && <GraduationReview token={token} role={profile.role} />}
+          {activeScreen === "my-graduation" && profile.role === "advisingStudent" && <StudentGraduation token={token} />}
           {activeScreen === "my-advisor" && <MyAdvisorPage token={token} />}
           {activeScreen === "calendar-sync" && <CalendarSyncPage token={token} />}
           {activeScreen === "pending-work" && profile.role === "coordinator" && <PendingWorkPage token={token} />}

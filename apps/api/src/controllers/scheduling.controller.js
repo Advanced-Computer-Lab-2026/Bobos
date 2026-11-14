@@ -340,7 +340,10 @@ async function changeAdvisingScheduleStatus(req, res, reopening) {
 }
 
 export function processAdvisingSchedule(req, res) {
-  return changeAdvisingScheduleStatus(req, res, false);
+  return changeAdvisingScheduleStatus(req, res, false).catch((error) => {
+    if (error.status) return res.status(error.status).json({ message: error.message });
+    throw error;
+  });
 }
 
 export function reopenAdvisingSchedule(req, res) {
