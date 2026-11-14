@@ -12,6 +12,8 @@ import groupAssignmentRoutes from "./routes/group-assignments.routes.js";
 import scheduleRoutes from "./routes/schedules.routes.js";
 import calendarRoutes from "./routes/calendar.routes.js";
 import swapRoutes from "./routes/swaps.routes.js";
+import financeRoutes from "./routes/finance.routes.js";
+import mandatoryRemovalRoutes from "./routes/mandatoryRemoval.routes.js";
 import { requireAuth } from "./middleware/auth.middleware.js";
 import { getProfile } from "./controllers/identity.controller.js";
 import { apiErrorHandler } from "./middleware/error.middleware.js";
@@ -56,6 +58,9 @@ app.use("/api/group-assignments", groupAssignmentRoutes);
 app.use("/api/schedules", scheduleRoutes);
 app.use("/api/calendar", calendarRoutes);
 app.use("/api/swaps", swapRoutes);
+app.use("/api/finance", financeRoutes);
+app.use("/api/advising/mandatory-removal-requests", mandatoryRemovalRoutes);
+app.use("/api/mandatory-removals", mandatoryRemovalRoutes);
 app.get("/api/profile", requireAuth, getProfile);
 app.get("/api/health", (_req, res) => {
   res.json({

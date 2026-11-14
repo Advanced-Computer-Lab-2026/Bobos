@@ -9,10 +9,12 @@ import {
   PreferencesPage,
 } from "./components/BasicPages.jsx";
 import StudentDirectoryPage from "./components/StudentDirectoryPage.jsx";
+import FinancialRecordsPage from "./components/FinancialRecordsPage.jsx";
 import AdvisingPage, { MyAdvisorPage } from "./components/AdvisingPage.jsx";
 import AcademicWorkspace from "./components/AcademicWorkspace.jsx";
 import { GroupAssignmentsPage, StaffSchedulesPage, StudentSchedulingPage } from "./components/SchedulingPages.jsx";
 import { CalendarSyncPage, PendingWorkPage, ScheduleActivityPage } from "./components/B1Pages.jsx";
+import MandatoryRemovalDashboard from "./components/MandatoryRemovalDashboard.jsx";
 
 const roleNames = {
   normalStudent: "Normal student",
@@ -37,11 +39,15 @@ const navGroups = (role) => {
       { id: "calendar-sync", label: "Calendar sync", icon: "▦" },
     ] }] : []),
     ...(staff ? [{ title: "People", items: [
-      ...(["coordinator", "administrator"].includes(role) ? [{ id: "directory", label: "Student directory", icon: "♙" }] : []),
+      ...(["coordinator", "administrator"].includes(role) ? [
+        { id: "directory", label: "Student directory", icon: "♙" },
+        { id: "financial-records", label: "Financial Records", icon: "💳" },
+      ] : []),
       ...(role === "advisor" || role === "coordinator" ? [{ id: "advising", label: "Advising students", icon: "♧" }] : []),
       ...(role === "advisor" || role === "coordinator" ? [{ id: "preferences", label: "Student preferences", icon: "☷" }] : []),
       ...(role === "coordinator" ? [{ id: "pending-work", label: "Pending work", icon: "◷" }] : []),
       ...(["coordinator", "administrator"].includes(role) ? [{ id: "schedule-activity", label: "Schedule activity", icon: "↻" }] : []),
+      ...(["coordinator", "administrator", "advisor"].includes(role) ? [{ id: "mandatory-removals", label: "Course removals", icon: "▤" }] : []),
       { id: "student-schedules", label: "Student schedules", icon: "◷" },
     ] }] : []),
     ...(["coordinator", "administrator"].includes(role) ? [{ title: "Academic setup", items: [
@@ -57,11 +63,13 @@ const navGroups = (role) => {
 const titleByScreen = {
   overview: "Overview", profile: "My profile", notifications: "Notifications",
   records: "Academic records", preferences: "Schedule preferences", directory: "Student directory",
+  "financial-records": "Financial Records",
   advising: "Advising students", "my-advisor": "My advisor", courses: "Course catalogue",
   terms: "Academic terms", offerings: "Course offerings", templates: "Schedule templates",
   "my-schedule": "My schedule", "my-courses": "Registered courses", "schedule-swap": "Eligible swap groups",
   "student-schedules": "Student schedules", "group-assignments": "Schedule group assignments",
   "calendar-sync": "Calendar sync", "pending-work": "Pending work", "schedule-activity": "Schedule activity",
+  "mandatory-removals": "Mandatory-course removals",
 };
 
 export default function App() {
@@ -186,11 +194,13 @@ export default function App() {
           {activeScreen === "records" && profile.role !== "normalStudent" && <StudentRecordsPage token={token} profile={profile} notify={notify} />}
           {activeScreen === "preferences" && <PreferencesPage token={token} profile={profile} profileId={screenContext?.id || screenContext?._id || profile.studentProfileId} studentTarget={screenContext?._id ? screenContext : undefined} notify={notify} onOpenDraftSchedule={(student, selectedTermId) => openScreen("student-schedules", { draftStudent: student, termId: selectedTermId })} />}
           {activeScreen === "directory" && <StudentDirectoryPage token={token} role={profile.role} notify={notify} />}
+          {activeScreen === "financial-records" && <FinancialRecordsPage token={token} role={profile.role} notify={notify} />}
           {activeScreen === "advising" && <AdvisingPage token={token} role={profile.role} onOpenPreferences={(student) => openScreen("preferences", student)} />}
           {activeScreen === "my-advisor" && <MyAdvisorPage token={token} />}
           {activeScreen === "calendar-sync" && <CalendarSyncPage token={token} />}
           {activeScreen === "pending-work" && profile.role === "coordinator" && <PendingWorkPage token={token} />}
           {activeScreen === "schedule-activity" && ["coordinator", "administrator"].includes(profile.role) && <ScheduleActivityPage token={token} />}
+          {activeScreen === "mandatory-removals" && ["coordinator", "administrator", "advisor"].includes(profile.role) && <MandatoryRemovalDashboard token={token} role={profile.role} notify={notify} />}
           {activeScreen === "group-assignments" && <GroupAssignmentsPage token={token} canAssign={profile.role === "coordinator"} notify={notify} />}
           {activeScreen === "student-schedules" && <StaffSchedulesPage token={token} role={profile.role} notify={notify} initialStudent={screenContext?.draftStudent} initialTermId={screenContext?.termId} />}
           {["my-schedule", "my-courses", "schedule-swap"].includes(activeScreen) && <StudentSchedulingPage token={token} section={activeScreen} />}
