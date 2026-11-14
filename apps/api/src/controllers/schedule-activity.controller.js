@@ -42,9 +42,7 @@ async function queryActivities(req, res, { studentId } = {}) {
     const pattern = new RegExp(escaped(search), "i");
     const matchingStudents = profiles.filter((profile) => pattern.test(profile.studentId));
     const studentIds = matchingStudents.map((profile) => profile._id);
-    const actorQuery = { $or: [{ actorName: pattern }, { actorEmail: pattern }] };
-    const actorIds = await ScheduleActivity.distinct("actor", { ...filter, ...actorQuery });
-    filter.$or = [{ student: { $in: studentIds } }, { actor: { $in: actorIds } }, { actorName: pattern }, { actorEmail: pattern }];
+    filter.$or = [{ student: { $in: studentIds } }, { actorName: pattern }, { actorEmail: pattern }];
   }
   const page = Math.max(1, Math.min(100000, Number(req.query.page) || 1));
   const limit = Math.max(1, Math.min(100, Number(req.query.limit) || 50));

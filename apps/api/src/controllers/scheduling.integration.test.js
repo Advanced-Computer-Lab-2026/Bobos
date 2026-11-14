@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test, { after, before, beforeEach } from "node:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { join } from "node:path";
+import { tmpdir } from "node:os";
 import mongoose from "mongoose";
 import { MongoMemoryReplSet } from "mongodb-memory-server";
 import app from "../app.js";
@@ -14,7 +15,7 @@ import { generateToken } from "../middleware/auth.middleware.js";
 let database, databasePath, server, base, users, profiles, term, courses, offerings, templates;
 
 before(async () => {
-  databasePath = await mkdtemp(join(process.cwd(), ".mongo-scheduling-"));
+  databasePath = await mkdtemp(join(tmpdir(), "bobos-scheduling-"));
   database = await MongoMemoryReplSet.create({ instanceOpts: [{ dbPath: databasePath }], replSet: { count: 1 } });
   await mongoose.connect(database.getUri());
   await Promise.all([User.init(), StudentProfile.init(), AcademicTerm.init(), Course.init(), CourseOffering.init(), ScheduleTemplate.init(), StudentSchedule.init(), SchedulingPreference.init(), CourseAttempt.init(), ExtraHoursRequest.init(), SlotChangeRequest.init()]);

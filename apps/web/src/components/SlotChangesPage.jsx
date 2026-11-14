@@ -1,13 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api.js";
+import { filterSlotChanges } from "../slot-change-filters.js";
 
 const path = "/api/slot-changes";
 const statuses = { pending: "Pending", approved: "Approved", rejected: "Rejected", withdrawn: "Withdrawn" };
 const date = (value) => value ? new Date(value).toLocaleString() : "—";
-const dayKey = (value) => {
-  const local = new Date(value);
-  return new Date(+local - local.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
-};
 const slotText = (slot) => `${slot.type} · Group ${slot.groupNumber} · ${slot.day} ${slot.startTime}–${slot.endTime} · ${slot.room}`;
 const options = (items) => [...new Set(items.filter(Boolean))].sort((a, b) => a.localeCompare(b));
 const emptyFilters = { search: "", status: "", advisor: "", course: "", from: "", to: "" };
@@ -71,16 +68,7 @@ export default function SlotChangesPage({ token, role, onOpenSchedule }) {
   }
 
   const requests = data?.requests || [];
-  const shown = requests.filter((request) => {
-    const { student, course, status, createdAt } = request;
-    const submitted = dayKey(createdAt);
-    const query = filters.search.trim().toLowerCase();
-    return (!filters.status || status === filters.status) &&
-      (!filters.advisor || (student?.assignedAdvisor?._id || "unassigned") === filters.advisor) &&
-      (!filters.course || course?.code === filters.course) &&
-      (!filters.from || submitted >= filters.from) && (!filters.to || submitted <= filters.to) &&
-      [student?.studentId, student?.user?.fullName, course?.code].some((value) => (value || "").toLowerCase().includes(query));
-  });
+  const shown = filterSlotChanges(requests, filters);
   const advisors = [...new Map(requests.map(({ student }) => {
     const advisor = student?.assignedAdvisor;
     return [advisor?._id || "unassigned", advisor?.fullName || "Unassigned"];
