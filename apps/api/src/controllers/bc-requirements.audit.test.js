@@ -432,7 +432,7 @@ test("GAP B3 Req 81: processing revalidates current published offerings and requ
   assert.equal((await StudentSchedule.findOne({ student: student._id })).status, "readyForStudentReview");
 });
 
-test("GAP B3 Req 81,123: two staff processing simultaneously finalize and log exactly once", gap("Processing has no transaction or conditional update; duplicate actions can succeed"), async () => {
+test("B3 Req 81,123: two staff processing simultaneously finalize and log exactly once", async () => {
   await schedule();
   const responses = await Promise.all(Array.from({ length: 8 }, () => call(`${schedulePath()}/process`, { method: "POST", body: {} })));
   assert.equal(responses.filter((res) => res.status === 200).length, 1);

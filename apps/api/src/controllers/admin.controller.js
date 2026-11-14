@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import nodemailer from "nodemailer";
+import { isSmtpConfigured, sendEmail } from "../services/smtp-email.js";
 import { StudentSchedule } from "../models/academics.js";
 import { Notification, ScheduleActivity } from "../models/communications.js";
 import { AcademicTerm } from "../models/catalogue.js";
@@ -432,23 +432,9 @@ export async function lookupAdvisor(req, res) {
 
 async function emailAdvisor(advisor, type, title, message) {
   const notification = await Notification.create({ recipient: advisor._id, type, title, message, channels: ["email"], deliveryStatus: "pending" });
-  if (!process.env.SMTP_HOST || !process.env.SMTP_FROM) return notification;
+  if (!isSmtpConfigured()) return notification;
   try {
-    const port = Number(process.env.SMTP_PORT || 587);
-    const secure = process.env.SMTP_SECURE === undefined ? port === 465 : process.env.SMTP_SECURE === "true";
-    const transport = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port,
-      secure,
-      requireTLS: !secure && process.env.SMTP_REQUIRE_TLS !== "false",
-      auth: process.env.SMTP_USER ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS } : undefined,
-      connectionTimeout: 10000,
-      greetingTimeout: 10000,
-      socketTimeout: 10000,
-      disableFileAccess: true,
-      disableUrlAccess: true,
-    });
-    await transport.sendMail({ from: process.env.SMTP_FROM, to: advisor.email, subject: title, text: message });
+    await sendEmail({ to: advisor.email, subject: title, text: message });
     notification.deliveryStatus = "sent";
     notification.sentAt = new Date();
   } catch {

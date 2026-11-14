@@ -7,7 +7,7 @@ const week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
 
 export default function AcademicWorkspace({ token, role, section, notify }) {
   if (section === "courses") return <CoursesWorkspace token={token} role={role} notify={notify} />;
-  if (section === "terms") return <TermsWorkspace token={token} notify={notify} />;
+  if (section === "terms") return <TermsWorkspace token={token} role={role} notify={notify} />;
   if (section === "offerings") return role === "administrator" ? <OfferingsWorkspace token={token} notify={notify} /> : <div className="feedback error" role="alert">Only administrators can manage course offerings.</div>;
   if (section === "templates") return role === "coordinator" ? <TemplatesWorkspace token={token} notify={notify} /> : <div className="feedback error" role="alert">Only coordinators can manage schedule templates.</div>;
   return null;
@@ -86,7 +86,7 @@ function CoursesWorkspace({ token, role, notify }) {
 
 const blankTerm = { code: "", academicYear: "2026/2027", season: "spring", termStart: "", termEnd: "", teachingStart: "", teachingEnd: "", registrationStart: "", registrationEnd: "", advisingDeadline: "", wholeScheduleSwapDeadline: "", isActive: false };
 const termDateFields = ["termStart", "termEnd", "teachingStart", "teachingEnd", "registrationStart", "registrationEnd", "advisingDeadline", "wholeScheduleSwapDeadline"];
-function TermsWorkspace({ token, notify }) {
+function TermsWorkspace({ token, role, notify }) {
   const [form, setForm] = useState(blankTerm);
   const [termId, setTermId] = useState("");
   const [terms, setTerms] = useState([]);
@@ -94,6 +94,7 @@ function TermsWorkspace({ token, notify }) {
   const [fetchingTerms, setFetchingTerms] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [recordingStanding, setRecordingStanding] = useState(false);
 
   const loadTerms = async () => {
     setFetchingTerms(true);
@@ -190,12 +191,24 @@ function TermsWorkspace({ token, notify }) {
     setError("");
   };
 
+  const standingSaved = ({ warningEmailStatus }) => {
+    setRecordingStanding(false);
+    setMessage(warningEmailStatus === "sent" ? "Semester standing saved. Probation warning email sent." : "Semester standing saved.");
+    if (warningEmailStatus === "failed") setError("The probation warning email could not be delivered.");
+    if (warningEmailStatus === "pending") setMessage("Semester standing saved. The probation warning check is pending.");
+  };
+
   return (
     <div className="page-stack">
       <PageTitle
         eyebrow="ACADEMIC CALENDAR"
         title="Academic terms"
         description="Define term dates and deadlines used by offerings and scheduling."
+        action={role === "administrator" && terms.length > 0 && (
+          <button className="outline-button" type="button" onClick={() => { setMessage(""); setError(""); setRecordingStanding(true); }}>
+            Record standing
+          </button>
+        )}
       />
       {message && <div className="feedback success" role="status">{message}</div>}
       {error && <div className="feedback error" role="alert">{error}</div>}
@@ -338,8 +351,72 @@ function TermsWorkspace({ token, notify }) {
           </label>
         </section>
       </div>
+      {recordingStanding && (
+        <TermStandingModal
+          token={token}
+          terms={terms}
+          selectedTerm={terms.find(term => term._id === termId || term.code === termId)}
+          onClose={() => setRecordingStanding(false)}
+          onSaved={standingSaved}
+        />
+      )}
     </div>
   );
+}
+
+function TermStandingModal({ token, terms, selectedTerm, onClose, onSaved }) {
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const save = async (event) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const term = form.get("term");
+    const studentId = form.get("studentId").trim();
+    if (!studentId) {
+      setError("Enter a student ID.");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      const result = await api(`/api/academic-terms/academicTerm/${encodeURIComponent(term)}/standings/${encodeURIComponent(studentId)}`, {
+        token,
+        method: "PUT",
+        body: { academicStanding: form.get("academicStanding") },
+      });
+      onSaved(result);
+    } catch (requestError) {
+      setError(explainApiError(requestError, "Semester standing"));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return <Modal title="Record semester standing" eyebrow="ACADEMIC TERMS" onClose={() => !saving && onClose()}>
+    <form className="form-stack" onSubmit={save}>
+      <Field label="Academic term">
+        <select name="term" defaultValue={selectedTerm?._id || selectedTerm?.code || ""} required>
+          <option value="" disabled>Choose a term</option>
+          {terms.map(term => <option key={term._id || term.code} value={term._id || term.code}>
+            {term.code} · {pretty(term.season)} {term.academicYear}
+          </option>)}
+        </select>
+      </Field>
+      <Field label="Student ID">
+        <input name="studentId" placeholder="e.g. 61-00002" maxLength={24} required />
+      </Field>
+      <Field label="Academic standing">
+        <select name="academicStanding" defaultValue="" required>
+          <option value="" disabled>Choose a standing</option>
+          <option value="goodAcademicStanding">Good academic standing</option>
+          <option value="probation">Probation</option>
+        </select>
+      </Field>
+      {error && <div className="feedback error" role="alert">{error}</div>}
+      <FormFooter onCancel={onClose} busy={saving} submitText="Save standing" />
+    </form>
+  </Modal>;
 }
 
 function OfferingsWorkspace({ token, notify }) {
