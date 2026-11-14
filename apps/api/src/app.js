@@ -15,6 +15,7 @@ import slotChangeRoutes from "./routes/slot-changes.routes.js";
 import swapRoutes from "./routes/swaps.routes.js";
 import financeRoutes from "./routes/finance.routes.js";
 import mandatoryRemovalRoutes from "./routes/mandatoryRemoval.routes.js";
+import extraHoursRoutes from "./routes/extra-hours.routes.js";
 import { requireAuth } from "./middleware/auth.middleware.js";
 import { getProfile } from "./controllers/identity.controller.js";
 import { apiErrorHandler } from "./middleware/error.middleware.js";
@@ -63,6 +64,7 @@ app.use("/api/finance", financeRoutes);
 app.use("/api/advising/mandatory-removal-requests", mandatoryRemovalRoutes);
 app.use("/api/mandatory-removals", mandatoryRemovalRoutes);
 app.use("/api/slot-changes", slotChangeRoutes);
+app.use("/api/extra-hours", extraHoursRoutes);
 app.get("/api/profile", requireAuth, getProfile);
 app.get("/api/health", (_req, res) => {
   res.json({

@@ -235,6 +235,7 @@ td strong, td .secondary-text { display: block; }
 .notification-title h3 { margin: 0; color: var(--ink); font-size: 11px; }
 .notification-copy p { margin: 5px 0; color: var(--muted); font-size: 12px; line-height: 1.55; }
 .notification-copy small { color: var(--muted); font-size: 12px; }
+.notification-copy .notification-email-message { white-space: pre-line; }
 .notification-row.read .notification-copy h3 { font-weight: 500; }
 .directory-filters form { display: grid; gap: 16px; }
 .filter-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 12px; }
