@@ -625,3 +625,94 @@ test("C1 Req 59 shows advising reason, credit allowance, status and bachelor-pro
   assert.equal(overview.bachelorProject.eligible, true, "one failed course with all English complete stays eligible");
   assert.equal(overview.bachelorProject.eligibleWithFailedCourses, true);
 });
+
+test("C1 Req 60 adds the bachelor project for eligible students and applies the four-course rule", async () => {
+  const path = `/schedules/advising/${profiles.advising._id}/bachelor-project?termId=${term._id}`;
+  const put = (role, body) => call(path, { role, method: "PUT", body });
+  assert.equal((await put(undefined, { season: "winter" })).status, 401);
+  assert.equal((await put("administrator", { season: "winter" })).status, 403);
+  assert.equal((await put("advisor", { season: "summer" })).status, 400);
+  assert.equal((await put("advisor", { season: "winter", extra: 1 })).status, 400);
+
+  const blocker = await Course.create({ code: "RPW401", name: "Research Paper Writing", creditHours: 2, courseType: "huma", facultyMajors: [], recommendedSemester: 4 });
+  const ineligible = await put("advisor", { season: "winter" });
+  assert.equal(ineligible.status, 409);
+  assert.match(ineligible.body.validationIssues[0].message, /RPW401/);
+  assert.equal(await StudentSchedule.countDocuments({ student: profiles.advising._id }), 0);
+
+  await CourseAttempt.create({ student: profiles.advising._id, course: blocker._id, term: term._id, attendance: "attended", result: "passed", grade: "A" });
+  const added = await put("advisor", { season: "Spring" });
+  assert.equal(added.status, 201);
+  assert.equal(added.body.schedule.bachelorProject.season, "spring");
+  const changed = await put("coordinator", { season: "winter" });
+  assert.equal(changed.status, 200);
+  assert.equal(changed.body.schedule.version, 2);
+  const overview = (await call(`/schedules/advising/${profiles.advising._id}/overview?termId=${term._id}`, { role: "advisor" })).body;
+  assert.equal(overview.bachelorProject.selection.season, "winter");
+  assert.equal(overview.scheduleStatus, "draft");
+
+  const extraCore = await Course.create({ code: "CSEN 502", name: "Operating Systems", creditHours: 4, courseType: "core", facultyMajors: ["CS"] });
+  const german = await Course.create({ code: "DE 101", name: "German 1", creditHours: 4, courseType: "huma", facultyMajors: [] });
+  const make = (course, day) => CourseOffering.create({
+    course: course._id, academicYear: term.academicYear, term: term._id, isPublished: true,
+    instructors: [{ fullName: "Dr. X", email: "x@guc.edu.eg" }],
+    eligibleGroups: [{ major: "CS", semester: 5, studyGroup: "1" }],
+    slots: [{ componentType: "lecture", groupNumber: "1", day, startMinute: 600, endMinute: 720, room: "H9", capacity: 5 }],
+  });
+  const [coreOffering, germanOffering] = [await make(extraCore, "Monday"), await make(german, "Tuesday")];
+  const pick = (offering) => ({ courseOffering: String(offering._id), groups: [{ componentType: "lecture", groupNumber: "1" }] });
+  const validate = (offeringsToPick) => call(`/schedules/advising/${profiles.advising._id}/draft/validate?termId=${term._id}`, { role: "advisor", method: "POST", body: { courses: offeringsToPick.map(pick) } });
+
+  const tooManyCore = await validate([offerings[0], offerings[1], coreOffering]);
+  assert.ok(tooManyCore.body.validationIssues.some((issue) => issue.code === "bachelorProjectLimit" && /core/.test(issue.message)));
+  const humanities = await validate([offerings[0], germanOffering]);
+  const extraIssue = humanities.body.validationIssues.find((issue) => issue.code === "bachelorProjectExtraHours");
+  assert.ok(extraIssue && extraIssue.blocksSave === false, "humanities need extra hours but do not block saving a draft");
+
+  const removed = await call(path, { role: "advisor", method: "DELETE" });
+  assert.equal(removed.status, 200);
+  assert.equal((await call(path, { role: "advisor", method: "DELETE" })).status, 404);
+  const afterRemoval = await validate([offerings[0], offerings[1], coreOffering]);
+  assert.ok(!afterRemoval.body.validationIssues.some((issue) => issue.code === "bachelorProjectLimit"));
+
+  await StudentSchedule.updateOne({ student: profiles.advising._id }, { status: "readyForStudentReview" });
+  assert.equal((await put("advisor", { season: "winter" })).status, 409, "only open drafts can change");
+});
+
+test("C1 Req 62 creates one open draft per student and term and shows optional preferences", async () => {
+  const path = `/schedules/advising/${profiles.advising._id}/draft?termId=${term._id}`;
+  const create = (role) => call(path, { role, method: "POST" });
+  assert.equal((await create()).status, 401);
+  assert.equal((await create("advisingStudent")).status, 403);
+  assert.equal((await create("administrator")).status, 403);
+  assert.equal((await call(`/schedules/advising/${profiles.normal._id}/draft?termId=${term._id}`, { role: "coordinator", method: "POST" })).status, 400);
+  assert.equal((await call(path, { role: "advisor", method: "POST", body: { courses: [] } })).status, 400);
+
+  const noPreferences = await create("advisor");
+  assert.equal(noPreferences.status, 201, "a missing preference record does not block creation");
+  assert.equal(noPreferences.body.preference, null);
+  assert.equal(noPreferences.body.schedule.status, "draft");
+  assert.equal(noPreferences.body.schedule.courses.length, 0);
+  assert.equal(noPreferences.body.editable, true);
+  assert.equal((await StudentSchedule.findOne({ student: profiles.advising._id })).createdBy.toString(), String(users.advisor._id));
+
+  const duplicate = await create("coordinator");
+  assert.equal(duplicate.status, 409);
+  assert.match(duplicate.body.message, /open draft already exists/);
+  assert.equal(await StudentSchedule.countDocuments({ student: profiles.advising._id }), 1);
+
+  const saved = await call(path, { role: "advisor", method: "PUT", body: { version: noPreferences.body.schedule.version, courses: [] } });
+  assert.equal(saved.status, 200, "the created draft can be edited and saved");
+
+  await StudentSchedule.updateOne({ student: profiles.advising._id }, { status: "readyForStudentReview" });
+  assert.match((await create("advisor")).body.message, /no longer an open draft/);
+});
+
+test("C1 Req 62 returns the latest submitted preferences when the draft is created", async () => {
+  await SchedulingPreference.create({ student: profiles.advising._id, term: term._id, preferredDays: [{ day: "Sunday", priority: 1 }], note: "No early starts" });
+  const created = await call(`/schedules/advising/${profiles.advising._id}/draft?termId=${term._id}`, { role: "coordinator", method: "POST" });
+  assert.equal(created.status, 201);
+  assert.equal(created.body.preference.preferredDays[0].day, "Sunday");
+  assert.equal(created.body.preference.note, "No early starts");
+  assert.ok(created.body.preferenceLastUpdatedAt);
+});

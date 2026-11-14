@@ -336,6 +336,7 @@ function AdvisingDraftEditor({ token, student, termId, notify, onBack, onSaved }
   const [selections, setSelections] = useState({});
   const [validationIssues, setValidationIssues] = useState(null);
   const [overview, setOverview] = useState(null);
+  const [creating, setCreating] = useState(false);
   const [validating, setValidating] = useState(false);
   const validationHeading = useRef(null);
   const [loading, setLoading] = useState(true);
@@ -408,6 +409,17 @@ function AdvisingDraftEditor({ token, student, termId, notify, onBack, onSaved }
     finally { setValidating(false); }
   }
 
+  async function createDraft() {
+    setCreating(true); setError(""); setMessage("");
+    try {
+      const result = await api(`${draftPath}${termQuery}`, { token, method: "POST" });
+      notify?.("success", result.message);
+      onSaved?.("draft");
+      await load();
+    } catch (requestError) { setError(requestError.message); }
+    finally { setCreating(false); }
+  }
+
   async function save(event, submitForReview = false) {
     event?.preventDefault(); setSaving(true); setSendingForReview(submitForReview); setError(""); setMessage("");
     try {
@@ -464,8 +476,8 @@ function AdvisingDraftEditor({ token, student, termId, notify, onBack, onSaved }
     <div className="page-title-row"><div><p className="eyebrow">STUDENT SCHEDULES</p><h1>Advising draft schedule</h1><p className="page-description">{student.fullName} · {student.studentId}</p></div><button className="outline-button" type="button" onClick={onBack}>← Back to students</button></div>
     {error && !data && <Feedback tone="error">{error}</Feedback>}
     {loading ? <Loading /> : data && <>
-      <section className="panel draft-summary"><div><p className="eyebrow">{data.term?.code} · {data.term?.season} {data.term?.academicYear}</p><h2>{data.student?.fullName} · {data.student?.major}, semester {data.student?.currentSemester}</h2><p className="helper-text">{data.schedule ? `Draft version ${data.schedule.version} · last edited ${formatDraftDate(data.schedule.updatedAt)}` : "No draft exists for this term yet. Saving creates an open draft."}</p></div><span className={`status-pill ${editable ? "good" : "muted"}`}>{data.schedule ? prettyStatus(data.schedule.status) : "No draft"}</span></section>
-      {overview && <AdvisingOverviewPanel overview={overview} />}
+      <section className="panel draft-summary"><div><p className="eyebrow">{data.term?.code} · {data.term?.season} {data.term?.academicYear}</p><h2>{data.student?.fullName} · {data.student?.major}, semester {data.student?.currentSemester}</h2><p className="helper-text">{data.schedule ? `Draft version ${data.schedule.version} · last edited ${formatDraftDate(data.schedule.updatedAt)}` : "No draft exists for this term yet. Saving creates an open draft."}</p></div><span className={`status-pill ${editable ? "good" : "muted"}`}>{data.schedule ? prettyStatus(data.schedule.status) : "No draft"}</span>{!data.schedule && <button className="primary-button" type="button" onClick={createDraft} disabled={creating}>{creating ? "Creating…" : "Create open draft"}</button>}</section>
+      {overview && <AdvisingOverviewPanel overview={overview} token={token} student={student} termQuery={termQuery} canEdit={editable} notify={notify} onChanged={load} />}
       <nav className="draft-section-nav" aria-label="Draft sections">
         <a href="#draft-preferences">Preferences</a>
         <a href="#draft-timetable">Timetable</a>
@@ -688,8 +700,21 @@ function Stat({ label, value }) { return <div className="stat-card"><span classN
 const ADVISING_REASONS = { probation: "Probation", failedCourses: "More than two failed courses in a season", unattendedCourses: "Unattended courses", undeclaredMajor: "Undeclared CS or DMET major", transfer: "Transfer from another major/university" };
 const WORKFLOW_LABELS = { notStarted: "Not started", draft: "Draft", readyForStudentReview: "Ready for student review", changeRequestPending: "Change request pending", pendingApproval: "Pending approval", awaitingPaymentChoice: "Awaiting payment choice", deferredToNextInstallment: "Deferred to next installment", readyToProcess: "Ready to process", processed: "Processed", reopened: "Reopened" };
 
-function AdvisingOverviewPanel({ overview }) {
+function AdvisingOverviewPanel({ overview, token, student, termQuery, canEdit, notify, onChanged }) {
   const hours = overview.creditHours, bachelor = overview.bachelorProject;
+  const [season, setSeason] = useState(bachelor.selection?.season || "winter");
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState("");
+  const projectPath = `/api/schedules/advising/${encodeURIComponent(student._id)}/bachelor-project${termQuery}`;
+  async function changeProject(remove) {
+    setBusy(true); setProblem("");
+    try {
+      const result = await api(projectPath, { token, method: remove ? "DELETE" : "PUT", body: remove ? undefined : { season } });
+      notify?.("success", result.message);
+      await onChanged?.();
+    } catch (error) { setProblem(error.message); }
+    finally { setBusy(false); }
+  }
   return <section className="panel advising-overview" aria-label="Advising overview">
     <div className="panel-heading"><div><p className="eyebrow">ADVISING OVERVIEW</p><h2>{ADVISING_REASONS[overview.advisingReason] || overview.advisingReason}</h2></div><span className="status-pill good">{WORKFLOW_LABELS[overview.scheduleStatus] || overview.scheduleStatus}</span></div>
     <dl className="overview-grid">
@@ -700,6 +725,13 @@ function AdvisingOverviewPanel({ overview }) {
       <div><dt>Maximum this term</dt><dd>{hours.maximumCreditHours} h</dd></div>
       <div><dt>Bachelor project</dt><dd><span className={`status-pill ${bachelor.eligible ? "good" : "warning"}`}>{bachelor.eligible ? "Eligible" : "Not eligible"}</span></dd></div>
     </dl>
+    {bachelor.selection && <p className="helper-text"><strong>Bachelor project selected for {bachelor.selection.season === "winter" ? "Winter" : "Spring"}.</strong> Up to four courses may be taken with it: two core and two humanities (humanities count as extra hours).</p>}
+    {bachelor.eligible && canEdit && <div className="bachelor-project-actions">
+      <label className="field"><span>Bachelor project season</span><select value={season} onChange={(event) => setSeason(event.target.value)} disabled={busy}><option value="winter">Winter</option><option value="spring">Spring</option></select></label>
+      <button className="primary-button" type="button" disabled={busy} onClick={() => changeProject(false)}>{bachelor.selection ? "Change season" : "Add bachelor project"}</button>
+      {bachelor.selection && <button className="outline-button" type="button" disabled={busy} onClick={() => changeProject(true)}>Remove project</button>}
+    </div>}
+    {problem && <Feedback tone="error">{problem}</Feedback>}
     {overview.blockingStep && <p className="helper-text">Next step: {overview.blockingStep}</p>}
     {bachelor.eligibleWithFailedCourses && <p className="helper-text">Eligible with {bachelor.outstandingCourses.map((course) => course.code).join(", ")} still outstanding (one or two failed courses are allowed).</p>}
     {!bachelor.eligible && <ul className="helper-text">{bachelor.reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>}

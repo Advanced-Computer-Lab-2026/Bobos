@@ -595,6 +595,7 @@ async function loadDraftData(student, term, session = null) {
       status: schedule.status,
       version: schedule.version,
       updatedAt: schedule.updatedAt,
+      bachelorProject: schedule.bachelorProject || null,
       totalCreditHours: (schedule.courses || []).reduce((total, course) => total + Number(course.creditHoursSnapshot || 0), 0),
       staleCourseCount,
       courses: currentSelections,
@@ -681,6 +682,8 @@ function validateDraftSelections(data, selections) {
     });
   }
 
+  if (data.storedSchedule?.bachelorProject) applyBachelorProjectRules(courses, data, approvedExtraHours, addIssue);
+
   const missingMandatory = data.mandatoryCourses.filter((course) => !selectedCourseIds.has(idOf(course._id)));
   const includesElective = courses.some((course) => !course.isMandatory);
   for (const course of missingMandatory) {
@@ -708,6 +711,30 @@ function validateDraftSelections(data, selections) {
   return { courses, issues };
 }
 
+// Req. 60: with the bachelor project a student takes at most four courses: two core and two humanities.
+const HUMANITIES_NAME = /german|seminar|management/i;
+const isHumanitiesCourse = (course) => course.courseType === "huma" || HUMANITIES_NAME.test(course.name || "");
+const BACHELOR_PROJECT_LIMITS = { total: 4, core: 2, humanities: 2 };
+
+function applyBachelorProjectRules(courses, data, approvedExtraHours, addIssue) {
+  const byId = new Map(data.availableOfferingRecords.map((offering) => [idOf(offering.course), offering.course]));
+  const humanities = courses.filter((entry) => isHumanitiesCourse(byId.get(idOf(entry.course)) || {}));
+  const core = courses.filter((entry) => {
+    const course = byId.get(idOf(entry.course)) || {};
+    return course.courseType === "core" && !isHumanitiesCourse(course);
+  });
+  if (courses.length > BACHELOR_PROJECT_LIMITS.total) addIssue("bachelorProjectLimit", `With the bachelor project a student may take at most ${BACHELOR_PROJECT_LIMITS.total} courses; ${courses.length} are selected.`);
+  if (core.length > BACHELOR_PROJECT_LIMITS.core) addIssue("bachelorProjectLimit", `With the bachelor project a student may take at most ${BACHELOR_PROJECT_LIMITS.core} core courses; ${core.length} are selected.`);
+  if (humanities.length > BACHELOR_PROJECT_LIMITS.humanities) addIssue("bachelorProjectLimit", `With the bachelor project a student may take at most ${BACHELOR_PROJECT_LIMITS.humanities} humanities courses; ${humanities.length} are selected.`);
+  for (const entry of humanities) {
+    entry.isExtraHours = true;
+    if (!approvedExtraHours.has(idOf(entry.course))) {
+      const course = byId.get(idOf(entry.course));
+      addIssue("bachelorProjectExtraHours", `${course?.code || "A humanities course"} is a humanities course taken with the bachelor project, so it counts as extra hours and needs an approved, paid or deferred extra-hours request.`, false);
+    }
+  }
+}
+
 function draftError(status, message, validationIssues) {
   return Object.assign(new Error(message), { status, validationIssues });
 }
@@ -718,10 +745,7 @@ function sendDraftError(error, res, next) {
   return res.status(error.status).json({ message: error.message, validationIssues: error.validationIssues });
 }
 
-export async function getAdvisingDraft(req, res, next) {
-  try {
-    const context = await resolveDraftContext(req, res);
-    if (!context) return;
+async function buildDraftResponse(context) {
     const { availableOfferingRecords, storedSchedule, ...data } = await loadDraftData(context.student, context.term);
     const selections = data.schedule?.courses || [];
     const { courses, issues } = validateDraftSelections({ ...data, availableOfferingRecords, storedSchedule }, selections);
@@ -738,7 +762,28 @@ export async function getAdvisingDraft(req, res, next) {
         }
       }
     }
-    res.json({ term: termView(context.term), student: studentView(context.student), ...data, validationIssues: issues, editable: !data.schedule || data.schedule.status === "draft" });
+    return { term: termView(context.term), student: studentView(context.student), ...data, validationIssues: issues, editable: !data.schedule || data.schedule.status === "draft" };
+}
+
+export async function getAdvisingDraft(req, res, next) {
+  try {
+    const context = await resolveDraftContext(req, res);
+    if (!context) return;
+    res.json(await buildDraftResponse(context));
+  } catch (error) { sendDraftError(error, res, next); }
+}
+
+// Req. 62: create an empty open draft; the response shows the student's submitted preferences (optional).
+export async function createAdvisingDraft(req, res, next) {
+  try {
+    if (req.body && Object.keys(req.body).length) throw draftError(400, "Do not send a body when creating a draft; add courses afterwards.");
+    const context = await resolveDraftContext(req, res);
+    if (!context) return;
+    const { student, term } = context;
+    const existing = await StudentSchedule.findOne({ student: student._id, term: term._id, scheduleType: "advising" }).select("status").lean();
+    if (existing) throw draftError(409, existing.status === "draft" ? "An open draft already exists for this student and term. Edit it instead." : "A schedule already exists for this student and term and is no longer an open draft.");
+    await StudentSchedule.create({ student: student._id, term: term._id, scheduleType: "advising", status: "draft", createdBy: req.user._id });
+    res.status(201).json({ message: "Open draft schedule created.", ...await buildDraftResponse(context) });
   } catch (error) { sendDraftError(error, res, next); }
 }
 
@@ -1411,21 +1456,15 @@ export async function getAdvisingOverview(req, res, next) {
     if (termResult.error) return res.status(termResult.error.status).json({ message: termResult.error.message });
     const { term } = termResult;
 
-    const [workflow, schedule, extraHoursRequests, attempts, catalogue] = await Promise.all([
+    const [workflow, schedule, extraHoursRequests, bachelor] = await Promise.all([
       StudentWorkflowState.findOne({ student: student._id, term: term._id }).lean(),
-      StudentSchedule.findOne({ student: student._id, term: term._id, scheduleType: "advising" }).select("status courses.creditHoursSnapshot updatedAt").lean(),
+      StudentSchedule.findOne({ student: student._id, term: term._id, scheduleType: "advising" }).select("status courses.creditHoursSnapshot updatedAt bachelorProject").lean(),
       ExtraHoursRequest.find({ student: student._id, term: term._id, decisionStatus: "approved", settlementStatus: { $in: ["paid", "deferred"] } })
         .populate("courses.course", "code creditHours").lean(),
-      CourseAttempt.find({ student: student._id }).select("course result attendance").lean(),
-      Course.find({ isActive: true }).select("code name recommendedSemester facultyMajors courseType").lean(),
+      loadBachelorEligibility(student),
     ]);
     const policy = calculateDraftCreditPolicy(student, extraHoursRequests);
     const selectedHours = (schedule?.courses || []).reduce((total, course) => total + Number(course.creditHoursSnapshot || 0), 0);
-
-    const passedIds = new Set(attempts.filter((attempt) => attempt.result === "passed").map((attempt) => idOf(attempt.course)));
-    const failedIds = new Set(attempts.filter((attempt) => attempt.result === "failed").map((attempt) => idOf(attempt.course)));
-    const relevant = catalogue.filter((course) => !course.facultyMajors?.length || course.facultyMajors.some((major) => majorMatches(major, student.major)));
-    const bachelor = bachelorProjectEligibility(relevant, passedIds, failedIds);
 
     const standard = policy.standardAllowance;
     res.json({
@@ -1448,7 +1487,57 @@ export async function getAdvisingOverview(req, res, next) {
         remainingHours: policy.maximumCreditHours - selectedHours,
         extraHoursAllowed: !policy.probation,
       },
-      bachelorProject: bachelor,
+      bachelorProject: { ...bachelor, selection: schedule?.bachelorProject || null },
     });
   } catch (error) { next(error); }
+}
+
+async function loadBachelorEligibility(student) {
+  const [attempts, catalogue] = await Promise.all([
+    CourseAttempt.find({ student: student._id }).select("course result attendance").lean(),
+    Course.find({ isActive: true }).select("code name recommendedSemester facultyMajors courseType").lean(),
+  ]);
+  const passedIds = new Set(attempts.filter((attempt) => attempt.result === "passed").map((attempt) => idOf(attempt.course)));
+  const failedIds = new Set(attempts.filter((attempt) => attempt.result === "failed").map((attempt) => idOf(attempt.course)));
+  const relevant = catalogue.filter((course) => !course.facultyMajors?.length || course.facultyMajors.some((major) => majorMatches(major, student.major)));
+  return bachelorProjectEligibility(relevant, passedIds, failedIds);
+}
+
+// Req. 60: add the bachelor project (Winter or Spring) to an eligible student's open draft, or remove it.
+export async function setBachelorProject(req, res, next) {
+  try {
+    const season = typeof req.body?.season === "string" ? req.body.season.trim().toLowerCase() : "";
+    if (!["winter", "spring"].includes(season)) throw draftError(400, "season must be \"winter\" or \"spring\".");
+    if (Object.keys(req.body).some((key) => key !== "season")) throw draftError(400, "Send only season in the bachelor project request.");
+    const context = await resolveDraftContext(req, res);
+    if (!context) return;
+    const { student, term } = context;
+    const eligibility = await loadBachelorEligibility(student);
+    if (!eligibility.eligible) {
+      throw draftError(409, "This student is not eligible for the bachelor project.", eligibility.reasons.map((message) => ({ code: "bachelorProjectIneligible", message, blocksSave: true })));
+    }
+    const project = { season, addedBy: req.user._id, addedAt: new Date() };
+    const existing = await StudentSchedule.findOne({ student: student._id, term: term._id, scheduleType: "advising" }).select("status").lean();
+    if (existing && existing.status !== "draft") throw draftError(409, "The bachelor project can only be changed while the schedule is an open draft.");
+    const schedule = existing
+      ? await StudentSchedule.findOneAndUpdate({ _id: existing._id, status: "draft" }, { $set: { bachelorProject: project }, $inc: { version: 1 } }, { returnDocument: "after" })
+      : await StudentSchedule.create({ student: student._id, term: term._id, scheduleType: "advising", status: "draft", createdBy: req.user._id, bachelorProject: project });
+    if (!schedule) throw draftError(409, "The draft changed while it was being updated. Reload it and try again.");
+    res.status(existing ? 200 : 201).json({ message: `Bachelor project added for ${season}.`, schedule: { _id: schedule._id, status: schedule.status, version: schedule.version, bachelorProject: schedule.bachelorProject } });
+  } catch (error) { sendDraftError(error, res, next); }
+}
+
+export async function removeBachelorProject(req, res, next) {
+  try {
+    const context = await resolveDraftContext(req, res);
+    if (!context) return;
+    const { student, term } = context;
+    const schedule = await StudentSchedule.findOneAndUpdate(
+      { student: student._id, term: term._id, scheduleType: "advising", status: "draft", bachelorProject: { $ne: null } },
+      { $set: { bachelorProject: null }, $inc: { version: 1 } },
+      { returnDocument: "after" },
+    );
+    if (!schedule) throw draftError(404, "No bachelor project is set on an open draft for this student and term.");
+    res.json({ message: "Bachelor project removed.", schedule: { _id: schedule._id, status: schedule.status, version: schedule.version, bachelorProject: null } });
+  } catch (error) { sendDraftError(error, res, next); }
 }
