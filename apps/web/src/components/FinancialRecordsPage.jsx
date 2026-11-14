@@ -596,12 +596,12 @@ export default function FinancialRecordsPage({ token, role, notify }) {
                     style={{
                       marginTop: "16px",
                       padding: "14px 16px",
-                      background: "#f4f7f9",
+                      background: "var(--ready-bg)",
                       borderRadius: "8px",
                       border: "1px solid #e3e9ed",
                     }}
                   >
-                    <p className="eyebrow" style={{ color: "#395279" }}>
+                    <p className="eyebrow" style={{ color: "var(--ready-ink)" }}>
                       AUDIT TRAIL · REFUND LOG
                     </p>
                     <div className="detail-grid" style={{ marginTop: "8px" }}>
@@ -683,7 +683,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
 
             <div
               style={{
-                background: "#f9faf8",
+                background: "var(--raised)",
                 border: "1px solid #e7ece9",
                 borderRadius: "8px",
                 padding: "12px 14px",

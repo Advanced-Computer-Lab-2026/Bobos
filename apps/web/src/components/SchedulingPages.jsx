@@ -317,7 +317,9 @@ export function StaffSchedulesPage({ token, role, notify, initialStudent = null,
     {error && <Feedback tone="error">{error}</Feedback>}
     <section className="panel"><div className="results-heading"><div><p className="eyebrow">Roster</p><h2>Students</h2></div><span className="result-count">{students.length} students</span></div>
       <label className="field roster-search"><span>Search students</span><input value={search} onChange={(event) => setSearch(event.target.value)} maxLength={100} placeholder="Student ID, name, or email" /></label>
-      {loading ? <Loading /> : students.length ? <div className="table-scroll"><table><thead><tr><th>Student</th><th>Type</th><th>Major / semester</th><th>Schedule status</th><th /></tr></thead><tbody>{students.map((student) => <tr key={student._id}><td><strong>{student.fullName}</strong><span className="secondary-text">{student.studentId}</span></td><td>{student.studentType}</td><td>{student.major} · {student.currentSemester}</td><td>{prettyStatus(student.scheduleStatus)}</td><td><div className="table-actions">{["advisor", "coordinator"].includes(role) && student.studentType === "advising" && <button className="small-button primary-button" type="button" onClick={() => { setSelected(null); setSchedule(null); setDraftStudent(student); }}>{student.scheduleStatus === "draft" ? "Edit draft" : !student.scheduleStatus ? "Create draft" : student.scheduleStatus === "readyForStudentReview" ? "Review & Process" : "Manage schedule"}</button>}{student.scheduleStatus && <button className="small-button outline-button" type="button" onClick={() => openStudent(student)}>View schedule</button>}</div></td></tr>)}</tbody></table></div> : <Empty title="No students found" text="Try another search term." />}
+      {loading ? <Loading /> : students.length ? <div className="table-scroll"><table><thead><tr><th>Student</th><th>Type</th><th>Major / semester</th><th>Schedule status</th><th /></tr></thead><tbody>{students.map((student) => <tr key={student._id}><td><strong>{student.fullName}</strong><span className="secondary-text">{student.studentId}</span></td><td>{student.studentType}</td><td>{student.major} · {student.currentSemester}</td><td><span className={`status-pill ${{
+        readyForStudentReview: "ready", draft: "draft", processed: "completed",
+      }[student.scheduleStatus] || "muted"}`}>{prettyStatus(student.scheduleStatus)}</span></td><td><div className="table-actions">{["advisor", "coordinator"].includes(role) && student.studentType === "advising" && <button className="small-button primary-button" type="button" onClick={() => { setSelected(null); setSchedule(null); setDraftStudent(student); }}>{student.scheduleStatus === "draft" ? "Edit draft" : !student.scheduleStatus ? "Create draft" : student.scheduleStatus === "readyForStudentReview" ? "Review & Process" : "Manage schedule"}</button>}{student.scheduleStatus && <button className="small-button outline-button" type="button" onClick={() => openStudent(student)}>View schedule</button>}</div></td></tr>)}</tbody></table></div> : <Empty title="No students found" text="Try another search term." />}
     </section>
     {selected && schedule?.schedule && <section className="panel staff-schedule-result" ref={scheduleResultRef} tabIndex={-1} aria-label={`${schedule.student?.fullName ?? "Student"} schedule`}><div className="results-heading"><div><p className="eyebrow">{schedule.student?.studentId} · {schedule.term?.season} {schedule.term?.academicYear}</p><h2>{schedule.student?.fullName}’s schedule</h2></div><span className="status-pill">{prettyStatus(schedule.schedule.status)}</span></div>{schedule.schedule.courses?.length ? <WeeklySchedule week={schedule.schedule.week} daysOff={schedule.schedule.daysOff} /> : <Feedback tone="info">This draft is empty. Choose “Edit draft” in the student list to add course groups.</Feedback>}</section>}
   </div>;
@@ -536,10 +538,10 @@ function AdvisingDraftEditor({ token, student, termId, notify, onBack, onSaved }
       </section>
       {data.mandatoryCourses.length > 0 && <section className="panel"><div className="panel-heading"><div><p className="eyebrow">ACADEMIC RECORD</p><h2>Failed or unattended courses</h2></div></div><p className="helper-text">These courses are marked mandatory unless a removal was approved for this term. Include the available offerings in the draft when required.</p><div className="draft-mandatory-list">{data.mandatoryCourses.map((course) => <span className={`status-pill ${course.availableForTerm ? "warning" : "muted"}`} key={course._id}>{course.code}{course.availableForTerm ? " · mandatory" : " · no eligible published offering"}</span>)}</div></section>}
       {!editable && data.schedule?.status === "readyForStudentReview" && (
-        <section className="panel" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#f2faf6", border: "1px solid #b7dfcb", padding: "16px 20px", borderRadius: "8px" }}>
+        <section className="panel" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--success-bg)", border: "1px solid var(--line)", padding: "16px 20px", borderRadius: "8px" }}>
           <div>
             <h3 style={{ margin: "0 0 4px 0", fontSize: "14px", color: "var(--green-dark)" }}>Ready for Student Review</h3>
-            <p style={{ margin: 0, fontSize: "11px", color: "#475953" }}>
+            <p style={{ margin: 0, fontSize: "11px", color: "var(--muted)" }}>
               This schedule is now visible to {student.fullName} for review. You can process and finalize the schedule when review is complete.
             </p>
           </div>
@@ -554,10 +556,10 @@ function AdvisingDraftEditor({ token, student, termId, notify, onBack, onSaved }
         </section>
       )}
       {!editable && data.schedule?.status === "processed" && (
-        <section className="panel" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#fdf8f4", border: "1px solid #eed6c2", padding: "16px 20px", borderRadius: "8px" }}>
+        <section className="panel" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--draft-bg)", border: "1px solid var(--line)", padding: "16px 20px", borderRadius: "8px" }}>
           <div>
-            <h3 style={{ margin: "0 0 4px 0", fontSize: "14px", color: "#8a4714" }}>Schedule Processed</h3>
-            <p style={{ margin: 0, fontSize: "11px", color: "#615043" }}>
+            <h3 style={{ margin: "0 0 4px 0", fontSize: "14px", color: "var(--draft-ink)" }}>Schedule Processed</h3>
+            <p style={{ margin: 0, fontSize: "11px", color: "var(--muted)" }}>
               This schedule is processed and finalized. Reopening reverts the schedule to draft status for adjustments.
             </p>
           </div>
@@ -638,8 +640,8 @@ function AdvisingDraftEditor({ token, student, termId, notify, onBack, onSaved }
         {message && <Feedback tone="success">{message}</Feedback>}
         <div className="form-footer"><span className="helper-text">Saving keeps the schedule in draft. The server rechecks academic rules, capacity, and clashes.</span><button className="primary-button" type="submit" disabled={busy || !editable}>{saving && !sendingForReview ? "Saving draft…" : data.schedule ? "Update draft" : "Create draft"}<span>→</span></button></div>
         {editable && selectedOfferings.length > 0 && <div className="form-footer"><span className="helper-text">When the schedule is ready, save it and make it visible to the student for review.</span><button className="outline-button" type="button" onClick={(event) => save(event, true)} disabled={busy || Boolean(selectedConflict) || Boolean(incompleteSelection) || missingMandatory.length > 0 || overCreditLimit || extraHoursNotCovered}>{sendingForReview ? "Sending for review…" : "Save and send for student review"}<span>→</span></button></div>}
-        {data.schedule?.status === "readyForStudentReview" && <div className="form-footer" style={{ borderTop: "1px solid #e1e7e4", paddingTop: "14px" }}><span className="helper-text">Review complete? Finalize and process this schedule.</span><button className="primary-button" type="button" disabled={processing} onClick={processSchedule}>{processing ? "Processing schedule…" : "Process Schedule"}<span>→</span></button></div>}
-        {data.schedule?.status === "processed" && <div className="form-footer" style={{ borderTop: "1px solid #e1e7e4", paddingTop: "14px" }}><span className="helper-text">Reopening reverts this schedule to draft status for further edits.</span><button className="primary-button destructive-action" type="button" onClick={() => { setReopenReason(""); setReopenError(""); setReopenModalOpen(true); }}>Reopen Schedule</button></div>}
+        {data.schedule?.status === "readyForStudentReview" && <div className="form-footer" style={{ borderTop: "1px solid var(--line)", paddingTop: "14px" }}><span className="helper-text">Review complete? Finalize and process this schedule.</span><button className="primary-button" type="button" disabled={processing} onClick={processSchedule}>{processing ? "Processing schedule…" : "Process Schedule"}<span>→</span></button></div>}
+        {data.schedule?.status === "processed" && <div className="form-footer" style={{ borderTop: "1px solid var(--line)", paddingTop: "14px" }}><span className="helper-text">Reopening reverts this schedule to draft status for further edits.</span><button className="primary-button destructive-action" type="button" onClick={() => { setReopenReason(""); setReopenError(""); setReopenModalOpen(true); }}>Reopen Schedule</button></div>}
       </form>
       {reopenModalOpen && (
         <div className="modal-backdrop" onClick={() => !reopening && setReopenModalOpen(false)}>
@@ -653,7 +655,7 @@ function AdvisingDraftEditor({ token, student, termId, notify, onBack, onSaved }
             </div>
             {reopenError && <div className="feedback error" role="alert" style={{ marginBottom: "12px" }}>{reopenError}</div>}
             <form onSubmit={reopenSchedule} className="page-stack">
-              <p style={{ margin: 0, fontSize: "11px", color: "#54645e" }}>
+              <p style={{ margin: 0, fontSize: "11px", color: "var(--muted)" }}>
                 Reopening reverts this schedule to <strong>draft</strong> status and increments the schedule version. You must provide a mandatory justification for audit logging.
               </p>
               <label className="field">

@@ -448,10 +448,10 @@ export default function MandatoryRemovalDashboard({ token, role, notify }) {
                 <small className="secondary-text">Advisor Explanation</small>
                 <div
                   style={{
-                    background: "#f7f9f8",
+                    background: "var(--raised)",
                     padding: "10px 14px",
                     borderRadius: "6px",
-                    border: "1px solid #e1e7e4",
+                    border: "1px solid var(--line)",
                     marginTop: "4px",
                   }}
                 >
@@ -464,10 +464,10 @@ export default function MandatoryRemovalDashboard({ token, role, notify }) {
               {selectedDetail.status !== "pending" && (
                 <div
                   style={{
-                    background: selectedDetail.status === "approved" ? "#f2faf6" : "#fdf4f4",
+                    background: selectedDetail.status === "approved" ? "var(--success-bg)" : "var(--danger-bg)",
                     padding: "12px 14px",
                     borderRadius: "6px",
-                    border: `1px solid ${selectedDetail.status === "approved" ? "#b7dfcb" : "#f1c2be"}`,
+                    border: `1px solid ${selectedDetail.status === "approved" ? "var(--line)" : "var(--line)"}`,
                   }}
                 >
                   <h3 style={{ margin: "0 0 6px 0", fontSize: "12px" }}>
@@ -545,7 +545,7 @@ export default function MandatoryRemovalDashboard({ token, role, notify }) {
             )}
 
             <div className="page-stack" style={{ gap: "12px" }}>
-              <div style={{ background: "#f8faf9", padding: "10px 14px", borderRadius: "6px", border: "1px solid #e2e8e5" }}>
+              <div style={{ background: "var(--raised)", padding: "10px 14px", borderRadius: "6px", border: "1px solid var(--line)" }}>
                 <p style={{ margin: "0 0 4px 0" }}>
                   <strong>Student:</strong> {reviewingRequest.student?.user?.fullName} ({reviewingRequest.student?.studentId})
                 </p>

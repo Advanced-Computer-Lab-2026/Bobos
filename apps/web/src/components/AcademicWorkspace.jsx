@@ -721,7 +721,7 @@ function CourseDetailsModal({ course, allCourses = [], onClose, onEdit }) {
             {course.code}
           </span>
           <h2 style={{ fontSize: "1.35rem", fontWeight: "700", marginTop: "0.25rem" }}>{course.name}</h2>
-          <p style={{ color: "#64748b" }}>
+          <p style={{ color: "var(--muted)" }}>
             {course.creditHours} Credit Hours · {pretty(course.courseType)}
             {course.isBachelorProject ? " · Bachelor Project" : ""}
           </p>
@@ -732,7 +732,7 @@ function CourseDetailsModal({ course, allCourses = [], onClose, onEdit }) {
       </div>
 
       <div className="form-grid" style={{ gap: "1rem", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
-        <div className="panel" style={{ padding: "1rem", background: "var(--surface-sunken, #f8fafc)" }}>
+        <div className="panel" style={{ padding: "1rem", background: "var(--raised)" }}>
           <p className="eyebrow" style={{ fontSize: "0.75rem" }}>CURRICULUM HOURS</p>
           <p style={{ margin: "0.25rem 0", fontSize: "0.95rem" }}>
             <strong>Lecture:</strong> {course.lectureHours ?? "—"} hrs/week
@@ -745,7 +745,7 @@ function CourseDetailsModal({ course, allCourses = [], onClose, onEdit }) {
           </p>
         </div>
 
-        <div className="panel" style={{ padding: "1rem", background: "var(--surface-sunken, #f8fafc)" }}>
+        <div className="panel" style={{ padding: "1rem", background: "var(--raised)" }}>
           <p className="eyebrow" style={{ fontSize: "0.75rem" }}>SEMESTER & OFFERING</p>
           <p style={{ margin: "0.25rem 0", fontSize: "0.95rem" }}>
             <strong>Recommended Semester:</strong> {course.recommendedSemester ? `Semester ${course.recommendedSemester}` : "—"}
@@ -755,7 +755,7 @@ function CourseDetailsModal({ course, allCourses = [], onClose, onEdit }) {
           </p>
         </div>
 
-        <div className="panel span-two" style={{ padding: "1rem", background: "var(--surface-sunken, #f8fafc)" }}>
+        <div className="panel span-two" style={{ padding: "1rem", background: "var(--raised)" }}>
           <p className="eyebrow" style={{ fontSize: "0.75rem" }}>FACULTY / MAJORS (MET & DMET)</p>
           <p style={{ margin: "0.25rem 0", fontSize: "0.95rem" }}>
             {(course.facultyMajors || []).length > 0 ? (
@@ -770,7 +770,7 @@ function CourseDetailsModal({ course, allCourses = [], onClose, onEdit }) {
           </p>
         </div>
 
-        <div className="panel span-two" style={{ padding: "1rem", background: "var(--surface-sunken, #f8fafc)" }}>
+        <div className="panel span-two" style={{ padding: "1rem", background: "var(--raised)" }}>
           <p className="eyebrow" style={{ fontSize: "0.75rem" }}>PREREQUISITES</p>
           {prereqList.length > 0 ? (
             <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", marginTop: "0.5rem" }}>
@@ -778,20 +778,20 @@ function CourseDetailsModal({ course, allCourses = [], onClose, onEdit }) {
                 <div
                   key={index}
                   style={{
-                    border: "1px solid var(--border, #e2e8f0)",
+                    border: "1px solid var(--line)",
                     background: "var(--surface, #fff)",
                     padding: "0.5rem 0.75rem",
                     borderRadius: "6px",
                   }}
                 >
-                  <strong style={{ color: "#2563eb" }}>{prereq.code}</strong>
-                  {prereq.name ? <span style={{ marginLeft: "0.4rem", color: "#475569" }}>— {prereq.name}</span> : null}
-                  {prereq.creditHours ? <small style={{ display: "block", color: "#94a3b8" }}>{prereq.creditHours} credits</small> : null}
+                  <strong style={{ color: "var(--accent)" }}>{prereq.code}</strong>
+                  {prereq.name ? <span style={{ marginLeft: "0.4rem", color: "var(--muted)" }}>— {prereq.name}</span> : null}
+                  {prereq.creditHours ? <small style={{ display: "block", color: "var(--muted)" }}>{prereq.creditHours} credits</small> : null}
                 </div>
               ))}
             </div>
           ) : (
-            <p style={{ margin: "0.25rem 0", color: "#64748b" }}>No prerequisites required (direct entry).</p>
+            <p style={{ margin: "0.25rem 0", color: "var(--muted)" }}>No prerequisites required (direct entry).</p>
           )}
         </div>
       </div>
