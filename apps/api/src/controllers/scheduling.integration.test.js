@@ -580,3 +580,279 @@ test("assignment rejects stale slot references and timetable clashes", async () 
   const clash = await call("/group-assignments", { role: "coordinator", method: "POST", body: { studentId: String(profiles.normal._id), termId: String(term._id), studyGroup: "1" } });
   assert.equal(clash.status, 409);
 });
+
+test("C1 Req 59 shows advising reason, credit allowance, status and bachelor-project eligibility", async () => {
+  const path = `/schedules/advising/${profiles.advising._id}/overview?termId=${term._id}`;
+  assert.equal((await call(path)).status, 401);
+  assert.equal((await call(path, { role: "advisingStudent" })).status, 403);
+  await StudentProfile.updateOne({ _id: profiles.advising._id }, { assignedAdvisor: null });
+  assert.equal((await call(path, { role: "advisor" })).status, 403, "unassigned advisor");
+  assert.equal((await call(`/schedules/advising/${profiles.normal._id}/overview`, { role: "coordinator" })).status, 400);
+
+  const first = await call(path, { role: "coordinator" });
+  assert.equal(first.status, 200);
+  assert.equal(first.body.advisingReason, "probation");
+  assert.equal(first.body.scheduleStatus, "notStarted");
+  assert.equal(first.body.creditHours.standardAllowance, 30);
+  assert.equal(first.body.creditHours.allowedHours, 23, "30 * 0.75 = 22.5 rounds up");
+  assert.equal(first.body.creditHours.reductionForProbation, 7);
+  assert.equal(first.body.creditHours.extraHoursAllowed, false);
+
+  await StudentProfile.updateOne({ _id: profiles.advising._id }, { assignedAdvisor: users.advisor._id });
+  assert.equal((await call(path, { role: "advisor" })).status, 200);
+  assert.equal((await call(path, { role: "administrator" })).status, 200);
+
+  const extra = await Course.create([
+    { code: "CSEN 101", name: "Intro", creditHours: 4, courseType: "core", facultyMajors: ["CS"], recommendedSemester: 1 },
+    { code: "CSEN 301", name: "Algorithms", creditHours: 4, courseType: "core", facultyMajors: ["CS"], recommendedSemester: 3 },
+    { code: "CSEN 701", name: "Late", creditHours: 4, courseType: "core", facultyMajors: ["CS"], recommendedSemester: 7 },
+    { code: "RPW401", name: "Research Paper Writing", creditHours: 2, courseType: "huma", facultyMajors: [], recommendedSemester: 4 },
+  ]);
+  const [c101, c301, , rpw] = extra;
+  const attempt = (course, result) => CourseAttempt.create({ student: profiles.advising._id, course: course._id, term: term._id, attendance: "attended", result, grade: result === "passed" ? "A" : "F" });
+  await attempt(c101, "passed");
+  await attempt(c301, "failed");
+  let overview = (await call(path, { role: "coordinator" })).body;
+  assert.equal(overview.bachelorProject.eligible, false, "RPW and CS courses 5-6 missing");
+
+  await Course.deleteMany({ _id: { $in: courses.map((course) => course._id) } }); // semester-less fixture courses are irrelevant
+  overview = (await call(path, { role: "coordinator" })).body;
+  assert.equal(overview.bachelorProject.eligible, false);
+  assert.match(overview.bachelorProject.reasons[0], /RPW401/);
+
+  await attempt(rpw, "passed");
+  overview = (await call(path, { role: "coordinator" })).body;
+  assert.equal(overview.bachelorProject.eligible, true, "one failed course with all English complete stays eligible");
+  assert.equal(overview.bachelorProject.eligibleWithFailedCourses, true);
+});
+
+test("C1 Req 60 adds the bachelor project for eligible students and applies the four-course rule", async () => {
+  const path = `/schedules/advising/${profiles.advising._id}/bachelor-project?termId=${term._id}`;
+  const put = (role, body) => call(path, { role, method: "PUT", body });
+  assert.equal((await put(undefined, { season: "winter" })).status, 401);
+  assert.equal((await put("administrator", { season: "winter" })).status, 403);
+  assert.equal((await put("advisor", { season: "summer" })).status, 400);
+  assert.equal((await put("advisor", { season: "winter", extra: 1 })).status, 400);
+
+  const blocker = await Course.create({ code: "RPW401", name: "Research Paper Writing", creditHours: 2, courseType: "huma", facultyMajors: [], recommendedSemester: 4 });
+  const ineligible = await put("advisor", { season: "winter" });
+  assert.equal(ineligible.status, 409);
+  assert.match(ineligible.body.validationIssues[0].message, /RPW401/);
+  assert.equal(await StudentSchedule.countDocuments({ student: profiles.advising._id }), 0);
+
+  await CourseAttempt.create({ student: profiles.advising._id, course: blocker._id, term: term._id, attendance: "attended", result: "passed", grade: "A" });
+  const added = await put("advisor", { season: "Spring" });
+  assert.equal(added.status, 201);
+  assert.equal(added.body.schedule.bachelorProject.season, "spring");
+  const changed = await put("coordinator", { season: "winter" });
+  assert.equal(changed.status, 200);
+  assert.equal(changed.body.schedule.version, 2);
+  const overview = (await call(`/schedules/advising/${profiles.advising._id}/overview?termId=${term._id}`, { role: "advisor" })).body;
+  assert.equal(overview.bachelorProject.selection.season, "winter");
+  assert.equal(overview.scheduleStatus, "draft");
+
+  const extraCore = await Course.create({ code: "CSEN 502", name: "Operating Systems", creditHours: 4, courseType: "core", facultyMajors: ["CS"] });
+  const german = await Course.create({ code: "DE 101", name: "German 1", creditHours: 4, courseType: "huma", facultyMajors: [] });
+  const make = (course, day) => CourseOffering.create({
+    course: course._id, academicYear: term.academicYear, term: term._id, isPublished: true,
+    instructors: [{ fullName: "Dr. X", email: "x@guc.edu.eg" }],
+    eligibleGroups: [{ major: "CS", semester: 5, studyGroup: "1" }],
+    slots: [{ componentType: "lecture", groupNumber: "1", day, startMinute: 600, endMinute: 720, room: "H9", capacity: 5 }],
+  });
+  const [coreOffering, germanOffering] = [await make(extraCore, "Monday"), await make(german, "Tuesday")];
+  const pick = (offering) => ({ courseOffering: String(offering._id), groups: [{ componentType: "lecture", groupNumber: "1" }] });
+  const validate = (offeringsToPick) => call(`/schedules/advising/${profiles.advising._id}/draft/validate?termId=${term._id}`, { role: "advisor", method: "POST", body: { courses: offeringsToPick.map(pick) } });
+
+  const tooManyCore = await validate([offerings[0], offerings[1], coreOffering]);
+  assert.ok(tooManyCore.body.validationIssues.some((issue) => issue.code === "bachelorProjectLimit" && /core/.test(issue.message)));
+  const humanities = await validate([offerings[0], germanOffering]);
+  const extraIssue = humanities.body.validationIssues.find((issue) => issue.code === "bachelorProjectExtraHours");
+  assert.ok(extraIssue && extraIssue.blocksSave === false, "humanities need extra hours but do not block saving a draft");
+
+  const removed = await call(path, { role: "advisor", method: "DELETE" });
+  assert.equal(removed.status, 200);
+  assert.equal((await call(path, { role: "advisor", method: "DELETE" })).status, 404);
+  const afterRemoval = await validate([offerings[0], offerings[1], coreOffering]);
+  assert.ok(!afterRemoval.body.validationIssues.some((issue) => issue.code === "bachelorProjectLimit"));
+
+  await StudentSchedule.updateOne({ student: profiles.advising._id }, { status: "readyForStudentReview" });
+  assert.equal((await put("advisor", { season: "winter" })).status, 409, "only open drafts can change");
+});
+
+test("C1 Req 62 creates one open draft per student and term and shows optional preferences", async () => {
+  const path = `/schedules/advising/${profiles.advising._id}/draft?termId=${term._id}`;
+  const create = (role) => call(path, { role, method: "POST" });
+  assert.equal((await create()).status, 401);
+  assert.equal((await create("advisingStudent")).status, 403);
+  assert.equal((await create("administrator")).status, 403);
+  assert.equal((await call(`/schedules/advising/${profiles.normal._id}/draft?termId=${term._id}`, { role: "coordinator", method: "POST" })).status, 400);
+  assert.equal((await call(path, { role: "advisor", method: "POST", body: { courses: [] } })).status, 400);
+
+  const noPreferences = await create("advisor");
+  assert.equal(noPreferences.status, 201, "a missing preference record does not block creation");
+  assert.equal(noPreferences.body.preference, null);
+  assert.equal(noPreferences.body.schedule.status, "draft");
+  assert.equal(noPreferences.body.schedule.courses.length, 0);
+  assert.equal(noPreferences.body.editable, true);
+  assert.equal((await StudentSchedule.findOne({ student: profiles.advising._id })).createdBy.toString(), String(users.advisor._id));
+
+  const duplicate = await create("coordinator");
+  assert.equal(duplicate.status, 409);
+  assert.match(duplicate.body.message, /open draft already exists/);
+  assert.equal(await StudentSchedule.countDocuments({ student: profiles.advising._id }), 1);
+
+  const saved = await call(path, { role: "advisor", method: "PUT", body: { version: noPreferences.body.schedule.version, courses: [] } });
+  assert.equal(saved.status, 200, "the created draft can be edited and saved");
+
+  await StudentSchedule.updateOne({ student: profiles.advising._id }, { status: "readyForStudentReview" });
+  assert.match((await create("advisor")).body.message, /no longer an open draft/);
+});
+
+test("C1 Req 62 returns the latest submitted preferences when the draft is created", async () => {
+  await SchedulingPreference.create({ student: profiles.advising._id, term: term._id, preferredDays: [{ day: "Sunday", priority: 1 }], note: "No early starts" });
+  const created = await call(`/schedules/advising/${profiles.advising._id}/draft?termId=${term._id}`, { role: "coordinator", method: "POST" });
+  assert.equal(created.status, 201);
+  assert.equal(created.body.preference.preferredDays[0].day, "Sunday");
+  assert.equal(created.body.preference.note, "No early starts");
+  assert.ok(created.body.preferenceLastUpdatedAt);
+});
+
+test("C1 Req 63 selects mandatory courses before others and tracks the hours they consume", async () => {
+  const path = `/schedules/advising/${profiles.advising._id}/mandatory-courses?termId=${term._id}`;
+  const put = (role, ids) => call(path, { role, method: "PUT", body: { courses: ids } });
+  const attempt = (course, result, attendance = "attended") => CourseAttempt.create({ student: profiles.advising._id, course: course._id, term: term._id, attendance, result, grade: result === "failed" ? "F" : undefined });
+  assert.equal((await put(undefined, [])).status, 401);
+  assert.equal((await put("administrator", [])).status, 403);
+  assert.equal((await put("advisor", ["nope"])).status, 400);
+  assert.equal((await put("advisor", [String(courses[0]._id)])).status, 400, "a course that is not mandatory is rejected");
+
+  await attempt(courses[0], "failed");
+  await attempt(courses[1], "failed", "unattended");
+  const first = await put("advisor", [String(courses[0]._id)]);
+  assert.equal(first.status, 201, "creates the open draft when none exists");
+  assert.equal(first.body.creditHours.mandatoryHours, 6);
+  assert.equal(first.body.creditHours.allowedHours, 23);
+  assert.equal(first.body.creditHours.remainingAllowedHours, 17);
+  assert.equal(first.body.selectedMandatoryCourses.length, 1);
+  assert.equal(first.body.unselectedMandatoryCourses[0].code, "MATH 501");
+
+  const both = await put("coordinator", [String(courses[0]._id), String(courses[1]._id)]);
+  assert.equal(both.status, 200);
+  assert.equal(both.body.creditHours.mandatoryHours, 10);
+  assert.equal(both.body.schedule.version, 2);
+  const draft = (await call(`/schedules/advising/${profiles.advising._id}/draft?termId=${term._id}`, { role: "advisor" })).body;
+  assert.equal(draft.schedule.courses.length, 2);
+  assert.ok(draft.mandatoryCourses.every((course) => course.inDraft));
+  assert.equal(draft.mandatorySummary.mandatoryHours, 10);
+  assert.ok(!draft.validationIssues.some((issue) => issue.code === "missingMandatoryCourse"));
+
+  const stored = await StudentSchedule.findOne({ student: profiles.advising._id });
+  assert.ok(stored.courses.every((entry) => entry.isMandatory && entry.slots.length === 0));
+
+  const trimmed = await put("advisor", [String(courses[0]._id)]);
+  assert.equal(trimmed.status, 200);
+  assert.equal(trimmed.body.creditHours.mandatoryHours, 6);
+
+  stored.courses[0].slots.push({ componentType: "lecture", courseOffering: offerings[0]._id, slotGroupId: offerings[0].slots[0]._id });
+  await stored.save();
+  const blocked = await put("advisor", []);
+  assert.equal(blocked.status, 409);
+  assert.match(blocked.body.message, /Remove its slots/);
+
+  const big = await Course.create({ code: "CSEN 599", name: "Huge", creditHours: 30, courseType: "core", facultyMajors: ["CS"] });
+  await CourseOffering.create({ course: big._id, academicYear: term.academicYear, term: term._id, isPublished: true, instructors: [{ fullName: "Dr. B", email: "b@guc.edu.eg" }], eligibleGroups: [{ major: "CS", semester: 5, studyGroup: "1" }], slots: [{ componentType: "lecture", groupNumber: "1", day: "Monday", startMinute: 600, endMinute: 720, room: "H1", capacity: 5 }] });
+  await attempt(big, "failed");
+  const over = await put("advisor", [String(courses[0]._id), String(big._id)]);
+  assert.equal(over.status, 409);
+  assert.match(over.body.message, /above the 23 hours/);
+
+  await StudentSchedule.updateOne({ student: profiles.advising._id }, { status: "readyForStudentReview" });
+  assert.equal((await put("advisor", [String(courses[0]._id)])).status, 409, "only open drafts can change");
+});
+
+test("C1 Req 70 lists only courses the student may take, with reasons for the rest", async () => {
+  const path = `/schedules/advising/${profiles.advising._id}/eligible-courses?termId=${term._id}`;
+  assert.equal((await call(path)).status, 401);
+  assert.equal((await call(path, { role: "administrator" })).status, 403);
+  const make = async (fields, semester = 5) => {
+    const course = await Course.create({ creditHours: 3, courseType: "core", facultyMajors: ["CS"], ...fields });
+    await CourseOffering.create({ course: course._id, academicYear: term.academicYear, term: term._id, isPublished: true, instructors: [{ fullName: "Dr. Z", email: "z@guc.edu.eg" }], eligibleGroups: [{ major: "CS", semester, studyGroup: "1" }], slots: [{ componentType: "lecture", groupNumber: "1", day: "Monday", startMinute: 600, endMinute: 720, room: "H2", capacity: 5 }] });
+    return course;
+  };
+  const needsPrereq = await make({ code: "CSEN 510", name: "Needs Prereq", prerequisites: [courses[0]._id] });
+  await make({ code: "CSEN 511", name: "Spring Only", offeringSeasons: ["spring"] });
+  await make({ code: "CSEN 512", name: "Any Season", offeringSeasons: ["winter", "spring"] });
+  await make({ code: "CSEN 513", name: "Other Semester" }, 7);
+  await CourseAttempt.create({ student: profiles.advising._id, course: courses[1]._id, term: term._id, attendance: "attended", result: "passed", grade: "A" });
+  await CourseAttempt.create({ student: profiles.advising._id, course: courses[0]._id, term: term._id, attendance: "attended", result: "failed", grade: "F" });
+
+  const result = await call(path, { role: "advisor" });
+  assert.equal(result.status, 200);
+  assert.deepEqual(result.body.courses.map((entry) => entry.course.code), ["CSEN 512"]);
+  const reasons = Object.fromEntries(result.body.excluded.map((entry) => [entry.code, entry.reason]));
+  assert.equal(reasons["MATH 501"], "alreadyCompleted");
+  assert.equal(reasons["CSEN 510"], "unmetPrerequisites");
+  assert.equal(reasons["CSEN 511"], "notOfferedInSeason");
+  assert.ok(!("CSEN 501" in reasons) && !("CSEN 513" in reasons), "mandatory and other-semester courses are not listed");
+  assert.equal((await call(`${path}&search=zzz`, { role: "advisor" })).body.count, 0);
+
+  await CourseAttempt.create({ student: profiles.advising._id, course: courses[0]._id, term: term._id, attemptNumber: 2, attendance: "attended", result: "passed", grade: "B" });
+  const unlocked = await call(path, { role: "advisor" });
+  assert.ok(unlocked.body.courses.some((entry) => entry.course.code === "CSEN 510"), "a met prerequisite makes the course eligible");
+  assert.equal(needsPrereq.code, "CSEN 510");
+});
+
+test("C1 Req 71-73 adds and removes non-mandatory courses and reports credit hours", async () => {
+  const base = `/schedules/advising/${profiles.advising._id}`;
+  const q = `?termId=${term._id}`;
+  const add = (role, courseOffering) => call(`${base}/courses${q}`, { role, method: "POST", body: { courseOffering: String(courseOffering) } });
+  const del = (role, courseOffering) => call(`${base}/courses/${courseOffering}${q}`, { role, method: "DELETE" });
+  assert.equal((await add(undefined, offerings[1]._id)).status, 401);
+  assert.equal((await add("administrator", offerings[1]._id)).status, 403);
+  assert.equal((await call(`${base}/courses${q}`, { role: "advisor", method: "POST", body: {} })).status, 400);
+
+  const none = await call(`${base}/credit-hours${q}`, { role: "advisor" });
+  assert.equal(none.status, 200);
+  assert.equal(none.body.creditHours.selectedHours, 0);
+  assert.equal(none.body.creditHours.allowedHours, 23);
+  assert.equal(none.body.creditHours.remainingHours, 23);
+
+  const first = await add("advisor", offerings[1]._id);
+  assert.equal(first.status, 201);
+  assert.equal(first.body.creditHours.selectedHours, 4);
+  assert.equal(first.body.creditHours.remainingAllowedHours, 19);
+  assert.equal(first.body.creditHours.extraSelectedHours, 0);
+  assert.equal((await add("coordinator", offerings[1]._id)).status, 409, "no duplicates");
+  assert.equal((await del("advisor", offerings[0]._id)).status, 404, "course not in the draft");
+
+  const big = await Course.create({ code: "CSEN 598", name: "Heavy", creditHours: 24, courseType: "core", facultyMajors: ["CS"] });
+  const bigOffering = await CourseOffering.create({ course: big._id, academicYear: term.academicYear, term: term._id, isPublished: true, instructors: [{ fullName: "Dr. H", email: "h@guc.edu.eg" }], eligibleGroups: [{ major: "CS", semester: 5, studyGroup: "1" }], slots: [{ componentType: "lecture", groupNumber: "1", day: "Monday", startMinute: 600, endMinute: 720, room: "H3", capacity: 5 }] });
+  const tooMany = await add("advisor", bigOffering._id);
+  assert.equal(tooMany.status, 409);
+  assert.match(tooMany.body.message, /above the allowed 23/);
+
+  const saved = await call(`${base}/draft${q}`, { role: "advisor", method: "PUT", body: { version: first.body.schedule.version, courses: [{ courseOffering: String(offerings[1]._id), groups: [{ componentType: "lecture", groupNumber: "1" }] }] } });
+  assert.equal(saved.status, 200);
+  assert.equal((await CourseOffering.findById(offerings[1]._id)).slots.find((slot) => slot.groupNumber === "1").assignedStudentCount, 1);
+  const removed = await del("advisor", offerings[1]._id);
+  assert.equal(removed.status, 200);
+  assert.equal(removed.body.creditHours.selectedHours, 0);
+  assert.equal((await CourseOffering.findById(offerings[1]._id)).slots.find((slot) => slot.groupNumber === "1").assignedStudentCount, 0, "seats are released");
+
+  await CourseAttempt.create({ student: profiles.advising._id, course: courses[0]._id, term: term._id, attendance: "attended", result: "failed", grade: "F" });
+  const blockedByMandatory = await add("advisor", offerings[1]._id);
+  assert.equal(blockedByMandatory.status, 409);
+  assert.match(blockedByMandatory.body.message, /mandatory courses before/);
+  assert.equal((await add("advisor", offerings[0]._id)).status, 400, "mandatory courses use the mandatory endpoint");
+  const select = await call(`${base}/mandatory-courses${q}`, { role: "advisor", method: "PUT", body: { courses: [String(courses[0]._id)] } });
+  assert.equal(select.status, 200, "draft already exists");
+  const afterMandatory = await add("advisor", offerings[1]._id);
+  assert.equal(afterMandatory.status, 201);
+  assert.equal(afterMandatory.body.creditHours.mandatoryHours, 6);
+  assert.equal(afterMandatory.body.creditHours.otherHours, 4);
+  assert.equal((await del("advisor", offerings[0]._id)).status, 409, "mandatory course cannot be removed here");
+
+  await StudentSchedule.updateOne({ student: profiles.advising._id }, { status: "readyForStudentReview" });
+  assert.equal((await del("advisor", offerings[1]._id)).status, 409);
+  assert.equal((await add("advisor", offerings[1]._id)).status, 409);
+});

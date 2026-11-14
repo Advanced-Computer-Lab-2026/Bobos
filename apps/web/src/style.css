@@ -593,3 +593,14 @@ td strong, td .secondary-text { display: block; }
   .notification-row { gap: 8px; }
   .notification-row > .text-button { flex: 0 0 auto; }
 }
+
+.advising-overview .overview-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin: 0; }
+.advising-overview .overview-grid dt { margin-bottom: 4px; color: #818c87; font-size: 9px; font-weight: 600; text-transform: uppercase; }
+.advising-overview .overview-grid dd { margin: 0; color: #35433d; font-size: 13px; font-weight: 700; }
+.bachelor-project-actions { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; margin-top: 14px; }
+.bachelor-project-actions .field { min-width: 160px; }
+.mandatory-list { display: grid; gap: 8px; margin: 0 0 12px; padding: 0; list-style: none; font-size: 11px; color: #35433d; }
+.mandatory-list label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.excluded-courses { margin-top: 12px; font-size: 10px; color: #5f6d67; }
+.excluded-courses summary { cursor: pointer; font-weight: 600; }
+.excluded-courses ul { margin: 8px 0 0; padding-left: 18px; }

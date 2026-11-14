@@ -59,6 +59,14 @@ export function GroupAssignmentsPage({ token, canAssign = false, notify }) {
 
   useEffect(() => { load(); }, [load]);
 
+  useEffect(() => {
+    let alive = true;
+    setOverview(null);
+    api(`/api/schedules/advising/${encodeURIComponent(student._id)}/overview${termQuery}`, { token })
+      .then((result) => alive && setOverview(result)).catch(() => alive && setOverview(null));
+    return () => { alive = false; };
+  }, [student._id, termQuery, token, data?.schedule?.updatedAt]);
+
   const targetGroups = useMemo(() => target ? groups.filter((group) =>
     group.major === target.major && Number(group.semester) === Number(target.currentSemester)
   ) : [], [groups, target]);
@@ -327,6 +335,9 @@ function AdvisingDraftEditor({ token, student, termId, notify, onBack, onSaved }
   const [data, setData] = useState(null);
   const [selections, setSelections] = useState({});
   const [validationIssues, setValidationIssues] = useState(null);
+  const [overview, setOverview] = useState(null);
+  const [creating, setCreating] = useState(false);
+  const [savingMandatory, setSavingMandatory] = useState(false);
   const [validating, setValidating] = useState(false);
   const validationHeading = useRef(null);
   const [loading, setLoading] = useState(true);
@@ -399,6 +410,28 @@ function AdvisingDraftEditor({ token, student, termId, notify, onBack, onSaved }
     finally { setValidating(false); }
   }
 
+  async function saveMandatory(courseIds) {
+    setSavingMandatory(true); setError(""); setMessage("");
+    try {
+      const result = await api(`/api/schedules/advising/${encodeURIComponent(student._id)}/mandatory-courses${termQuery}`, { token, method: "PUT", body: { courses: courseIds } });
+      notify?.("success", result.message);
+      onSaved?.("draft");
+      await load();
+    } catch (requestError) { setError(requestError.message); }
+    finally { setSavingMandatory(false); }
+  }
+
+  async function createDraft() {
+    setCreating(true); setError(""); setMessage("");
+    try {
+      const result = await api(`${draftPath}${termQuery}`, { token, method: "POST" });
+      notify?.("success", result.message);
+      onSaved?.("draft");
+      await load();
+    } catch (requestError) { setError(requestError.message); }
+    finally { setCreating(false); }
+  }
+
   async function save(event, submitForReview = false) {
     event?.preventDefault(); setSaving(true); setSendingForReview(submitForReview); setError(""); setMessage("");
     try {
@@ -455,7 +488,8 @@ function AdvisingDraftEditor({ token, student, termId, notify, onBack, onSaved }
     <div className="page-title-row"><div><p className="eyebrow">STUDENT SCHEDULES</p><h1>Advising draft schedule</h1><p className="page-description">{student.fullName} · {student.studentId}</p></div><button className="outline-button" type="button" onClick={onBack}>← Back to students</button></div>
     {error && !data && <Feedback tone="error">{error}</Feedback>}
     {loading ? <Loading /> : data && <>
-      <section className="panel draft-summary"><div><p className="eyebrow">{data.term?.code} · {data.term?.season} {data.term?.academicYear}</p><h2>{data.student?.fullName} · {data.student?.major}, semester {data.student?.currentSemester}</h2><p className="helper-text">{data.schedule ? `Draft version ${data.schedule.version} · last edited ${formatDraftDate(data.schedule.updatedAt)}` : "No draft exists for this term yet. Saving creates an open draft."}</p></div><span className={`status-pill ${editable ? "good" : "muted"}`}>{data.schedule ? prettyStatus(data.schedule.status) : "No draft"}</span></section>
+      <section className="panel draft-summary"><div><p className="eyebrow">{data.term?.code} · {data.term?.season} {data.term?.academicYear}</p><h2>{data.student?.fullName} · {data.student?.major}, semester {data.student?.currentSemester}</h2><p className="helper-text">{data.schedule ? `Draft version ${data.schedule.version} · last edited ${formatDraftDate(data.schedule.updatedAt)}` : "No draft exists for this term yet. Saving creates an open draft."}</p></div><span className={`status-pill ${editable ? "good" : "muted"}`}>{data.schedule ? prettyStatus(data.schedule.status) : "No draft"}</span>{!data.schedule && <button className="primary-button" type="button" onClick={createDraft} disabled={creating}>{creating ? "Creating…" : "Create open draft"}</button>}</section>
+      {overview && <AdvisingOverviewPanel overview={overview} token={token} student={student} termQuery={termQuery} canEdit={editable} notify={notify} onChanged={load} />}
       <nav className="draft-section-nav" aria-label="Draft sections">
         <a href="#draft-preferences">Preferences</a>
         <a href="#draft-timetable">Timetable</a>
@@ -477,9 +511,10 @@ function AdvisingDraftEditor({ token, student, termId, notify, onBack, onSaved }
           {preferences.note && <p className="draft-student-note"><strong>Student note:</strong> {preferences.note}</p>}
         </>}
       </section>
-      {data.mandatoryCourses.length > 0 && <section className="panel"><div className="panel-heading"><div><p className="eyebrow">ACADEMIC RECORD</p><h2>Failed or unattended courses</h2></div></div><p className="helper-text">These courses are marked mandatory unless a removal was approved for this term. Include the available offerings in the draft when required.</p><div className="draft-mandatory-list">{data.mandatoryCourses.map((course) => <span className={`status-pill ${course.availableForTerm ? "warning" : "muted"}`} key={course._id}>{course.code}{course.availableForTerm ? " · mandatory" : " · no eligible published offering"}</span>)}</div></section>}
+      {data.mandatoryCourses.length > 0 && <MandatoryCoursesPanel data={data} editable={editable} busy={savingMandatory} onSave={saveMandatory} />}
       {!editable && data.schedule?.status === "readyForStudentReview" && <Feedback tone="success">This schedule is now visible to the advising student for review.</Feedback>}
       <section className="panel draft-timetable" id="draft-timetable"><div className="panel-heading"><div><p className="eyebrow">LIVE PREVIEW</p><h2>Selected timetable</h2></div><span className="result-count">{selectedOfferings.length} subjects</span></div>{selectedOfferings.length ? <WeeklySchedule week={draftWeek} compact /> : <p className="helper-text">Add course groups below to preview their days and times here.</p>}</section>
+      <EligibleCoursesPanel token={token} student={student} termQuery={termQuery} editable={editable} notify={notify} version={data.schedule?.version ?? 0} onChanged={async (status) => { onSaved?.(status); await load(); }} />
       <form className="panel draft-course-editor" id="draft-courses" onSubmit={save}>
         <div className="results-heading draft-course-toolbar">
           <div><p className="eyebrow">DRAFT CONTENT</p><h2>Published course offerings</h2></div>
@@ -491,6 +526,8 @@ function AdvisingDraftEditor({ token, student, termId, notify, onBack, onSaved }
           <div><dt>{creditPolicy.probation ? "Probation allowance" : "Standard allowance"}</dt><dd>{creditPolicy.baseAllowance ?? "—"}</dd></div>
           <div><dt>Activated extra hours</dt><dd>{creditPolicy.approvedExtraHours}</dd></div>
           <div><dt>Maximum credits</dt><dd>{creditPolicy.maximumCreditHours}</dd></div>
+          <div><dt>Remaining credits</dt><dd>{Math.max(0, creditPolicy.maximumCreditHours - credits)}</dd></div>
+          <div><dt>Extra credits used</dt><dd>{Math.max(0, credits - (creditPolicy.baseAllowance ?? creditPolicy.maximumCreditHours))}</dd></div>
         </dl>}
         {creditPolicy && !creditPolicy.policyConfigured && <p className="helper-text">Semester {creditPolicy.semester} uses the 34-hour overall ceiling until its standard allowance is defined.</p>}
         {!editable && <Feedback tone="warning">This schedule has moved beyond draft status and is read-only.</Feedback>}
@@ -675,6 +712,105 @@ function WeeklySchedule({ week = {}, daysOff = [], compact = false }) {
 }
 
 function Stat({ label, value }) { return <div className="stat-card"><span className="stat-icon">◷</span><div><p>{label}</p><strong>{value}</strong></div></div>; }
+const ADVISING_REASONS = { probation: "Probation", failedCourses: "More than two failed courses in a season", unattendedCourses: "Unattended courses", undeclaredMajor: "Undeclared CS or DMET major", transfer: "Transfer from another major/university" };
+const WORKFLOW_LABELS = { notStarted: "Not started", draft: "Draft", readyForStudentReview: "Ready for student review", changeRequestPending: "Change request pending", pendingApproval: "Pending approval", awaitingPaymentChoice: "Awaiting payment choice", deferredToNextInstallment: "Deferred to next installment", readyToProcess: "Ready to process", processed: "Processed", reopened: "Reopened" };
+
+function EligibleCoursesPanel({ token, student, termQuery, editable, notify, version, onChanged }) {
+  const [result, setResult] = useState(null);
+  const [search, setSearch] = useState("");
+  const [busyId, setBusyId] = useState("");
+  const [error, setError] = useState("");
+  const base = `/api/schedules/advising/${encodeURIComponent(student._id)}`;
+  useEffect(() => {
+    let alive = true;
+    const params = new URLSearchParams(termQuery.replace(/^\?/, "")); if (search.trim()) params.set("search", search.trim());
+    api(`${base}/eligible-courses?${params}`, { token }).then((data) => alive && setResult(data)).catch((requestError) => alive && setError(requestError.message));
+    return () => { alive = false; };
+  }, [base, termQuery, token, search, version]);
+  async function change(entry) {
+    setBusyId(entry.courseOffering); setError("");
+    try {
+      const response = entry.inDraft
+        ? await api(`${base}/courses/${entry.courseOffering}${termQuery}`, { token, method: "DELETE" })
+        : await api(`${base}/courses${termQuery}`, { token, method: "POST", body: { courseOffering: entry.courseOffering } });
+      notify?.("success", response.message);
+      await onChanged?.("draft");
+    } catch (requestError) { setError(requestError.message); }
+    finally { setBusyId(""); }
+  }
+  return <section className="panel eligible-courses" id="draft-eligible"><div className="results-heading"><div><p className="eyebrow">OTHER COURSES</p><h2>Eligible courses this term</h2></div><span className="result-count">{result?.count ?? 0} courses</span></div>
+    <p className="helper-text">Courses the student has not completed, whose prerequisites are met and that are published and offered this season. Add them after the mandatory courses.</p>
+    <label className="field roster-search"><span>Search courses</span><input value={search} onChange={(event) => setSearch(event.target.value)} maxLength={100} placeholder="Course code or name" /></label>
+    {error && <Feedback tone="error">{error}</Feedback>}
+    {!result ? <Loading /> : result.courses.length ? <div className="table-scroll"><table><thead><tr><th>Course</th><th>Credits</th><th>Type</th><th>Prerequisites</th><th /></tr></thead><tbody>{result.courses.map((entry) => <tr key={entry.courseOffering}>
+      <td><strong>{entry.course.code}</strong><span className="secondary-text">{entry.course.name}</span></td><td>{entry.course.creditHours}</td><td>{entry.course.courseType}</td>
+      <td>{entry.course.prerequisites.length ? entry.course.prerequisites.map((item) => item.code).join(", ") : "None"}</td>
+      <td>{editable && <button className={entry.inDraft ? "outline-button" : "primary-button"} type="button" disabled={Boolean(busyId)} onClick={() => change(entry)}>{busyId === entry.courseOffering ? "Working…" : entry.inDraft ? "Remove" : "Add to draft"}</button>}</td>
+    </tr>)}</tbody></table></div> : <Empty title="No eligible courses" text={search ? "No eligible course matches your search." : "There are no other eligible published courses for this student this term."} />}
+    {result?.excluded?.length > 0 && <details className="excluded-courses"><summary>{result.excluded.length} courses not available to this student</summary><ul>{result.excluded.map((entry) => <li key={entry._id}>{entry.message}</li>)}</ul></details>}
+  </section>;
+}
+
+function MandatoryCoursesPanel({ data, editable, busy, onSave }) {
+  const available = data.mandatoryCourses.filter((course) => course.availableForTerm);
+  const [picked, setPicked] = useState(() => new Set(available.filter((course) => course.inDraft).map((course) => course._id)));
+  useEffect(() => { setPicked(new Set(available.filter((course) => course.inDraft).map((course) => course._id))); }, [data.schedule?.version]);
+  const summary = data.mandatorySummary;
+  const pickedHours = available.filter((course) => picked.has(course._id)).reduce((sum, course) => sum + Number(course.creditHours || 0), 0);
+  const toggle = (id) => setPicked((current) => { const next = new Set(current); next.has(id) ? next.delete(id) : next.add(id); return next; });
+  return <section className="panel mandatory-panel" id="draft-mandatory"><div className="panel-heading"><div><p className="eyebrow">MANDATORY COURSES</p><h2>Failed or unattended courses</h2></div>
+    <span className="status-pill good">{summary?.mandatoryHours ?? 0} / {summary?.allowedHours ?? data.creditPolicy.maximumCreditHours} h used</span></div>
+    <p className="helper-text">Select the mandatory courses to include before adding any other course. They use up the student’s allowed credit hours.</p>
+    <ul className="mandatory-list">{data.mandatoryCourses.map((course) => <li key={course._id}>
+      {course.availableForTerm
+        ? <label><input type="checkbox" checked={picked.has(course._id)} disabled={!editable || busy} onChange={() => toggle(course._id)} /> <strong>{course.code}</strong> {course.name} · {course.creditHours} h</label>
+        : <span><strong>{course.code}</strong> {course.name} · <span className="status-pill muted">no eligible published offering</span></span>}
+    </li>)}</ul>
+    {summary && summary.mandatoryHours > 0 && (summary.otherCoursesNeedExtraHours
+      ? <Feedback tone="warning">Mandatory courses use all {summary.allowedHours} allowed hours. No other course can be added without approved extra hours.</Feedback>
+      : <p className="helper-text">{summary.remainingAllowedHours} allowed hours remain for other courses.</p>)}
+    {editable && <div className="form-footer"><span className="helper-text">{pickedHours} credit hours selected.</span><button className="primary-button" type="button" disabled={busy} onClick={() => onSave([...picked])}>{busy ? "Saving…" : "Save mandatory courses"}</button></div>}
+  </section>;
+}
+
+function AdvisingOverviewPanel({ overview, token, student, termQuery, canEdit, notify, onChanged }) {
+  const hours = overview.creditHours, bachelor = overview.bachelorProject;
+  const [season, setSeason] = useState(bachelor.selection?.season || "winter");
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState("");
+  const projectPath = `/api/schedules/advising/${encodeURIComponent(student._id)}/bachelor-project${termQuery}`;
+  async function changeProject(remove) {
+    setBusy(true); setProblem("");
+    try {
+      const result = await api(projectPath, { token, method: remove ? "DELETE" : "PUT", body: remove ? undefined : { season } });
+      notify?.("success", result.message);
+      await onChanged?.();
+    } catch (error) { setProblem(error.message); }
+    finally { setBusy(false); }
+  }
+  return <section className="panel advising-overview" aria-label="Advising overview">
+    <div className="panel-heading"><div><p className="eyebrow">ADVISING OVERVIEW</p><h2>{ADVISING_REASONS[overview.advisingReason] || overview.advisingReason}</h2></div><span className="status-pill good">{WORKFLOW_LABELS[overview.scheduleStatus] || overview.scheduleStatus}</span></div>
+    <dl className="overview-grid">
+      <div><dt>Academic standing</dt><dd>{overview.academicStanding === "probation" ? "Probation" : "Good academic standing"}</dd></div>
+      <div><dt>Standard allowance</dt><dd>{hours.standardAllowance ?? "Not configured"}{hours.standardAllowance != null ? " h" : ""}</dd></div>
+      <div><dt>Allowed hours</dt><dd>{hours.allowedHours ?? "—"}{hours.probation ? ` (−${hours.reductionForProbation} probation)` : ""}</dd></div>
+      <div><dt>Approved extra hours</dt><dd>{hours.approvedExtraHours}{hours.probation ? " (not available)" : ""}</dd></div>
+      <div><dt>Maximum this term</dt><dd>{hours.maximumCreditHours} h</dd></div>
+      <div><dt>Bachelor project</dt><dd><span className={`status-pill ${bachelor.eligible ? "good" : "warning"}`}>{bachelor.eligible ? "Eligible" : "Not eligible"}</span></dd></div>
+    </dl>
+    {bachelor.selection && <p className="helper-text"><strong>Bachelor project selected for {bachelor.selection.season === "winter" ? "Winter" : "Spring"}.</strong> Up to four courses may be taken with it: two core and two humanities (humanities count as extra hours).</p>}
+    {bachelor.eligible && canEdit && <div className="bachelor-project-actions">
+      <label className="field"><span>Bachelor project season</span><select value={season} onChange={(event) => setSeason(event.target.value)} disabled={busy}><option value="winter">Winter</option><option value="spring">Spring</option></select></label>
+      <button className="primary-button" type="button" disabled={busy} onClick={() => changeProject(false)}>{bachelor.selection ? "Change season" : "Add bachelor project"}</button>
+      {bachelor.selection && <button className="outline-button" type="button" disabled={busy} onClick={() => changeProject(true)}>Remove project</button>}
+    </div>}
+    {problem && <Feedback tone="error">{problem}</Feedback>}
+    {overview.blockingStep && <p className="helper-text">Next step: {overview.blockingStep}</p>}
+    {bachelor.eligibleWithFailedCourses && <p className="helper-text">Eligible with {bachelor.outstandingCourses.map((course) => course.code).join(", ")} still outstanding (one or two failed courses are allowed).</p>}
+    {!bachelor.eligible && <ul className="helper-text">{bachelor.reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>}
+  </section>;
+}
+
 function Feedback({ tone = "info", children }) { return <div className={`feedback ${tone}`} role={tone === "error" ? "alert" : "status"}>{children}</div>; }
 function Empty({ title, text }) { return <div className="empty-state"><span>▤</span><h3>{title}</h3><p>{text}</p></div>; }
 function Loading() { return <div className="loading-state"><span className="loader" />Loading…</div>; }
