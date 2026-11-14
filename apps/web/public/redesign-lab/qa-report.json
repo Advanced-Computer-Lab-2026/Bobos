@@ -1,0 +1,3017 @@
+{
+  "views": [
+    {
+      "version": 1,
+      "width": 1440,
+      "route": "overview",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 1440,
+      "route": "notifications",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 1440,
+      "route": "profile",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 1440,
+      "route": "directory",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 1440,
+      "route": "student-detail",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 1440,
+      "route": "advising",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 1440,
+      "route": "pending-work",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 1440,
+      "route": "schedule-activity",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 1440,
+      "route": "financial-records",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 1440,
+      "route": "mandatory-removals",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 1440,
+      "route": "student-schedules",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 1440,
+      "route": "draft-schedule",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 1440,
+      "route": "courses",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 1440,
+      "route": "course-detail",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 1440,
+      "route": "terms",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 1440,
+      "route": "offerings",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 1440,
+      "route": "copy-offerings",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 1440,
+      "route": "templates",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 1440,
+      "route": "template-detail",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 1440,
+      "route": "group-assignments",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 1440,
+      "route": "my-schedule",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 1440,
+      "route": "my-courses",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 1440,
+      "route": "schedule-swap",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 1440,
+      "route": "preferences",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 1440,
+      "route": "records",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 1440,
+      "route": "my-advisor",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 1440,
+      "route": "calendar-sync",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 1440,
+      "route": "login",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 1440,
+      "route": "forgot",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 1440,
+      "route": "reset",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 390,
+      "route": "overview",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 390,
+      "route": "notifications",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 390,
+      "route": "profile",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 390,
+      "route": "directory",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 390,
+      "route": "student-detail",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 390,
+      "route": "advising",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 390,
+      "route": "pending-work",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 390,
+      "route": "schedule-activity",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 390,
+      "route": "financial-records",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 390,
+      "route": "mandatory-removals",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 390,
+      "route": "student-schedules",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 390,
+      "route": "draft-schedule",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 390,
+      "route": "courses",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 390,
+      "route": "course-detail",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 390,
+      "route": "terms",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 390,
+      "route": "offerings",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 390,
+      "route": "copy-offerings",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 390,
+      "route": "templates",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 390,
+      "route": "template-detail",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 390,
+      "route": "group-assignments",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 390,
+      "route": "my-schedule",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 390,
+      "route": "my-courses",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 390,
+      "route": "schedule-swap",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 390,
+      "route": "preferences",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 390,
+      "route": "records",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 390,
+      "route": "my-advisor",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 390,
+      "route": "calendar-sync",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 390,
+      "route": "login",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 390,
+      "route": "forgot",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 1,
+      "width": 390,
+      "route": "reset",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 1440,
+      "route": "overview",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 1440,
+      "route": "notifications",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 1440,
+      "route": "profile",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 1440,
+      "route": "directory",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 1440,
+      "route": "student-detail",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 1440,
+      "route": "advising",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 1440,
+      "route": "pending-work",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 1440,
+      "route": "schedule-activity",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 1440,
+      "route": "financial-records",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 1440,
+      "route": "mandatory-removals",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 1440,
+      "route": "student-schedules",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 1440,
+      "route": "draft-schedule",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 1440,
+      "route": "courses",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 1440,
+      "route": "course-detail",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 1440,
+      "route": "terms",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 1440,
+      "route": "offerings",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 1440,
+      "route": "copy-offerings",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 1440,
+      "route": "templates",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 1440,
+      "route": "template-detail",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 1440,
+      "route": "group-assignments",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 1440,
+      "route": "my-schedule",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 1440,
+      "route": "my-courses",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 1440,
+      "route": "schedule-swap",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 1440,
+      "route": "preferences",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 1440,
+      "route": "records",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 1440,
+      "route": "my-advisor",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 1440,
+      "route": "calendar-sync",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 1440,
+      "route": "login",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 1440,
+      "route": "forgot",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 1440,
+      "route": "reset",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 390,
+      "route": "overview",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 390,
+      "route": "notifications",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 390,
+      "route": "profile",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 390,
+      "route": "directory",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 390,
+      "route": "student-detail",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 390,
+      "route": "advising",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 390,
+      "route": "pending-work",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 390,
+      "route": "schedule-activity",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 390,
+      "route": "financial-records",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 390,
+      "route": "mandatory-removals",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 390,
+      "route": "student-schedules",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 390,
+      "route": "draft-schedule",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 390,
+      "route": "courses",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 390,
+      "route": "course-detail",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 390,
+      "route": "terms",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 390,
+      "route": "offerings",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 390,
+      "route": "copy-offerings",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 390,
+      "route": "templates",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 390,
+      "route": "template-detail",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 390,
+      "route": "group-assignments",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 390,
+      "route": "my-schedule",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 390,
+      "route": "my-courses",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 390,
+      "route": "schedule-swap",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 390,
+      "route": "preferences",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 390,
+      "route": "records",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 390,
+      "route": "my-advisor",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 390,
+      "route": "calendar-sync",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 390,
+      "route": "login",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 390,
+      "route": "forgot",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 2,
+      "width": 390,
+      "route": "reset",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 1440,
+      "route": "overview",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 1440,
+      "route": "notifications",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 1440,
+      "route": "profile",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 1440,
+      "route": "directory",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 1440,
+      "route": "student-detail",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 1440,
+      "route": "advising",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 1440,
+      "route": "pending-work",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 1440,
+      "route": "schedule-activity",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 1440,
+      "route": "financial-records",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 1440,
+      "route": "mandatory-removals",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 1440,
+      "route": "student-schedules",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 1440,
+      "route": "draft-schedule",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 1440,
+      "route": "courses",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 1440,
+      "route": "course-detail",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 1440,
+      "route": "terms",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 1440,
+      "route": "offerings",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 1440,
+      "route": "copy-offerings",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 1440,
+      "route": "templates",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 1440,
+      "route": "template-detail",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 1440,
+      "route": "group-assignments",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 1440,
+      "route": "my-schedule",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 1440,
+      "route": "my-courses",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 1440,
+      "route": "schedule-swap",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 1440,
+      "route": "preferences",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 1440,
+      "route": "records",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 1440,
+      "route": "my-advisor",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 1440,
+      "route": "calendar-sync",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 1440,
+      "route": "login",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 1440,
+      "route": "forgot",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 1440,
+      "route": "reset",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 390,
+      "route": "overview",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 390,
+      "route": "notifications",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 390,
+      "route": "profile",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 390,
+      "route": "directory",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 390,
+      "route": "student-detail",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 390,
+      "route": "advising",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 390,
+      "route": "pending-work",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 390,
+      "route": "schedule-activity",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 390,
+      "route": "financial-records",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 390,
+      "route": "mandatory-removals",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 390,
+      "route": "student-schedules",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 390,
+      "route": "draft-schedule",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 390,
+      "route": "courses",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 390,
+      "route": "course-detail",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 390,
+      "route": "terms",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 390,
+      "route": "offerings",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 390,
+      "route": "copy-offerings",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 390,
+      "route": "templates",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 390,
+      "route": "template-detail",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 390,
+      "route": "group-assignments",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 390,
+      "route": "my-schedule",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 390,
+      "route": "my-courses",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 390,
+      "route": "schedule-swap",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 390,
+      "route": "preferences",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 390,
+      "route": "records",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 390,
+      "route": "my-advisor",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 390,
+      "route": "calendar-sync",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 390,
+      "route": "login",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 390,
+      "route": "forgot",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 3,
+      "width": 390,
+      "route": "reset",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 1440,
+      "route": "overview",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 1440,
+      "route": "notifications",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 1440,
+      "route": "profile",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 1440,
+      "route": "directory",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 1440,
+      "route": "student-detail",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 1440,
+      "route": "advising",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 1440,
+      "route": "pending-work",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 1440,
+      "route": "schedule-activity",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 1440,
+      "route": "financial-records",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 1440,
+      "route": "mandatory-removals",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 1440,
+      "route": "student-schedules",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 1440,
+      "route": "draft-schedule",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 1440,
+      "route": "courses",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 1440,
+      "route": "course-detail",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 1440,
+      "route": "terms",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 1440,
+      "route": "offerings",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 1440,
+      "route": "copy-offerings",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 1440,
+      "route": "templates",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 1440,
+      "route": "template-detail",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 1440,
+      "route": "group-assignments",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 1440,
+      "route": "my-schedule",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 1440,
+      "route": "my-courses",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 1440,
+      "route": "schedule-swap",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 1440,
+      "route": "preferences",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 1440,
+      "route": "records",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 1440,
+      "route": "my-advisor",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 1440,
+      "route": "calendar-sync",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 1440,
+      "route": "login",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 1440,
+      "route": "forgot",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 1440,
+      "route": "reset",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 390,
+      "route": "overview",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 390,
+      "route": "notifications",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 390,
+      "route": "profile",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 390,
+      "route": "directory",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 390,
+      "route": "student-detail",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 390,
+      "route": "advising",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 390,
+      "route": "pending-work",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 390,
+      "route": "schedule-activity",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 390,
+      "route": "financial-records",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 390,
+      "route": "mandatory-removals",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 390,
+      "route": "student-schedules",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 390,
+      "route": "draft-schedule",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 390,
+      "route": "courses",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 390,
+      "route": "course-detail",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 390,
+      "route": "terms",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 390,
+      "route": "offerings",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 390,
+      "route": "copy-offerings",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 390,
+      "route": "templates",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 390,
+      "route": "template-detail",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 390,
+      "route": "group-assignments",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 390,
+      "route": "my-schedule",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 390,
+      "route": "my-courses",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 390,
+      "route": "schedule-swap",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 390,
+      "route": "preferences",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 390,
+      "route": "records",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 390,
+      "route": "my-advisor",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 390,
+      "route": "calendar-sync",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 390,
+      "route": "login",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 390,
+      "route": "forgot",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 4,
+      "width": 390,
+      "route": "reset",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 1440,
+      "route": "overview",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 1440,
+      "route": "notifications",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 1440,
+      "route": "profile",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 1440,
+      "route": "directory",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 1440,
+      "route": "student-detail",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 1440,
+      "route": "advising",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 1440,
+      "route": "pending-work",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 1440,
+      "route": "schedule-activity",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 1440,
+      "route": "financial-records",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 1440,
+      "route": "mandatory-removals",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 1440,
+      "route": "student-schedules",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 1440,
+      "route": "draft-schedule",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 1440,
+      "route": "courses",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 1440,
+      "route": "course-detail",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 1440,
+      "route": "terms",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 1440,
+      "route": "offerings",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 1440,
+      "route": "copy-offerings",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 1440,
+      "route": "templates",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 1440,
+      "route": "template-detail",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 1440,
+      "route": "group-assignments",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 1440,
+      "route": "my-schedule",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 1440,
+      "route": "my-courses",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 1440,
+      "route": "schedule-swap",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 1440,
+      "route": "preferences",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 1440,
+      "route": "records",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 1440,
+      "route": "my-advisor",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 1440,
+      "route": "calendar-sync",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 1440,
+      "route": "login",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 1440,
+      "route": "forgot",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 1440,
+      "route": "reset",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 390,
+      "route": "overview",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 390,
+      "route": "notifications",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 390,
+      "route": "profile",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 390,
+      "route": "directory",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 390,
+      "route": "student-detail",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 390,
+      "route": "advising",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 390,
+      "route": "pending-work",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 390,
+      "route": "schedule-activity",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 390,
+      "route": "financial-records",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 390,
+      "route": "mandatory-removals",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 390,
+      "route": "student-schedules",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 390,
+      "route": "draft-schedule",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 390,
+      "route": "courses",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 390,
+      "route": "course-detail",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 390,
+      "route": "terms",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 390,
+      "route": "offerings",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 390,
+      "route": "copy-offerings",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 390,
+      "route": "templates",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 390,
+      "route": "template-detail",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 390,
+      "route": "group-assignments",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 390,
+      "route": "my-schedule",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 390,
+      "route": "my-courses",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 390,
+      "route": "schedule-swap",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 390,
+      "route": "preferences",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 390,
+      "route": "records",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 390,
+      "route": "my-advisor",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 390,
+      "route": "calendar-sync",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 390,
+      "route": "login",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 390,
+      "route": "forgot",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    },
+    {
+      "version": 5,
+      "width": 390,
+      "route": "reset",
+      "heading": true,
+      "overflow": false,
+      "emoji": false,
+      "badFooter": false,
+      "fonts": true
+    }
+  ],
+  "errors": [],
+  "interactions": [
+    "Create test notification, mark all read, unread tab",
+    "Student search and empty results",
+    "Dialog opens, Escape closes, trigger focus restored",
+    "Removal decision dialog validates and submits",
+    "CSV export downloads a file",
+    "Calendar connected and disconnected states",
+    "All five role navigation sets",
+    "Password reset preview flow",
+    "Mobile menu opens and navigates",
+    "Standalone HTML opens directly without a server"
+  ]
+}
