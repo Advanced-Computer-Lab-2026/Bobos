@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { after, before, beforeEach, test } from "node:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { join } from "node:path";
+import { tmpdir } from "node:os";
 import mongoose from "mongoose";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import app from "../app.js";
@@ -15,7 +16,7 @@ import { ExitExamRequest, ExtraHoursRequest, GraduationPlan } from "../models/re
 let database, databasePath, server, base, users, student, terms, courses;
 
 before(async () => {
-  databasePath = await mkdtemp(join(process.cwd(), ".mongo-graduation-"));
+  databasePath = await mkdtemp(join(tmpdir(), "bobos-graduation-"));
   database = await MongoMemoryServer.create({ instance: { dbPath: databasePath } });
   await mongoose.connect(database.getUri());
   await Promise.all([AcademicTerm.init(), Course.init(), CourseOffering.init(), CourseAttempt.init(), ExitExamRequest.init(),

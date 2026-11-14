@@ -441,10 +441,11 @@ export async function getExtraHoursWallet(req, res) {
 
 export async function downloadExtraHoursConfirmation(req, res) {
   try {
-    if (!Types.ObjectId.isValid(req.params.id)) return res.status(400).json({ message: "Invalid transaction ID." });
+    const transactionId = req.params.transactionId;
+    if (!Types.ObjectId.isValid(transactionId)) return res.status(400).json({ message: "Invalid transaction ID." });
     const profile = await StudentProfile.findOne({ user: req.user._id });
     if (!profile) return res.status(404).json({ message: "Student profile not found." });
-    const transaction = await FinancialTransaction.findOne({ _id: req.params.id, student: profile._id, extraHoursRequest: { $ne: null } }).populate("extraHoursRequest", "requestedHours totalCost currency").lean();
+    const transaction = await FinancialTransaction.findOne({ _id: transactionId, student: profile._id, extraHoursRequest: { $ne: null } }).populate("extraHoursRequest", "requestedHours totalCost currency").lean();
     if (!transaction) return res.status(404).json({ message: "Confirmation is not available for this financial record." });
     const deferred = transaction.kind === "deferredCharge";
     if (deferred && transaction.status !== "pending") return res.status(404).json({ message: "Deferred-payment confirmation is available only for an outstanding deferred charge." });

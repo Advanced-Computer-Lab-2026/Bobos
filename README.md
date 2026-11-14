@@ -49,6 +49,8 @@ See [scheduling preferences](docs/scheduling-preferences.md) for requirements 57
 
 See [Group B API coverage](docs/group-b-verification.md) for the student directory, account status, advisor roster, advising directory, and advisor assignment routes. Run `npm run test:group-b` for Group B role, filtering, and assignment-history checks.
 
+See [the Group A Sprint 2 audit](docs/group-a-sprint2-audit.md) for the integrated student workflows, all 36 assigned requirements, and reproduced missing/partial behavior. Run `npm run test:a` for strict acceptance (known gaps fail) or `npm run test:a:regression` to keep those same gap assertions explicitly marked TODO.
+
 ### Probation warning emails (Req. 118)
 
 Administrators can record official semester standings in **Academic terms → Record standing**. The API stores one standing per student and term. API clients can also use `PUT /api/academic-terms/academicTerm/<termCode>/standings/<studentId>` with `academicStanding` set to `probation` or `goodAcademicStanding`.
