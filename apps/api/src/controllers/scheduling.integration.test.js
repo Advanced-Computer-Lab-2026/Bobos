@@ -8,7 +8,7 @@ import app from "../app.js";
 import { AcademicTerm, Course, CourseOffering } from "../models/catalogue.js";
 import { CourseAttempt, ScheduleTemplate, SchedulingPreference, StudentSchedule } from "../models/academics.js";
 import { StudentProfile, User } from "../models/identity.js";
-import { ExtraHoursRequest, MandatoryCourseRemovalRequest } from "../models/requests.js";
+import { ExtraHoursRequest, MandatoryCourseRemovalRequest, SlotChangeRequest } from "../models/requests.js";
 import { generateToken } from "../middleware/auth.middleware.js";
 
 let database, databasePath, server, base, users, profiles, term, courses, offerings, templates;
@@ -17,7 +17,7 @@ before(async () => {
   databasePath = await mkdtemp(join(process.cwd(), ".mongo-scheduling-"));
   database = await MongoMemoryReplSet.create({ instanceOpts: [{ dbPath: databasePath }], replSet: { count: 1 } });
   await mongoose.connect(database.getUri());
-  await Promise.all([User.init(), StudentProfile.init(), AcademicTerm.init(), Course.init(), CourseOffering.init(), ScheduleTemplate.init(), StudentSchedule.init(), SchedulingPreference.init(), CourseAttempt.init(), ExtraHoursRequest.init()]);
+  await Promise.all([User.init(), StudentProfile.init(), AcademicTerm.init(), Course.init(), CourseOffering.init(), ScheduleTemplate.init(), StudentSchedule.init(), SchedulingPreference.init(), CourseAttempt.init(), ExtraHoursRequest.init(), SlotChangeRequest.init()]);
   server = app.listen(0, "127.0.0.1");
   await new Promise((resolve) => server.once("listening", resolve));
   base = `http://127.0.0.1:${server.address().port}/api`;
@@ -31,7 +31,7 @@ after(async () => {
 });
 
 beforeEach(async () => {
-  await Promise.all([StudentSchedule.deleteMany({}), SchedulingPreference.deleteMany({}), CourseAttempt.deleteMany({}), ExtraHoursRequest.deleteMany({}), MandatoryCourseRemovalRequest.deleteMany({}), ScheduleTemplate.deleteMany({}), CourseOffering.deleteMany({}), Course.deleteMany({}), AcademicTerm.deleteMany({}), StudentProfile.deleteMany({}), User.deleteMany({})]);
+  await Promise.all([StudentSchedule.deleteMany({}), SlotChangeRequest.deleteMany({}), SchedulingPreference.deleteMany({}), CourseAttempt.deleteMany({}), ExtraHoursRequest.deleteMany({}), MandatoryCourseRemovalRequest.deleteMany({}), ScheduleTemplate.deleteMany({}), CourseOffering.deleteMany({}), Course.deleteMany({}), AcademicTerm.deleteMany({}), StudentProfile.deleteMany({}), User.deleteMany({})]);
   users = {};
   for (const role of ["coordinator", "administrator", "advisor", "normalStudent", "advisingStudent"]) {
     const studentRole = ["normalStudent", "advisingStudent"].includes(role);
@@ -855,4 +855,98 @@ test("C1 Req 71-73 adds and removes non-mandatory courses and reports credit hou
   await StudentSchedule.updateOne({ student: profiles.advising._id }, { status: "readyForStudentReview" });
   assert.equal((await del("advisor", offerings[1]._id)).status, 409);
   assert.equal((await add("advisor", offerings[1]._id)).status, 409);
+});
+test("C3: only the assigned advisor and coordinators can resolve a student's request", async () => {
+  const route = "/slot-changes";
+  const student = "advisingStudent";
+  const [current, replacement, full] = offerings[0].slots;
+  const submit = (slot = current) => call(route, { role: student, method: "POST",
+    body: { courseId: courses[0].id, slotId: String(slot._id), preferenceNote: "Group 2, please." } });
+  assert.equal((await submit()).status, 409);
+  await AcademicTerm.updateOne({ _id: term._id }, { $set: { advisingDeadline: new Date(Date.now() + 600_000) } });
+  await CourseOffering.updateOne({ _id: offerings[0]._id, "slots._id": full._id }, { $set: { "slots.$.assignedStudentCount": full.capacity } });
+  const draft = await call(`/schedules/advising/${profiles.advising._id}/draft`, {
+    role: "advisor", method: "PUT", body: { version: 0, submitForReview: true,
+      courses: [{ courseOffering: offerings[0].id, groups: [{ componentType: "lecture", groupNumber: current.groupNumber }] }] },
+  });
+  assert.equal(draft.status, 201);
+  assert.equal((await CourseOffering.findById(offerings[0]._id)).slots.id(current._id).assignedStudentCount, 1);
+  assert.equal((await submit(replacement)).status, 400);
+  const submitted = await submit();
+  assert.equal(submitted.status, 201);
+  const id = submitted.body.request._id;
+  const decide = (role, decision, slot = replacement, requestId = id) => call(`${route}/${requestId}/decision`, {
+    role, method: "POST", body: { decision, replacementSlotId: String(slot._id), responseNote: "Reviewed." },
+  });
+  const withdraw = (requestId) => call(`${route}/${requestId}/withdraw`, { role: student, method: "POST" });
+  assert.equal((await submit()).status, 409);
+  assert.equal((await call(route, { role: "administrator" })).status, 403);
+  assert.equal((await call(`${route}/${id}`, { role: student })).status, 403);
+  assert.equal((await call(route, { role: "advisor" })).body.requests[0].student.user.fullName, users[student].fullName);
+  await StudentProfile.updateOne({ _id: profiles.advising._id }, { $set: { assignedAdvisor: null } });
+  assert.deepEqual((await call(route, { role: "advisor" })).body.requests, []);
+  assert.equal((await call(`${route}/${id}`, { role: "advisor" })).status, 404);
+  assert.equal((await decide("advisor", "approved")).status, 404);
+  await StudentProfile.updateOne({ _id: profiles.advising._id }, { $set: { assignedAdvisor: users.advisor._id } });
+  const detail = await call(`${route}/${id}`, { role: "coordinator" });
+  assert.equal(detail.status, 200);
+  assert.equal(detail.body.request.preferenceNote, "Group 2, please.");
+  assert.deepEqual(detail.body.alternatives.map(({ remainingSeats }) => remainingSeats), [2, 0]);
+  assert.equal((await decide("coordinator", "approved", full)).status, 409);
+  assert.equal((await withdraw(id)).status, 200);
+  const rejectedId = (await submit()).body.request._id;
+  assert.equal((await withdraw(id)).status, 409);
+  assert.equal((await decide("advisor", "rejected", replacement, rejectedId)).status, 200);
+  assert.equal((await withdraw(rejectedId)).status, 409);
+  const approvedId = (await submit()).body.request._id;
+  await AcademicTerm.updateOne({ _id: term._id }, { $set: { advisingDeadline: new Date(Date.now() - 600_000) } });
+  assert.equal((await submit()).status, 409);
+  assert.equal((await decide("coordinator", "approved", replacement, approvedId)).status, 200);
+  assert.equal((await withdraw(approvedId)).status, 409);
+  const history = await call(`${route}/me`, { role: student });
+  assert.deepEqual(new Set(history.body.requests.map(({ status }) => status)), new Set(["approved", "rejected", "withdrawn"]));
+  const approved = history.body.requests.find(({ status }) => status === "approved");
+  assert.equal(approved.replacementSlotGroupId, String(replacement._id));
+  assert.equal(approved.responseNote, "Reviewed.");
+  assert.equal(approved.decidedBy.fullName, users.coordinator.fullName);
+  const schedule = await call("/schedules/me", { role: student });
+  assert.equal(schedule.body.schedule.status, "readyForStudentReview");
+  assert.equal(schedule.body.schedule.courses[0].slots[0].groupNumber, replacement.groupNumber);
+  assert.deepEqual((await CourseOffering.findById(offerings[0]._id)).slots.map(({ assignedStudentCount }) => assignedStudentCount), [0, 1, 2]);
+});
+
+test("C3: clash checks and concurrent approvals protect the timetable and final seat", async () => {
+  const [current, replacement, clash] = offerings[0].slots;
+  const conflict = offerings[1].slots[0];
+  await CourseOffering.updateOne({ _id: offerings[0]._id, "slots._id": clash._id },
+    { $set: { "slots.$.day": conflict.day, "slots.$.startMinute": conflict.startMinute, "slots.$.endMinute": conflict.endMinute } });
+  await CourseOffering.updateOne({ _id: offerings[0]._id, "slots._id": replacement._id }, { $set: { "slots.$.capacity": 1 } });
+  await AcademicTerm.updateOne({ _id: term._id }, { $set: { advisingDeadline: new Date(Date.now() + 600_000) } });
+  users.secondStudent = await User.create({ email: "second@student.guc.edu.eg", fullName: "Second Student", role: "advisingStudent", passwordHash: "test-hash" });
+  const other = await StudentProfile.create({ user: users.secondStudent._id, studentId: "49-00002", studentType: "advising",
+    advisingReason: "probation", major: "CS", currentSemester: 5, gpa: 2, academicStanding: "probation" });
+  const ids = [];
+  for (const [profile, role] of [[profiles.advising, "advisingStudent"], [other, "secondStudent"]]) {
+    const result = await call(`/schedules/advising/${profile._id}/draft`, { role: "coordinator", method: "PUT",
+      body: { version: 0, submitForReview: true, courses: offerings.map((offering) => ({
+        courseOffering: offering.id, groups: [{ componentType: "lecture", groupNumber: "1" }],
+      })) } });
+    assert.equal(result.status, 201);
+    const submitted = await call("/slot-changes", { role, method: "POST", body: { courseId: courses[0].id, slotId: String(current._id) } });
+    assert.equal(submitted.status, 201);
+    ids.push(submitted.body.request._id);
+  }
+  const decide = (id, slot) => call(`/slot-changes/${id}/decision`, {
+    role: "coordinator", method: "POST", body: { decision: "approved", replacementSlotId: String(slot._id) },
+  });
+  const detail = await call(`/slot-changes/${ids[0]}`, { role: "coordinator" });
+  assert.match(detail.body.alternatives.find(({ slotId }) => slotId === String(clash._id)).clashes[0], /MATH 501/);
+  assert.equal((await decide(ids[0], clash)).status, 409);
+  const results = await Promise.all(ids.map((id) => decide(id, replacement)));
+  assert.deepEqual(results.map(({ status }) => status).sort(), [200, 409]);
+  assert.deepEqual((await CourseOffering.findById(offerings[0]._id)).slots.map(({ assignedStudentCount }) => assignedStudentCount), [1, 1, 0]);
+  const readySchedules = await StudentSchedule.find({ status: "readyForStudentReview" });
+  assert.deepEqual(readySchedules.map((schedule) => String(schedule.courses[0].slots[0].slotGroupId)).sort(),
+    [String(current._id), String(replacement._id)].sort());
+  assert.equal(await SlotChangeRequest.countDocuments({ status: "pending" }), 1);
 });

@@ -132,7 +132,7 @@ export function GroupAssignmentsPage({ token, canAssign = false, notify }) {
   </div>;
 }
 
-export function StudentSchedulingPage({ token, section }) {
+export function StudentSchedulingPage({ token, section, onOpenSlotChanges }) {
   const [schedule, setSchedule] = useState(null);
   const [courses, setCourses] = useState(null);
   const [courseDetails, setCourseDetails] = useState(null);
@@ -182,7 +182,7 @@ export function StudentSchedulingPage({ token, section }) {
   const scheduleNotReleased = section === "my-schedule" && error === "No schedule is available to view yet.";
   return <div className="page-stack scheduling-page">
     <div className="page-title-row"><div><p className="eyebrow">{eyebrow} · {schedule?.term ? `${schedule.term.season} ${schedule.term.academicYear}` : courses?.term ? `${courses.term.season} ${courses.term.academicYear}` : ""}</p><h1>{title}</h1></div>
-      {section === "my-schedule" && <div className="form-actions"><button type="button" className="outline-button" onClick={() => window.print()} disabled={schedule?.schedule?.status !== "processed"}>Print</button><button type="button" className="primary-button" onClick={downloadPdf} disabled={downloadBusy || schedule?.schedule?.status !== "processed"}>{downloadBusy ? "Preparing…" : "Download PDF"}</button></div>}
+      {section === "my-schedule" && <div className="form-actions">{onOpenSlotChanges && schedule?.schedule?.status === "readyForStudentReview" && Date.now() < Date.parse(schedule.term.advisingDeadline) && <button type="button" className="outline-button" onClick={onOpenSlotChanges}>Request a slot change</button>}<button type="button" className="outline-button" onClick={() => window.print()} disabled={schedule?.schedule?.status !== "processed"}>Print</button><button type="button" className="primary-button" onClick={downloadPdf} disabled={downloadBusy || schedule?.schedule?.status !== "processed"}>{downloadBusy ? "Preparing…" : "Download PDF"}</button></div>}
     </div>
     {error && <Feedback tone={scheduleNotReleased ? "info" : "error"}>{scheduleNotReleased ? "No schedule has been released for this term yet. Advising drafts appear after staff send them for student review; final schedules appear after processing." : error}</Feedback>}
     {section === "my-schedule" && schedule && <>

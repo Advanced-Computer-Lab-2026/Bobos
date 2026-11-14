@@ -29,7 +29,7 @@ const escapedRegex = (value) => [...value].map((character) =>
     : character
 ).join("");
 
-async function resolveTerm(termId) {
+export async function resolveTerm(termId) {
   if (termId) {
     if (typeof termId !== "string" || !termId.trim()) return { error: { status: 400, message: "Invalid termId" } };
     const identifier = termId.trim();
@@ -57,6 +57,7 @@ function termView(term) {
     season: term.season,
     isActive: term.isActive,
     swapDeadline: term.wholeScheduleSwapDeadline || null,
+    advisingDeadline: term.advisingDeadline || null,
   };
 }
 
@@ -82,7 +83,7 @@ function studentView(student, schedule = null) {
   };
 }
 
-function slotView(slot, courseCode) {
+export function slotView(slot, courseCode) {
   if (!Number.isInteger(slot.startMinute) || !Number.isInteger(slot.endMinute) || slot.endMinute <= slot.startMinute) {
     return { error: `A schedule slot for ${courseCode} has invalid meeting times.` };
   }
@@ -224,7 +225,7 @@ function scheduleCourses(resolvedEntries) {
   }));
 }
 
-async function resolveStoredSchedule(schedule) {
+export async function resolveStoredSchedule(schedule, session = null) {
   const offeringIds = new Set();
   const courseIds = new Set();
   for (const scheduledCourse of schedule.courses || []) {
@@ -232,10 +233,9 @@ async function resolveStoredSchedule(schedule) {
     for (const slot of scheduledCourse.slots || []) if (slot.courseOffering) offeringIds.add(idOf(slot.courseOffering));
     if (scheduledCourse.courseOffering) offeringIds.add(idOf(scheduledCourse.courseOffering));
   }
-  const [offerings, courses] = await Promise.all([
-    CourseOffering.find({ _id: { $in: [...offeringIds] } }).lean(),
-    Course.find({ _id: { $in: [...courseIds] } }).lean(),
-  ]);
+  const offeringQuery = CourseOffering.find({ _id: { $in: [...offeringIds] } }).session(session).lean();
+  const courseQuery = Course.find({ _id: { $in: [...courseIds] } }).session(session).lean();
+  const [offerings, courses] = session ? [await offeringQuery, await courseQuery] : await Promise.all([offeringQuery, courseQuery]);
   const offeringById = new Map(offerings.map((offering) => [idOf(offering._id), offering]));
   const courseById = new Map(courses.map((course) => [idOf(course._id), course]));
   const entries = [];
@@ -1257,7 +1257,7 @@ async function updateDraftReservations(existing, courses, session) {
   }
 }
 
-function collectSlotRefs(courses) {
+export function collectSlotRefs(courses) {
   const refs = new Map();
   for (const course of courses || []) {
     for (const slot of course.slots || []) {
@@ -1273,7 +1273,7 @@ function collectSlotRefs(courses) {
   return refs;
 }
 
-async function changeSlotCount({ offeringId, slotId, delta, capacity = Number.MAX_SAFE_INTEGER }) {
+export async function changeSlotCount({ offeringId, slotId, delta, capacity = Number.MAX_SAFE_INTEGER }, session = null) {
   if (!delta) return true;
   const bounds = delta > 0
     ? { $gte: 0, $lte: capacity - delta }
@@ -1281,6 +1281,7 @@ async function changeSlotCount({ offeringId, slotId, delta, capacity = Number.MA
   const result = await CourseOffering.updateOne(
     { _id: offeringId, slots: { $elemMatch: { _id: slotId, assignedStudentCount: bounds } } },
     { $inc: { "slots.$.assignedStudentCount": delta, __v: 1 } },
+    { session },
   );
   return result.modifiedCount === 1;
 }
