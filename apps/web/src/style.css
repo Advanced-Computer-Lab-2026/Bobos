@@ -593,3 +593,7 @@ td strong, td .secondary-text { display: block; }
   .notification-row { gap: 8px; }
   .notification-row > .text-button { flex: 0 0 auto; }
 }
+
+.advising-overview .overview-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin: 0; }
+.advising-overview .overview-grid dt { margin-bottom: 4px; color: #818c87; font-size: 9px; font-weight: 600; text-transform: uppercase; }
+.advising-overview .overview-grid dd { margin: 0; color: #35433d; font-size: 13px; font-weight: 700; }

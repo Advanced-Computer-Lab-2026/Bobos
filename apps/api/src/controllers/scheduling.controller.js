@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import { AcademicTerm, Course, CourseOffering } from "../models/catalogue.js";
 import { StudentProfile, User } from "../models/identity.js";
-import { CourseAttempt, ScheduleTemplate, SchedulingPreference, StudentSchedule } from "../models/academics.js";
+import { CourseAttempt, ScheduleTemplate, SchedulingPreference, StudentSchedule, StudentWorkflowState } from "../models/academics.js";
 import { ExtraHoursRequest, MandatoryCourseRemovalRequest, WholeScheduleSwapRequest } from "../models/requests.js";
 import { calculateDraftCreditPolicy } from "../utils/credit-allowance.js";
 import { majorMatches } from "../utils/major.js";
@@ -1370,4 +1370,85 @@ export async function completeSwapRequest(req, res, next) {
     res.json(result);
   } catch (error) { return sendSwapFailure(error, res, next); }
   finally { await session.endSession(); }
+}
+
+// Req. 59: advising reason, credit-hour allowance, schedule status and bachelor-project eligibility.
+const ENGLISH_COURSE_CODE = /^(AS|SM|CPS|RPW)\d/;
+const BACHELOR_PROJECT_SEMESTERS = 6;
+
+function bachelorProjectEligibility(courses, passedIds, failedIds) {
+  const unpassed = (course) => !passedIds.has(idOf(course._id));
+  const english = courses.filter((course) => ENGLISH_COURSE_CODE.test(course.code));
+  const missingEnglish = english.filter(unpassed);
+  const missingCore = courses
+    .filter((course) => !ENGLISH_COURSE_CODE.test(course.code) && course.recommendedSemester >= 1 && course.recommendedSemester <= BACHELOR_PROJECT_SEMESTERS)
+    .filter(unpassed);
+  const onlyFailed = missingCore.length > 0 && missingCore.length <= 2 && missingCore.every((course) => failedIds.has(idOf(course._id)));
+  const reasons = [];
+  if (missingEnglish.length) reasons.push(`English courses not completed: ${missingEnglish.map((course) => course.code).join(", ")}.`);
+  if (missingCore.length && !onlyFailed) {
+    reasons.push(`Semester 1-${BACHELOR_PROJECT_SEMESTERS} courses not completed: ${missingCore.map((course) => course.code).join(", ")}.`);
+  }
+  const brief = (course) => ({ _id: course._id, code: course.code, name: course.name, recommendedSemester: course.recommendedSemester ?? null });
+  return {
+    eligible: reasons.length === 0,
+    reasons,
+    outstandingEnglishCourses: missingEnglish.map(brief),
+    outstandingCourses: missingCore.map(brief),
+    eligibleWithFailedCourses: reasons.length === 0 && missingCore.length > 0,
+  };
+}
+
+export async function getAdvisingOverview(req, res, next) {
+  try {
+    const student = await resolveStudent(req.params.studentId);
+    if (!student) return res.status(404).json({ message: "Student not found." });
+    if (student.studentType !== "advising") return res.status(400).json({ message: "Advising overview is only available for advising students." });
+    if (req.user.role === "advisor" && idOf(student.assignedAdvisor) !== idOf(req.user._id)) {
+      return res.status(403).json({ message: "Advisors may view only their assigned advising students." });
+    }
+    const termResult = await resolveTerm(req.query.termId);
+    if (termResult.error) return res.status(termResult.error.status).json({ message: termResult.error.message });
+    const { term } = termResult;
+
+    const [workflow, schedule, extraHoursRequests, attempts, catalogue] = await Promise.all([
+      StudentWorkflowState.findOne({ student: student._id, term: term._id }).lean(),
+      StudentSchedule.findOne({ student: student._id, term: term._id, scheduleType: "advising" }).select("status courses.creditHoursSnapshot updatedAt").lean(),
+      ExtraHoursRequest.find({ student: student._id, term: term._id, decisionStatus: "approved", settlementStatus: { $in: ["paid", "deferred"] } })
+        .populate("courses.course", "code creditHours").lean(),
+      CourseAttempt.find({ student: student._id }).select("course result attendance").lean(),
+      Course.find({ isActive: true }).select("code name recommendedSemester facultyMajors courseType").lean(),
+    ]);
+    const policy = calculateDraftCreditPolicy(student, extraHoursRequests);
+    const selectedHours = (schedule?.courses || []).reduce((total, course) => total + Number(course.creditHoursSnapshot || 0), 0);
+
+    const passedIds = new Set(attempts.filter((attempt) => attempt.result === "passed").map((attempt) => idOf(attempt.course)));
+    const failedIds = new Set(attempts.filter((attempt) => attempt.result === "failed").map((attempt) => idOf(attempt.course)));
+    const relevant = catalogue.filter((course) => !course.facultyMajors?.length || course.facultyMajors.some((major) => majorMatches(major, student.major)));
+    const bachelor = bachelorProjectEligibility(relevant, passedIds, failedIds);
+
+    const standard = policy.standardAllowance;
+    res.json({
+      term: termView(term),
+      student: studentView(student),
+      advisingReason: student.advisingReason,
+      academicStanding: student.academicStanding,
+      scheduleStatus: workflow?.status || schedule?.status || "notStarted",
+      blockingStep: workflow?.blockingStep ?? null,
+      creditHours: {
+        semester: policy.semester,
+        policyConfigured: policy.policyConfigured,
+        standardAllowance: standard,
+        probation: policy.probation,
+        reductionForProbation: policy.probation && standard != null ? standard - policy.baseAllowance : 0,
+        allowedHours: policy.baseAllowance,
+        approvedExtraHours: policy.approvedExtraHours,
+        maximumCreditHours: policy.maximumCreditHours,
+        selectedHours,
+        remainingHours: policy.maximumCreditHours - selectedHours,
+        extraHoursAllowed: !policy.probation,
+      },
+      bachelorProject: bachelor,
+    });
+  } catch (error) { next(error); }
 }

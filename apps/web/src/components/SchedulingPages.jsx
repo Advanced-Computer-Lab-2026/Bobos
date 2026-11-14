@@ -59,6 +59,14 @@ export function GroupAssignmentsPage({ token, canAssign = false, notify }) {
 
   useEffect(() => { load(); }, [load]);
 
+  useEffect(() => {
+    let alive = true;
+    setOverview(null);
+    api(`/api/schedules/advising/${encodeURIComponent(student._id)}/overview${termQuery}`, { token })
+      .then((result) => alive && setOverview(result)).catch(() => alive && setOverview(null));
+    return () => { alive = false; };
+  }, [student._id, termQuery, token, data?.schedule?.updatedAt]);
+
   const targetGroups = useMemo(() => target ? groups.filter((group) =>
     group.major === target.major && Number(group.semester) === Number(target.currentSemester)
   ) : [], [groups, target]);
@@ -327,6 +335,7 @@ function AdvisingDraftEditor({ token, student, termId, notify, onBack, onSaved }
   const [data, setData] = useState(null);
   const [selections, setSelections] = useState({});
   const [validationIssues, setValidationIssues] = useState(null);
+  const [overview, setOverview] = useState(null);
   const [validating, setValidating] = useState(false);
   const validationHeading = useRef(null);
   const [loading, setLoading] = useState(true);
@@ -456,6 +465,7 @@ function AdvisingDraftEditor({ token, student, termId, notify, onBack, onSaved }
     {error && !data && <Feedback tone="error">{error}</Feedback>}
     {loading ? <Loading /> : data && <>
       <section className="panel draft-summary"><div><p className="eyebrow">{data.term?.code} · {data.term?.season} {data.term?.academicYear}</p><h2>{data.student?.fullName} · {data.student?.major}, semester {data.student?.currentSemester}</h2><p className="helper-text">{data.schedule ? `Draft version ${data.schedule.version} · last edited ${formatDraftDate(data.schedule.updatedAt)}` : "No draft exists for this term yet. Saving creates an open draft."}</p></div><span className={`status-pill ${editable ? "good" : "muted"}`}>{data.schedule ? prettyStatus(data.schedule.status) : "No draft"}</span></section>
+      {overview && <AdvisingOverviewPanel overview={overview} />}
       <nav className="draft-section-nav" aria-label="Draft sections">
         <a href="#draft-preferences">Preferences</a>
         <a href="#draft-timetable">Timetable</a>
@@ -675,6 +685,27 @@ function WeeklySchedule({ week = {}, daysOff = [], compact = false }) {
 }
 
 function Stat({ label, value }) { return <div className="stat-card"><span className="stat-icon">◷</span><div><p>{label}</p><strong>{value}</strong></div></div>; }
+const ADVISING_REASONS = { probation: "Probation", failedCourses: "More than two failed courses in a season", unattendedCourses: "Unattended courses", undeclaredMajor: "Undeclared CS or DMET major", transfer: "Transfer from another major/university" };
+const WORKFLOW_LABELS = { notStarted: "Not started", draft: "Draft", readyForStudentReview: "Ready for student review", changeRequestPending: "Change request pending", pendingApproval: "Pending approval", awaitingPaymentChoice: "Awaiting payment choice", deferredToNextInstallment: "Deferred to next installment", readyToProcess: "Ready to process", processed: "Processed", reopened: "Reopened" };
+
+function AdvisingOverviewPanel({ overview }) {
+  const hours = overview.creditHours, bachelor = overview.bachelorProject;
+  return <section className="panel advising-overview" aria-label="Advising overview">
+    <div className="panel-heading"><div><p className="eyebrow">ADVISING OVERVIEW</p><h2>{ADVISING_REASONS[overview.advisingReason] || overview.advisingReason}</h2></div><span className="status-pill good">{WORKFLOW_LABELS[overview.scheduleStatus] || overview.scheduleStatus}</span></div>
+    <dl className="overview-grid">
+      <div><dt>Academic standing</dt><dd>{overview.academicStanding === "probation" ? "Probation" : "Good academic standing"}</dd></div>
+      <div><dt>Standard allowance</dt><dd>{hours.standardAllowance ?? "Not configured"}{hours.standardAllowance != null ? " h" : ""}</dd></div>
+      <div><dt>Allowed hours</dt><dd>{hours.allowedHours ?? "—"}{hours.probation ? ` (−${hours.reductionForProbation} probation)` : ""}</dd></div>
+      <div><dt>Approved extra hours</dt><dd>{hours.approvedExtraHours}{hours.probation ? " (not available)" : ""}</dd></div>
+      <div><dt>Maximum this term</dt><dd>{hours.maximumCreditHours} h</dd></div>
+      <div><dt>Bachelor project</dt><dd><span className={`status-pill ${bachelor.eligible ? "good" : "warning"}`}>{bachelor.eligible ? "Eligible" : "Not eligible"}</span></dd></div>
+    </dl>
+    {overview.blockingStep && <p className="helper-text">Next step: {overview.blockingStep}</p>}
+    {bachelor.eligibleWithFailedCourses && <p className="helper-text">Eligible with {bachelor.outstandingCourses.map((course) => course.code).join(", ")} still outstanding (one or two failed courses are allowed).</p>}
+    {!bachelor.eligible && <ul className="helper-text">{bachelor.reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>}
+  </section>;
+}
+
 function Feedback({ tone = "info", children }) { return <div className={`feedback ${tone}`} role={tone === "error" ? "alert" : "status"}>{children}</div>; }
 function Empty({ title, text }) { return <div className="empty-state"><span>▤</span><h3>{title}</h3><p>{text}</p></div>; }
 function Loading() { return <div className="loading-state"><span className="loader" />Loading…</div>; }

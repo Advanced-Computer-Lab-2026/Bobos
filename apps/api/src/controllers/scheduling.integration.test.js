@@ -580,3 +580,48 @@ test("assignment rejects stale slot references and timetable clashes", async () 
   const clash = await call("/group-assignments", { role: "coordinator", method: "POST", body: { studentId: String(profiles.normal._id), termId: String(term._id), studyGroup: "1" } });
   assert.equal(clash.status, 409);
 });
+
+test("C1 Req 59 shows advising reason, credit allowance, status and bachelor-project eligibility", async () => {
+  const path = `/schedules/advising/${profiles.advising._id}/overview?termId=${term._id}`;
+  assert.equal((await call(path)).status, 401);
+  assert.equal((await call(path, { role: "advisingStudent" })).status, 403);
+  await StudentProfile.updateOne({ _id: profiles.advising._id }, { assignedAdvisor: null });
+  assert.equal((await call(path, { role: "advisor" })).status, 403, "unassigned advisor");
+  assert.equal((await call(`/schedules/advising/${profiles.normal._id}/overview`, { role: "coordinator" })).status, 400);
+
+  const first = await call(path, { role: "coordinator" });
+  assert.equal(first.status, 200);
+  assert.equal(first.body.advisingReason, "probation");
+  assert.equal(first.body.scheduleStatus, "notStarted");
+  assert.equal(first.body.creditHours.standardAllowance, 30);
+  assert.equal(first.body.creditHours.allowedHours, 23, "30 * 0.75 = 22.5 rounds up");
+  assert.equal(first.body.creditHours.reductionForProbation, 7);
+  assert.equal(first.body.creditHours.extraHoursAllowed, false);
+
+  await StudentProfile.updateOne({ _id: profiles.advising._id }, { assignedAdvisor: users.advisor._id });
+  assert.equal((await call(path, { role: "advisor" })).status, 200);
+  assert.equal((await call(path, { role: "administrator" })).status, 200);
+
+  const extra = await Course.create([
+    { code: "CSEN 101", name: "Intro", creditHours: 4, courseType: "core", facultyMajors: ["CS"], recommendedSemester: 1 },
+    { code: "CSEN 301", name: "Algorithms", creditHours: 4, courseType: "core", facultyMajors: ["CS"], recommendedSemester: 3 },
+    { code: "CSEN 701", name: "Late", creditHours: 4, courseType: "core", facultyMajors: ["CS"], recommendedSemester: 7 },
+    { code: "RPW401", name: "Research Paper Writing", creditHours: 2, courseType: "huma", facultyMajors: [], recommendedSemester: 4 },
+  ]);
+  const [c101, c301, , rpw] = extra;
+  const attempt = (course, result) => CourseAttempt.create({ student: profiles.advising._id, course: course._id, term: term._id, attendance: "attended", result, grade: result === "passed" ? "A" : "F" });
+  await attempt(c101, "passed");
+  await attempt(c301, "failed");
+  let overview = (await call(path, { role: "coordinator" })).body;
+  assert.equal(overview.bachelorProject.eligible, false, "RPW and CS courses 5-6 missing");
+
+  await Course.deleteMany({ _id: { $in: courses.map((course) => course._id) } }); // semester-less fixture courses are irrelevant
+  overview = (await call(path, { role: "coordinator" })).body;
+  assert.equal(overview.bachelorProject.eligible, false);
+  assert.match(overview.bachelorProject.reasons[0], /RPW401/);
+
+  await attempt(rpw, "passed");
+  overview = (await call(path, { role: "coordinator" })).body;
+  assert.equal(overview.bachelorProject.eligible, true, "one failed course with all English complete stays eligible");
+  assert.equal(overview.bachelorProject.eligibleWithFailedCourses, true);
+});
