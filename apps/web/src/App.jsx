@@ -13,6 +13,7 @@ import AdvisingPage, { MyAdvisorPage } from "./components/AdvisingPage.jsx";
 import AcademicWorkspace from "./components/AcademicWorkspace.jsx";
 import { GroupAssignmentsPage, StaffSchedulesPage, StudentSchedulingPage } from "./components/SchedulingPages.jsx";
 import { CalendarSyncPage, PendingWorkPage, ScheduleActivityPage } from "./components/B1Pages.jsx";
+import GraduationReview, { StudentGraduation } from "./components/GraduationReview.jsx";
 
 const roleNames = {
   normalStudent: "Normal student",
@@ -29,6 +30,7 @@ const navGroups = (role) => {
     { title: "Workspace", items: [{ id: "overview", label: "Overview", icon: "⌂" }, { id: "notifications", label: "Notifications", icon: "◌" }] },
     ...(student ? [{ title: "Student services", items: [
       ...(role === "advisingStudent" ? [{ id: "records", label: "Academic records", icon: "▤" }] : []),
+      ...(role === "advisingStudent" ? [{ id: "my-graduation", label: "My graduation", icon: "▧" }] : []),
       { id: "my-schedule", label: "My schedule", icon: "◷" },
       { id: "my-courses", label: "Registered courses", icon: "▦" },
       ...(role === "normalStudent" ? [{ id: "schedule-swap", label: "Eligible swap groups", icon: "⇄" }] : []),
@@ -41,6 +43,9 @@ const navGroups = (role) => {
       ...(role === "advisor" || role === "coordinator" ? [{ id: "advising", label: "Advising students", icon: "♧" }] : []),
       ...(role === "advisor" || role === "coordinator" ? [{ id: "preferences", label: "Student preferences", icon: "☷" }] : []),
       ...(role === "coordinator" ? [{ id: "pending-work", label: "Pending work", icon: "◷" }] : []),
+      ...(role === "advisor" || role === "coordinator" ? [{
+        id: "graduation-review", label: role === "coordinator" ? "Graduation review" : "My submitted plans", icon: "▧",
+      }] : []),
       ...(["coordinator", "administrator"].includes(role) ? [{ id: "schedule-activity", label: "Schedule activity", icon: "↻" }] : []),
       { id: "student-schedules", label: "Student schedules", icon: "◷" },
     ] }] : []),
@@ -62,6 +67,7 @@ const titleByScreen = {
   "my-schedule": "My schedule", "my-courses": "Registered courses", "schedule-swap": "Eligible swap groups",
   "student-schedules": "Student schedules", "group-assignments": "Schedule group assignments",
   "calendar-sync": "Calendar sync", "pending-work": "Pending work", "schedule-activity": "Schedule activity",
+  "my-graduation": "My graduation", "graduation-review": "Graduation plans",
 };
 
 export default function App() {
@@ -187,6 +193,8 @@ export default function App() {
           {activeScreen === "preferences" && <PreferencesPage token={token} profile={profile} profileId={screenContext?.id || screenContext?._id || profile.studentProfileId} studentTarget={screenContext?._id ? screenContext : undefined} notify={notify} onOpenDraftSchedule={(student, selectedTermId) => openScreen("student-schedules", { draftStudent: student, termId: selectedTermId })} />}
           {activeScreen === "directory" && <StudentDirectoryPage token={token} role={profile.role} notify={notify} />}
           {activeScreen === "advising" && <AdvisingPage token={token} role={profile.role} onOpenPreferences={(student) => openScreen("preferences", student)} />}
+          {activeScreen === "graduation-review" && ["advisor", "coordinator"].includes(profile.role) && <GraduationReview token={token} role={profile.role} />}
+          {activeScreen === "my-graduation" && profile.role === "advisingStudent" && <StudentGraduation token={token} />}
           {activeScreen === "my-advisor" && <MyAdvisorPage token={token} />}
           {activeScreen === "calendar-sync" && <CalendarSyncPage token={token} />}
           {activeScreen === "pending-work" && profile.role === "coordinator" && <PendingWorkPage token={token} />}

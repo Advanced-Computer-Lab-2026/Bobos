@@ -214,5 +214,9 @@ const exitExamRequestSchema = withTimestamps({
 });
 
 exitExamRequestSchema.index({ status: 1, createdAt: -1 });
+exitExamRequestSchema.index({ student: 1, course: 1 }, {
+  unique: true,
+  partialFilterExpression: { status: { $in: ["pending", "approved"] } },
+});
 
 export const ExitExamRequest = registerModel("ExitExamRequest", exitExamRequestSchema);

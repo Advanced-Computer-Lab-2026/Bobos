@@ -64,6 +64,7 @@ const payload = () => ({
 });
 
 test('57: save every preference category; staff see ranked latest data and update time', async () => {
+  await CourseAttempt.create({ student: students.advisingStudent._id, course: course._id, term: term._id, attendance: 'attended', result: 'current' });
   const saved = await request({ body: payload() });
   assert.equal(saved.status, 200);
   assert.equal(saved.body.submitted, true);
@@ -92,7 +93,7 @@ test('58: no preferences returns a successful null result and does not create a 
   for (const role of ['advisor', 'coordinator', 'advisingStudent']) {
     const read = await request({ role });
     assert.equal(read.status, 200);
-    assert.deepEqual(read.body, { success: true, submitted: false, advisoryOnly: true, preferences: null, lastUpdatedAt: null });
+    assert.deepEqual(read.body, { success: true, submitted: false, advisoryOnly: true, preferences: null, eligibleCourseIds: [], lastUpdatedAt: null });
   }
   assert.equal(await SchedulingPreference.countDocuments(), 0);
 });
@@ -152,6 +153,7 @@ test('57: the exact deadline is closed', async (t) => {
 });
 
 test('57: a deadline changed during group validation is rechecked before writing', async (t) => {
+  await CourseAttempt.create({ student: students.advisingStudent._id, course: course._id, term: term._id, attendance: 'attended', result: 'current' });
   const originalFind = CourseOffering.find;
   t.mock.method(CourseOffering, 'find', function (...args) {
     const query = originalFind.apply(this, args);
@@ -220,6 +222,9 @@ test('group hints must reference an actual published group in this term', async 
 
 test('group hints reject cross-course time clashes but allow adjacent meetings and same-course alternatives', async () => {
   const secondCourse = await Course.create({ code: 'PREF102', name: 'Algorithms', creditHours: 3, courseType: 'core', facultyMajors: ['CS'] });
+  await CourseAttempt.create([course, secondCourse].map(item => ({
+    student: students.advisingStudent._id, course: item._id, term: term._id, attendance: 'attended', result: 'current',
+  })));
   await CourseOffering.create({
     course: secondCourse._id,
     academicYear: term.academicYear,
