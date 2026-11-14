@@ -14,6 +14,7 @@ import AdvisingPage, { MyAdvisorPage } from "./components/AdvisingPage.jsx";
 import AcademicWorkspace from "./components/AcademicWorkspace.jsx";
 import { GroupAssignmentsPage, StaffSchedulesPage, StudentSchedulingPage } from "./components/SchedulingPages.jsx";
 import { CalendarSyncPage, PendingWorkPage, ScheduleActivityPage } from "./components/B1Pages.jsx";
+import MandatoryRemovalDashboard from "./components/MandatoryRemovalDashboard.jsx";
 
 const roleNames = {
   normalStudent: "Normal student",
@@ -46,6 +47,7 @@ const navGroups = (role) => {
       ...(role === "advisor" || role === "coordinator" ? [{ id: "preferences", label: "Student preferences", icon: "☷" }] : []),
       ...(role === "coordinator" ? [{ id: "pending-work", label: "Pending work", icon: "◷" }] : []),
       ...(["coordinator", "administrator"].includes(role) ? [{ id: "schedule-activity", label: "Schedule activity", icon: "↻" }] : []),
+      ...(["coordinator", "administrator", "advisor"].includes(role) ? [{ id: "mandatory-removals", label: "Course removals", icon: "▤" }] : []),
       { id: "student-schedules", label: "Student schedules", icon: "◷" },
     ] }] : []),
     ...(["coordinator", "administrator"].includes(role) ? [{ title: "Academic setup", items: [
@@ -67,6 +69,7 @@ const titleByScreen = {
   "my-schedule": "My schedule", "my-courses": "Registered courses", "schedule-swap": "Eligible swap groups",
   "student-schedules": "Student schedules", "group-assignments": "Schedule group assignments",
   "calendar-sync": "Calendar sync", "pending-work": "Pending work", "schedule-activity": "Schedule activity",
+  "mandatory-removals": "Mandatory-course removals",
 };
 
 export default function App() {
@@ -197,6 +200,7 @@ export default function App() {
           {activeScreen === "calendar-sync" && <CalendarSyncPage token={token} />}
           {activeScreen === "pending-work" && profile.role === "coordinator" && <PendingWorkPage token={token} />}
           {activeScreen === "schedule-activity" && ["coordinator", "administrator"].includes(profile.role) && <ScheduleActivityPage token={token} />}
+          {activeScreen === "mandatory-removals" && ["coordinator", "administrator", "advisor"].includes(profile.role) && <MandatoryRemovalDashboard token={token} role={profile.role} notify={notify} />}
           {activeScreen === "group-assignments" && <GroupAssignmentsPage token={token} canAssign={profile.role === "coordinator"} notify={notify} />}
           {activeScreen === "student-schedules" && <StaffSchedulesPage token={token} role={profile.role} notify={notify} initialStudent={screenContext?.draftStudent} initialTermId={screenContext?.termId} />}
           {["my-schedule", "my-courses", "schedule-swap"].includes(activeScreen) && <StudentSchedulingPage token={token} section={activeScreen} />}
