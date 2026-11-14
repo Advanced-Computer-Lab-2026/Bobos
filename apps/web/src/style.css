@@ -557,6 +557,16 @@ td strong, td .secondary-text { display: block; }
   .notification-row > .text-button { flex: 0 0 auto; }
 }
 
+.advising-overview .overview-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin: 0; }
+.advising-overview .overview-grid dt { margin-bottom: 4px; color: var(--muted); font-size: 9px; font-weight: 600; text-transform: uppercase; }
+.advising-overview .overview-grid dd { margin: 0; color: var(--ink); font-size: 13px; font-weight: 700; }
+.bachelor-project-actions { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; margin-top: 14px; }
+.bachelor-project-actions .field { min-width: 160px; }
+.mandatory-list { display: grid; gap: 8px; margin: 0 0 12px; padding: 0; list-style: none; font-size: 11px; color: var(--ink); }
+.mandatory-list label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.excluded-courses { margin-top: 12px; font-size: 10px; color: var(--muted); }
+.excluded-courses summary { cursor: pointer; font-weight: 600; }
+.excluded-courses ul { margin: 8px 0 0; padding-left: 18px; }
 /* Financial Records & Transactions */
 .status-pill.completed { color: var(--success-ink); background: var(--success-bg); }
 .status-pill.pending { color: var(--draft-ink); background: var(--raised); }
@@ -790,4 +800,40 @@ td { color: var(--ink); }
   :root { color-scheme: light; }
   .portal-navigation, .portal-theme { display: none; }
   :root[data-theme="dark"] { --ink: #302f2c; --muted: #58554e; --paper: white; --raised: #f3efe8; --line: #e2ddd4; --ready-bg: #dce8ee; --review-bg: #e7dfe9; --draft-bg: #eee4d5; }
+}
+.slot-request-filters,
+.slot-request-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  gap: 1rem;
+}
+.slot-request-summary p,
+.slot-response { overflow-wrap: anywhere; }
+.slot-response { min-width: 10rem; max-width: 24rem; }
+.slot-alternatives { margin: 0; padding: 0; border: 0; min-inline-size: 0; }
+.slot-alternatives legend { font-weight: 600; margin-bottom: .5rem; }
+.slot-alternative {
+  display: flex;
+  align-items: flex-start;
+  gap: .75rem;
+  padding: .75rem 0;
+  border-bottom: 1px solid var(--line, #ddd);
+}
+.slot-alternative input { margin-top: .25rem; flex: none; }
+.slot-changes-page .field > span,
+.slot-changes-page .secondary-text,
+.slot-changes-page .helper-text { font-size: 12px; }
+.slot-changes-page .field input,
+.slot-changes-page .field select,
+.slot-changes-page .field textarea,
+.slot-changes-page td { font-size: 13px; }
+.slot-changes-page .status-pill { font-size: 11px; }
+.slot-changes-page th { background: transparent; font-size: 12px; }
+.slot-alternative .secondary-text { display: block; margin-top: .25rem; }
+@media (max-width: 640px) {
+  .slot-request-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .slot-request-filters > :first-child { grid-column: 1 / -1; }
+  .slot-changes-page .field input,
+  .slot-changes-page .field select,
+  .slot-changes-page button { min-height: 44px; }
 }

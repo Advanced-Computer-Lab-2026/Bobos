@@ -12,6 +12,7 @@ import {
 import StudentDirectoryPage from "./components/StudentDirectoryPage.jsx";
 import FinancialRecordsPage from "./components/FinancialRecordsPage.jsx";
 import AdvisingPage, { MyAdvisorPage } from "./components/AdvisingPage.jsx";
+import SlotChangesPage from "./components/SlotChangesPage.jsx";
 import AcademicWorkspace from "./components/AcademicWorkspace.jsx";
 import { GroupAssignmentsPage, StaffSchedulesPage, StudentSchedulingPage } from "./components/SchedulingPages.jsx";
 import { CalendarSyncPage, PendingWorkPage, ScheduleActivityPage } from "./components/B1Pages.jsx";
@@ -34,6 +35,7 @@ const navGroups = (role) => {
       ...(role === "advisingStudent" ? [{ id: "records", label: "Academic records" }] : []),
       { id: "my-schedule", label: "My schedule" },
       { id: "my-courses", label: "Registered courses" },
+      ...(role === "advisingStudent" ? [{ id: "slot-changes", label: "Slot change requests" }] : []),
       ...(role === "normalStudent" ? [{ id: "schedule-swap", label: "Eligible swap groups" }] : []),
       ...(role === "advisingStudent" ? [{ id: "preferences", label: "Schedule preferences" }] : []),
       { id: "my-advisor", label: "My advisor" },
@@ -49,6 +51,7 @@ const navGroups = (role) => {
       ...(["coordinator", "administrator"].includes(role) ? [{ id: "schedule-activity", label: "Schedule activity" }] : []),
       ...(["coordinator", "administrator", "advisor"].includes(role) ? [{ id: "mandatory-removals", label: "Course removals" }] : []),
       { id: "student-schedules", label: "Student schedules" },
+      ...(["advisor", "coordinator"].includes(role) ? [{ id: "slot-changes", label: "Slot change requests" }] : []),
     ] }] : []),
     ...(["coordinator", "administrator"].includes(role) ? [{ title: "Academic setup", items: [
       { id: "courses", label: "Course catalogue" },
@@ -67,6 +70,7 @@ const titleByScreen = {
   advising: "Advising students", "my-advisor": "My advisor", courses: "Course catalogue",
   terms: "Academic terms", offerings: "Course offerings", templates: "Schedule templates",
   "my-schedule": "My schedule", "my-courses": "Registered courses", "schedule-swap": "Eligible swap groups",
+  "slot-changes": "Slot change requests",
   "student-schedules": "Student schedules", "group-assignments": "Schedule group assignments",
   "calendar-sync": "Calendar sync", "pending-work": "Pending work", "schedule-activity": "Schedule activity",
   "mandatory-removals": "Mandatory-course removals",
@@ -245,7 +249,8 @@ export default function App() {
           {activeScreen === "mandatory-removals" && ["coordinator", "administrator", "advisor"].includes(profile.role) && <MandatoryRemovalDashboard token={token} role={profile.role} notify={notify} />}
           {activeScreen === "group-assignments" && <GroupAssignmentsPage token={token} canAssign={profile.role === "coordinator"} notify={notify} />}
           {activeScreen === "student-schedules" && <StaffSchedulesPage token={token} role={profile.role} notify={notify} initialStudent={screenContext?.draftStudent} initialTermId={screenContext?.termId} />}
-          {["my-schedule", "my-courses", "schedule-swap"].includes(activeScreen) && <StudentSchedulingPage token={token} section={activeScreen} />}
+          {activeScreen === "slot-changes" && <SlotChangesPage token={token} role={profile.role} onOpenSchedule={() => openScreen("my-schedule")} />}
+          {["my-schedule", "my-courses", "schedule-swap"].includes(activeScreen) && <StudentSchedulingPage token={token} section={activeScreen} onOpenSlotChanges={profile.role === "advisingStudent" ? () => openScreen("slot-changes") : undefined} />}
           {["courses", "terms", "offerings", "templates"].includes(activeScreen) && <AcademicWorkspace token={token} role={profile.role} section={activeScreen} onNavigate={openScreen} notify={notify} />}
           {!["profile", "overview"].includes(activeScreen) && !allNavItems.some((item) => item.id === activeScreen) && <OverviewPage token={token} profile={profile} onOpen={openScreen} />}
         </div>

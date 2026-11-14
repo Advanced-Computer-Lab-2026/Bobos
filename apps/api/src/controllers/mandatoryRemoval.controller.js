@@ -138,7 +138,7 @@ export async function listMandatoryRemovalRequests(req, res) {
         const toDate = new Date(dateTo);
         if (!isNaN(toDate.getTime())) {
           if (typeof dateTo === "string" && dateTo.length === 10) {
-            toDate.setHours(23, 59, 59, 999);
+            toDate.setUTCHours(23, 59, 59, 999);
           }
           filter.createdAt.$lte = toDate;
         }
