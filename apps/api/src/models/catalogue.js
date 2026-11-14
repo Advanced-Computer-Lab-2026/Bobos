@@ -114,7 +114,6 @@ offeringSlotSchema.virtual("remainingCapacity").get(function () {
 
 const courseOfferingSchema = withTimestamps({
   course: ref("Course", { required: true, index: true }),
-  academicYear: { type: String, required: true, trim: true, index: true },
   term: ref("AcademicTerm", { required: true }),
   instructors: { type: [instructorSchema], default: [] },
   eligibleGroups: { type: [eligibleGroupSchema], default: [] },
@@ -122,6 +121,19 @@ const courseOfferingSchema = withTimestamps({
   slots: { type: [offeringSlotSchema], default: [] },
 });
 courseOfferingSchema.set("optimisticConcurrency", true);
+
+// The linked term is the source of truth. Keep the response property for older
+// clients without storing a second year that can disagree with the term.
+courseOfferingSchema.virtual("academicYear").get(function () {
+  return this.term?.academicYear;
+});
+const serializeOffering = (doc, result) => {
+  if (doc.term?.academicYear) result.academicYear = doc.term.academicYear;
+  else delete result.academicYear;
+  return result;
+};
+courseOfferingSchema.set("toJSON", { virtuals: true, transform: serializeOffering });
+courseOfferingSchema.set("toObject", { virtuals: true, transform: serializeOffering });
 
 courseOfferingSchema.pre("validate", function () {
   if (!this.isPublished) return;

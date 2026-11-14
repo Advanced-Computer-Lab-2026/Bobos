@@ -124,7 +124,6 @@ export async function duplicateOfferings(req, res, next) {
         try {
           const copy = await CourseOffering.create({
             course: offering.course._id,
-            academicYear: target.academicYear,
             term: target._id,
             isPublished: false,
             instructors: offering.instructors.map(({ fullName, email }) => ({ fullName, email })),
@@ -133,7 +132,7 @@ export async function duplicateOfferings(req, res, next) {
               componentType, groupNumber, day, startMinute, endMinute, room, capacity,
             })),
           });
-          created.push({ ...copy.toJSON(), courseCode });
+          created.push({ ...copy.toJSON(), academicYear: target.academicYear, courseCode });
           continue;
         } catch (error) {
           if (error.code !== 11000) throw error;
@@ -456,6 +455,9 @@ export const createOffering = async (req, res) => {
     if (!existingTerm) {
       return res.status(404).json({ message: 'Academic term not found' });
     }
+    if (academicYear !== undefined && academicYear.trim() !== existingTerm.academicYear) {
+      return res.status(400).json({ message: 'Academic year is inherited from the selected term. Change it in Academic terms.' });
+    }
 
     // --- Prevent duplicate offering (same course + same term) ---
     const duplicate = await CourseOffering.findOne({ course, term: existingTerm._id });
@@ -479,7 +481,6 @@ export const createOffering = async (req, res) => {
 
     const newOffering = new CourseOffering({
       course,
-      academicYear: academicYear?.trim() || existingTerm.academicYear || '2026/2027',
       term: existingTerm._id,
       instructors: instructors || [],
       eligibleGroups: eligibleGroups || [],
@@ -606,13 +607,19 @@ export const updateOffering = async (req, res) => {
       return res.status(400).json({ message: 'Change publication state through the dedicated publish endpoint.' });
     }
     if (academicYear !== undefined && (typeof academicYear !== 'string' || !academicYear.trim())) return res.status(400).json({ message: 'academicYear must be a non-empty string.' });
+    if (academicYear !== undefined) {
+      const term = await AcademicTerm.findById(offering.term).select('academicYear');
+      if (!term) return res.status(409).json({ message: 'The offering academic term no longer exists.' });
+      if (academicYear.trim() !== term.academicYear) {
+        return res.status(400).json({ message: 'Academic year is inherited from the selected term. Change it in Academic terms.' });
+      }
+    }
     if (instructors !== undefined && !Array.isArray(instructors)) return res.status(400).json({ message: 'instructors must be an array.' });
     if (eligibleGroups !== undefined && !Array.isArray(eligibleGroups)) return res.status(400).json({ message: 'eligibleGroups must be an array.' });
 
     // Update top-level offering fields (not slots — slots have their own endpoint)
     if (instructors !== undefined) offering.instructors = instructors;
     if (eligibleGroups !== undefined) offering.eligibleGroups = eligibleGroups;
-    if (academicYear !== undefined) offering.academicYear = academicYear.trim();
 
     for (const slot of offering.slots) {
       const conflict = await findOfferingSlotConflict(offering, slot, slot._id);
