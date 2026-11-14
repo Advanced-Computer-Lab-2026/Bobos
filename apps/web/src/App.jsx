@@ -9,6 +9,7 @@ import {
   PreferencesPage,
 } from "./components/BasicPages.jsx";
 import StudentDirectoryPage from "./components/StudentDirectoryPage.jsx";
+import FinancialRecordsPage from "./components/FinancialRecordsPage.jsx";
 import AdvisingPage, { MyAdvisorPage } from "./components/AdvisingPage.jsx";
 import AcademicWorkspace from "./components/AcademicWorkspace.jsx";
 import { GroupAssignmentsPage, StaffSchedulesPage, StudentSchedulingPage } from "./components/SchedulingPages.jsx";
@@ -37,7 +38,10 @@ const navGroups = (role) => {
       { id: "calendar-sync", label: "Calendar sync", icon: "▦" },
     ] }] : []),
     ...(staff ? [{ title: "People", items: [
-      ...(["coordinator", "administrator"].includes(role) ? [{ id: "directory", label: "Student directory", icon: "♙" }] : []),
+      ...(["coordinator", "administrator"].includes(role) ? [
+        { id: "directory", label: "Student directory", icon: "♙" },
+        { id: "financial-records", label: "Financial Records", icon: "💳" },
+      ] : []),
       ...(role === "advisor" || role === "coordinator" ? [{ id: "advising", label: "Advising students", icon: "♧" }] : []),
       ...(role === "advisor" || role === "coordinator" ? [{ id: "preferences", label: "Student preferences", icon: "☷" }] : []),
       ...(role === "coordinator" ? [{ id: "pending-work", label: "Pending work", icon: "◷" }] : []),
@@ -57,6 +61,7 @@ const navGroups = (role) => {
 const titleByScreen = {
   overview: "Overview", profile: "My profile", notifications: "Notifications",
   records: "Academic records", preferences: "Schedule preferences", directory: "Student directory",
+  "financial-records": "Financial Records",
   advising: "Advising students", "my-advisor": "My advisor", courses: "Course catalogue",
   terms: "Academic terms", offerings: "Course offerings", templates: "Schedule templates",
   "my-schedule": "My schedule", "my-courses": "Registered courses", "schedule-swap": "Eligible swap groups",
@@ -186,6 +191,7 @@ export default function App() {
           {activeScreen === "records" && profile.role !== "normalStudent" && <StudentRecordsPage token={token} profile={profile} notify={notify} />}
           {activeScreen === "preferences" && <PreferencesPage token={token} profile={profile} profileId={screenContext?.id || screenContext?._id || profile.studentProfileId} studentTarget={screenContext?._id ? screenContext : undefined} notify={notify} onOpenDraftSchedule={(student, selectedTermId) => openScreen("student-schedules", { draftStudent: student, termId: selectedTermId })} />}
           {activeScreen === "directory" && <StudentDirectoryPage token={token} role={profile.role} notify={notify} />}
+          {activeScreen === "financial-records" && <FinancialRecordsPage token={token} role={profile.role} notify={notify} />}
           {activeScreen === "advising" && <AdvisingPage token={token} role={profile.role} onOpenPreferences={(student) => openScreen("preferences", student)} />}
           {activeScreen === "my-advisor" && <MyAdvisorPage token={token} />}
           {activeScreen === "calendar-sync" && <CalendarSyncPage token={token} />}

@@ -593,3 +593,15 @@ td strong, td .secondary-text { display: block; }
   .notification-row { gap: 8px; }
   .notification-row > .text-button { flex: 0 0 auto; }
 }
+
+/* Financial Records & Transactions */
+.status-pill.completed { color: #2e7d56; background: #eaf5ee; }
+.status-pill.pending { color: #8a6d2a; background: #fbf2df; }
+.status-pill.refunded { color: #395279; background: #eef3fa; }
+.status-pill.failed, .status-pill.danger { color: #a1413e; background: #fdf0ef; }
+.pagination-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; padding-top: 14px; border-top: 1px solid #edf0ee; font-size: 10px; color: #72817b; flex-wrap: wrap; }
+.pagination-actions { display: flex; align-items: center; gap: 8px; }
+.modal-table { margin-top: 10px; margin-bottom: 16px; border: 1px solid #e7ebe8; border-radius: 8px; overflow: hidden; }
+.modal-table th { background: #f7faf8; }
+.badge-currency { font-size: 10px; font-weight: 700; color: #167b70; white-space: nowrap; }
+.detail-item strong { display: block; margin-top: 3px; color: #2b3834; font-size: 11px; word-break: break-word; }
