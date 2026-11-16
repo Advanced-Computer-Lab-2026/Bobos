@@ -3,6 +3,8 @@ import { api } from "../api.js";
 
 const dateValue = (value) => value ? new Date(value).toLocaleString() : "—";
 const actionLabel = (value) => value === "processed" ? "Processed" : "Reopened";
+const displayLabel = (value) => String(value || "—").replace(/([a-z])([A-Z])/g, "$1 $2").replace(/^./, (letter) => letter.toUpperCase());
+const requestLabels = { wholeScheduleSwap: "Schedule swaps", slotChange: "Slot changes", mandatoryCourseRemoval: "Course removals", extraHours: "Extra hours" };
 
 export function PendingWorkPage({ token }) {
   const [data, setData] = useState(null);
@@ -14,17 +16,24 @@ export function PendingWorkPage({ token }) {
   }, [token]);
   if (error) return <section className="panel"><p role="alert">{error}</p></section>;
   if (!data) return <div className="app-loading"><span className="loader" />Loading pending work…</div>;
-  return <section className="panel">
-    <div className="panel-heading"><div><h2>Pending work</h2><p>Workflow status is calculated from each student’s current schedule and requests.</p></div><span>{data.term?.code || "No active term"}</span></div>
-    <div className="stats-grid" style={{ margin: "1rem 0" }}>
-      {Object.entries(data.groups.studentType || {}).map(([name, count]) => <div className="stat-card" key={name}><strong>{count}</strong><span>{name} students</span></div>)}
-      {Object.entries(data.groups.requestType || {}).map(([name, count]) => <div className="stat-card" key={name}><strong>{count}</strong><span>{name} requests</span></div>)}
-    </div>
-    <p className="page-description">Grouped by advisor: {Object.entries(data.groups.advisor || {}).map(([name, count]) => `${name} (${count})`).join(" · ") || "No advisor assignments"}</p>
-    <div className="table-wrap"><table><thead><tr><th>Student</th><th>Type</th><th>Advisor</th><th>Workflow status</th><th>Blocking step</th><th>Requests awaiting action</th><th>Last updated</th></tr></thead>
-      <tbody>{data.students.map((student) => <tr key={student.id}><td><strong>{student.fullName}</strong><small>{student.studentId}</small></td><td>{student.studentType}</td><td>{student.assignedAdvisor?.fullName || "—"}</td><td>{student.workflowStatus || "—"}</td><td>{student.blockingStep || "—"}</td><td>{student.requests.map((item) => `${item.type}: ${item.status}`).join(", ") || "—"}</td><td>{dateValue(student.lastUpdatedAt)}</td></tr>)}</tbody>
-    </table></div>
-  </section>;
+  return <div className="page-stack pending-work-page">
+    <div className="page-title-row"><div><h1>Pending work</h1><p className="page-description">Review student workflows and requests awaiting action.</p></div><span className="term-label">{data.term?.code || "No active term"}</span></div>
+    <section className="panel pending-summary" aria-label="Pending work summary">
+      <div><h2>Students</h2><dl className="pending-student-counts">
+        {Object.entries(data.groups.studentType || {}).map(([name, count]) => <div key={name}><dt>{displayLabel(name)} students</dt><dd>{count}</dd></div>)}
+      </dl></div>
+      <div><h2>Requests by type</h2><dl className="pending-request-counts">
+        {Object.entries(data.groups.requestType || {}).map(([name, count]) => <div key={name}><dt>{requestLabels[name] || displayLabel(name)}</dt><dd>{count}</dd></div>)}
+      </dl></div>
+    </section>
+    <section className="panel pending-students">
+      <div className="results-heading"><h2>Student workflows</h2><span className="result-count">{data.students.length} students</span></div>
+      <p className="helper-text pending-advisors">By advisor: {Object.entries(data.groups.advisor || {}).map(([name, count]) => `${name === "unassigned" ? "Unassigned" : name} (${count})`).join(" · ") || "No advisor assignments"}</p>
+      <div className="table-wrap"><table><thead><tr><th>Student</th><th>Type</th><th>Advisor</th><th>Workflow status</th><th>Blocking step</th><th>Requests awaiting action</th><th>Last updated</th></tr></thead>
+        <tbody>{data.students.map((student) => <tr key={student.id}><td><strong>{student.fullName}</strong><span className="secondary-text">{student.studentId}</span></td><td>{displayLabel(student.studentType)}</td><td>{student.assignedAdvisor?.fullName || "Unassigned"}</td><td>{displayLabel(student.workflowStatus)}</td><td>{displayLabel(student.blockingStep)}</td><td>{student.requests.length ? <ul className="pending-request-list">{student.requests.map((item, index) => <li key={index}>{requestLabels[item.type] || displayLabel(item.type)}: {displayLabel(item.status)}</li>)}</ul> : "—"}</td><td>{dateValue(student.lastUpdatedAt)}</td></tr>)}</tbody>
+      </table></div>
+    </section>
+  </div>;
 }
 
 export function ScheduleActivityPage({ token, studentId }) {
