@@ -7,6 +7,10 @@ export function Wordmark() {
 }
 
 const iconPaths = {
+  inbox: "M4 4h16l2 10v6H2v-6L4 4Zm-2 10h6l2 3h4l2-3h6",
+  calendar: "M5 5h14a2 2 0 0 1 2 2v13H3V7a2 2 0 0 1 2-2ZM7 3v4m10-4v4M3 11h18m-14 4h3m4 0h3",
+  document: "M6 3h8l4 4v14H6V3Zm8 0v5h4M9 12h6m-6 4h6",
+  history: "M3 11a9 9 0 1 1 2.5 7M3 4v7h7m2-5v6l4 2",
   sun: "M12 3v2m0 14v2M3 12h2m14 0h2M6 6l1.5 1.5m9 9L18 18M6 18l1.5-1.5m9-9L18 6 M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z",
   moon: "M20 15a8 8 0 0 1-11-11 8.5 8.5 0 1 0 11 11Z",
   bell: "M18 8a6 6 0 0 0-12 0c0 7-2 7-2 9h16c0-2-2-2-2-9m-8 12a2 2 0 0 0 4 0",

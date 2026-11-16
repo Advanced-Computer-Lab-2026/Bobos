@@ -200,6 +200,7 @@ export default function App() {
 
   return (
     <div className="app-shell">
+      <a className="portal-skip-link" href="#workspace-content">Skip to content</a>
       <aside className="sidebar">
         <button className="portal-home" type="button" onClick={() => openScreen("overview")}><Wordmark /></button>
         <p className="portal-scope">Academic workspace</p>
@@ -244,7 +245,7 @@ export default function App() {
           </div>
         </header>
 
-        <div className="page-content">
+        <div className="page-content" id="workspace-content" tabIndex={-1}>
           {notice && <div className={`toast ${notice.type}`} role={notice.type === "error" ? "alert" : "status"}>{notice.text}<button type="button" aria-label="Dismiss" onClick={() => setNotice(null)}>×</button></div>}
           {activeScreen === "overview" && <OverviewPage token={token} profile={profile} onOpen={openScreen} />}
           {activeScreen === "profile" && <ProfilePage profile={profile} />}

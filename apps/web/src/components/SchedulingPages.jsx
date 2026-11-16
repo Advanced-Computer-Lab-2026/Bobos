@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api.js";
+import { WorkspaceEmpty } from "./WorkspaceUI.jsx";
 
 const WEEK = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"];
 const semesters = Array.from({ length: 10 }, (_, index) => index + 1);
@@ -467,16 +468,16 @@ export function StaffSchedulesPage({ token, role, notify, initialStudent = null,
 
   if (draftStudent) return <AdvisingDraftEditor token={token} student={draftStudent} termId={termId} notify={notify} onBack={() => setDraftStudent(null)} onSaved={(status = "draft") => setStudents((current) => current.map((row) => row._id === draftStudent._id ? { ...row, scheduleStatus: status } : row))} />;
 
-  return <div className="page-stack scheduling-page">
-    <div className="page-title-row"><div><p className="eyebrow">STUDENT SCHEDULES</p><h1>Student schedules</h1><p className="page-description">Review a student’s schedule according to your role and advising assignments.</p></div>
+  return <div className="page-stack scheduling-page workspace-page">
+    <div className="workspace-header"><div><h1>Student schedules</h1><p className="page-description">Find a student to create, review or manage their advising schedule.</p></div>
       {terms.length > 0 && <label className="field term-picker"><span>Academic term</span><select value={termId} onChange={(event) => { setTermId(event.target.value); setSelected(null); setSchedule(null); }}>{terms.map((term) => <option key={term._id} value={term.code}>Term {term.code} · {term.season}</option>)}</select></label>}
     </div>
     {error && <Feedback tone="error">{error}</Feedback>}
-    <section className="panel"><div className="results-heading"><div><p className="eyebrow">Roster</p><h2>Students</h2></div><span className="result-count">{students.length} students</span></div>
-      <label className="field roster-search"><span>Search students</span><input value={search} onChange={(event) => setSearch(event.target.value)} maxLength={100} placeholder="Student ID, name, or email" /></label>
+    <section className="panel"><div className="results-heading"><div><h2>Student roster</h2></div><span className="result-count" aria-live="polite">{students.length} {students.length === 1 ? "student" : "students"}</span></div>
+      <label className="field roster-search"><span>Search students</span><input type="search" name="roster-search" autoComplete="off" value={search} onChange={(event) => setSearch(event.target.value)} maxLength={100} placeholder="Student ID, name or email…" /></label>
       {loading ? <Loading /> : students.length ? <div className="table-scroll"><table><thead><tr><th>Student</th><th>Type</th><th>Major / semester</th><th>Schedule status</th><th /></tr></thead><tbody>{students.map((student) => <tr key={student._id}><td><strong>{student.fullName}</strong><span className="secondary-text">{student.studentId}</span></td><td>{student.studentType}</td><td>{student.major} · {student.currentSemester}</td><td><span className={`status-pill ${{
         readyForStudentReview: "ready", draft: "draft", processed: "completed",
-      }[student.scheduleStatus] || "muted"}`}>{prettyStatus(student.scheduleStatus)}</span></td><td><div className="table-actions">{["advisor", "coordinator"].includes(role) && student.studentType === "advising" && <button className="small-button primary-button" type="button" onClick={() => { setSelected(null); setSchedule(null); setDraftStudent(student); }}>{student.scheduleStatus === "draft" ? "Edit draft" : !student.scheduleStatus ? "Create draft" : student.scheduleStatus === "readyForStudentReview" ? "Review & Process" : "Manage schedule"}</button>}{student.scheduleStatus && <button className="small-button outline-button" type="button" onClick={() => openStudent(student)}>View schedule</button>}</div></td></tr>)}</tbody></table></div> : <Empty title="No students found" text="Try another search term." />}
+      }[student.scheduleStatus] || "muted"}`}>{prettyStatus(student.scheduleStatus)}</span></td><td><div className="table-actions">{["advisor", "coordinator"].includes(role) && student.studentType === "advising" && <button className="small-button primary-button" type="button" onClick={() => { setSelected(null); setSchedule(null); setDraftStudent(student); }}>{student.scheduleStatus === "draft" ? "Edit draft" : !student.scheduleStatus ? "Create draft" : student.scheduleStatus === "readyForStudentReview" ? "Review & Process" : "Manage schedule"}</button>}{student.scheduleStatus && <button className="small-button outline-button" type="button" onClick={() => openStudent(student)}>View schedule</button>}</div></td></tr>)}</tbody></table></div> : <WorkspaceEmpty title="No students found" description="Try a different student ID, name or email." />}
     </section>
     {selected && schedule?.schedule && <section className="panel staff-schedule-result" ref={scheduleResultRef} tabIndex={-1} aria-label={`${schedule.student?.fullName ?? "Student"} schedule`}><div className="results-heading"><div><p className="eyebrow">{schedule.student?.studentId} · {schedule.term?.season} {schedule.term?.academicYear}</p><h2>{schedule.student?.fullName}’s schedule</h2></div><span className="status-pill">{prettyStatus(schedule.schedule.status)}</span></div>{schedule.schedule.courses?.length ? <WeeklySchedule week={schedule.schedule.week} daysOff={schedule.schedule.daysOff} /> : <Feedback tone="info">This draft is empty. Choose “Edit draft” in the student list to add course groups.</Feedback>}</section>}
   </div>;
