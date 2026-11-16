@@ -259,10 +259,10 @@ export default function FinancialRecordsPage({ token, role, notify }) {
       {/* Title & Top Export Action */}
       <div className="page-title-row">
         <div>
-          <p className="eyebrow">GROUP B · FINANCIAL LEDGER</p>
+          <p className="eyebrow">FINANCIAL RECORDS</p>
           <h1>Financial Records</h1>
           <p className="page-description">
-            Monitor student transactions, perform multi-field searches, process authorized refunds, and export datasets.
+            Review payments, refunds, and student transactions.
           </p>
         </div>
         <button
@@ -368,7 +368,6 @@ export default function FinancialRecordsPage({ token, role, notify }) {
           </div>
         ) : records.length === 0 ? (
           <div className="empty-state">
-            <span>💳</span>
             <h3>No financial records found</h3>
             <p>
               {error
