@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api.js";
 import { filterSlotChanges } from "../slot-change-filters.js";
+import { WorkspaceEmpty } from "./WorkspaceUI.jsx";
 
 const path = "/api/slot-changes";
 const statuses = { pending: "Pending", approved: "Approved", rejected: "Rejected", withdrawn: "Withdrawn" };
@@ -10,7 +11,7 @@ const options = (items) => [...new Set(items.filter(Boolean))].sort((a, b) => a.
 const emptyFilters = { search: "", status: "", advisor: "", course: "", from: "", to: "" };
 
 function Status({ status }) {
-  return <span className={`status-pill ${({ approved: "good", pending: "warning", rejected: "muted", withdrawn: "muted" })[status]}`}>{statuses[status]}</span>;
+  return <span className={`status-pill ${({ approved: "good", pending: "warning", rejected: "danger", withdrawn: "muted" })[status]}`}>{statuses[status]}</span>;
 }
 
 function NoteField({ label, value, onChange, hint, placeholder }) {
@@ -30,6 +31,7 @@ export default function SlotChangesPage({ token, role, onOpenSchedule }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [messageTone, setMessageTone] = useState("info");
   const heading = useRef(null);
   const studentRequestHeading = useRef(null);
   const load = useCallback((signal) => api(mine ? `${path}/me` : path, { token, signal }), [mine, token]);
@@ -53,6 +55,7 @@ export default function SlotChangesPage({ token, role, onOpenSchedule }) {
     setError(""); setMessage(""); setBusy(true);
     try {
       const result = await api(endpoint, { token, method: "POST", body });
+      setMessageTone(body?.decision === "rejected" ? "error" : "info");
       setMessage(result.message || (endpoint === path ? "Request submitted." : "Request withdrawn."));
       if (endpoint === path) { setSlotId(""); setNote(""); }
       setData(await load());
@@ -81,13 +84,13 @@ export default function SlotChangesPage({ token, role, onOpenSchedule }) {
   const eligibleSlots = (data?.slots || []).filter((slot) => !requests.some((request) =>
     request.status === "pending" && request.currentSlotGroupId === slot.slotId));
 
-  return <div className="page-stack scheduling-page slot-changes-page">
-    <div className="page-title-row"><div><h1>Slot change requests</h1>
+  return <div className="page-stack scheduling-page slot-changes-page workspace-page">
+    <div className="workspace-header"><div><h1>Slot change requests</h1>
       <p>{mine ? "Ask your advising team to change an assigned lecture, tutorial, or lab." : "Review advising students’ requests and compare replacement slots."}</p></div>
       {mine && <button type="button" className="outline-button" onClick={onOpenSchedule}>My schedule</button>}
     </div>
     {error && <div className="feedback error" role="alert">{error}</div>}
-    {message && <div className="feedback info" role="status">{message}</div>}
+    {message && <div className={`feedback ${messageTone}`} role="status">{message}</div>}
     {!data && !error && <p role="status">Loading requests…</p>}
     {mine && data && <section className="panel form-stack">
       <h2>Request a slot change</h2>
@@ -110,9 +113,9 @@ export default function SlotChangesPage({ token, role, onOpenSchedule }) {
       </>}
     </section>}
     {data && !detail && <section className="panel form-stack">
-      <div className="results-heading"><h2>{mine ? "My requests" : "Requests"}</h2><span className="helper-text" aria-live="polite">{shown.length} {shown.length === 1 ? "request" : "requests"}</span></div>
+      <div className="results-heading"><h2>{mine ? "My requests" : "Request queue"}</h2><span className="result-count" aria-live="polite">{shown.length} {shown.length === 1 ? "request" : "requests"}</span></div>
       {!mine && <div className="slot-request-filters">
-        <label className="field"><span>Search</span><input type="search" placeholder="Student ID, name, or course code" value={filters.search} onChange={setFilter("search")} /></label>
+        <label className="field"><span>Student or course</span><input type="search" name="slot-search" autoComplete="off" placeholder="Student ID, name or course…" value={filters.search} onChange={setFilter("search")} /></label>
         <label className="field"><span>Status</span><select value={filters.status} onChange={setFilter("status")}><option value="">All statuses</option>{Object.entries(statuses).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
         <label className="field"><span>Advisor</span><select value={filters.advisor} onChange={setFilter("advisor")}><option value="">All advisors</option>{advisors.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label>
         <label className="field"><span>Course</span><select value={filters.course} onChange={setFilter("course")}><option value="">All courses</option>{options(requests.map((item) => item.course?.code)).map((code) => <option key={code}>{code}</option>)}</select></label>
@@ -133,7 +136,7 @@ export default function SlotChangesPage({ token, role, onOpenSchedule }) {
             requestAnimationFrame(() => studentRequestHeading.current?.focus());
           }}>View details</button></td>}
         </tr>)}</tbody>
-      </table></div> : <p>{requests.length ? "No requests match these filters." : "There are no slot change requests yet."}</p>}
+      </table></div> : <WorkspaceEmpty icon="calendar" title={requests.length ? "No matching requests" : "No slot-change requests"} description={requests.length ? "Try another student or course, or clear your filters to see all requests." : mine ? "Requests you submit for a different lecture, tutorial or lab will appear here." : "Students’ slot-change requests will appear here with their current slot and preferences."} />}
     </section>}
     {selectedRequest && <div className="modal-backdrop slot-request-modal-backdrop" role="presentation" onClick={() => {
       const id = selectedRequestId;

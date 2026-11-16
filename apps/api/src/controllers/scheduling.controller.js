@@ -281,11 +281,64 @@ function resolveStoredEntries(schedule, offeringById, courseById) {
   return { entries };
 }
 
+async function revalidateScheduleForProcessing(student, term, current, session) {
+  if (!current.courses?.length) {
+    throw draftError(400, "Cannot process an empty schedule.");
+  }
+
+  const { availableOfferingRecords, storedSchedule, ...data } = await loadDraftData(student, term, session);
+  const selections = data.schedule?.courses || [];
+  const availableIds = new Set(selections.map((selection) => selection.courseOffering));
+
+  for (const entry of current.courses) {
+    if (!availableIds.has(idOf(entry.courseOffering))) {
+      throw draftError(400, "Cannot process schedule: a scheduled course offering is unpublished, unavailable, or ineligible.");
+    }
+  }
+
+  const { courses, issues } = validateDraftSelections(
+    { ...data, availableOfferingRecords, storedSchedule },
+    selections,
+  );
+  const resolvedSlots = collectSlotRefs(courses);
+  for (const entry of current.courses) {
+    for (const [key] of collectSlotRefs([entry])) {
+      if (!resolvedSlots.has(key)) {
+        throw draftError(400, "Cannot process schedule: a scheduled slot is no longer available.");
+      }
+    }
+  }
+
+  const blockingIssue = issues.find(
+    (issue) => !(issue.code === "capacity" && /inconsistent reservation count/i.test(issue.message)),
+  );
+  if (blockingIssue) {
+    throw draftError(400, blockingIssue.message);
+  }
+
+  const approvedExtraHours = new Map(
+    data.creditPolicy.approvedExtraCourses.map(({ courseId, hours }) => [courseId, hours]),
+  );
+  const totalSnapshotHours = current.courses.reduce(
+    (sum, entry) => sum + Number(entry.creditHoursSnapshot || 0),
+    0,
+  );
+  if (totalSnapshotHours <= 0) {
+    throw draftError(400, "Cannot process schedule: total credit hours must be greater than zero.");
+  }
+  const snapshotCreditIssue = creditLimitProblem(current.courses, data.creditPolicy, approvedExtraHours);
+  if (snapshotCreditIssue) {
+    throw draftError(400, snapshotCreditIssue);
+  }
+}
+
 async function changeAdvisingScheduleStatus(req, res, reopening) {
   if (!isId(req.params.studentId)) return res.status(400).json({ message: "Invalid student ID" });
   const reason = typeof req.body?.reason === "string" ? req.body.reason.trim() : "";
   if (reopening && (!reason || reason.length > 2000)) return res.status(400).json({ message: "Provide a reopening reason of at most 2,000 characters" });
-  const student = await StudentProfile.findById(req.params.studentId).select("_id studentType assignedAdvisor");
+  const student = await StudentProfile.findById(req.params.studentId).select(
+    "_id studentType assignedAdvisor major currentSemester studyGroup gpa academicStanding advisingReason enrollmentStatus",
+  );
   if (!student || student.studentType !== "advising") return res.status(404).json({ message: "Advising student not found" });
   const verb = reopening ? "reopen" : "process";
   if (req.user.role === "advisor" && idOf(student.assignedAdvisor) !== idOf(req.user._id)) {
@@ -295,43 +348,69 @@ async function changeAdvisingScheduleStatus(req, res, reopening) {
   if (error) return res.status(error.status).json({ message: error.message });
 
   const action = reopening ? "reopened" : "processed";
-  const schedule = await mongoose.connection.transaction(async (session) => {
-    const current = await StudentSchedule.findOne({
-      student: student._id, term: term._id, scheduleType: "advising",
-      status: reopening ? "processed" : "readyForStudentReview",
-    }).session(session);
+  const expectedStatus = reopening ? "processed" : "readyForStudentReview";
+  const isSingle = mongoose.connection.client?.topology?.description?.type === "Single";
+  const withSession = (query, session) => (session ? query.session(session) : query);
+
+  const executeStatusChange = async (session) => {
+    const sessOpt = session ? { session } : {};
+    const current = await withSession(
+      StudentSchedule.findOne({
+        student: student._id, term: term._id, scheduleType: "advising",
+        status: expectedStatus,
+      }),
+      session,
+    );
     if (!current) return null;
 
     if (!reopening) {
-      if (await SlotChangeRequest.exists({ student: student._id, term: term._id, status: "pending" }).session(session)) {
+      if (await withSession(SlotChangeRequest.exists({ student: student._id, term: term._id, status: "pending" }), session)) {
         throw draftError(400, "Cannot process: Student has a pending slot-change request");
       }
-      if (await ExtraHoursRequest.exists({ student: student._id, term: term._id, $or: [{ decisionStatus: "pending" }, { settlementStatus: "awaitingChoice" }] }).session(session)) {
+      if (await withSession(ExtraHoursRequest.exists({ student: student._id, term: term._id, $or: [{ decisionStatus: "pending" }, { settlementStatus: "awaitingChoice" }] }), session)) {
         throw draftError(400, "Cannot process: Student has an unresolved extra-hours approval or payment choice");
       }
+      if (await withSession(MandatoryCourseRemovalRequest.exists({ student: student._id, term: term._id, status: "pending" }), session)) {
+        throw draftError(400, "Cannot finalize schedule with pending mandatory removal requests");
+      }
+      await revalidateScheduleForProcessing(student, term, current, session);
     }
-    current.status = reopening ? "draft" : "processed";
-    current.processedBy = reopening ? null : req.user._id;
-    current.processedAt = reopening ? null : new Date();
-    if (reopening) current.version += 1;
-    await current.save({ session });
+
+    const updated = await StudentSchedule.findOneAndUpdate(
+      { _id: current._id, status: expectedStatus },
+      {
+        $set: {
+          status: reopening ? "draft" : "processed",
+          processedBy: reopening ? null : req.user._id,
+          processedAt: reopening ? null : new Date(),
+        },
+        ...(reopening ? { $inc: { version: 1 } } : {}),
+      },
+      { returnDocument: "after", ...sessOpt },
+    );
+    if (!updated) return null;
+
     await ScheduleActivity.create([{
-      student: student._id, term: term._id, schedule: current._id, action, scheduleVersion: current.version,
+      student: student._id, term: term._id, schedule: updated._id, action, scheduleVersion: updated.version,
       actor: req.user._id, actorName: req.user.fullName, actorEmail: req.user.email, actorRole: req.user.role,
       reason: reopening ? reason : undefined,
-    }], { session });
+    }], sessOpt);
     await StudentWorkflowState.findOneAndUpdate({ student: student._id, term: term._id }, {
-      $set: { status: current.status, studentType: "advising", lastActivityAt: new Date(), calculatedAt: new Date() },
-    }, { upsert: true, session });
+      $set: { status: updated.status, studentType: "advising", lastActivityAt: new Date(), calculatedAt: new Date() },
+    }, { upsert: true, ...sessOpt });
     await notifyStudents({ _id: student._id, studentType: "advising" }, {
       type: reopening ? "scheduleReopened" : "scheduleProcessed",
       title: `Advising schedule ${action}`,
       message: reopening ? `Your advising schedule for ${term.code} was reopened. ${reason}`
         : `Your advising schedule for ${term.code} was processed. You can now download it from My schedule.`,
-      relatedModel: "StudentSchedule", relatedId: current._id,
+      relatedModel: "StudentSchedule", relatedId: updated._id,
     }, session);
-    return current;
-  });
+    return updated;
+  };
+
+  const schedule = isSingle
+    ? await executeStatusChange(undefined)
+    : await mongoose.connection.transaction(executeStatusChange);
   if (!schedule) {
     return res.status(409).json({ message: reopening ? "Only a processed advising schedule can be reopened"
       : "Only a schedule ready for student review can be processed" });

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, explainApiError } from "../api.js";
+import { WorkspaceHeader, WorkspaceEmpty } from "./WorkspaceUI.jsx";
 
 const root = "/api/graduation";
 const emptyFilters = { search: "", status: "", advisor: "", from: "", to: "" };
@@ -7,7 +8,7 @@ const labels = { pending: "Pending", approved: "Approved", rejected: "Rejected",
 const dateLabel = (value) => value ? new Date(value).toLocaleString() : "—";
 
 function Status({ status }) {
-  const tone = ["approved", "accepted"].includes(status) ? "good" : status === "rejected" ? "muted" : "warning";
+  const tone = ["approved", "accepted"].includes(status) ? "good" : status === "rejected" ? "danger" : "warning";
   return <span className={`status-pill ${tone}`}>{labels[status]}</span>;
 }
 
@@ -129,25 +130,23 @@ export default function GraduationReview({ token, role }) {
 
   const plans = kind === "plans";
   const rows = (plans ? result?.plans : result?.requests) ?? [];
-  return <div className="page-stack">
-    <div className="page-title-row">
-      <h1>{coordinator ? "Graduation review" : "My submitted plans"}</h1>
-      <button className="outline-button" disabled={loading || busy} onClick={() => {
+  return <div className="page-stack workspace-page graduation-review-page">
+    <WorkspaceHeader title={coordinator ? "Graduation review" : "My submitted plans"} description={coordinator ? "Review graduation plans and exit-exam requests submitted by advisors." : "Track the graduation plans you have submitted for coordinator review."}
+      action={<button className="outline-button" disabled={loading || busy} onClick={() => {
         setSelected(null);
         setIssues([]);
         setRefresh((value) => value + 1);
-      }}>Refresh</button>
-    </div>
-    {coordinator && <div className="form-actions" aria-label="Review queue">
-      <button className={plans ? "primary-button" : "outline-button"} aria-pressed={plans}
+      }}>Refresh</button>} />
+    {coordinator && <div className="workspace-tabs" role="group" aria-label="Review queue">
+      <button aria-pressed={plans}
         disabled={busy} onClick={() => changeView("plans")}>Graduation plans</button>
-      <button className={plans ? "outline-button" : "primary-button"} aria-pressed={!plans}
+      <button aria-pressed={!plans}
         disabled={busy} onClick={() => changeView("exit-exams")}>Exit-exam requests</button>
     </div>}
     {coordinator && plans && <form className="panel form-stack" onSubmit={(event) => { event.preventDefault(); applyFilters(inputs); }}>
-      <div className="filter-grid">
-        <label className="field"><span>Student ID, advisor name, or GUC email</span>
-          <input type="search" maxLength={200} value={inputs.search}
+      <div className="filter-grid review-filters">
+        <label className="field review-search"><span>Student or advisor</span>
+          <input type="search" name="graduation-search" autoComplete="off" placeholder="Student ID, advisor name or email…" maxLength={200} value={inputs.search}
             onChange={(event) => setInputs({ ...inputs, search: event.target.value })} />
         </label>
         <label className="field"><span>Status</span>
@@ -171,19 +170,19 @@ export default function GraduationReview({ token, role }) {
             onChange={(event) => setInputs({ ...inputs, to: event.target.value })} />
         </label>
       </div>
-      <div className="form-actions">
+      <div className="filter-actions">
         <button type="button" className="outline-button" disabled={busy} onClick={() => { setInputs(emptyFilters); applyFilters(emptyFilters); }}>
           Clear filters
         </button>
         <button className="primary-button" disabled={busy}>Apply filters</button>
       </div>
     </form>}
-    {notice && <div className="feedback" role="status">{notice}</div>}
+    {notice && <div className="feedback success" role="status">{notice}</div>}
     {error && <div className="feedback error" role="alert">{error}{issues.length > 0 &&
       <ul>{issues.map((issue, index) => <li key={index}>{issue}</li>)}</ul>}</div>}
     <section className="panel">
-      <h2>{plans ? "Submitted plans" : "Exit-exam requests"}</h2>
-      {loading ? <p role="status">Loading…</p> : !rows.length ? <p>No {plans ? "submitted plans" : "exit-exam requests"} found.</p> :
+      <div className="results-heading"><h2>{plans ? "Submitted plans" : "Exit-exam requests"}</h2><span className="result-count" aria-live="polite">{loading ? "Loading…" : `${plans ? result?.total ?? rows.length : rows.length} ${plans ? "plans" : "requests"}`}</span></div>
+      {loading ? <p role="status">Loading…</p> : !rows.length ? <WorkspaceEmpty icon="document" title={plans ? "No submitted plans" : "No exit-exam requests"} description={plans ? "Submitted graduation plans will appear here for review. Clear your filters if you expected to see a plan." : "Requests submitted by advisors will appear here with the course and student details."} /> :
         <div className="table-scroll"><table>
           <thead><tr><th>Student</th>{coordinator && <th>Advisor</th>}{!plans && <th>Course</th>}
             <th>Status</th><th>Submitted</th><th>Action</th></tr></thead>
