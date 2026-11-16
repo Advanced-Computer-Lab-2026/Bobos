@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, explainApiError } from "../api.js";
 import RequestRemovalModal from "./RequestRemovalModal.jsx";
+import { WorkspaceEmpty } from "./WorkspaceUI.jsx";
 
 const STATUS_OPTIONS = [
   { value: "", label: "All statuses" },
@@ -152,40 +153,41 @@ export default function MandatoryRemovalDashboard({ token, role, notify }) {
   const canRequest = ["advisor", "coordinator", "administrator"].includes(role);
 
   return (
-    <div className="page-stack">
-      <div className="page-title-row">
+    <div className="page-stack workspace-page removal-page">
+      <div className="workspace-header">
         <div>
-          <p className="eyebrow">ACADEMIC ADVISING & POLICIES</p>
-          <h1>Mandatory-Course Removal Requests</h1>
+          <h1>Course removals</h1>
           <p className="page-description">
-            Review and decide on advisor requests to exempt advising students from repeating failed or mandatory courses for this term.
+            Review requests to remove a mandatory course from a student’s advising schedule.
           </p>
         </div>
-        <div style={{ display: "flex", gap: "10px" }}>
+        <div className="workspace-header-actions">
           {canRequest && (
             <button
               className="primary-button"
               type="button"
               onClick={() => setRequestModalOpen(true)}
             >
-              + Request Course Removal
+              Request removal
             </button>
           )}
           <button className="outline-button" type="button" onClick={fetchRequests}>
-            ↻ Refresh
+            Refresh
           </button>
         </div>
       </div>
 
       <section className="panel directory-filters">
-        <div className="filter-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))" }}>
-          <label className="field" style={{ gridColumn: "span 2" }}>
+        <div className="filter-grid">
+          <label className="field span-two">
             <span>Search student, ID, course, or advisor</span>
             <input
-              type="text"
+              type="search"
+              name="removal-search"
+              autoComplete="off"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="e.g. 64-00001, CSEN101, or advisor name"
+              placeholder="Student ID, course or advisor…"
             />
           </label>
 
@@ -249,7 +251,6 @@ export default function MandatoryRemovalDashboard({ token, role, notify }) {
       <section className="panel results-panel" aria-busy={loading}>
         <div className="results-heading">
           <div>
-            <p className="eyebrow">COORDINATOR QUEUE</p>
             <h2>Requests</h2>
           </div>
           <span className="result-count">
@@ -263,11 +264,7 @@ export default function MandatoryRemovalDashboard({ token, role, notify }) {
             Loading removal requests…
           </div>
         ) : requests.length === 0 ? (
-          <div className="empty-state">
-            <span>▤</span>
-            <h3>No course removal requests found</h3>
-            <p>Try modifying your search or clearing your active filters.</p>
-          </div>
+          <WorkspaceEmpty icon="document" title="No removal requests" description="Submitted requests will appear here for review. If you have filters applied, clear them to see all requests." />
         ) : (
           <div className="table-scroll">
             <table>

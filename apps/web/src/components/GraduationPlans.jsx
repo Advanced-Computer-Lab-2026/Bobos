@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, explainApiError } from "../api.js";
+import { WorkspaceEmpty } from "./WorkspaceUI.jsx";
 
 function assignmentsFor(plan) {
   return Object.fromEntries((plan?.termPlans ?? []).flatMap(({ term, courses }) =>
@@ -18,6 +19,7 @@ export default function GraduationPlans({ student, token, onBack }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState("");
   const [issues, setIssues] = useState([]);
+  const [courseSearch, setCourseSearch] = useState("");
   const [notice, setNotice] = useState("");
 
   useEffect(() => {
@@ -129,26 +131,27 @@ export default function GraduationPlans({ student, token, onBack }) {
     exam.course === currentExamCourse?._id && ["pending", "approved"].includes(exam.status));
   const readOnly = Boolean(plan && plan.status !== "draft");
 
-  return <div className="page-stack">
-    <div className="page-title-row">
+  const visibleCourses = courses.filter((course) => `${course.code} ${course.name}`.toLowerCase().includes(courseSearch.trim().toLowerCase()));
+  return <div className="page-stack workspace-page graduation-planner-page">
+    <div className="workspace-header">
       <div>
         <h1>Graduation plans</h1>
         <p className="page-description">{student.user?.fullName || student.studentId} · {student.studentId}</p>
       </div>
       <button className="outline-button" type="button" onClick={onBack}>Back to advising students</button>
     </div>
-    {notice && <div className="feedback" role="status">{notice}</div>}
+    {notice && <div className="feedback success" role="status">{notice}</div>}
     {error && <div className="feedback error" role="alert">{error}
       {issues.length > 0 && <ul>{issues.map((issue, index) => <li key={index}>{issue}</li>)}</ul>}
     </div>}
     {!workspace && !error && <div className="loading-state" role="status">Loading graduation plans…</div>}
     {workspace && <>
-      <section className="panel">
+      {!editing && <section className="panel">
         <div className="results-heading">
           <h2>Your plans</h2>
           <button className="primary-button" type="button" onClick={() => openPlan(null)} disabled={busy}>New plan</button>
         </div>
-        {workspace.plans.length === 0 && <p>No saved plans for this student.</p>}
+        {workspace.plans.length === 0 && !editing && <WorkspaceEmpty icon="document" title="No graduation plans yet" description="Create a private draft to arrange this student’s remaining courses across upcoming terms. Submit it when it is ready for review." />}
         {workspace.plans.length > 0 && <div className="table-scroll"><table>
           <thead><tr><th>Status</th><th>Last updated</th><th>Action</th></tr></thead>
           <tbody>{workspace.plans.map((item) => <tr key={item._id}>
@@ -157,12 +160,13 @@ export default function GraduationPlans({ student, token, onBack }) {
             <td><button className="text-button" type="button" disabled={busy} onClick={() => openPlan(item)}>Open plan</button></td>
           </tr>)}</tbody>
         </table></div>}
-      </section>
+      </section>}
       {editing && <section className="panel" aria-busy={busy}>
         <div className="results-heading">
           <h2>{readOnly ? "Saved plan" : plan ? "Edit private draft" : "New plan"}</h2>
           <button className="outline-button" type="button" disabled={busy} onClick={() => setEditing(false)}>Close plan</button>
         </div>
+        {!readOnly && <p className="helper-text">This plan is private until you submit it for coordinator review.</p>}
         {plan?.responseNote && <p>Coordinator response: {plan.responseNote}</p>}
         {readOnly ? (
           <>
@@ -174,10 +178,10 @@ export default function GraduationPlans({ student, token, onBack }) {
           </>
         ) : <>
           <p>Choose at least {workspace.electiveRequirement.count} remaining electives totalling {workspace.electiveRequirement.hours} credit hours.</p>
-          {workspace.missingSeasons.length > 0 && <p className="feedback">
+          {workspace.missingSeasons.length > 0 && <p className="feedback warning">
             Upcoming terms still to be configured: {workspace.missingSeasons.join(", ")}.
           </p>}
-          <div className="table-scroll"><table>
+          {terms.length > 0 && <div className="table-scroll"><table>
             <thead><tr><th>Term</th><th>Assigned hours</th><th>Credit limit</th></tr></thead>
             <tbody>{terms.map((term) => {
               const selected = courses.filter((course) => assignments[course._id] === term._id);
@@ -189,10 +193,11 @@ export default function GraduationPlans({ student, token, onBack }) {
                 <td>{total}</td><td>{Math.min(term.maximumCreditHours, term.baseAllowance + extra)}</td>
               </tr>;
             })}</tbody>
-          </table></div>
-          <div className="table-scroll"><table>
+          </table></div>}
+          <div className="planner-course-tools"><div><h3>Remaining courses</h3><p className="helper-text">Assign each course to an available term. Your selections stay selected when you search.</p></div><label className="field"><span>Find a course</span><input type="search" name="plan-course-search" autoComplete="off" placeholder="Course code or name…" value={courseSearch} onChange={(event) => setCourseSearch(event.target.value)} /></label></div>
+          <div className="table-scroll planner-course-table" role="region" tabIndex={0} aria-label="Remaining courses"><table>
             <thead><tr><th>Remaining course</th><th>Hours</th><th>Prerequisites</th><th>Assign to</th></tr></thead>
-            <tbody>{courses.map((course) => <tr key={course._id}>
+            <tbody>{visibleCourses.map((course) => <tr key={course._id}>
               <td>{course.code} · {course.name}
                 {course.elective && <span className="secondary-text">{course.required ? "Required elective retake" : "Elective choice"}</span>}
                 {course.failed && <span className="secondary-text">Failed</span>}</td>
@@ -207,7 +212,7 @@ export default function GraduationPlans({ student, token, onBack }) {
                 {terms.filter((term) => course.termIds.includes(term._id)).map((term) =>
                   <option key={term._id} value={term._id}>{term.code} · {term.season}</option>)}
               </select></td>
-            </tr>)}</tbody>
+            </tr>)}{!visibleCourses.length && courses.length > 0 && <tr><td colSpan={4}>No courses match your search.</td></tr>}</tbody>
           </table></div>
           {courses.length === 0 && <p>No remaining courses in the academic record.</p>}
           {obsoleteAssignments.length > 0 && <div className="feedback">
@@ -234,7 +239,7 @@ export default function GraduationPlans({ student, token, onBack }) {
               ))}
             </select>
           </label>}
-          <div className="form-actions">
+          <div className="form-actions planner-actions">
             {plan && <button className="outline-button" type="button" disabled={busy} onClick={() => setConfirmDelete(true)}>Delete draft</button>}
             <button className="outline-button" type="button" disabled={busy} onClick={() => perform(savePlan, "Private draft saved.")}>Save draft</button>
             <button className="primary-button" type="button" disabled={busy} onClick={submitPlan}>Submit plan</button>

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, explainApiError } from "../api.js";
+import { WorkspaceEmpty } from "./WorkspaceUI.jsx";
 
 const TYPE_OPTIONS = [
   { value: "", label: "All Types" },
@@ -255,18 +256,17 @@ export default function FinancialRecordsPage({ token, role, notify }) {
   };
 
   return (
-    <div className="page-stack">
+    <div className="page-stack workspace-page finance-page">
       {/* Title & Top Export Action */}
-      <div className="page-title-row">
+      <div className="workspace-header">
         <div>
-          <p className="eyebrow">GROUP B · FINANCIAL LEDGER</p>
-          <h1>Financial Records</h1>
+          <h1>Financial records</h1>
           <p className="page-description">
-            Monitor student transactions, perform multi-field searches, process authorized refunds, and export datasets.
+            Review student payments, deferred charges and refunds in one place.
           </p>
         </div>
         <button
-          className="primary-button"
+          className="outline-button"
           type="button"
           onClick={handleExportCSV}
           disabled={exporting || loading}
@@ -280,10 +280,8 @@ export default function FinancialRecordsPage({ token, role, notify }) {
       <section className="panel directory-filters">
         <div className="panel-heading">
           <div>
-            <p className="eyebrow">FILTER & SEARCH</p>
-            <h2>Transaction Lookup</h2>
+            <h2>Find a transaction</h2>
           </div>
-          <span className="panel-count">01</span>
         </div>
 
         <div className="filter-grid">
@@ -294,12 +292,14 @@ export default function FinancialRecordsPage({ token, role, notify }) {
               maxLength={100}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by Student ID, Name, Receipt ID, Reference..."
+              name="financial-search"
+              autoComplete="off"
+              placeholder="Student ID, name, receipt or reference…"
             />
           </label>
 
           <label className="field">
-            <span>Transaction Type</span>
+            <span>Transaction type</span>
             <select value={type} onChange={handleTypeChange}>
               {TYPE_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -310,7 +310,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
           </label>
 
           <label className="field">
-            <span>Payment Status</span>
+            <span>Payment status</span>
             <select value={status} onChange={handleStatusChange}>
               {STATUS_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -321,7 +321,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
           </label>
 
           <label className="field">
-            <span>Academic Term</span>
+            <span>Academic term</span>
             <select value={term} onChange={handleTermChange}>
               {TERM_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -332,7 +332,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
           </label>
         </div>
 
-        <div className="form-actions">
+        <div className="filter-actions">
           <button className="text-button" type="button" onClick={handleClearFilters}>
             Clear filters
           </button>
@@ -353,7 +353,6 @@ export default function FinancialRecordsPage({ token, role, notify }) {
       <section className="panel results-panel" aria-busy={loading}>
         <div className="results-heading">
           <div>
-            <p className="eyebrow">LEDGER ENTRIES</p>
             <h2>Transactions</h2>
           </div>
           <span className="result-count">
@@ -367,14 +366,9 @@ export default function FinancialRecordsPage({ token, role, notify }) {
             Loading financial records…
           </div>
         ) : records.length === 0 ? (
-          <div className="empty-state">
-            <h3>No financial records found</h3>
-            <p>
-              {error
-                ? "The finance service could not be reached."
-                : "No transactions match your current search query or filter criteria."}
-            </p>
-          </div>
+          <WorkspaceEmpty title={search || type || status || term ? "No matching transactions" : "No transactions yet"}
+            description={error ? "Refresh the page to try loading financial records again." : search || type || status || term ? "Try another student ID or clear your filters to see all transactions." : "Payments, deferred charges and refunds will appear here when they are recorded."}
+            action={search || type || status || term ? <button className="outline-button" type="button" onClick={handleClearFilters}>Clear filters</button> : undefined} />
         ) : (
           <>
             <div className="table-scroll">

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api.js";
 import { filterSlotChanges } from "../slot-change-filters.js";
+import { WorkspaceEmpty } from "./WorkspaceUI.jsx";
 
 const path = "/api/slot-changes";
 const statuses = { pending: "Pending", approved: "Approved", rejected: "Rejected", withdrawn: "Withdrawn" };
@@ -80,8 +81,8 @@ export default function SlotChangesPage({ token, role, onOpenSchedule }) {
   const eligibleSlots = (data?.slots || []).filter((slot) => !requests.some((request) =>
     request.status === "pending" && request.currentSlotGroupId === slot.slotId));
 
-  return <div className="page-stack scheduling-page slot-changes-page">
-    <div className="page-title-row"><div><h1>Slot change requests</h1>
+  return <div className="page-stack scheduling-page slot-changes-page workspace-page">
+    <div className="workspace-header"><div><h1>Slot change requests</h1>
       <p>{mine ? "Ask your advising team to change an assigned lecture, tutorial, or lab." : "Review advising students’ requests and compare replacement slots."}</p></div>
       {mine && <button type="button" className="outline-button" onClick={onOpenSchedule}>My schedule</button>}
     </div>
@@ -107,9 +108,9 @@ export default function SlotChangesPage({ token, role, onOpenSchedule }) {
       </>}
     </section>}
     {data && !detail && <section className="panel form-stack">
-      <div className="results-heading"><h2>{mine ? "My requests" : "Requests"}</h2><span className="helper-text" aria-live="polite">{shown.length} {shown.length === 1 ? "request" : "requests"}</span></div>
+      <div className="results-heading"><h2>{mine ? "My requests" : "Request queue"}</h2><span className="result-count" aria-live="polite">{shown.length} {shown.length === 1 ? "request" : "requests"}</span></div>
       {!mine && <div className="slot-request-filters">
-        <label className="field"><span>Search</span><input type="search" placeholder="Student ID, name, or course code" value={filters.search} onChange={setFilter("search")} /></label>
+        <label className="field"><span>Student or course</span><input type="search" name="slot-search" autoComplete="off" placeholder="Student ID, name or course…" value={filters.search} onChange={setFilter("search")} /></label>
         <label className="field"><span>Status</span><select value={filters.status} onChange={setFilter("status")}><option value="">All statuses</option>{Object.entries(statuses).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
         <label className="field"><span>Advisor</span><select value={filters.advisor} onChange={setFilter("advisor")}><option value="">All advisors</option>{advisors.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label>
         <label className="field"><span>Course</span><select value={filters.course} onChange={setFilter("course")}><option value="">All courses</option>{options(requests.map((item) => item.course?.code)).map((code) => <option key={code}>{code}</option>)}</select></label>
@@ -132,7 +133,7 @@ export default function SlotChangesPage({ token, role, onOpenSchedule }) {
           <td>{mine ? item.status === "pending" && <button type="button" className="text-button" disabled={busy} onClick={() => action(`${path}/${item._id}/withdraw`)}>Withdraw</button>
             : <button type="button" className="text-button" disabled={busy} id={`slot-request-${item._id}`} aria-label={`View request for ${item.student?.studentId}, ${item.course?.code}`} onClick={() => open(item._id)}>View request</button>}</td>
         </tr>)}</tbody>
-      </table></div> : <p>{requests.length ? "No requests match these filters." : "There are no slot change requests yet."}</p>}
+      </table></div> : <WorkspaceEmpty icon="calendar" title={requests.length ? "No matching requests" : "No slot-change requests"} description={requests.length ? "Try another student or course, or clear your filters to see all requests." : mine ? "Requests you submit for a different lecture, tutorial or lab will appear here." : "Students’ slot-change requests will appear here with their current slot and preferences."} />}
     </section>}
     {currentRequest && <section className="panel form-stack">
       <div className="form-actions"><button type="button" className="outline-button" disabled={busy} onClick={() => {
