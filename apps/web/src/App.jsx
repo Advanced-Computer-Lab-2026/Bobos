@@ -42,7 +42,7 @@ const navGroups = (role) => {
       ...(role === "advisingStudent" ? [{ id: "slot-changes", label: "Slot change requests" }] : []),
       ...(role === "normalStudent" ? [{ id: "schedule-swap", label: "Eligible swap groups" }] : []),
       ...(role === "advisingStudent" ? [{ id: "preferences", label: "Schedule preferences" }] : []),
-      { id: "my-advisor", label: "My advisor" },
+      ...(role === "advisingStudent" ? [{ id: "my-advisor", label: "My advisor" }] : []),
       { id: "calendar-sync", label: "Calendar sync" },
     ] }] : []),
     ...(staff ? [{ title: "Student services", items: [
@@ -126,6 +126,10 @@ export default function App() {
 
   const groups = useMemo(() => navGroups(profile?.role), [profile?.role]);
   const allNavItems = groups.flatMap((group) => group.items);
+
+  useEffect(() => {
+    if (activeScreen === "my-advisor" && profile?.role !== "advisingStudent") setActiveScreen("overview");
+  }, [activeScreen, profile?.role]);
 
   const acceptLogin = (newToken) => {
     window.localStorage.setItem("bobos.token", newToken);
@@ -252,7 +256,7 @@ export default function App() {
           {activeScreen === "advising" && <AdvisingPage token={token} role={profile.role} onOpenPreferences={(student) => openScreen("preferences", student)} />}
           {activeScreen === "graduation-review" && ["advisor", "coordinator"].includes(profile.role) && <GraduationReview token={token} role={profile.role} />}
           {activeScreen === "my-graduation" && profile.role === "advisingStudent" && <StudentGraduation token={token} />}
-          {activeScreen === "my-advisor" && <MyAdvisorPage token={token} />}
+          {activeScreen === "my-advisor" && profile.role === "advisingStudent" && <MyAdvisorPage token={token} />}
           {activeScreen === "calendar-sync" && <CalendarSyncPage token={token} />}
           {activeScreen === "pending-work" && profile.role === "coordinator" && <PendingWorkPage token={token} />}
           {activeScreen === "schedule-activity" && ["coordinator", "administrator"].includes(profile.role) && <ScheduleActivityPage token={token} />}

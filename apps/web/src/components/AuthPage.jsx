@@ -93,7 +93,7 @@ export default function AuthPage({ onLogin }) {
                   ["Advising student", "layla.advising@student.guc.edu.eg"],
                 ].map(([label, account]) => (
                   <button key={account} className="outline-button" type="button" disabled={busy}
-                    onClick={() => { setEmail(account); setError(""); }}>
+                    onClick={() => { setEmail(account); setPassword("Password123!"); setError(""); }}>
                     {label}
                   </button>
                 ))}
