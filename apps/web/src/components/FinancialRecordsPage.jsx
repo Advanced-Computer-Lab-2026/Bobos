@@ -272,7 +272,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
           disabled={exporting || loading}
           title="Download filtered records as CSV"
         >
-          {exporting ? "Exporting CSV…" : "⤓ Export CSV"}
+          {exporting ? "Exporting CSV…" : "Export CSV"}
         </button>
       </div>
 
@@ -337,7 +337,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
             Clear filters
           </button>
           <button className="text-button push-right" type="button" onClick={() => loadRecords()}>
-            ↻ Refresh
+            Refresh
           </button>
         </div>
       </section>
@@ -368,7 +368,6 @@ export default function FinancialRecordsPage({ token, role, notify }) {
           </div>
         ) : records.length === 0 ? (
           <div className="empty-state">
-            <span>💳</span>
             <h3>No financial records found</h3>
             <p>
               {error
