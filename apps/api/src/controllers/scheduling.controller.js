@@ -281,7 +281,7 @@ function resolveStoredEntries(schedule, offeringById, courseById) {
   return { entries };
 }
 
-async function revalidateScheduleForProcessing(student, term, current, session) {
+export async function revalidateScheduleForProcessing(student, term, current, session = null) {
   if (!current.courses?.length) {
     throw draftError(400, "Cannot process an empty schedule.");
   }
@@ -301,6 +301,10 @@ async function revalidateScheduleForProcessing(student, term, current, session) 
     selections,
   );
   const resolvedSlots = collectSlotRefs(courses);
+  const storedSlots = collectSlotRefs(current.courses);
+  if (storedSlots.size !== resolvedSlots.size || [...resolvedSlots].some(([key, ref]) => storedSlots.get(key)?.count !== ref.count)) {
+    throw draftError(400, "Cannot process schedule: a selected group is missing a required meeting.");
+  }
   for (const entry of current.courses) {
     for (const [key] of collectSlotRefs([entry])) {
       if (!resolvedSlots.has(key)) {

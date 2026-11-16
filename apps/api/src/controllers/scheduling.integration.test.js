@@ -1335,3 +1335,114 @@ test("C3: clash checks and concurrent approvals protect the timetable and final 
     [String(current._id), String(replacement._id)].sort());
   assert.equal(await SlotChangeRequest.countDocuments({ status: "pending" }), 1);
 });
+
+test("C3: an incomplete or clashing review schedule cannot submit a slot change", async () => {
+  await AcademicTerm.updateOne({ _id: term._id }, { $set: { advisingDeadline: new Date(Date.now() + 600_000) } });
+  const first = await CourseOffering.findById(offerings[0]._id);
+  first.slots.push({ componentType: "lab", groupNumber: "1", day: "Monday", startMinute: 600,
+    endMinute: 660, room: "L1", capacity: 2 });
+  await first.save();
+  const schedule = await StudentSchedule.create({ student: profiles.advising._id, term: term._id,
+    scheduleType: "advising", status: "readyForStudentReview", createdBy: users.advisor._id,
+    courses: [{ course: courses[0]._id, courseOffering: first._id, creditHoursSnapshot: courses[0].creditHours,
+      slots: [{ componentType: "lecture", courseOffering: first._id, slotGroupId: first.slots[0]._id }] }] });
+  const submit = () => call("/slot-changes", { role: "advisingStudent", method: "POST",
+    body: { courseId: String(courses[0]._id), slotId: String(first.slots[0]._id) } });
+  assert.match((await call("/slot-changes/me", { role: "advisingStudent" })).body.issue, /needs a lab group/i);
+  assert.equal((await submit()).status, 409);
+  schedule.courses[0].slots.push({ componentType: "lab", courseOffering: first._id, slotGroupId: first.slots.at(-1)._id });
+  const second = await CourseOffering.findById(offerings[1]._id);
+  second.slots[0].day = first.slots[0].day;
+  second.slots[0].startMinute = first.slots[0].startMinute;
+  second.slots[0].endMinute = first.slots[0].endMinute;
+  await second.save();
+  schedule.courses.push({ course: courses[1]._id, courseOffering: second._id, creditHoursSnapshot: courses[1].creditHours,
+    slots: [{ componentType: "lecture", courseOffering: second._id, slotGroupId: second.slots[0]._id }] });
+  await schedule.save();
+  assert.match((await call("/slot-changes/me", { role: "advisingStudent" })).body.issue, /overlap/i);
+  assert.equal((await submit()).status, 409);
+});
+
+test("C3: a replacement group moves every meeting and checks each seat and clash", async () => {
+  await AcademicTerm.updateOne({ _id: term._id }, { $set: { advisingDeadline: new Date(Date.now() + 600_000) } });
+  const first = await CourseOffering.findById(offerings[0]._id);
+  first.slots.push({ componentType: "lecture", groupNumber: "1", day: "Thursday", startMinute: 660,
+    endMinute: 720, room: "H11", capacity: 2 });
+  first.slots.push({ componentType: "lecture", groupNumber: "2", day: "Wednesday", startMinute: 660,
+    endMinute: 720, room: "H12", capacity: 2 });
+  await first.save();
+  const replacement = first.slots.find((slot) => slot.groupNumber === "2");
+  const secondMeeting = first.slots.at(-1);
+  const draft = await call(`/schedules/advising/${profiles.advising._id}/draft`, { role: "advisor", method: "PUT",
+    body: { version: 0, submitForReview: true, courses: offerings.map((offering) => ({ courseOffering: String(offering._id),
+      groups: [{ componentType: "lecture", groupNumber: "1" }] })) } });
+  assert.equal(draft.status, 201, JSON.stringify(draft.body));
+  const submitted = await call("/slot-changes", { role: "advisingStudent", method: "POST",
+    body: { courseId: String(courses[0]._id), slotId: String(first.slots[0]._id) } });
+  assert.equal(submitted.status, 201, JSON.stringify(submitted.body));
+  assert.equal((await call("/slot-changes", { role: "advisingStudent", method: "POST",
+    body: { courseId: String(courses[0]._id), slotId: String(first.slots.at(-2)._id) } })).status, 409);
+  const path = `/slot-changes/${submitted.body.request._id}`;
+  const decide = () => call(`${path}/decision`, { role: "advisor", method: "POST",
+    body: { decision: "approved", replacementSlotId: String(replacement._id) } });
+  let detail = await call(path, { role: "advisor" });
+  assert.equal(detail.body.alternatives.filter((group) => group.groupNumber === "2").length, 1);
+  assert.equal(detail.body.alternatives.find((group) => group.groupNumber === "2").meetings.length, 2);
+  await CourseOffering.updateOne({ _id: first._id, "slots._id": secondMeeting._id }, { $set: { "slots.$.capacity": 0 } });
+  assert.equal((await decide()).status, 409);
+  await CourseOffering.updateOne({ _id: first._id, "slots._id": secondMeeting._id }, { $set: {
+    "slots.$.capacity": 2, "slots.$.day": "Sunday", "slots.$.startMinute": offerings[1].slots[0].startMinute,
+    "slots.$.endMinute": offerings[1].slots[0].endMinute } });
+  detail = await call(path, { role: "advisor" });
+  assert.ok(detail.body.alternatives.find((group) => group.groupNumber === "2").clashes.length);
+  assert.equal((await decide()).status, 409);
+  await CourseOffering.updateOne({ _id: first._id, "slots._id": secondMeeting._id }, { $set: {
+    "slots.$.day": "Wednesday", "slots.$.startMinute": 660, "slots.$.endMinute": 720 } });
+  assert.equal((await decide()).status, 200);
+  const schedule = await StudentSchedule.findOne({ student: profiles.advising._id });
+  assert.deepEqual(schedule.courses[0].slots.map((slot) => String(slot.slotGroupId)).sort(),
+    [String(replacement._id), String(secondMeeting._id)].sort());
+  const counts = (await CourseOffering.findById(first._id)).slots;
+  assert.equal(counts.find((slot) => String(slot._id) === String(replacement._id)).assignedStudentCount, 1);
+  assert.equal(counts.find((slot) => String(slot._id) === String(secondMeeting._id)).assignedStudentCount, 1);
+  assert.equal(counts.find((slot) => String(slot._id) === String(first.slots[0]._id)).assignedStudentCount, 0);
+  assert.equal(counts.find((slot) => String(slot._id) === String(first.slots.at(-2)._id)).assignedStudentCount, 0);
+  assert.equal((await call(`/schedules/advising/${profiles.advising._id}/process`, { role: "advisor", method: "POST",
+    body: { termId: String(term._id) } })).status, 200);
+});
+
+test("C3: concurrent approvals cannot split or overbook a two-meeting group", async () => {
+  await AcademicTerm.updateOne({ _id: term._id }, { $set: { advisingDeadline: new Date(Date.now() + 600_000) } });
+  const offering = await CourseOffering.findById(offerings[0]._id);
+  offering.slots.push({ componentType: "lecture", groupNumber: "1", day: "Wednesday", startMinute: 660,
+    endMinute: 720, room: "H11", capacity: 2 });
+  offering.slots.push({ componentType: "lecture", groupNumber: "2", day: "Thursday", startMinute: 660,
+    endMinute: 720, room: "H12", capacity: 1 });
+  offering.slots.find((slot) => slot.groupNumber === "2").capacity = 1;
+  await offering.save();
+  users.secondStudent = await User.create({ email: "second@student.guc.edu.eg", fullName: "Second Student",
+    role: "advisingStudent", passwordHash: "test-hash" });
+  const other = await StudentProfile.create({ user: users.secondStudent._id, studentId: "49-00002",
+    studentType: "advising", advisingReason: "probation", major: "CS", currentSemester: 5, gpa: 2,
+    academicStanding: "probation", assignedAdvisor: users.advisor._id });
+  const ids = [];
+  for (const [profile, role] of [[profiles.advising, "advisingStudent"], [other, "secondStudent"]]) {
+    const draft = await call(`/schedules/advising/${profile._id}/draft`, { role: "advisor", method: "PUT",
+      body: { version: 0, submitForReview: true, courses: [{ courseOffering: String(offering._id),
+        groups: [{ componentType: "lecture", groupNumber: "1" }] }] } });
+    assert.equal(draft.status, 201, JSON.stringify(draft.body));
+    const submitted = await call("/slot-changes", { role, method: "POST",
+      body: { courseId: String(courses[0]._id), slotId: String(offering.slots[0]._id) } });
+    assert.equal(submitted.status, 201);
+    ids.push(submitted.body.request._id);
+  }
+  const results = await Promise.all(ids.map((id) => call(`/slot-changes/${id}/decision`, { role: "advisor",
+    method: "POST", body: { decision: "approved", replacementSlotId: String(offering.slots[1]._id) } })));
+  assert.deepEqual(results.map(({ status }) => status).sort(), [200, 409]);
+  const counts = (await CourseOffering.findById(offering._id)).slots;
+  assert.deepEqual(counts.filter((slot) => slot.groupNumber === "2").map((slot) => slot.assignedStudentCount), [1, 1]);
+  assert.deepEqual(counts.filter((slot) => slot.groupNumber === "1").map((slot) => slot.assignedStudentCount), [1, 1]);
+  const schedules = await StudentSchedule.find({ student: { $in: [profiles.advising._id, other._id] } });
+  assert.deepEqual(schedules.map((schedule) => [...new Set(schedule.courses[0].slots.map((ref) =>
+    counts.id(ref.slotGroupId).groupNumber))].join(",")).sort(), ["1", "2"]);
+});

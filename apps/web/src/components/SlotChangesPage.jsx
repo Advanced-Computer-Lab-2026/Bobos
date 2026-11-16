@@ -6,7 +6,8 @@ import { WorkspaceEmpty } from "./WorkspaceUI.jsx";
 const path = "/api/slot-changes";
 const statuses = { pending: "Pending", approved: "Approved", rejected: "Rejected", withdrawn: "Withdrawn" };
 const date = (value) => value ? new Date(value).toLocaleString() : "—";
-const slotText = (slot) => `${slot.type} · Group ${slot.groupNumber} · ${slot.day} ${slot.startTime}–${slot.endTime} · ${slot.room}`;
+const meetingText = (slot) => `${slot.day} ${slot.startTime}–${slot.endTime} · ${slot.room}`;
+const slotText = (slot) => `${slot.type} · Group ${slot.groupNumber} · ${(slot.meetings || [slot]).map(meetingText).join("; ")}`;
 const options = (items) => [...new Set(items.filter(Boolean))].sort((a, b) => a.localeCompare(b));
 const emptyFilters = { search: "", status: "", advisor: "", course: "", from: "", to: "" };
 
@@ -82,7 +83,7 @@ export default function SlotChangesPage({ token, role, onOpenSchedule }) {
   const setFilter = (key) => (event) => setFilters((old) => ({ ...old, [key]: event.target.value }));
   const currentRequest = detail?.request;
   const eligibleSlots = (data?.slots || []).filter((slot) => !requests.some((request) =>
-    request.status === "pending" && request.currentSlotGroupId === slot.slotId));
+    request.status === "pending" && request.course?._id === slot.courseId && request.componentType === slot.type));
 
   return <div className="page-stack scheduling-page slot-changes-page workspace-page">
     <div className="workspace-header"><div><h1>Slot change requests</h1>
@@ -200,7 +201,10 @@ export default function SlotChangesPage({ token, role, onOpenSchedule }) {
             setReplacement((selected) => selected === slot.slotId ? "" : selected);
           }}>
             <input type="radio" name="replacement" value={slot.slotId} checked={replacementSlotId === slot.slotId} onChange={() => setReplacement(slot.slotId)} disabled={busy || !slot.remainingSeats || !!slot.clashes.length} />
-            <span><strong>{slotText(slot)}</strong><span className="secondary-text">{slot.remainingSeats} {slot.remainingSeats === 1 ? "seat" : "seats"} left · {slot.clashes.length ? `Clashes with ${slot.clashes.join("; ")}` : "No timetable clash"}</span></span>
+            <span><strong>{slot.type} · Group {slot.groupNumber}</strong>
+              {slot.meetings.map((meeting) => <span className="secondary-text" key={meeting.slotId}>{meetingText(meeting)} · {meeting.remainingSeats} {meeting.remainingSeats === 1 ? "seat" : "seats"} left</span>)}
+              <span className="secondary-text">{slot.clashes.length ? `Clashes with ${slot.clashes.join("; ")}` : "No timetable clash"}</span>
+            </span>
           </label>)}
         </fieldset>
         {replacementSlotId && <button type="button" className="text-button slot-clear-selection" disabled={busy} onClick={() => setReplacement("")}>Clear selected slot</button>}
