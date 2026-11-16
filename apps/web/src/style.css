@@ -364,6 +364,10 @@ td strong, td .secondary-text { display: block; }
 .scheduling-filters { display: grid; grid-template-columns: minmax(220px, 1.6fr) repeat(3, minmax(120px, .7fr)); gap: 12px; margin: 0 0 16px; }
 .scheduling-filters .field, .roster-search { max-width: 100%; }
 .scheduling-page .roster-search { margin-bottom: 20px; }
+.panel.pending-work-page { padding-inline: clamp(24px, 3vw, 36px); }
+.pending-work-page .pending-work-stats { grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); margin-block: 16px; }
+.pending-work-stats .stat-card span { min-width: 0; overflow-wrap: anywhere; }
+.pending-work-page .table-wrap { margin-top: 16px; }
 .schedule-stats { margin-bottom: 1px; }
 .weekly-schedule { display: grid; grid-template-columns: repeat(6, minmax(135px, 1fr)); gap: 10px; overflow-x: auto; padding-bottom: 3px; }
 .schedule-day { min-width: 135px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }

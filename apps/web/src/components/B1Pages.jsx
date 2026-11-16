@@ -14,9 +14,9 @@ export function PendingWorkPage({ token }) {
   }, [token]);
   if (error) return <section className="panel"><p role="alert">{error}</p></section>;
   if (!data) return <div className="app-loading"><span className="loader" />Loading pending work…</div>;
-  return <section className="panel">
+  return <section className="panel pending-work-page">
     <div className="panel-heading"><div><h2>Pending work</h2><p>Workflow status is calculated from each student’s current schedule and requests.</p></div><span>{data.term?.code || "No active term"}</span></div>
-    <div className="stats-grid" style={{ margin: "1rem 0" }}>
+    <div className="stat-grid pending-work-stats">
       {Object.entries(data.groups.studentType || {}).map(([name, count]) => <div className="stat-card" key={name}><strong>{count}</strong><span>{name} students</span></div>)}
       {Object.entries(data.groups.requestType || {}).map(([name, count]) => <div className="stat-card" key={name}><strong>{count}</strong><span>{name} requests</span></div>)}
     </div>
