@@ -48,6 +48,8 @@ When the user asks Youssef Hany to review or take a task, use GitHub login `Yous
 
 If the user explicitly directs an immediate merge, follow that direction and make clear that Youssef's review is after the merge.
 
+When a configured automation or the user brings in a **Request changes** review or actionable comments from `YoussefHanyy` on a handoff pull request authored by `AdamMagued`, treat that feedback as the next task: read the complete review and latest diff, make the requested fixes on the same pull request branch, run relevant checks, reply with what changed, and request review from Youssef again. Keep the pull request open until the review is resolved, unless the user explicitly directs otherwise.
+
 ## Code style
 
 - Follow the existing formatting/linting rules in the repo.
