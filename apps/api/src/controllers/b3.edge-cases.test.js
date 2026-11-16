@@ -347,7 +347,7 @@ describe('Part B3 Automated Test Suite (Reqs 64–69 and 80–82)', () => {
       assert.equal(res.status, 403);
     });
 
-    it('successfully creates request with status "pending" when valid', async () => {
+    it('successfully creates request with status "pending" when valid (other reason)', async () => {
       const u = await createTestUser('advisingStudent');
       const student = await createTestStudent(u, advisorUser);
       const course = await createTestCourse();
@@ -369,8 +369,8 @@ describe('Part B3 Automated Test Suite (Reqs 64–69 and 80–82)', () => {
           studentProfileId: student._id,
           courseId: course._id,
           termId: defaultTerm._id,
-          reason: 'completedHours',
-          explanation: 'Student fulfilled total credit requirement.',
+          reason: 'other',
+          explanation: 'Student fulfilled equivalent requirements under advising review.',
         },
       });
 
@@ -379,6 +379,242 @@ describe('Part B3 Automated Test Suite (Reqs 64–69 and 80–82)', () => {
       assert.equal(String(res.body.student._id || res.body.student), String(student._id));
       assert.equal(String(res.body.course._id || res.body.course), String(course._id));
       createdRequestIds.push(res.body._id);
+    });
+
+    it('Req 64 eligibility: rejects completedHours when <= 157 hours and succeeds when > 157 hours', async () => {
+      const u = await createTestUser('advisingStudent');
+      const student = await createTestStudent(u, advisorUser);
+      const failedCourse = await createTestCourse();
+      const bigCourse = await createTestCourse({ creditHours: 156 });
+      const extraPassedCourse = await createTestCourse({ creditHours: 3 });
+
+      await CourseAttempt.create([
+        {
+          student: student._id,
+          course: failedCourse._id,
+          term: defaultTerm._id,
+          attemptNumber: 1,
+          attendance: 'attended',
+          result: 'failed',
+          grade: 'F',
+        },
+        {
+          student: student._id,
+          course: bigCourse._id,
+          term: defaultTerm._id,
+          attemptNumber: 1,
+          attendance: 'attended',
+          result: 'passed',
+          grade: 'A',
+        },
+      ]);
+
+      const ineligibleRes = await call('/mandatory-removals', {
+        user: advisorUser,
+        method: 'POST',
+        body: {
+          studentProfileId: student._id,
+          courseId: failedCourse._id,
+          termId: defaultTerm._id,
+          reason: 'completedHours',
+          explanation: 'Deferral due to completed hours',
+        },
+      });
+      assert.equal(ineligibleRes.status, 400);
+      assert.match(ineligibleRes.body.message, /157 completed credit hours/i);
+
+      await CourseAttempt.create({
+        student: student._id,
+        course: extraPassedCourse._id,
+        term: defaultTerm._id,
+        attemptNumber: 2,
+        attendance: 'attended',
+        result: 'passed',
+        grade: 'B',
+      });
+
+      const eligibleRes = await call('/mandatory-removals', {
+        user: advisorUser,
+        method: 'POST',
+        body: {
+          studentProfileId: student._id,
+          courseId: failedCourse._id,
+          termId: defaultTerm._id,
+          reason: 'completedHours',
+          explanation: 'Deferral after crossing 157 completed credit hours',
+        },
+      });
+      assert.equal(eligibleRes.status, 201);
+      assert.equal(eligibleRes.body.status, 'pending');
+      createdRequestIds.push(eligibleRes.body._id);
+    });
+
+    it('Req 64 eligibility: enforces makeupEligibility requires attended failed attempt', async () => {
+      const u = await createTestUser('advisingStudent');
+      const student = await createTestStudent(u, advisorUser);
+      const unattendedCourse = await createTestCourse();
+      const attendedCourse = await createTestCourse();
+
+      await CourseAttempt.create([
+        {
+          student: student._id,
+          course: unattendedCourse._id,
+          term: defaultTerm._id,
+          attemptNumber: 1,
+          attendance: 'unattended',
+          result: 'failed',
+          grade: 'F',
+        },
+        {
+          student: student._id,
+          course: attendedCourse._id,
+          term: defaultTerm._id,
+          attemptNumber: 1,
+          attendance: 'attended',
+          result: 'failed',
+          grade: 'F',
+        },
+      ]);
+
+      const resUnattended = await call('/mandatory-removals', {
+        user: advisorUser,
+        method: 'POST',
+        body: {
+          studentProfileId: student._id,
+          courseId: unattendedCourse._id,
+          termId: defaultTerm._id,
+          reason: 'makeupEligibility',
+          explanation: 'Student was unattended so ineligible for makeup',
+        },
+      });
+      assert.equal(resUnattended.status, 400);
+      assert.match(resUnattended.body.message, /makeup eligibility/i);
+
+      const resAttended = await call('/mandatory-removals', {
+        user: advisorUser,
+        method: 'POST',
+        body: {
+          studentProfileId: student._id,
+          courseId: attendedCourse._id,
+          termId: defaultTerm._id,
+          reason: 'makeupEligibility',
+          explanation: 'Student attended exam and qualifies for makeup',
+        },
+      });
+      assert.equal(resAttended.status, 201);
+      createdRequestIds.push(resAttended.body._id);
+    });
+
+    it('Req 64 eligibility: enforces restrictedCoursePair requires prerequisite/pair conflict', async () => {
+      const u = await createTestUser('advisingStudent');
+      const student = await createTestStudent(u, advisorUser);
+      const prereqCourse = await createTestCourse();
+      const standaloneCourse = await createTestCourse();
+      const pairedCourse = await createTestCourse({ prerequisites: [prereqCourse._id] });
+
+      await CourseAttempt.create([
+        {
+          student: student._id,
+          course: standaloneCourse._id,
+          term: defaultTerm._id,
+          attemptNumber: 1,
+          attendance: 'attended',
+          result: 'failed',
+          grade: 'F',
+        },
+        {
+          student: student._id,
+          course: pairedCourse._id,
+          term: defaultTerm._id,
+          attemptNumber: 1,
+          attendance: 'attended',
+          result: 'failed',
+          grade: 'F',
+        },
+      ]);
+
+      const resNoConflict = await call('/mandatory-removals', {
+        user: advisorUser,
+        method: 'POST',
+        body: {
+          studentProfileId: student._id,
+          courseId: standaloneCourse._id,
+          termId: defaultTerm._id,
+          reason: 'restrictedCoursePair',
+          explanation: 'No prerequisite conflict exists',
+        },
+      });
+      assert.equal(resNoConflict.status, 400);
+      assert.match(resNoConflict.body.message, /prerequisite|restricted course pair/i);
+
+      const resConflict = await call('/mandatory-removals', {
+        user: advisorUser,
+        method: 'POST',
+        body: {
+          studentProfileId: student._id,
+          courseId: pairedCourse._id,
+          termId: defaultTerm._id,
+          reason: 'restrictedCoursePair',
+          explanation: 'Student lacks prerequisite for paired course',
+        },
+      });
+      assert.equal(resConflict.status, 201);
+      createdRequestIds.push(resConflict.body._id);
+    });
+
+    it('Req 64 eligibility: enforces incorrectMandatoryDesignation requires major/course-type/standing mismatch', async () => {
+      const u = await createTestUser('advisingStudent');
+      const student = await createTestStudent(u, advisorUser, { major: 'CS', advisingReason: 'probation' });
+      const matchingCoreCourse = await createTestCourse({ courseType: 'core', facultyMajors: ['CS'] });
+      const otherMajorCourse = await createTestCourse({ courseType: 'core', facultyMajors: ['DMET'] });
+
+      await CourseAttempt.create([
+        {
+          student: student._id,
+          course: matchingCoreCourse._id,
+          term: defaultTerm._id,
+          attemptNumber: 1,
+          attendance: 'attended',
+          result: 'failed',
+          grade: 'F',
+        },
+        {
+          student: student._id,
+          course: otherMajorCourse._id,
+          term: defaultTerm._id,
+          attemptNumber: 1,
+          attendance: 'attended',
+          result: 'failed',
+          grade: 'F',
+        },
+      ]);
+
+      const resIneligible = await call('/mandatory-removals', {
+        user: advisorUser,
+        method: 'POST',
+        body: {
+          studentProfileId: student._id,
+          courseId: matchingCoreCourse._id,
+          termId: defaultTerm._id,
+          reason: 'incorrectMandatoryDesignation',
+          explanation: 'Invalid claim for own major core course',
+        },
+      });
+      assert.equal(resIneligible.status, 400);
+
+      const resEligible = await call('/mandatory-removals', {
+        user: advisorUser,
+        method: 'POST',
+        body: {
+          studentProfileId: student._id,
+          courseId: otherMajorCourse._id,
+          termId: defaultTerm._id,
+          reason: 'incorrectMandatoryDesignation',
+          explanation: 'DMET course mistakenly marked mandatory for CS student',
+        },
+      });
+      assert.equal(resEligible.status, 201);
+      createdRequestIds.push(resEligible.body._id);
     });
   });
 
@@ -751,6 +987,92 @@ describe('Part B3 Automated Test Suite (Reqs 64–69 and 80–82)', () => {
 
       assert.equal(resAlreadyDecided.status, 409);
     });
+
+    it('Req 69 concurrency: concurrent approvals allow only one winner and decrement capacity once', async () => {
+      const uConc = await createTestUser('advisingStudent');
+      const sConc = await createTestStudent(uConc, advisorUser);
+      const cConc = await createTestCourse();
+      const slotId = new mongoose.Types.ObjectId();
+      const offConc = await createTestOffering(defaultTerm, cConc, {
+        slots: [
+          {
+            _id: slotId,
+            componentType: 'lecture',
+            groupNumber: '1',
+            day: 'Tuesday',
+            startMinute: 540,
+            endMinute: 600,
+            room: 'C7.301',
+            capacity: 5,
+            assignedStudentCount: 1,
+          },
+        ],
+      });
+
+      const concSchedule = await StudentSchedule.create({
+        student: sConc._id,
+        term: defaultTerm._id,
+        scheduleType: 'advising',
+        status: 'draft',
+        seatsReserved: true,
+        version: 1,
+        createdBy: advisorUser._id,
+        courses: [
+          {
+            course: cConc._id,
+            courseOffering: offConc._id,
+            slots: [
+              {
+                componentType: 'lecture',
+                courseOffering: offConc._id,
+                slotGroupId: slotId,
+              },
+            ],
+            creditHoursSnapshot: 3,
+          },
+        ],
+      });
+      createdScheduleIds.push(concSchedule._id);
+
+      const concReq = await MandatoryCourseRemovalRequest.create({
+        student: sConc._id,
+        course: cConc._id,
+        advisor: advisorUser._id,
+        term: defaultTerm._id,
+        reason: 'other',
+        explanation: 'Concurrent approval idempotency test',
+        status: 'pending',
+      });
+      createdRequestIds.push(concReq._id);
+
+      const responses = await Promise.all(
+        Array.from({ length: 6 }, () =>
+          call(`/mandatory-removals/${concReq._id}/decision`, {
+            user: coordinatorUser,
+            method: 'PATCH',
+            body: {
+              decision: 'approved',
+              responseNote: 'Approved in concurrency check',
+            },
+          })
+        )
+      );
+
+      const successes = responses.filter((r) => r.status === 200);
+      const conflicts = responses.filter((r) => [400, 409].includes(r.status));
+      assert.equal(successes.length, 1, 'Exactly one concurrent approval may succeed');
+      assert.equal(conflicts.length, 5, 'Remaining concurrent approvals must be rejected with 400/409');
+
+      const freshOffering = await CourseOffering.findById(offConc._id);
+      assert.equal(
+        freshOffering.slots[0].assignedStudentCount,
+        0,
+        'Slot assignedStudentCount must be decremented exactly once from 1 to 0'
+      );
+
+      const freshSchedule = await StudentSchedule.findById(concSchedule._id);
+      assert.equal(freshSchedule.courses.length, 0, 'Course must be removed from draft schedule');
+    });
   });
 
   // =========================================================================
@@ -924,6 +1246,251 @@ describe('Part B3 Automated Test Suite (Reqs 64–69 and 80–82)', () => {
       });
       assert.ok(activity);
       assert.equal(activity.reason, 'Student needs adjustments after registration week');
+    });
+
+    it('Req 81 (Guard): blocks final processing when a pending MandatoryCourseRemovalRequest exists and succeeds once resolved', async () => {
+      const uMand = await createTestUser('advisingStudent');
+      const sMand = await createTestStudent(uMand, advisorUser);
+      const cMand = await createTestCourse();
+      const offMand = await createTestOffering(defaultTerm, cMand);
+
+      const schedMand = await StudentSchedule.create({
+        student: sMand._id,
+        term: defaultTerm._id,
+        scheduleType: 'advising',
+        status: 'readyForStudentReview',
+        seatsReserved: true,
+        version: 1,
+        createdBy: advisorUser._id,
+        courses: [
+          {
+            course: cMand._id,
+            courseOffering: offMand._id,
+            slots: [
+              {
+                componentType: 'lecture',
+                courseOffering: offMand._id,
+                slotGroupId: offMand.slots[0]._id,
+              },
+            ],
+            creditHoursSnapshot: 3,
+          },
+        ],
+      });
+      createdScheduleIds.push(schedMand._id);
+
+      const pendRemoval = await MandatoryCourseRemovalRequest.create({
+        student: sMand._id,
+        course: cMand._id,
+        advisor: advisorUser._id,
+        term: defaultTerm._id,
+        reason: 'other',
+        explanation: 'Blocking final process while removal awaits decision',
+        status: 'pending',
+      });
+      createdRequestIds.push(pendRemoval._id);
+
+      const blockedRes = await call(`/schedules/advising/${sMand._id}/process`, {
+        user: advisorUser,
+        method: 'POST',
+        body: { termId: defaultTerm._id },
+      });
+      assert.equal(blockedRes.status, 400);
+      assert.match(blockedRes.body.message, /pending mandatory removal/i);
+      assert.equal((await StudentSchedule.findById(schedMand._id)).status, 'readyForStudentReview');
+
+      // Resolve pending mandatory removal request
+      await MandatoryCourseRemovalRequest.updateOne(
+        { _id: pendRemoval._id },
+        { $set: { status: 'rejected', responseNote: 'Denied; proceed with schedule', decidedBy: coordinatorUser._id, decidedAt: new Date() } }
+      );
+
+      const okRes = await call(`/schedules/advising/${sMand._id}/process`, {
+        user: advisorUser,
+        method: 'POST',
+        body: { termId: defaultTerm._id },
+      });
+      assert.equal(okRes.status, 200);
+      assert.equal(okRes.body.schedule.status, 'processed');
+    });
+
+    it('Req 81 (Revalidation): blocks final processing for invalid credits, unmet prerequisites, unpublished offering, and timetable clash', async () => {
+      // 1. Invalid total credits (exceeds allowed credits)
+      const uCred = await createTestUser('advisingStudent');
+      const sCred = await createTestStudent(uCred, advisorUser, {
+        currentSemester: 8,
+        academicStanding: 'goodAcademicStanding',
+        advisingReason: 'failedCourses',
+      });
+      const cOver = await createTestCourse({ creditHours: 28 });
+      const offOver = await createTestOffering(defaultTerm, cOver, {
+        eligibleGroups: [{ major: 'CS', semester: 8 }],
+      });
+      const schedCred = await StudentSchedule.create({
+        student: sCred._id,
+        term: defaultTerm._id,
+        scheduleType: 'advising',
+        status: 'readyForStudentReview',
+        seatsReserved: true,
+        version: 1,
+        createdBy: advisorUser._id,
+        courses: [
+          {
+            course: cOver._id,
+            courseOffering: offOver._id,
+            slots: [
+              {
+                componentType: 'lecture',
+                courseOffering: offOver._id,
+                slotGroupId: offOver.slots[0]._id,
+              },
+            ],
+            creditHoursSnapshot: 28,
+          },
+        ],
+      });
+      createdScheduleIds.push(schedCred._id);
+
+      const resCredits = await call(`/schedules/advising/${sCred._id}/process`, {
+        user: advisorUser,
+        method: 'POST',
+        body: { termId: defaultTerm._id },
+      });
+      assert.equal(resCredits.status, 400);
+      assert.match(resCredits.body.message, /credit|allowed|allowance/i);
+      assert.equal((await StudentSchedule.findById(schedCred._id)).status, 'readyForStudentReview');
+
+      // 2. Unmet prerequisite
+      const uPre = await createTestUser('advisingStudent');
+      const sPre = await createTestStudent(uPre, advisorUser);
+      const missingPrereq = await createTestCourse();
+      const cWithPre = await createTestCourse({ prerequisites: [missingPrereq._id] });
+      const offPre = await createTestOffering(defaultTerm, cWithPre);
+      const schedPre = await StudentSchedule.create({
+        student: sPre._id,
+        term: defaultTerm._id,
+        scheduleType: 'advising',
+        status: 'readyForStudentReview',
+        seatsReserved: true,
+        version: 1,
+        createdBy: advisorUser._id,
+        courses: [
+          {
+            course: cWithPre._id,
+            courseOffering: offPre._id,
+            slots: [
+              {
+                componentType: 'lecture',
+                courseOffering: offPre._id,
+                slotGroupId: offPre.slots[0]._id,
+              },
+            ],
+            creditHoursSnapshot: 3,
+          },
+        ],
+      });
+      createdScheduleIds.push(schedPre._id);
+
+      const resPre = await call(`/schedules/advising/${sPre._id}/process`, {
+        user: advisorUser,
+        method: 'POST',
+        body: { termId: defaultTerm._id },
+      });
+      assert.equal(resPre.status, 400);
+      assert.match(resPre.body.message, /requires previously passed|prerequisite/i);
+      assert.equal((await StudentSchedule.findById(schedPre._id)).status, 'readyForStudentReview');
+
+      // 3. Unpublished offering
+      const uUnpub = await createTestUser('advisingStudent');
+      const sUnpub = await createTestStudent(uUnpub, advisorUser);
+      const cUnpub = await createTestCourse();
+      const offUnpub = await createTestOffering(defaultTerm, cUnpub);
+      const schedUnpub = await StudentSchedule.create({
+        student: sUnpub._id,
+        term: defaultTerm._id,
+        scheduleType: 'advising',
+        status: 'readyForStudentReview',
+        seatsReserved: true,
+        version: 1,
+        createdBy: advisorUser._id,
+        courses: [
+          {
+            course: cUnpub._id,
+            courseOffering: offUnpub._id,
+            slots: [
+              {
+                componentType: 'lecture',
+                courseOffering: offUnpub._id,
+                slotGroupId: offUnpub.slots[0]._id,
+              },
+            ],
+            creditHoursSnapshot: 3,
+          },
+        ],
+      });
+      createdScheduleIds.push(schedUnpub._id);
+      await CourseOffering.updateOne({ _id: offUnpub._id }, { isPublished: false });
+
+      const resUnpub = await call(`/schedules/advising/${sUnpub._id}/process`, {
+        user: advisorUser,
+        method: 'POST',
+        body: { termId: defaultTerm._id },
+      });
+      assert.equal(resUnpub.status, 400);
+      assert.equal((await StudentSchedule.findById(schedUnpub._id)).status, 'readyForStudentReview');
+
+      // 4. Timetable clash
+      const uClash = await createTestUser('advisingStudent');
+      const sClash = await createTestStudent(uClash, advisorUser);
+      const cClash1 = await createTestCourse();
+      const cClash2 = await createTestCourse();
+      const offClash1 = await createTestOffering(defaultTerm, cClash1);
+      const offClash2 = await createTestOffering(defaultTerm, cClash2);
+      const schedClash = await StudentSchedule.create({
+        student: sClash._id,
+        term: defaultTerm._id,
+        scheduleType: 'advising',
+        status: 'readyForStudentReview',
+        seatsReserved: true,
+        version: 1,
+        createdBy: advisorUser._id,
+        courses: [
+          {
+            course: cClash1._id,
+            courseOffering: offClash1._id,
+            slots: [
+              {
+                componentType: 'lecture',
+                courseOffering: offClash1._id,
+                slotGroupId: offClash1.slots[0]._id,
+              },
+            ],
+            creditHoursSnapshot: 3,
+          },
+          {
+            course: cClash2._id,
+            courseOffering: offClash2._id,
+            slots: [
+              {
+                componentType: 'lecture',
+                courseOffering: offClash2._id,
+                slotGroupId: offClash2.slots[0]._id,
+              },
+            ],
+            creditHoursSnapshot: 3,
+          },
+        ],
+      });
+      createdScheduleIds.push(schedClash._id);
+
+      const resClash = await call(`/schedules/advising/${sClash._id}/process`, {
+        user: advisorUser,
+        method: 'POST',
+        body: { termId: defaultTerm._id },
+      });
+      assert.equal(resClash.status, 400);
+      assert.match(resClash.body.message, /overlap/i);
+      assert.equal((await StudentSchedule.findById(schedClash._id)).status, 'readyForStudentReview');
     });
   });
 });
