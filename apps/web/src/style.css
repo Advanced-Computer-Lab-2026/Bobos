@@ -831,10 +831,28 @@ td { color: var(--ink); }
 .slot-changes-page .status-pill { font-size: 11px; }
 .slot-changes-page th { background: transparent; font-size: 12px; }
 .slot-alternative .secondary-text { display: block; margin-top: .25rem; }
+.slot-clear-selection { justify-self: start; margin-top: -.5rem; }
+.schedule-process-panel { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 12px 20px; border: 1px solid var(--line); padding: 16px 20px; border-radius: 8px; background: var(--success-bg); }
+.schedule-process-feedback { grid-column: 1 / -1; margin: 0; }
+.slot-request-view-button { min-height: 34px; white-space: nowrap; }
+.slot-request-card { width: min(1080px,100%); max-height: min(92vh,900px); padding: clamp(22px,3vw,36px); }
+.slot-request-dialog-status { display: flex; align-items: center; gap: 14px; }
+.slot-request-submitted { margin: -8px 0 22px; color: var(--muted); font-size: 13px; }
+.slot-request-detail-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+.slot-request-detail-block { min-width: 0; padding: 17px 18px; border: 1px solid var(--line); border-radius: 9px; background: var(--paper); }
+.slot-request-detail-block .eyebrow { margin-bottom: 8px; font-size: 10px; }
+.slot-request-detail-block p { margin: 0; color: var(--ink); font-size: 16px; line-height: 1.55; overflow-wrap: anywhere; white-space: pre-wrap; }
+.slot-request-detail-block .secondary-text { display: block; margin-top: 8px; overflow-wrap: anywhere; }
+.slot-request-dialog-footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 20px; padding-top: 17px; border-top: 1px solid var(--line); }
+.slot-request-dialog-footer p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
 @media (max-width: 640px) {
+  .schedule-process-panel { grid-template-columns: minmax(0,1fr); }
   .slot-request-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .slot-request-filters > :first-child { grid-column: 1 / -1; }
   .slot-changes-page .field input,
   .slot-changes-page .field select,
   .slot-changes-page button { min-height: 44px; }
+  .slot-request-card { width: 100%; max-height: calc(100dvh - 16px); padding: 18px; }
+  .slot-request-detail-grid { grid-template-columns: minmax(0,1fr); }
+  .slot-request-dialog-footer { align-items: stretch; flex-direction: column; }
 }

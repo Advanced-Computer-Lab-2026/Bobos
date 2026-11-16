@@ -13,8 +13,8 @@ function Status({ status }) {
   return <span className={`status-pill ${({ approved: "good", pending: "warning", rejected: "muted", withdrawn: "muted" })[status]}`}>{statuses[status]}</span>;
 }
 
-function NoteField({ label, value, onChange }) {
-  return <label className="field"><span>{label} (optional)</span><textarea rows={3} maxLength={1000} value={value} onChange={(event) => onChange(event.target.value)} /></label>;
+function NoteField({ label, value, onChange, hint, placeholder }) {
+  return <label className="field"><span>{label} (optional)</span>{hint && <small>{hint}</small>}<textarea rows={3} maxLength={1000} value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} /></label>;
 }
 
 export default function SlotChangesPage({ token, role, onOpenSchedule }) {
@@ -24,12 +24,14 @@ export default function SlotChangesPage({ token, role, onOpenSchedule }) {
   const [note, setNote] = useState("");
   const [filters, setFilters] = useState(emptyFilters);
   const [detail, setDetail] = useState(null);
+  const [selectedRequestId, setSelectedRequestId] = useState(null);
   const [replacementSlotId, setReplacement] = useState("");
   const [responseNote, setResponse] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const heading = useRef(null);
+  const studentRequestHeading = useRef(null);
   const load = useCallback((signal) => api(mine ? `${path}/me` : path, { token, signal }), [mine, token]);
   useEffect(() => {
     const controller = new AbortController();
@@ -69,6 +71,7 @@ export default function SlotChangesPage({ token, role, onOpenSchedule }) {
 
   const requests = data?.requests || [];
   const shown = filterSlotChanges(requests, filters);
+  const selectedRequest = mine ? requests.find((request) => request._id === selectedRequestId) : null;
   const advisors = [...new Map(requests.map(({ student }) => {
     const advisor = student?.assignedAdvisor;
     return [advisor?._id || "unassigned", advisor?.fullName || "Unassigned"];
@@ -99,7 +102,9 @@ export default function SlotChangesPage({ token, role, onOpenSchedule }) {
             <option value="">Choose a course and slot</option>
             {eligibleSlots.map((slot) => <option key={slot.slotId} value={slot.slotId}>{slot.courseCode} · {slotText(slot)}</option>)}
           </select></label>
-          <NoteField label="Preferred group or day" value={note} onChange={setNote} />
+          <NoteField label="What would work better?" value={note} onChange={setNote}
+            hint="Your note guides the decision. Your advisor or coordinator chooses the exact replacement slot from the available options."
+            placeholder="For example: Thursday lab group works better for me because…" />
           <div className="form-actions"><button className="primary-button" disabled={busy}>Submit request</button></div>
         </form> : <p>There are no other assigned slots you can request a change for.</p>}
       </>}
@@ -111,27 +116,60 @@ export default function SlotChangesPage({ token, role, onOpenSchedule }) {
         <label className="field"><span>Status</span><select value={filters.status} onChange={setFilter("status")}><option value="">All statuses</option>{Object.entries(statuses).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
         <label className="field"><span>Advisor</span><select value={filters.advisor} onChange={setFilter("advisor")}><option value="">All advisors</option>{advisors.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label>
         <label className="field"><span>Course</span><select value={filters.course} onChange={setFilter("course")}><option value="">All courses</option>{options(requests.map((item) => item.course?.code)).map((code) => <option key={code}>{code}</option>)}</select></label>
-        <label className="field"><span>Submitted from</span><input type="date" value={filters.from} max={filters.to || undefined} onChange={setFilter("from")} /></label>
-        <label className="field"><span>Submitted through</span><input type="date" value={filters.to} min={filters.from || undefined} onChange={setFilter("to")} /></label>
+        <label className="field"><span>Start date</span><input type="date" value={filters.from} max={filters.to || undefined} onChange={setFilter("from")} /></label>
+        <label className="field"><span>End date</span><input type="date" value={filters.to} min={filters.from || undefined} onChange={setFilter("to")} /></label>
         {Object.values(filters).some(Boolean) && <div className="form-actions"><button type="button" className="text-button" onClick={() => setFilters(emptyFilters)}>Clear filters</button></div>}
       </div>}
       {shown.length ? <div className="table-scroll"><table>
-        <thead><tr>{!mine && <th>Student</th>}<th>Course and slot</th><th>Submitted</th><th>Status</th>{mine && <th>Response</th>}<th>Action</th></tr></thead>
+        <thead><tr>{!mine && <th>Student</th>}<th>Course and slot</th><th>Submitted</th><th>Status</th>{!mine && <th>Action</th>}{mine && <th>Details</th>}</tr></thead>
         <tbody>{shown.map((item) => <tr key={item._id}>
           {!mine && <td><strong>{item.student?.user?.fullName}</strong><span className="secondary-text">{item.student?.studentId} · {item.student?.assignedAdvisor?.fullName || "Unassigned"}</span></td>}
           <td><strong>{item.course?.code} · {item.componentType}</strong><span className="secondary-text">{item.currentSlotLabel || item.course?.name}</span></td>
           <td>{date(item.createdAt)}<span className="secondary-text">{item.term?.code}</span></td>
           <td><Status status={item.status} /></td>
-          {mine && <td className="slot-response">{item.replacementSlotLabel && <strong>{item.replacementSlotLabel}</strong>}
-            {item.decidedBy && <span className="secondary-text">{item.decidedBy.fullName} · {date(item.decidedAt)}</span>}
-            {item.responseNote && <span className="secondary-text">{item.responseNote}</span>}
-            {!item.replacementSlotLabel && !item.decidedBy && !item.responseNote && "—"}
-          </td>}
-          <td>{mine ? item.status === "pending" && <button type="button" className="text-button" disabled={busy} onClick={() => action(`${path}/${item._id}/withdraw`)}>Withdraw</button>
-            : <button type="button" className="text-button" disabled={busy} id={`slot-request-${item._id}`} aria-label={`View request for ${item.student?.studentId}, ${item.course?.code}`} onClick={() => open(item._id)}>View request</button>}</td>
+          {!mine && <td><button type="button" className="text-button" disabled={busy} id={`slot-request-${item._id}`} aria-label={`View request for ${item.student?.studentId}, ${item.course?.code}`} onClick={() => open(item._id)}>View request</button></td>}
+          {mine && <td><button type="button" className="outline-button slot-request-view-button" id={`student-slot-request-${item._id}`} aria-label={`View ${item.componentType} change request for ${item.course?.code}`} onClick={() => {
+            setSelectedRequestId(item._id);
+            requestAnimationFrame(() => studentRequestHeading.current?.focus());
+          }}>View details</button></td>}
         </tr>)}</tbody>
       </table></div> : <p>{requests.length ? "No requests match these filters." : "There are no slot change requests yet."}</p>}
     </section>}
+    {selectedRequest && <div className="modal-backdrop slot-request-modal-backdrop" role="presentation" onClick={() => {
+      const id = selectedRequestId;
+      setSelectedRequestId(null);
+      requestAnimationFrame(() => document.getElementById(`student-slot-request-${id}`)?.focus());
+    }}>
+      <section className="modal-card wide-modal slot-request-card" role="dialog" aria-modal="true" aria-labelledby="student-slot-request-title" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          const id = selectedRequestId;
+          setSelectedRequestId(null);
+          requestAnimationFrame(() => document.getElementById(`student-slot-request-${id}`)?.focus());
+        }
+      }}>
+        <div className="modal-heading">
+          <div><p className="eyebrow">MY SLOT CHANGE REQUEST · {selectedRequest.term?.code}</p><h2 id="student-slot-request-title" ref={studentRequestHeading} tabIndex={-1}>{selectedRequest.course?.code} · {selectedRequest.componentType}</h2></div>
+          <div className="slot-request-dialog-status"><Status status={selectedRequest.status} /><button type="button" className="icon-button" aria-label="Close request details" onClick={() => {
+            const id = selectedRequestId;
+            setSelectedRequestId(null);
+            requestAnimationFrame(() => document.getElementById(`student-slot-request-${id}`)?.focus());
+          }}>×</button></div>
+        </div>
+        <p className="slot-request-submitted">Submitted {date(selectedRequest.createdAt)}</p>
+        <div className="slot-request-detail-grid">
+          <div className="slot-request-detail-block"><span className="eyebrow">Current assigned slot</span><p>{selectedRequest.currentSlotLabel || selectedRequest.course?.name}</p></div>
+          {selectedRequest.replacementSlotLabel && <div className="slot-request-detail-block"><span className="eyebrow">Approved replacement</span><p>{selectedRequest.replacementSlotLabel}</p></div>}
+          <div className="slot-request-detail-block"><span className="eyebrow">Your preferred group or day</span><p>{selectedRequest.preferenceNote || "No preference provided."}</p></div>
+          <div className="slot-request-detail-block"><span className="eyebrow">Advisor response</span><p>{selectedRequest.responseNote || (selectedRequest.status === "pending" ? "Your advisor has not responded yet." : "No response note provided.")}</p>
+            {selectedRequest.decidedBy && <span className="secondary-text">{selectedRequest.decidedBy.fullName} · {date(selectedRequest.decidedAt)}</span>}
+          </div>
+        </div>
+        <div className="slot-request-dialog-footer">
+          <p>{selectedRequest.status === "pending" ? "Your advising team is reviewing this request." : selectedRequest.status === "approved" ? "The requested slot change was approved." : selectedRequest.status === "rejected" ? "The requested change was rejected; your assigned slot remains unchanged." : "You withdrew this request; your assigned slot remains unchanged."}</p>
+          {selectedRequest.status === "pending" && <button type="button" className="outline-button" disabled={busy} onClick={() => action(`${path}/${selectedRequest._id}/withdraw`)}>Withdraw request</button>}
+        </div>
+      </section>
+    </div>}
     {currentRequest && <section className="panel form-stack">
       <div className="form-actions"><button type="button" className="outline-button" disabled={busy} onClick={() => {
         setDetail(null); setError(""); setMessage("");
@@ -144,7 +182,7 @@ export default function SlotChangesPage({ token, role, onOpenSchedule }) {
       </div><Status status={currentRequest.status} /></div>
       <div className="slot-request-summary">
         <div><strong>Current slot on the request</strong><p>{currentRequest.currentSlotLabel || (detail.current ? slotText(detail.current) : "Slot no longer listed")}</p></div>
-        <div><strong>Student’s preference</strong><p>{currentRequest.preferenceNote || "No preference provided."}</p></div>
+        <div><strong>Student’s preferred group or day</strong><p>{currentRequest.preferenceNote || "No preference provided."}</p></div>
       </div>
       {currentRequest.status === "pending" ? <form className="form-stack" onSubmit={(event) => {
         event.preventDefault();
@@ -154,11 +192,15 @@ export default function SlotChangesPage({ token, role, onOpenSchedule }) {
           <legend>Replacement slots</legend>
           {detail.issue && <p className="helper-text">{detail.issue}</p>}
           {!detail.issue && !detail.alternatives.length && <p className="helper-text">No alternative slots are published for this component.</p>}
-          {detail.alternatives.map((slot) => <label className="slot-alternative" key={slot.slotId}>
+          {detail.alternatives.map((slot) => <label className="slot-alternative" key={slot.slotId} onDoubleClick={(event) => {
+            event.preventDefault();
+            setReplacement((selected) => selected === slot.slotId ? "" : selected);
+          }}>
             <input type="radio" name="replacement" value={slot.slotId} checked={replacementSlotId === slot.slotId} onChange={() => setReplacement(slot.slotId)} disabled={busy || !slot.remainingSeats || !!slot.clashes.length} />
             <span><strong>{slotText(slot)}</strong><span className="secondary-text">{slot.remainingSeats} {slot.remainingSeats === 1 ? "seat" : "seats"} left · {slot.clashes.length ? `Clashes with ${slot.clashes.join("; ")}` : "No timetable clash"}</span></span>
           </label>)}
         </fieldset>
+        {replacementSlotId && <button type="button" className="text-button slot-clear-selection" disabled={busy} onClick={() => setReplacement("")}>Clear selected slot</button>}
         <NoteField label="Response to student" value={responseNote} onChange={setResponse} />
         <div className="form-actions">
           <button type="submit" className="primary-button" disabled={busy || !replacementSlotId}>Approve change</button>

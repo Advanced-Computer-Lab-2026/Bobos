@@ -496,6 +496,7 @@ function AdvisingDraftEditor({ token, student, termId, notify, onBack, onSaved }
   const [sendingForReview, setSendingForReview] = useState(false);
   const [refreshingPreferences, setRefreshingPreferences] = useState(false);
   const [error, setError] = useState("");
+  const [processError, setProcessError] = useState("");
   const [message, setMessage] = useState("");
   const [processing, setProcessing] = useState(false);
   const [reopenModalOpen, setReopenModalOpen] = useState(false);
@@ -626,7 +627,7 @@ function AdvisingDraftEditor({ token, student, termId, notify, onBack, onSaved }
 
   async function processSchedule() {
     setProcessing(true);
-    setError("");
+    setProcessError("");
     setMessage("");
     try {
       const activeTermId = termId || data?.term?._id || data?.term?.code;
@@ -640,7 +641,7 @@ function AdvisingDraftEditor({ token, student, termId, notify, onBack, onSaved }
       await load();
       onSaved?.("processed");
     } catch (requestError) {
-      setError(requestError.message);
+      setProcessError(requestError.message);
     } finally {
       setProcessing(false);
     }
@@ -729,11 +730,11 @@ function AdvisingDraftEditor({ token, student, termId, notify, onBack, onSaved }
       </section>
       {data.mandatoryCourses.length > 0 && <MandatoryCoursesPanel data={data} editable={editable} busy={savingMandatory} onSave={saveMandatory} />}
       {!editable && data.schedule?.status === "readyForStudentReview" && (
-        <section className="panel" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--success-bg)", border: "1px solid var(--line)", padding: "16px 20px", borderRadius: "8px" }}>
+        <section className="panel schedule-process-panel">
           <div>
             <h3 style={{ margin: "0 0 4px 0", fontSize: "14px", color: "var(--green-dark)" }}>Ready for Student Review</h3>
             <p style={{ margin: 0, fontSize: "11px", color: "var(--muted)" }}>
-              This schedule is now visible to {student.fullName} for review. You can process and finalize the schedule when review is complete.
+              {student.fullName} can review this schedule, but it is not finalized. Resolve every pending request before processing it.
             </p>
           </div>
           <button
@@ -744,6 +745,7 @@ function AdvisingDraftEditor({ token, student, termId, notify, onBack, onSaved }
           >
             {processing ? "Processing schedule…" : "Process Schedule"}
           </button>
+          {processError && <div className="feedback error schedule-process-feedback" role="alert">{processError}</div>}
         </section>
       )}
       {!editable && data.schedule?.status === "processed" && (
@@ -834,7 +836,6 @@ function AdvisingDraftEditor({ token, student, termId, notify, onBack, onSaved }
         {message && <Feedback tone="success">{message}</Feedback>}
         <div className="form-footer"><span className="helper-text">Saving keeps the schedule in draft. The server rechecks academic rules, capacity, and clashes.</span><button className="primary-button" type="submit" disabled={busy || !editable}>{saving && !sendingForReview ? "Saving draft…" : data.schedule ? "Update draft" : "Create draft"}<span>→</span></button></div>
         {editable && selectedOfferings.length > 0 && <div className="form-footer"><span className="helper-text">When the schedule is ready, save it and make it visible to the student for review.</span><button className="outline-button" type="button" onClick={(event) => save(event, true)} disabled={busy || Boolean(selectedConflict) || Boolean(incompleteSelection) || missingMandatory.length > 0 || overCreditLimit || extraHoursNotCovered}>{sendingForReview ? "Sending for review…" : "Save and send for student review"}<span>→</span></button></div>}
-        {data.schedule?.status === "readyForStudentReview" && <div className="form-footer" style={{ borderTop: "1px solid var(--line)", paddingTop: "14px" }}><span className="helper-text">Review complete? Finalize and process this schedule.</span><button className="primary-button" type="button" disabled={processing} onClick={processSchedule}>{processing ? "Processing schedule…" : "Process Schedule"}<span>→</span></button></div>}
         {data.schedule?.status === "processed" && <div className="form-footer" style={{ borderTop: "1px solid var(--line)", paddingTop: "14px" }}><span className="helper-text">Reopening reverts this schedule to draft status for further edits.</span><button className="primary-button destructive-action" type="button" onClick={() => { setReopenReason(""); setReopenError(""); setReopenModalOpen(true); }}>Reopen Schedule</button></div>}
       </form>
       {reopenModalOpen && (
