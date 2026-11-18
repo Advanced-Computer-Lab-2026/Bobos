@@ -169,26 +169,54 @@ function queueSketch(name) {
 let calendarWeek = 0;
 function calendarPage() {
   const today = new Date();
-  const days = Array.from({length:7}, (_, i) =>
-    new Date(today.getFullYear(), today.getMonth(), today.getDate() + calendarWeek * 7 + i, 12));
-  const format = (date, options) => date.toLocaleDateString('en-GB',options);
-  const cells = days.map(day=>{
-    const month = format(day,{month:'short'});
-    const deadline = day.getFullYear() === 2026 && registrationDates.find(([d,m])=>Number(d)===day.getDate() && m===month);
-    const current = day.toDateString()===today.toDateString();
-    const inner = `<small>${format(day,{weekday:'narrow'})}</small><b>${day.getDate()}</b>`;
-    return deadline ? `<button class="folio-date marked" type="button" aria-label="${format(day,{dateStyle:'full'})}, ${deadline[2]}">${inner}<span class="folio-tip" role="tooltip">${deadline[2]}</span></button>`
-      : `<span class="folio-date" ${current?'aria-current="date"':''} aria-label="${format(day,{dateStyle:'full'})}">${inner}</span>`;
+  const anchor = new Date(today.getFullYear(),today.getMonth(),today.getDate()+7*calendarWeek,12);
+  const first = new Date(anchor.getFullYear(),anchor.getMonth(),1,12);
+  const start = 1-first.getDay();
+  const month = anchor.getMonth();
+  const cells = Array.from({length:42},(_,index)=>{
+    const date = new Date(anchor.getFullYear(),month,start+index,12);
+    if(date.getMonth()!==month) return '<span></span>';
+    const day = date.getDate();
+    const isToday = date.toDateString()===today.toDateString();
+    const inWeek = day>=anchor.getDate()-anchor.getDay() && day<=anchor.getDate()+6-anchor.getDay();
+    const deadline = date.getFullYear()===2026 && registrationDates.find(([d,m])=>Number(d)===day && m===date.toLocaleString('en-GB',{month:'short'}));
+    const attrs = `class="folio-date${inWeek?' selected-week':''}${deadline?' marked':''}" ${isToday?'aria-current="date"':''}`;
+    return deadline ? `<button type="button" ${attrs} aria-label="${date.toDateString()}, ${deadline[2]}"><b>${day}</b><span class="folio-tip">${deadline[2]}</span></button>` : `<span ${attrs}><b>${day}</b></span>`;
   }).join('');
-  const edge = 'M4 6 Q66 2 130 5 T264 4 L262 149 Q184 147 133 151 T4 150 Z';
-  return `<svg class="folio-outline" viewBox="0 0 268 156" preserveAspectRatio="none" aria-hidden="true"><path d="${edge}"/><path d="M4 5 Q72 4 130 4 T263 5 L263 148 Q194 149 133 150 T5 151 Z"/></svg>
-    <svg class="folio-binding" viewBox="0 0 80 18" fill="none" aria-hidden="true"><g stroke="#625b50" stroke-linecap="round" stroke-width="2"><path d="M12 13c-5 0-6-11-2-11 3 0 4 4 4 7"/><path d="M36 13c-5 0-6-10-2-11 4-1 4 5 4 8"/><path d="M61 13c-5 0-6-11-2-11 3-1 5 4 5 7"/></g></svg>
-    <div class="folio-inner"><small>${calendarWeek===0?'Today':'Week of'}</small><strong>${format(days[0],{weekday:'short',day:'numeric',month:'short'})}</strong>
-    <div class="folio-days">${cells}</div></div>`;
+  return `<div class="folio-inner"><div class="folio-month"><strong>${anchor.toLocaleString('en-GB',{month:'long'})}</strong><small>${anchor.getFullYear()}</small></div><div class="folio-days">${['Su','Mo','Tu','We','Th','Fr','Sa'].map(d=>`<small>${d}</small>`).join('')}${cells}</div></div>`;
 }
+// Each cel describes the printed face, its turning underside, and the pencil
+// accents visible on that drawing. The three contours change independently.
+const calendarCels = [
+  [70,'M3 4L296 3 298 192Q156 197 2 194Z','',''],
+  [47,'M3 4L296 3 297 172Q288 185 270 193Q127 197 2 194Z','M297 172Q297 187 282 191L270 193Q288 185 297 172Z','M282 188l7-4'],
+  [43,'M3 4L296 3 297 146Q278 171 243 189Q146 197 2 194Z','M297 146Q302 164 287 179Q267 189 243 189Q278 170 297 146Z','M273 181q13-5 19-15'],
+  [54,'M3 4L296 3 296 112Q270 148 215 169Q150 191 2 190Z','M296 112Q307 133 286 154Q254 182 197 186Q89 197 2 190Q150 191 215 169Q270 148 296 112Z','M264 159q22-13 29-30M162 186q28-2 44-7'],
+  [40,'M3 4L296 3 296 83Q254 119 195 138Q102 165 2 159Z','M296 83Q309 102 283 129Q233 168 146 172Q62 179 2 159Q102 165 195 138Q254 119 296 83Z','M269 132q15-9 23-24M29 165q22 6 47 6'],
+  [57,'M3 4L296 3 295 57Q245 83 186 96Q91 117 3 111Z','M295 57Q307 78 275 99Q225 133 139 139Q51 145 3 111Q92 117 186 96Q245 83 295 57Z','M20 116q25 15 48 17M248 114q22-9 32-19'],
+  [44,'M3 4L296 3 293 34Q238 50 171 55Q80 62 4 55Z','M293 34Q305 49 275 70Q224 102 137 103Q41 104 4 55Q81 62 171 55Q238 50 293 34Z','M16 64q19 23 51 29M253 78l12-7'],
+  [56,'M3 4L296 3 289 15Q157 27 4 15Z','M289 15Q307 29 278 43Q220 70 124 64Q42 61 4 15Q155 26 289 15Z','M17 23q17 17 41 26M231 55q22-4 41-13'],
+  [43,'','M4 5Q63-5 152-9Q253-14 291-4Q308 3 285 16Q238 41 134 38Q37 35 4 5Z','M40 12q31 15 75 17M251 23l20-8'],
+  [58,'','M5 5Q22-20 90-37Q170-56 245-49Q279-46 290-28Q298-10 288 3Q177 16 5 5Z','M34-12q27-16 54-20M255-43q18 3 26 13'],
+  [48,'','M5 5Q28-29 99-48Q168-67 225-61Q263-58 276-41Q286-24 290 3Q147 13 5 5Z','M31-18q28-18 55-23M239-55q17 3 25 12'],
+  [56,'','M5 5Q28-26 112-38Q193-52 247-39Q277-30 290 3Q190 10 5 5Z','M48-22q33-11 63-14'],
+  [44,'','M5 5Q45-14 114-23Q211-35 263-18Q280-12 290 3Q140 9 5 5Z','M155-24q42-4 72-2'],
+  [55,'','M5 5Q80-10 159-13Q248-18 290 3Q165 9 5 5Z','M189-10l24 1'],
+  [52,'','M5 5Q99-1 192-3Q266-4 290 3Q167 8 5 5Z','']
+];
 function deskCalendar() {
-  return `<section class="desk-calendar" aria-label="Academic calendar"><div class="folio-paper" aria-live="polite">${calendarPage()}</div>
-    <div class="folio-nav"><span>Academic calendar</span><button type="button" data-week="-1" aria-label="Previous week">‹</button><button type="button" data-week="1" aria-label="Next week">›</button></div></section>`;
+  return `<section class="desk-calendar" aria-label="Academic calendar"><div class="folio-stack">
+    <svg class="folio-stand" viewBox="0 0 300 200" preserveAspectRatio="none" aria-hidden="true" stroke="#534c41" stroke-width="1.4" stroke-linejoin="round">
+      <path fill="#91a9a3" d="M9 4Q137 0 287 3L305 187 294 202Q148 208-2 204L4 190Z"/>
+      <path fill="#5e7774" d="M288 6l17 181-11 15-9-11Z"/>
+      <path fill="#d7c7a8" d="M1 188q148 2 296-4l-1 13q-169 7-296 2Z"/>
+      <path fill="none" stroke="#978c76" d="M4 196q83 2 139 0m11 0 135-4m-26 4 29-1"/>
+      <path fill="#f5efdf" d="M3 4Q129 1 296 3l2 189q-141 6-296 2Z"/>
+    </svg>
+    <div class="folio-paper" aria-live="polite">${calendarPage()}</div>
+    <svg class="folio-wires" viewBox="0 0 300 200" preserveAspectRatio="none" aria-hidden="true" fill="none" stroke-linecap="round">
+      ${[41,53,244,256].map((x,i)=>`<g transform="translate(${x} ${i%2})"><ellipse cx="1" cy="10" rx="3" ry="1.9" fill="#9b917b"/><path d="M1 10C-4 6-5-7-1-9c4-3 8 4 7 10" stroke="#48473e" stroke-width="3.2"/><path d="M0 8C-3 4-3-5-1-7" stroke="#dfd7c0" stroke-width="1"/></g>`).join('')}
+    </svg></div><div class="folio-nav"><span>Academic calendar</span><button type="button" data-week="-1" aria-label="Previous week">‹</button><button type="button" data-week="1" aria-label="Next week">›</button></div></section>`;
 }
 function workQueue(tasks) {
   const entries = tasks.map(([symbol,tone,count,subject,phrase,desc,target,cta],index)=>`
@@ -549,26 +577,30 @@ function weekly(){
     ['Thursday', []]
   ];
   const illustrated = workspaces[lab.layout].name === 'Claude Study';
-  const slots = [...new Set(days.flatMap(([, meetings]) => meetings.map(([time]) => time)))].sort();
   function classCard([time, code, detail, color]) {
     return `<div class="week-class ${color}">${illustrated ? courseDrawing(code) : ''}<time datetime="${time}">${time}</time>
       <strong>${courseData.find(course => course[0] === code)[1]}</strong>
       <small>${illustrated ? `${code}<span class="study-place">${detail}</span>` : `${code} · ${detail}`}</small></div>`;
   }
   function dayContents(meetings) {
-    if (!illustrated) return meetings.map(classCard).join('') || '<p class="week-free">No classes</p>';
-    if (!meetings.length) return `<div class="week-day-off">
-      <svg aria-hidden="true" viewBox="0 0 76 60" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-        <path class="day-off-wash" d="M13 35q8-2 22 2l1 5q-2 11-12 12-12-1-11-19Z"/>
-        <path d="M13 34q10-3 23 1l-1 9q-2 9-10 9-11 0-12-19Zm23 3q11-3 9 3-1 5-10 6M9 51q-3 3 9 5t24-3M20 27c-5-6 7-6 3-13m6 14c-3-4 4-6 4-10"/>
-        <path class="day-off-sun" d="M46 15q0-6 6-6t6 6q-1 6-6 6t-6-6Zm6-13v3m9 2 2-2m0 10h4m-9 8 2 3m-18-13-4-1m6-7-2-3"/>
-      </svg><strong>No classes</strong><small>All day</small></div>`;
-    return slots.map(time => {
-      const meeting = meetings.find(([start]) => start === time);
-      return meeting ? classCard(meeting) : `<div class="week-open-slot"><time datetime="${time}">${time}</time><span>Free slot</span></div>`;
-    }).join('');
+    if (meetings.length) return meetings.map(classCard).join('');
+    if (!illustrated) return '<p class="week-free">No classes</p>';
+    return `<div class="week-day-off"><svg viewBox="0 0 90 68" aria-hidden="true" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <g stroke="#504339" stroke-width="1.6">
+        <path fill="#d6bd9f" d="M13 52c5-5 23-7 43-5 11 1 18 3 19 6-1 4-18 7-35 6-14 0-26-2-27-7Z"/>
+        <path fill="#faf0d8" d="M18 51c12-4 34-4 49 1-4 4-34 7-49-1Z"/>
+        <path fill="#a7c3bc" fill-rule="evenodd" d="M55 33c13-8 20-2 16 6-2 5-8 8-17 7l1-13Zm3 3-1 6c5 0 9-2 10-5 1-3-3-4-9-1Z"/>
+        <path fill="#adc8c0" d="M22 30q18-5 37 0c-1 12-3 22-16 24-14 2-20-8-21-24Z"/>
+        <path fill="#f6ecd6" d="M22 30c2-6 33-7 37 0-2 6-33 7-37 0Z"/>
+        <path fill="#705044" d="M26 31q13-6 29-1-10 6-29 1Z"/>
+        <path d="M27 37q1 8 5 11" stroke="#dfede2"/>
+      </g><g class="cup-steam" fill="none" stroke="currentColor" stroke-width="1.55">
+      <path d="M35 23c-7-7 7-9 2-16M46 21c-3-5 5-6 4-12"/>
+      <path d="M35 22c-4-7 8-10 1-17M46 21c-5-5 6-7 3-13"/>
+      <path d="M36 22c-7-7 5-11-1-17M46 22c-4-6 4-9 2-13"/>
+      </g></svg><span>No classes scheduled</span></div>`;
   }
-  return `<div class="week-columns${illustrated ? ' week-by-time' : ''}" style="--day-rows:${slots.length + 1}" aria-label="Weekly course schedule">${days.map(([day, meetings]) =>
+  return `<div class="week-columns${illustrated ? ' compact-week' : ''}" aria-label="Weekly course schedule">${days.map(([day, meetings]) =>
     `<section class="week-day" aria-label="${day}"><h2>${day}</h2>${dayContents(meetings)}</section>`).join('')}</div>`;
 }
 function schedule(staff=false){
@@ -752,6 +784,8 @@ function accountControls(){
 }
 
 let arrivalObserver;
+let overviewOpened = false;
+const revealedOverviewItems = new Set();
 const motionPreference=matchMedia('(prefers-reduced-motion: reduce)');
 
 function finishArrival(item){
@@ -760,55 +794,179 @@ function finishArrival(item){
   item.getAnimations().filter(animation=>animation.id==='overview-arrival').forEach(animation=>animation.cancel());
 }
 
-function stageOverview(main){
-  const items=main.querySelectorAll('.queue-entry,.week-class,.week-free,.week-day-off,.module-review .review-person,.module-activity .event');
-  const grid=main.querySelector('.work-grid');
-  if(!items.length || motionPreference.matches) return;
-  const order=new Map(Array.from(items,(item,index)=>[item,index]));
-  let firstBatch=true;
-  arrivalObserver=new IntersectionObserver((entries,observer)=>{
-    const area=grid.getBoundingClientRect();
-    const visible=entries.filter(entry=>entry.isIntersecting && entry.target.hasAttribute('data-arriving'));
-    const week=firstBatch && main.querySelector('.week-columns');
-    const releaseWeek=week && week.scrollWidth<=week.clientWidth;
-    if(releaseWeek) week.classList.add('unstacking');
-    const flights=visible.map(({target:item,boundingClientRect:box},rank)=>{
-      observer.unobserve(item);
-      item.removeAttribute('data-arriving');
-      if(motionPreference.matches || item.matches(':focus-within')) return;
-      const index=order.get(item);
-      const side=index%2 ? 1 : -1;
-      const row=item.matches('.review-person,.event');
-      const gather=firstBatch && !row;
-      const centerX=box.left+box.width/2,centerY=box.top+box.height/2;
-      // Visible pieces share a pickup point. Later rows slip in from the gutter.
-      const fromGutter=row && innerWidth>800;
-      const direction=fromGutter ? (item.matches('.event') ? -1 : 1) : side;
-      const dx=gather ? area.left+area.width/2-centerX : direction*Math.min(64,box.width*.22);
-      const dy=gather ? Math.max(70,Math.min(innerHeight*.48,area.top+150))-centerY : 24;
-      const bend=(gather?24:9)*side;
-      const pose=(x,y,angle,scale)=>`translate(${x}px,${y}px) rotate(${angle}deg) scale(${scale})`;
-      return item.animate([
-        {transform:pose(dx,dy,side*(gather?7:3),gather ? .34 : .92),offset:0},
-        {transform:pose(dx*.64+bend,dy*.7-10,-side*2,gather ? .76 : .98),offset:.34},
-        {transform:pose(dx*.13-bend*.36,dy*.16+4,side*1.5,1),offset:.71},
-        {transform:pose(-side*2,-1,-side*.35,1),offset:.88},
-        {transform:'none'}
-      ],{id:'overview-arrival',duration:gather?580:350,delay:Math.min(rank,7)*24,fill:'backwards',easing:'cubic-bezier(.25,.72,.36,1)'}).finished;
-    });
-    Promise.allSettled(flights).then(()=>{if(releaseWeek) week.classList.remove('unstacking');});
-    if(visible.length) firstBatch=false;
-  },{threshold:0});
-  items.forEach(item=>{
-    item.setAttribute('data-arriving','');
-    arrivalObserver.observe(item);
-  });
-  main.addEventListener('focusin',event=>{
-    const item=event.target.closest('.queue-entry,.review-person,.event');
-    if(item) finishArrival(item);
-  });
+const P = (t,x=0,y=0,r=0,a=1,sx=1,sy=sx) => ({t,x,y,r,a,sx,sy});
+const finalPose = () => P(1);
+function compileExposureSheet(anchors, duration, seed, grain = 65) {
+ const frames = [];
+ // Two doubles, a short exposure, then a long hold: never a mechanical ticker.
+ const exposures = [1, 1.22, .73, 1.58, .91, .67, 1.31, 1.04];
+ for(let i=0;i<anchors.length-1;i++){
+  const a=anchors[i], b=anchors[i+1], span=(b.t-a.t)*duration;
+  const same = ['x','y','r','a','sx','sy'].every(k=>Math.abs(a[k]-b[k])<.00001);
+  const count=same?1:Math.max(1,Math.round(span/grain));
+  const weights=Array.from({length:count},(_,j)=>exposures[(seed+i+j)%exposures.length]);
+  const total=weights.reduce((s,n)=>s+n,0);let exposureTime=0;
+  for(let j=0;j<count;j++){
+   const q=j/count, f={t:a.t*duration+span*(exposureTime/total)};
+   for(const k of ['x','y','r','a','sx','sy']) f[k]=a[k]+(b[k]-a[k])*q;
+   f.x=Math.round(f.x);f.y=Math.round(f.y);f.r=Math.round(f.r*4)/4;
+   frames.push(f);exposureTime+=weights[j];
+  }
+ }
+ frames.push({...anchors[anchors.length-1],t:duration});
+ return frames;
 }
 
+function playOverviewPose(el,kind,index,order){
+  const rect=el.getBoundingClientRect();
+  const queueIndex=index,dayIndex=index,courseIndex=index,ordinal=index;
+  const sign=index%2===0?-1:1;
+  let duration,delay,anchors,origin='50% 70%';
+  if(kind==='course'){
+    const distance=(innerWidth<760?210:340)+(index%3)*42;
+    const x=sign*distance,y=100+(ordinal%3)*17;duration=1620; // exact original poses; shorter cut by default
+    delay=595+courseIndex*75;
+    origin=ordinal%2?'85% 95%':'15% 95%';
+    anchors=[P(0,x,y,sign*9,0),P(.05,x,y,sign*9,1),P(.16,x*.78,y,sign*4),P(.23,x*.78,y,sign*4),P(.31,x*.78,y*.48,-sign*6),P(.38,x*.78,y*.48,-sign*6),P(.5,x*.28,y*.48,sign*8),P(.56,x*.28,y*.48,sign*8),P(.65,x*.28,-17,-sign*5),P(.72,x*.28,-17,-sign*5),P(.81,-sign*12,-17,sign*3),P(.87,-sign*12,4,-sign*2),P(.94,sign*4,4,sign),finalPose()];
+  }else if(kind==='chrome'){
+   // A book opens, then four groups of index tabs tug free of the binding.
+   // The shell, layout and navigation hit targets never change position.
+   if(el.classList.contains('brand')){
+    duration=650;delay=15;origin='12% 52%';
+    anchors=[P(0,-25,-5,-5,0,.97),P(.12,-25,-5,-5,.45,.97),P(.29,-13,1,2,.9),P(.45,-13,1,2,1),P(.60,4,-1,-1.5),P(.74,4,-1,-1.5),P(.85,-2,0,.5),finalPose()];
+   }else if(el.classList.contains('study-nav-group')){
+    const i=Math.max(0,index-1);
+    duration=710+(i%2)*55;delay=105+i*115;origin='8% 35%';
+    anchors=[P(0,-26+(i%2)*5,6,-2.8,0),P(.10,-26+(i%2)*5,6,-2.8,0),
+     P(.19,-18,0,-1.7,.75),P(.31,-18,0,-1.7,1),P(.49,-5,-2,1.3),
+     P(.61,-5,-2,1.3),P(.74,3,1,-.65),P(.85,3,1,-.65),P(.93,-1,0,.3),finalPose()];
+   }else if(el.classList.contains('sidebar-foot')){
+    duration=640;delay=605;origin='15% 60%';
+    anchors=[P(0,-10,6,-1,0),P(.2,-10,6,-1,0),P(.44,2,-1,.6,.83),P(.62,2,-1,.6,1),P(.85,-1,0,-.25),finalPose()];
+   }else{
+    // The top bar is a fixed frame, not another piece of furniture flying in.
+    duration=475;delay=140;
+    anchors=[P(0,0,0,0,.25),P(.15,0,0,0,.45),P(.47,0,0,0,1),finalPose()];
+   }
+  }else if(kind==='queue'){
+   // Pencil-settle at 35% texture: an almost imperceptible wrong registration,
+   // a short held correction, then the illustration gets its own little gesture.
+   duration=765;delay=250+queueIndex*135;origin='28% 72%';
+   const signQ=queueIndex===1?1:-1;
+   anchors=[P(0,signQ*10,13,signQ*1.4,0),P(.13,signQ*10,13,signQ*1.4,.22),
+    P(.28,signQ*5,6,-signQ*.65,.71),P(.40,signQ*5,6,-signQ*.65,1),
+    P(.53,-signQ*2,-1.7,signQ*.34),P(.66,-signQ*2,-1.7,signQ*.34),
+    P(.81,signQ*1,.7,-signQ*.17),P(.9,signQ*1,.7,-signQ*.17),finalPose()];
+  }else if(kind==='greeting'){
+   // A handwritten title finding the line, with a deliberate half-beat hold.
+   duration=675;delay=82;
+   anchors=[P(0,-6,14,-.65,0),P(.16,-6,14,-.65,.16),P(.36,-1,5,.3,.85),
+    P(.49,-1,5,.3,1),P(.70,1,-1,-.16),P(.84,1,-1,-.16),finalPose()];
+  }else if(kind==='decoration'){
+   duration=650;delay=265;origin='50% 60%';
+   anchors=[P(0,4,8,-8,0),P(.22,4,8,-8,.12),P(.44,-1,1,3,.9),P(.62,-1,1,3,1),P(.82,1,-1,-1.5),finalPose()];
+  }else if(kind==='heading'){
+   duration=515;delay=rect.top<350?185:580;
+   anchors=[P(0,-5,8,-.6,0),P(.18,-5,8,-.6,.28),P(.40,-2,3,.3,.84),
+    P(.54,-2,3,.3,1),P(.73,1,-1,-.14),P(.85,1,-1,-.14),finalPose()];
+  }else if(kind==='day'){
+   // A little lifted tab, timed before the actual timetable card walks in.
+   duration=530;delay=420+dayIndex*75;origin='10% 90%';
+   anchors=[P(0,0,11,-1.8,0),P(.19,0,11,-1.8,.2),P(.39,0,3,1,.9),
+    P(.52,0,3,1,1),P(.75,0,-1,-.3),P(.89,0,-1,-.3),finalPose()];
+  }else if(kind==='upcoming'){
+   // Dates slip into view like small ledger entries, not like paper cards.
+   duration=555;delay=540+order*65;
+   anchors=[P(0,-6,9,-.35,0),P(.2,-6,9,-.35,.3),P(.48,1,2,.2,.9),
+    P(.64,1,2,.2,1),P(.84,-1,0,-.1),finalPose()];
+  }else if(kind==='note'){
+   // A quiet page landing. No scramble whatsoever.
+   duration=700;delay=680;
+   anchors=[P(0,0,12,.45,0),P(.20,0,12,.45,.2),P(.48,0,4,-.2,.78),
+    P(.67,0,1,0,1),finalPose()];
+  }else if(kind==='empty'||kind==='meta'){
+   duration=500;delay=kind==='empty'?710:180+order*27;
+   anchors=[P(0,0,5,0,0),P(.28,0,5,0,.2),P(.56,0,1,0,.85),finalPose()];
+  }else{
+   duration=480;delay=180;
+   anchors=[P(0,0,7,0,0),P(.28,0,7,0,.25),P(.65,0,0,0,1),finalPose()];
+  }
+  const grain=kind==='course'?82*1620/2020:kind==='queue'?45:kind==='chrome'?57:38;
+  const frames=compileExposureSheet(anchors,duration,index+4,grain).map(p=>({
+    offset:p.t/duration,opacity:p.a,transformOrigin:origin,easing:'steps(1,end)',
+    transform:`translate3d(${p.x}px,${p.y}px,0) rotate(${p.r}deg) scale(${p.sx},${p.sy})`
+  }));
+  const pace = kind==='chrome' ? .86 : ['greeting','decoration','meta','queue','heading'].includes(kind) ? .92 : 1;
+  el.animate(frames,{id:'overview-arrival',duration:duration*pace,delay:delay*pace,fill:'backwards'});
+}
+
+function stageOverview(main){
+  const title=main.querySelector('.page-head h1');
+  const greeting=document.createElement('div');
+  greeting.className='illustrated-greeting';
+  title.before(greeting);
+  greeting.append(title);
+  greeting.insertAdjacentHTML('beforeend',`<svg class="greeting-sun" viewBox="0 0 70 60" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" aria-hidden="true"><path d="M11 45c8-5 15-3 21-4s16-2 24 1M21 35c-6-13 5-25 16-21 8 2 10 11 7 18M32 6l1 4m-17 2 3 4M9 28h6m36-15-4 5m10 10-6 1"/><path d="m19 48 10 1m6 0 13-1" opacity=".5"/></svg>`);
+  if(motionPreference.matches) return;
+  const opening=!overviewOpened;
+  overviewOpened=true;
+  const shell=main.closest('.shell');
+  const units=new Map();
+  const groups={
+    chrome:'.brand,.study-nav-group,.sidebar-foot,.topbar',
+    greeting:'.page-head h1',meta:'.page-head p',decoration:'.greeting-sun',
+    heading:'.section-head,.timetable-heading',queue:'.queue-entry',upcoming:'.desk-calendar',
+    day:'.week-day>h2',course:'.week-class',empty:'.week-day-off',
+    note:'.module-review .review-person,.module-activity .event'
+  };
+  for(const [kind,selector] of Object.entries(groups)){
+    shell.querySelectorAll(selector).forEach((el,index)=>units.set(el,{kind,index}));
+  }
+  function reveal(el,order,scroll){
+    const {kind,index}=units.get(el);
+    el.removeAttribute('data-arriving');
+    const key=role+'-'+kind+'-'+index;
+    if(revealedOverviewItems.has(key) || el.matches(':focus-within')) return;
+    revealedOverviewItems.add(key);
+    if(!scroll){
+      if(opening) playOverviewPose(el,kind,index,order);
+      return;
+    }
+    // The pencil-settle drawing from the scroll study, at one fifth amplitude.
+    const direction=index%2 ? -1 : 1;
+    const poses=[[0,-13,11,-1.4,.45],[.13,-11,9,-1.1,.7],[.23,-5,4,-.4,.86],
+      [.39,-3,3,.1,.96],[.51,1,-1,.22,1],[.70,1,-1,.22,1],[.81,-.7,.3,-.1,1],[1,0,0,0,1]];
+    el.animate(poses.map(([offset,x,y,angle,opacity])=>({
+      offset,opacity,easing:'steps(1,end)',transform:`translate(${x*.2*direction}px,${y*.2}px) rotate(${angle*.2*direction}deg)`
+    })),{id:'overview-arrival',duration:290,delay:Math.min(order,4)*24,fill:'backwards'});
+  }
+  arrivalObserver=new IntersectionObserver(entries=>{
+    entries.filter(entry=>entry.isIntersecting).forEach(({target},order)=>{
+      arrivalObserver.unobserve(target);
+      if(target.hasAttribute('data-arriving')) reveal(target,order,true);
+    });
+  },{rootMargin:'0px 0px -5% 0px'});
+  let order=0;
+  for(const [el,{kind,index}] of units){
+    const rect=el.getBoundingClientRect();
+    if(revealedOverviewItems.has(role+'-'+kind+'-'+index)) continue;
+    if(kind==='chrome'||(rect.top<innerHeight && rect.bottom>0)) reveal(el,order++,false);
+    else {el.setAttribute('data-arriving','');arrivalObserver.observe(el);}
+  }
+  if(opening) shell.querySelectorAll('.study-nav-group').forEach((group,i)=>{
+    group.querySelectorAll('a').forEach((link,j)=>{
+      link.animate([
+        {offset:0,opacity:0,clipPath:'inset(0 100% 0 0)'},
+        {offset:.18,opacity:.5,clipPath:'inset(0 50% 0 0)'},
+        {offset:.38,opacity:.85,clipPath:'inset(0 15% 0 0)'},
+        {offset:.6,opacity:1,clipPath:'inset(0)'},{opacity:1,clipPath:'inset(0)'}
+      ].map(frame=>({...frame,easing:'steps(1,end)'})),{id:'overview-arrival',duration:370,delay:155+i*101+j*49,fill:'backwards'});
+    });
+  });
+  shell.addEventListener('focusin',event=>{
+    for(let el=event.target;el && el!==shell;el=el.parentElement) finishArrival(el);
+  });
+}
 motionPreference.addEventListener('change',()=>{
   if(!motionPreference.matches) return;
   arrivalObserver?.disconnect();
@@ -907,15 +1065,37 @@ document.addEventListener('click',event=>{
   if (!control) return;
   calendarWeek += Number(control.dataset.week);
   const paper = control.closest('.desk-calendar').querySelector('.folio-paper');
+  const stack = paper.parentElement;
+  stack.querySelector('.calendar-animation')?.remove();
+  const oldPage = paper.innerHTML;
   paper.innerHTML = calendarPage();
-  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    paper.getAnimations().forEach(animation=>animation.cancel());
-    paper.animate([
-      {transform:'perspective(460px) rotateX('+ (control.dataset.week==='1' ? -62 : 62) +'deg)'},
-      {transform:'perspective(460px) rotateX(3deg)',offset:.78},
-      {transform:'perspective(460px) rotateX(0)'}
-    ],{duration:320,easing:'ease-out'});
+  if (motionPreference.matches) return;
+  const forward = Number(control.dataset.week)>0;
+  const overlay = document.createElement('div');
+  overlay.className = 'calendar-animation';
+  overlay.inert = true;
+  overlay.setAttribute('aria-hidden','true');
+  overlay.innerHTML = `${forward?'':`<div class="folio-old-sheet">${oldPage}</div>`}
+    <div class="folio-printed-leaf">${forward?oldPage:paper.innerHTML}</div>
+    <svg viewBox="0 0 300 200" preserveAspectRatio="none" fill="none" stroke-linejoin="round" stroke-linecap="round">
+      <defs><clipPath id="folio-fold" clipPathUnits="objectBoundingBox"><path transform="scale(.0033333333 .005)"/></clipPath></defs>
+      <path class="folio-front-line" stroke="#635b47" stroke-width="1.2"/>
+      <path class="folio-underside" fill="#e9dfc8" stroke="#635b47" stroke-width="1.5"/>
+      <path class="folio-crease" stroke="#a0957d" stroke-width="1.25"/>
+    </svg>`;
+  stack.append(overlay);
+  const paths = overlay.querySelectorAll('path');
+  const leaf = overlay.querySelector('.folio-printed-leaf');
+  const frames = forward ? calendarCels : [...calendarCels].reverse();
+  function expose(index) {
+    if (!overlay.isConnected) return;
+    if (index===frames.length || motionPreference.matches) {overlay.remove();return;}
+    const [hold,face,back,crease] = frames[index];
+    leaf.hidden = !face;
+    [face,face,back,crease].forEach((drawing,i)=>paths[i].setAttribute('d',drawing));
+    setTimeout(()=>expose(index+1),hold);
   }
+  expose(0);
 });
 document.addEventListener('click',event=>{
   const target=event.target.closest('[data-page],[data-action],[data-tab]');if(!target)return;
