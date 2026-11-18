@@ -739,6 +739,71 @@ function accountControls(){
     <div id="account-menu" popover><div class="account-caption">${roleNames[role]}</div>${link('profile','My profile')}${button('Sign out','sign-out','sign-out')}</div>`;
 }
 
+let arrivalObserver;
+const motionPreference=matchMedia('(prefers-reduced-motion: reduce)');
+
+function finishArrival(item){
+  arrivalObserver?.unobserve(item);
+  item.removeAttribute('data-arriving');
+  item.getAnimations().filter(animation=>animation.id==='overview-arrival').forEach(animation=>animation.cancel());
+}
+
+function stageOverview(main){
+  const items=main.querySelectorAll('.queue-entry,.week-class,.week-free,.module-review .review-person,.module-activity .event');
+  const grid=main.querySelector('.work-grid');
+  if(!items.length || motionPreference.matches) return;
+  const order=new Map(Array.from(items,(item,index)=>[item,index]));
+  let firstBatch=true;
+  arrivalObserver=new IntersectionObserver((entries,observer)=>{
+    const area=grid.getBoundingClientRect();
+    const visible=entries.filter(entry=>entry.isIntersecting && entry.target.hasAttribute('data-arriving'));
+    const week=firstBatch && main.querySelector('.week-columns');
+    const releaseWeek=week && week.scrollWidth<=week.clientWidth;
+    if(releaseWeek) week.classList.add('unstacking');
+    const flights=visible.map(({target:item,boundingClientRect:box},rank)=>{
+      observer.unobserve(item);
+      item.removeAttribute('data-arriving');
+      if(motionPreference.matches || item.matches(':focus-within')) return;
+      const index=order.get(item);
+      const side=index%2 ? 1 : -1;
+      const row=item.matches('.review-person,.event');
+      const gather=firstBatch && !row;
+      const centerX=box.left+box.width/2,centerY=box.top+box.height/2;
+      // Visible pieces share a pickup point. Later rows slip in from the gutter.
+      const fromGutter=row && innerWidth>800;
+      const direction=fromGutter ? (item.matches('.event') ? -1 : 1) : side;
+      const dx=gather ? area.left+area.width/2-centerX : direction*Math.min(64,box.width*.22);
+      const dy=gather ? Math.max(70,Math.min(innerHeight*.48,area.top+150))-centerY : 24;
+      const bend=(gather?24:9)*side;
+      const pose=(x,y,angle,scale)=>`translate(${x}px,${y}px) rotate(${angle}deg) scale(${scale})`;
+      return item.animate([
+        {transform:pose(dx,dy,side*(gather?7:3),gather ? .34 : .92),offset:0},
+        {transform:pose(dx*.64+bend,dy*.7-10,-side*2,gather ? .76 : .98),offset:.34},
+        {transform:pose(dx*.13-bend*.36,dy*.16+4,side*1.5,1),offset:.71},
+        {transform:pose(-side*2,-1,-side*.35,1),offset:.88},
+        {transform:'none'}
+      ],{id:'overview-arrival',duration:gather?580:350,delay:Math.min(rank,7)*24,fill:'backwards',easing:'cubic-bezier(.25,.72,.36,1)'}).finished;
+    });
+    Promise.allSettled(flights).then(()=>{if(releaseWeek) week.classList.remove('unstacking');});
+    if(visible.length) firstBatch=false;
+  },{threshold:0});
+  items.forEach(item=>{
+    item.setAttribute('data-arriving','');
+    arrivalObserver.observe(item);
+  });
+  main.addEventListener('focusin',event=>{
+    const item=event.target.closest('.queue-entry,.review-person,.event');
+    if(item) finishArrival(item);
+  });
+}
+
+motionPreference.addEventListener('change',()=>{
+  if(!motionPreference.matches) return;
+  arrivalObserver?.disconnect();
+  document.querySelectorAll('[data-arriving]').forEach(finishArrival);
+  document.getAnimations().filter(animation=>animation.id==='overview-arrival').forEach(animation=>animation.cancel());
+});
+
 function render(focus=false){
   if (!authPages.has(page) && !signedIn()) {
     returnAfterSignIn = page;
@@ -748,8 +813,10 @@ function render(focus=false){
   document.title=`Portal — ${layoutNames[lab.layout]} · ${pages[page]}`;
   document.body.classList.toggle('auth-screen',authPages.has(page));
   const body=authPages.has(page)?auth():`<div class="shell">${sidebar()}<div class="workspace"><header class="topbar">${link('overview',portalWordmark(),'mobile-nav wordmark')}<span class="term">${workspaces[lab.layout].name==='Claude Study'?'<small class="study-crumb">Academic workspace &nbsp; / &nbsp;</small>':''}${pages[page]}<span>Winter 2026 / 2027</span></span><div class="topactions">${button(icon('menu')+'<span class="sr-only">Menu</span>','mobile-menu','mobile-menu')}${accountControls()}</div></header><main class="content" data-screen="${page}" id="content" tabindex="-1">${renderers[page]()}</main></div></div>`;
+  arrivalObserver?.disconnect();
   app.innerHTML=body;
   syncControls(role, page);
+  if(page==='overview' && workspaces[lab.layout].name==='Claude Study') stageOverview(app.querySelector('main'));
   if(focus)document.querySelector('#content')?.focus({preventScroll:true});
 }
 function navigate(target){if(dialog.open)dialog.close();page=pageKey(target);tab='';history.pushState({},'',href(page));render(true);window.scrollTo(0,0);}
@@ -840,19 +907,17 @@ document.addEventListener('click',event=>{
       !control.matches('.icon-button[data-page=notifications],main .btn')) return;
 
   const ink=document.querySelector('#press-ink');
-  const stroke=ink.firstElementChild;
   const bounds=control.getBoundingClientRect();
-  const x=event.detail ? event.clientX : bounds.left+bounds.width/2;
-  const y=event.detail ? event.clientY : bounds.top+bounds.height/2;
-  ink.style.left=Math.max(0,Math.min(innerWidth-33,x-12))+'px';
-  ink.style.top=Math.max(0,Math.min(innerHeight-14,y+3))+'px';
-  stroke.getAnimations().forEach(animation=>animation.cancel());
-  stroke.animate([
-    {strokeDashoffset:1,opacity:1},
-    {strokeDashoffset:0,opacity:1,offset:.46},
-    {strokeDashoffset:0,opacity:1,offset:.63},
-    {strokeDashoffset:-1,opacity:0}
-  ],{duration:380,easing:'ease-out'});
+  Object.assign(ink.style,{left:bounds.left+'px',top:bounds.top+'px',width:bounds.width+'px',height:bounds.height+'px'});
+  ink.querySelectorAll('path').forEach((ray,index)=>{
+    ray.getAnimations().forEach(animation=>animation.cancel());
+    ray.animate([
+      {strokeDashoffset:1,opacity:1},
+      {strokeDashoffset:0,opacity:1,offset:.45},
+      {strokeDashoffset:0,opacity:1,offset:.64},
+      {strokeDashoffset:-1,opacity:0}
+    ],{duration:280,delay:[0,23,12,0,34][index],easing:'ease-out'});
+  });
 },true);
 
 document.addEventListener('click',event=>{
