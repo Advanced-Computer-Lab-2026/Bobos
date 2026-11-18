@@ -1112,7 +1112,7 @@ html[data-theme=dark] [data-palette=console-tones] .sidebar .study-nav-group .na
 /* Outside the page renderer so the pen can finish as navigation takes place. */
 #press-ink{
   overflow:visible;position:fixed;left:0;top:0;z-index:1000;pointer-events:none;
-  fill:none;stroke:#3984de;stroke-width:1.85;stroke-linecap:round;
+  fill:none;stroke-linejoin:round;stroke:#3984de;stroke-width:1.85;stroke-linecap:round;
 }
 #press-ink path{opacity:0;stroke-dasharray:1 1;stroke-dashoffset:1}
 
@@ -1124,4 +1124,4 @@ html[data-theme=dark] [data-palette=console-tones] .sidebar .study-nav-group .na
   [data-arriving]{clip-path:none}
 }
 
-html[data-theme=dark] #press-ink{stroke:#76b9ff}
+html[data-theme=dark] #press-ink{stroke:#faf9f5}

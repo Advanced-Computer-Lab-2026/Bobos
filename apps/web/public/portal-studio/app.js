@@ -916,10 +916,10 @@ document.addEventListener('click',event=>{
   ink.querySelectorAll('path').forEach((ray,index)=>{
     ray.getAnimations().forEach(animation=>animation.cancel());
     ray.animate([
-      {strokeDashoffset:1,opacity:1},
-      {strokeDashoffset:0,opacity:1,offset:.45},
-      {strokeDashoffset:0,opacity:1,offset:.64},
-      {strokeDashoffset:-1,opacity:0}
+      {strokeDashoffset:1,opacity:1,transform:"scale(.56)"},
+      {strokeDashoffset:0,opacity:1,transform:"scale(1.12)",offset:.43},
+      {strokeDashoffset:0,opacity:1,transform:"scale(1)",offset:.65},
+      {strokeDashoffset:-1,opacity:0,transform:"scale(1.07)"}
     ],{duration:280,delay:[0,23,12,0,34][index],easing:'ease-out'});
   });
 },true);
