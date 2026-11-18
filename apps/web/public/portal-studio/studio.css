@@ -1118,96 +1118,23 @@ html[data-theme=dark] [data-palette=console-tones] .sidebar .study-nav-group .na
 }
 
 .queue-calendar-layout{display:grid;gap:20px;align-items:center}
-.desk-calendar{width:min(100%,280px);justify-self:center;color:var(--ink);min-width:0}
-.folio-paper{position:relative;color:#322e28;transform-origin:center top;isolation:isolate}
-.folio-outline{position:absolute;inset:0;height:100%;width:100%;z-index:-1;overflow:visible;filter:drop-shadow(1px 3px 0 #a49782)}
-.folio-outline path{fill:#f4efdf;stroke:#5a5146;stroke-width:1.3;vector-effect:non-scaling-stroke}
-.folio-outline path+path{visibility:hidden}
-.folio-inner{padding:15px 14px 14px}
-.folio-inner>small{font-size:11px;color:#615b51}
-.folio-inner>strong{display:block;font:normal clamp(23px,2.2vw,31px)/1.15 Georgia,serif;letter-spacing:-.045em;margin:3px 0 11px}
-.folio-days{display:grid;grid-template-columns:repeat(7,1fr)}
-.folio-date{position:relative;display:grid;place-items:center;gap:3px;border:0;background:none;color:inherit;padding:0;font:inherit}
-.folio-date small{font-size:10px;color:#676055}
-.folio-date b{display:grid;place-items:center;width:25px;height:24px;font:500 13px/1 system-ui}
-.folio-date[aria-current=date] b{background:#343331;color:#fff;border-radius:50% 44% 47% 45%}
-.folio-date.marked b{border:1.6px solid #a6452a;border-radius:49% 43% 51% 38%;color:#893b24}
-.folio-tip{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);width:max-content;padding:5px 8px;border-radius:5px;background:#302d29;color:#fff;font-size:12px;visibility:hidden}
-.marked:is(:hover,:focus) .folio-tip{visibility:visible}
-.folio-nav{display:flex;align-items:center;gap:2px;padding:6px 4px 0;font-size:12px}
-.folio-nav span{margin-right:auto;color:var(--muted)}
-.folio-nav button{border:0;background:transparent;color:inherit;font:21px/1 system-ui;width:30px;height:30px;border-radius:5px;cursor:pointer}
-.folio-nav button:hover{background:var(--raised)}
-@media(prefers-reduced-motion:no-preference){
-.desk-calendar:is(:hover,:focus-within) .folio-outline path+path{animation:folio-ink .29s steps(1) infinite}
-@keyframes folio-ink{0%,65%{visibility:hidden}32%,82%{visibility:visible}}
-}
 @container(min-width:690px){
 .queue-calendar-layout{grid-template-columns:minmax(0,1fr) minmax(205px,26%);gap:18px}
 [data-workspace=claude-study] .queue-calendar-layout [data-direction=illustrated] .queue-entries{grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:6px}
 }
 
-/* Shared period tracks keep the noon lecture at noon across the week. */
-[data-workspace=claude-study] .week-columns.week-by-time {
-  display:grid;
-  grid-template-columns:repeat(5,minmax(0,1fr));
-  gap:8px 12px;
+[data-workspace=claude-study] .compact-week{align-items:start;gap:12px}
+.compact-week .week-day-off{display:grid;justify-items:center;align-content:center;gap:4px;min-height:100px;color:var(--muted);text-align:center;font-size:12px}
+.week-day-off svg{width:70px;height:auto;color:var(--muted)}
+.cup-steam path:not(:first-child){opacity:0}
+@media(prefers-reduced-motion:no-preference){
+  .cup-steam path{animation:steam-cel 1.5s steps(1,end) infinite}
+  .cup-steam path:nth-child(2){animation-delay:-1s}
+  .cup-steam path:nth-child(3){animation-delay:-.5s}
+  @keyframes steam-cel{0%,100%{opacity:.75}33.333%,99%{opacity:0}}
 }
-[data-workspace=claude-study] .week-by-time .week-day {
-  display:grid;
-  grid-row:span var(--day-rows);
-  grid-template-rows:subgrid;
-  min-width:0;
-}
-[data-workspace=claude-study] .week-by-time .week-day>h2 {margin:0}
-[data-workspace=claude-study] .week-by-time .week-class {margin:0}
-.week-open-slot {
-  display:flex;
-  flex-direction:column;
-  justify-content:center;
-  align-items:flex-start;
-  gap:4px;
-  padding-inline:10px;
-  color:var(--muted);
-  font-size:12px;
-}
-.week-open-slot time {
-  font-size:11px;
-  font-variant-numeric:tabular-nums;
-}
-.week-open-slot span {display:inline-flex;align-items:center;gap:6px}
-.week-open-slot span::before {
-  content:"";
-  width:11px;height:1px;
-  background:currentColor;
-  transform:rotate(-4deg);
-}
-.week-day-off {
-  grid-row:2 / -1;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  color:var(--muted);
-  text-align:center;
-  gap:4px;
-}
-.week-day-off svg {width:64px;stroke-width:1.65;margin-bottom:5px}
-.week-day-off strong {font:400 17px/1.25 Tiempos,Georgia,serif;color:var(--ink)}
-.week-day-off small {font-size:12px}
-.day-off-wash {fill:var(--console-sage,#bdcfc8);stroke:none}
-.day-off-sun {stroke:var(--tone)}
-@media(max-width:720px) {
-  [data-workspace=claude-study] .work-module .week-columns.week-by-time,
-  [data-workspace=claude-study] .week-columns.week-by-time {
-    display:grid;grid-template-columns:minmax(0,1fr);overflow:visible;gap:18px;
-  }
-  [data-workspace=claude-study] .week-by-time .week-day {
-    grid-row:auto;grid-template-rows:none;grid-template-columns:minmax(0,1fr);gap:6px;
-  }
-  .week-open-slot {flex-direction:row;justify-content:flex-start;align-items:center;gap:10px;padding-block:3px}
-  .week-day-off {grid-row:auto;flex-direction:row;justify-content:flex-start;gap:9px}
-  .week-day-off svg {width:40px;margin:0}
+@media(max-width:720px){
+  [data-workspace=claude-study] .week-columns.compact-week{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));overflow:visible}
 }
 .module-queue{container:workqueue / inline-size}
 @container workqueue (min-width:690px){
@@ -1216,4 +1143,42 @@ html[data-theme=dark] [data-palette=console-tones] .sidebar .study-nav-group .na
   [data-workspace=claude-study] .queue-calendar-layout :is(.queue-icon,.queue-link){justify-self:start}
   [data-workspace=claude-study] .queue-calendar-layout .queue-sketch{width:58px}
 }
-.folio-binding{position:absolute;width:64px;height:17px;top:-6px;right:9%;pointer-events:none}
+@container workqueue (min-width:690px){.queue-calendar-layout{grid-template-columns:minmax(0,1fr) minmax(226px,31%)}}
+@media(prefers-reduced-motion:no-preference){
+.desk-calendar:is(:hover,:focus-within) .marked b{animation:date-pencil .39s steps(1) infinite}
+@keyframes date-pencil{33%{border-radius:42% 53% 44% 49%}66%{border-radius:50% 42% 49% 44%}}
+}
+.illustrated-greeting{display:flex;align-items:center;gap:clamp(6px,1vw,14px)}
+.illustrated-greeting .greeting-sun{width:clamp(37px,3.5vw,50px);height:auto;flex:none;color:#9b6835;pointer-events:none}
+html[data-theme=dark] .illustrated-greeting .greeting-sun{color:#e0b882}
+
+
+.desk-calendar{width:min(100%,335px);min-width:0;justify-self:center;padding:12px 7px 0;color:var(--ink)}
+.folio-stack{position:relative;isolation:isolate}
+.folio-stand,.folio-wires,.calendar-animation>svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
+.folio-stand{z-index:-1}
+.folio-wires{z-index:2}
+.folio-paper,.folio-printed-leaf,.folio-old-sheet{color:#353832}
+.folio-inner{padding:19px 6% 15px}
+.folio-month{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:0 2px 7px;padding:0 0 6px;border-bottom:1px solid #bcb4a2}
+.folio-month strong{font:550 clamp(19px,1.8vw,25px)/1.1 Styrene,system-ui,sans-serif;letter-spacing:-.05em}
+.folio-month small,.folio-days>small{font:500 11px/1.35 Styrene,system-ui,sans-serif;color:#67685c}
+.folio-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));row-gap:2px;text-align:center}
+.folio-days>small{padding-bottom:2px;font-size:10px}
+.folio-date{display:grid;place-items:center;position:relative;background:transparent;color:inherit;border:0;padding:0}
+.folio-date.selected-week{background:#d7e1d7}
+.folio-date b{display:grid;place-items:center;width:24px;height:21px;font:500 13px/1 Styrene,system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.folio-date[aria-current=date] b{border-radius:48% 44% 49% 45%;background:#3d5555;color:#fff}
+.folio-date.marked{cursor:help}
+.folio-date.marked b{outline:1.5px solid #a94f37;outline-offset:-1px;color:#843e2b;border-radius:49% 43% 52% 41%}
+.folio-date.marked[aria-current=date] b{color:white}
+.folio-date.marked:is(:hover,:focus){z-index:4}
+.folio-tip{position:absolute;bottom:100%;right:0;width:max-content;padding:5px 8px;border-radius:4px;background:#302d29;color:white;font:400 12px/1.35 Styrene,system-ui,sans-serif;visibility:hidden}
+.marked:is(:hover,:focus) .folio-tip{visibility:visible}
+.folio-nav{display:flex;align-items:center;gap:2px;padding:9px 2px 0;font-size:12px}
+.folio-nav span{margin-right:auto;color:var(--muted)}
+.folio-nav button{border:0;background:transparent;color:inherit;font:21px/1 system-ui;width:30px;height:30px;border-radius:5px;cursor:pointer}
+.folio-nav button:hover{background:var(--raised)}
+.calendar-animation,.folio-old-sheet,.folio-printed-leaf{position:absolute;inset:0;pointer-events:none}
+.folio-printed-leaf{clip-path:url(#folio-fold);background:#f5efdf}
+.folio-old-sheet{background:#f5efdf;clip-path:polygon(1% 2%,98.7% 1.5%,99.3% 96%,.7% 97%)}
