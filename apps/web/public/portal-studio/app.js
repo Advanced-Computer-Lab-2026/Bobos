@@ -876,7 +876,7 @@ function playOverviewPose(el,kind,index,order){
     P(.52,0,3,1,1),P(.75,0,-1,-.3),P(.89,0,-1,-.3),finalPose()];
   }else if(kind==='upcoming'){
    // Dates slip into view like small ledger entries, not like paper cards.
-   duration=555;delay=540+order*65;
+   duration=555;delay=410;
    anchors=[P(0,-6,9,-.35,0),P(.2,-6,9,-.35,.3),P(.48,1,2,.2,.9),
     P(.64,1,2,.2,1),P(.84,-1,0,-.1),finalPose()];
   }else if(kind==='note'){
