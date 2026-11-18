@@ -221,9 +221,15 @@ const calendarInkHolds = {
   11:'M5 5Q27-27 112-38Q193-51 247-40Q277-29 290 3Q190 11 5 5Z',
   13:'M5 5Q80-11 159-13Q248-17 290 3Q165 8 5 5Z'
 };
-function deskCalendar() {
-  return `<section class="desk-calendar" aria-label="Academic calendar"><div class="folio-stack">
-    <svg class="folio-stand" viewBox="0 0 300 200" preserveAspectRatio="none" aria-hidden="true" stroke="#302f2c" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+function deskCalendar(teaching=false) {
+  return `<section class="desk-calendar${teaching?' teaching-pad':''}" aria-label="Academic calendar">${teaching?'<h2>Academic calendar</h2>':''}<div class="folio-stack">
+    ${teaching ? `<svg class="folio-stand" viewBox="0 0 300 200" preserveAspectRatio="none" fill="none" stroke="#433d34" stroke-width="1.35" stroke-linejoin="round" aria-hidden="true">
+      <path fill="#7793a1" d="m7 5 286-3 5 192-288 7-5-4Z"/>
+      <path fill="#dad1bc" d="m4 5 286-3 3 191-288 4Z"/>
+      <path fill="#faf4e4" d="M3 4q96-2 155-1l133-1-1 167q-2 13-19 20-93 4-268 4Z"/>
+      <path fill="#e3d7be" d="M270 190q9-7 7-19 8 2 13-3-4 15-20 22Z"/>
+      <path stroke="#b3a795" d="m11 195 123-2m12 0 111-2"/>
+    </svg>` : `<svg class="folio-stand" viewBox="0 0 300 200" preserveAspectRatio="none" aria-hidden="true" stroke="#302f2c" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
       <path fill="#8fabbd" d="M6 0Q108-4 276-3q8 0 12 9l20 159q0 5-3 8l-15 26Q163 205-4 200l1-10Z"/>
       <path fill="#607d8d" d="M281 1q6 0 7 6l20 158-16 25Z"/>
       <path fill="#e4dcca" d="M291 126l8 37-6 12Z"/>
@@ -232,11 +238,14 @@ function deskCalendar() {
       <path fill="#faf5e8" d="M5 2Q117-1 280 1l10 186q-132 8-292 3Z"/>
       <path fill="#9bbdce" d="M5 2q121-4 275-1l2 38q-136 4-278 1Z"/>
       <path fill="none" stroke="#547b8c" d="M9 37q45 1 67 0m152-1 43-1"/>
-    </svg>
+    </svg>`}
     <div class="folio-paper" aria-live="polite">${calendarPage()}</div>
-    <svg class="folio-wires" viewBox="0 0 300 200" preserveAspectRatio="none" aria-hidden="true" fill="none" stroke-linecap="round">
+    ${teaching ? `<svg class="pad-clip" viewBox="0 0 70 34" aria-hidden="true" fill="none" stroke="#393d3b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <path fill="#91a9ac" d="m8 18 54-1 2 11q-27 4-58 1Z"/><path fill="#c0d0cd" d="M10 18q11-1 14-7l4-6q7-8 14 0l3 7q3 5 15 5l-1 5-48 1Z"/>
+      <path fill="#575e58" d="M32 7q2-4 5-1 2 4-2 5-4 0-3-4Z"/><path stroke="#f0eee3" d="m14 19 11-1m-15 9 43-1"/>
+    </svg>` : `<svg class="folio-wires" viewBox="0 0 300 200" preserveAspectRatio="none" aria-hidden="true" fill="none" stroke-linecap="round">
       ${[48,63,220,235].map((x,i)=>`<g transform="translate(${x} ${i%2})"><ellipse cx="1" cy="6" rx="3.6" ry="2.3" fill="#3f5360"/><path d="M1 6C-5 3-6-12-1-14c5-2 9 5 8 12" stroke="#353938" stroke-width="3.7"/><path d="M0 4C-3 0-4-8-1-11" stroke="#cbd4c9" stroke-width="1.2"/></g>`).join('')}
-    </svg></div><div class="folio-nav"><button type="button" class="folio-today" data-calendar-nav="today" aria-label="Go to current month">Today · ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</button><button type="button" data-calendar-nav="-1" aria-label="Previous month">‹</button><button type="button" data-calendar-nav="1" aria-label="Next month">›</button></div>
+    </svg>`}</div><div class="folio-nav"><button type="button" class="folio-today" data-calendar-nav="today" aria-label="Go to current month">Today · ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</button><button type="button" data-calendar-nav="-1" aria-label="Previous month">‹</button><button type="button" data-calendar-nav="1" aria-label="Next month">›</button></div>
     <div class="folio-agenda" aria-label="Academic deadlines this month">${calendarAgenda()}</div></section>`;
 }
 function workQueue(tasks, separateCalendar=false) {
@@ -401,8 +410,9 @@ const dashboardViews = {
   handover:{label:'Staff handover',columns:'1fr 1.1fr',rows:['intro intro','activity review','queue calendar','week week']}
 };
 const dashboardViewKey='portal-studio-dashboard-view';
-let dashboardView=localStorage.getItem(dashboardViewKey);
-if (!Object.hasOwn(dashboardViews,dashboardView)) dashboardView='daybook';
+const requestedView=new URLSearchParams(location.search).get('view');
+let dashboardView=Object.hasOwn(dashboardViews,requestedView) ? requestedView : localStorage.getItem(dashboardViewKey);
+if (!Object.hasOwn(dashboardViews,dashboardView)) dashboardView='teaching';
 
 function dashboardEdition(modules,greeting){
   const view=dashboardViews[dashboardView];
@@ -410,7 +420,7 @@ function dashboardEdition(modules,greeting){
     `<option value="${id}" ${id===dashboardView?'selected':''}>${label}</option>`).join('');
   return `<div class="dashboard-edition" data-edition="${dashboardView}">
     <label class="edition-picker">Dashboard view <select data-dashboard-view>${options}</select></label>
-    ${workspaceGrid(view,{...modules,intro:greeting,calendar:deskCalendar()})}</div>`;
+    ${workspaceGrid(view,{...modules,intro:greeting,calendar:deskCalendar(dashboardView==='teaching')})}</div>`;
 }
 
 function overview(){
@@ -957,7 +967,11 @@ function stageOverview(main){
   greeting.className='illustrated-greeting';
   title.before(greeting);
   greeting.append(title);
-  greeting.insertAdjacentHTML('beforeend',`<svg class="greeting-sun" viewBox="0 0 70 60" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" aria-hidden="true"><path d="M11 45c8-5 15-3 21-4s16-2 24 1M21 35c-6-13 5-25 16-21 8 2 10 11 7 18M32 6l1 4m-17 2 3 4M9 28h6m36-15-4 5m10 10-6 1"/><path d="m19 48 10 1m6 0 13-1" opacity=".5"/></svg>`);
+  const hour=new Date().getHours();
+  const night=hour>=18 || hour<6;
+  const sky=night ? `<path class="moon-face" d="M40 10c-14 1-22 15-17 26 5 10 19 14 29 5-15 1-23-15-12-31Z"/><g class="sky-rays"><path d="m52 11 .8 3.5 3.4 1-3.4 1-.8 3.4-1-3.4-3.2-1 3.2-1Z"/><path d="m59 27 1 2m-44-12 1-2"/></g>`
+    : `<path class="sun-face" d="M21 35c-6-13 5-25 16-21 8 2 10 11 7 18"/><g class="sky-rays"><path d="M32 6l1 4m-17 2 3 4M9 28h6m36-15-4 5m10 10-6 1"/></g>`;
+  greeting.insertAdjacentHTML('beforeend',`<svg class="greeting-sun ${night?'night-sky':'day-sky'}" viewBox="0 0 70 60" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${sky}<path class="sky-horizon" d="M11 47q10-4 21-3t24 0"/><path d="m19 50 10 1m6 0 13-1" opacity=".5"/></svg>`);
   if(motionPreference.matches) return;
   const opening=!overviewOpened;
   overviewOpened=true;
@@ -1167,6 +1181,9 @@ document.addEventListener('change',event=>{
   if(event.target.matches('[data-dashboard-view]')){
     dashboardView=event.target.value;
     localStorage.setItem(dashboardViewKey,dashboardView);
+    const url=new URL(location.href);
+    url.searchParams.set('view',dashboardView);
+    history.replaceState(history.state,'',url);
     render();
     document.querySelector('[data-dashboard-view]').focus({preventScroll:true});
   } else if(event.target.id==='role-select'){role=event.target.value;navigate('overview');}
