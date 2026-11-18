@@ -99,19 +99,22 @@ function removalLetter() {
     [39,30,30,-6], [38,30,30,-6], [34,30,30,-7], [28,30,30,-7],
     [21,29,30,-6], [15,26,28,-5], [12,21,23,-5], [11,16,18,-4],
     [12,12,13,-4], [12,11,11.5,-4]
-
   ];
   const frames = poses.map(([tip,left,right,tilt],i)=>{
     const flap = `M11 24Q20 ${(24+tip)/2} 32 ${tip}Q42 ${(24+tip)/2} 55 23Q33 22 11 24Z`;
     const mid = (left+right)/2;
-    return `<g transform="translate(${64*i} 0) rotate(${tilt} 32 30)">
+    return `<g class="${i===poses.length-1 ? 'letter-open' : ''}" transform="translate(${64*i} 0) rotate(${tilt} 32 30)">
       <path d="M11 24Q33 22 55 23L54 47Q33 49 12 47Z" fill="#966f5a"/>
       ${tip<24 ? `<path d="${flap}" fill="#d1a485"/>` : ''}
-      <path d="M16 ${left}Q26 ${left-1} 33 ${mid}T50 ${right}L49 43 17 44Z" fill="#fff3da"/>
-      <g transform="translate(0 ${mid})"><path d="m20 5 13-.4m-10 4 7-.2" stroke="#796b56" stroke-width="1.15"/>
-      <path class="request-handwriting" pathLength="1" d="m22 15 3-.6 2 .5 3-.6 2 .2 3-.5 5 .2" fill="none" stroke="#796b56" stroke-width="1.15"/>
-      <circle cx="40" cy="5" r="3.7" fill="#deab90"/><path d="m38 5 4-.2"/></g>
-      <path d="M11 24Q20 29 32 36Q44 29 55 23L54 47Q33 49 12 47Z" fill="#eab698"/>
+      <g class="letter-sheet">
+        <path d="M16 ${left}Q26 ${left-1} 33 ${mid}T50 ${right}L49 43 17 44Z" fill="#fff3da"/>
+        <g transform="translate(0 ${mid})">
+          <path d="m20 5 13-.4m-10 4 7-.2" stroke="#796b56" stroke-width="1.15"/>
+          <path class="request-handwriting" d="m22 15 3-.6 2 .5 3-.6 2 .2 3-.5 5 .2" fill="none" stroke="#796b56" stroke-width="1.15"/>
+          <circle cx="40" cy="5" r="3.7" fill="#deab90"/><path d="m38 5 4-.2"/>
+        </g>
+      </g>
+      <path class="letter-pocket" d="M11 24Q20 29 32 36Q44 29 55 23L54 47Q33 49 12 47Z" fill="#eab698"/>
       <path d="m14 44 13-11m25 11-13-11" stroke="#a77760" stroke-width="1.1"/>
       ${tip>=24 ? `<path d="${flap}" fill="#f0c9aa"/>` : ''}
     </g>`;

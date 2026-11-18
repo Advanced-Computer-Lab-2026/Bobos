@@ -1043,12 +1043,36 @@ html[data-theme=dark] [data-palette=console-tones] .sidebar .study-nav-group .na
   box-shadow:inset 0 0 0 1px var(--control)
 }
 
-@keyframes write-request-line{
-  0%,12%{stroke-dashoffset:1}
-  56%,100%{stroke-dashoffset:0}
+/* The sheet and its ink register together. Small changes to the pen strokes
+   keep the held drawing alive once the last opening exposure lands. */
+@keyframes letter-paper-settle{
+  0%,100%{transform:none}
+  20%{transform:translate(.2px,-.35px) rotate(.45deg)}
+  40%{transform:translate(-.25px,.1px) rotate(-.65deg)}
+  60%{transform:translate(.15px,-.2px) rotate(.25deg)}
+  80%{transform:translate(-.1px,.25px) rotate(-.3deg)}
+}
+@keyframes letter-ink-boil{
+  0%,100%{d:path("M22 15l3-.6 2 .5 3-.6 2 .2 3-.5 5 .2")}
+  20%{d:path("M22 15.1l2.8-.9 2.4 .6 2.7-.5 2.3 .3 2.8-.7 5 .4")}
+  40%{d:path("M22.1 14.8l3-.2 1.9 .6 3.2-.9 2 .4 2.7-.5 5.1 .3")}
+  60%{d:path("M21.9 15.2l3.1-.8 2.1 .2 2.7-.4 2.1 .5 3.3-.9 4.8 .5")}
+  80%{d:path("M22 15l2.8-.4 2.4 .7 2.7-.9 2.2 .4 3-.5 4.9 .1")}
+}
+@keyframes letter-pocket-boil{
+  0%,100%{d:path("M11 24Q20 29 32 36Q44 29 55 23L54 47Q33 49 12 47Z")}
+  25%{d:path("M11 24Q20.5 28.6 32.2 35.6Q44 29.5 55 23L54 47Q32.6 49.4 12 47Z")}
+  50%{d:path("M11 24Q19.7 29.5 31.7 36.4Q44.3 28.6 55 23L54 47Q33.5 48.6 12 47Z")}
+  75%{d:path("M11 24Q20.2 29.2 32 36.1Q43.6 29 55 23L54 47Q33 49.3 12 47Z")}
 }
 @media(prefers-reduced-motion:no-preference){
-  .queue-entry:has(.queue-link:is(:hover,:focus-visible)) .request-handwriting{
-    stroke-dasharray:1;animation:write-request-line 2.5s steps(12,end) 850ms infinite;
+  .queue-entry:has(.queue-link:is(:hover,:focus-visible)) .letter-open{
+    --held-letter-timing:480ms steps(1,end) 850ms infinite;
+    .letter-sheet{transform-origin:32px 35px;animation:letter-paper-settle var(--held-letter-timing)}
+    .request-handwriting{animation:letter-ink-boil var(--held-letter-timing)}
+    .letter-pocket{animation:letter-pocket-boil var(--held-letter-timing)}
   }
+}
+@media(prefers-reduced-motion:reduce){
+  .queue-entry:has(.queue-link:is(:hover,:focus-visible)) .letter-strip{transform:translateX(-576px)}
 }
