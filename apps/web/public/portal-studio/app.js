@@ -353,7 +353,8 @@ function overview(){
   const canManage = ['administrator','coordinator'].includes(role);
   const canAdvise = ['advisor','coordinator'].includes(role);
   const formatDate = (day,month,label,tone) => `<li data-tone="${tone}"><time><strong>${day}</strong><span>${month}</span></time><span>${label}</span></li>`;
-  const reviewRows = readyStudents.slice(0,4).map(({name,index})=>`<div class="review-person">${avatar(name)}<div><strong>${name}</strong><span>${index === 0 ? '19 credits · Thursday off' : 'Semester 7 · Group 4'}</span></div>${link('draft-schedule','Review','btn row-control',index)}</div>`).join('');
+  const reviewCircle = '<svg class="review-circle" aria-hidden="true" viewBox="0 0 68 30" preserveAspectRatio="none"><path pathLength="1" d="M50 5C36 1 10 3 5 12S12 26 32 26C51 27 66 22 64 14S54 4 40 4"/></svg>';
+  const reviewRows = readyStudents.slice(0,4).map(({name,index})=>`<div class="review-person">${avatar(name)}<div><strong>${name}</strong><span>${index === 0 ? '19 credits · Thursday off' : 'Semester 7 · Group 4'}</span></div>${link('draft-schedule','Review'+reviewCircle,'btn row-control',index)}</div>`).join('');
   const tasks = [
     ['course-removal','rose',3,'Course removals','course removal requests','Credit load and scheduling decisions','mandatory-removals','Review'],
     ...(canAdvise ? [['advisor-assignment','mint',2,'Advisors','students need an advisor','Advising assignments','advising','Assign']] : []),
@@ -728,7 +729,12 @@ function auth(){
 }
 const renderers = {overview,notifications,profile, directory, 'student-detail':()=>profile(true),advising:()=>directory(true),'pending-work':pending,'schedule-activity':activity,'financial-records':financial,'mandatory-removals':removals,'student-schedules':()=>schedule(true),'draft-schedule':draft,courses,'course-detail':courseDetail,terms,offerings,'copy-offerings':copyOfferings,templates,'template-detail':templateDetail,'group-assignments':assignments,'my-schedule':schedule,'my-courses':registered,'schedule-swap':swap,preferences,records,'my-advisor':advisor,'calendar-sync':calendarSync};
 function accountControls(){
-  return `<a class="icon-button" href="${href('notifications')}" data-page="notifications" aria-label="Notifications" title="Notifications">${icon('bell')}<span class="notification-dot"></span></a>
+  const bell = `<svg class="icon notice-bell" aria-hidden="true" viewBox="0 0 28 28" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <path class="bell-body" d="M8 12c0-4 2.1-6.6 6-6.6s6 2.8 6 6.6c0 3.6 1.2 5.4 2.4 7.1-4.7.8-12.3.8-16.8 0C7 17.4 8 15.4 8 12Z"/>
+    <path class="bell-clapper" d="M12 22q2 2 4-.2"/>
+    <path class="bell-echo" pathLength="1" d="M4.4 7.8Q2.5 10 2.7 12.4M23.6 7.3q2.1 2.3 2 4.4"/>
+  </svg>`;
+  return `<a class="icon-button" href="${href('notifications')}" data-page="notifications" aria-label="Notifications" title="Notifications">${bell}${notificationEntries().some(([id])=>!readNotifications.has(id)) ? '<span class="notification-dot"></span>' : ''}</a>
     <button type="button" class="account-button" popovertarget="account-menu" aria-label="Account menu for ${person()}">${avatar(person())}<span>${person()}</span>${icon('down')}</button>
     <div id="account-menu" popover><div class="account-caption">${roleNames[role]}</div>${link('profile','My profile')}${button('Sign out','sign-out','sign-out')}</div>`;
 }
