@@ -1,0 +1,95 @@
+/* The student's course emblems follow the colors on their timetable. */
+[data-workspace="claude-study"] {
+  & .student-course-emblem {
+    display:grid;place-items:center;flex:none;width:44px;height:44px;border-radius:11px;
+    color:#323632;background:var(--course-emblem);
+  }
+  & [data-course-tone="blue"]{--course-emblem:#a9c9ec}
+  & [data-course-tone="coral"]{--course-emblem:#edb39b}
+  & [data-course-tone="sage"]{--course-emblem:#bfd3c6}
+  & [data-course-tone="ivory"]{--course-emblem:#e5decd}
+  & .student-course-emblem .course-drawing {
+    position:static;width:27px;height:24px;max-width:none;margin:0;opacity:1;
+  }
+  & [data-screen="my-courses"] .course-list {max-width:880px}
+  & [data-screen="my-courses"] .course-list article {
+    display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:16px;
+    padding:18px 0;border:0;
+  }
+  & [data-screen="my-courses"] .course-list h2 {
+    font:500 17px/1.3 Styrene,system-ui,sans-serif;letter-spacing:-.025em;margin:3px 0 0;
+  }
+  & [data-screen="my-courses"] .course-due {gap:12px}
+  & [data-screen="my-courses"] .course-due .badge {
+    gap:0;background:transparent;color:var(--muted);padding:0;font-size:12px;white-space:normal;
+  }
+  & [data-screen="my-courses"] .course-due .badge svg{display:none}
+  & [data-screen="my-schedule"] .week-columns{gap:12px}
+  & [data-screen="my-schedule"] .week-class{padding:12px;min-height:114px}
+  & [data-screen="my-schedule"] .week-class small{margin-top:auto;padding-top:10px}
+  & [data-screen="my-schedule"] .week-class strong{line-height:1.3}
+  & [data-screen="my-schedule"] .week-class time{margin-bottom:10px}
+  & [data-screen="preferences"] .preference-workspace {max-width:1000px}
+  & [data-screen="preferences"] .preference-block{border:0;padding-top:0}
+  & [data-screen="preferences"] .section-head h2>.icon{display:none}
+  & [data-screen="preferences"] .preference-day-grid{display:flex;flex-wrap:wrap;gap:6px}
+  & [data-screen="preferences"] .preference-day-grid label{
+    min-height:36px;gap:6px;padding:5px 9px;background:transparent;border-radius:7px;
+  }
+  & [data-screen="preferences"] .preference-day-grid label:has(:checked){
+    background:var(--raised);border-color:var(--control);color:var(--ink);
+  }
+  & [data-screen="preferences"] .preference-course{border:0;padding:9px 0}
+  & [data-screen="preferences"] .student-course-emblem{width:33px;height:33px;border-radius:8px}
+  & [data-screen="preferences"] .student-course-emblem .course-drawing{width:23px;height:20px}
+  & [data-screen="preferences"] .preference-notes textarea{background:var(--paper);border-color:var(--control);border-radius:10px}
+  & .academic-standing{display:flex;gap:clamp(20px,5vw,70px);flex-wrap:wrap;margin:0 0 27px}
+  & .academic-standing dt,& .academic-standing dd:last-child{font-size:12px;color:var(--muted)}
+  & .academic-standing dd{margin:0}
+  & .academic-standing dd:first-of-type{font:500 27px/1.35 Styrene,system-ui,sans-serif;letter-spacing:-.045em;font-variant-numeric:tabular-nums}
+  & [data-screen="my-advisor"] .advising-layout {max-width:920px;align-items:start;gap:clamp(24px,5vw,68px)}
+  & .advisor-identity {display:flex;align-items:center;gap:13px;margin-bottom:18px}
+  & .advisor-identity .avatar {width:48px;height:48px;font-size:16px;flex:none}
+  & .advisor-identity h2 {font:500 21px/1.3 Styrene,system-ui,sans-serif;letter-spacing:-.035em}
+  & .advisor-identity p{margin-top:3px}
+  & [data-screen="my-advisor"] .advisor-details .details > div {
+    display:grid;grid-template-columns:minmax(84px,.55fr) minmax(0,1fr);border:0;gap:8px;padding:7px 0;
+  }
+  & [data-screen="my-advisor"] .advisor-details dd{overflow-wrap:anywhere}
+  & [data-screen="my-advisor"] .advisor-callout {
+    background:var(--raised);color:var(--ink);border-radius:14px;padding:19px 21px;
+  }
+  & [data-screen="my-advisor"] .advisor-callout h2,
+  & .student-calendar h2{font:500 17px/1.3 Styrene,system-ui,sans-serif;letter-spacing:-.025em}
+  & [data-screen="my-advisor"] .advisor-callout p {color:var(--muted);margin:6px 0 14px}
+  & [data-screen="my-advisor"] .advisor-deadline{margin-top:17px}
+  & [data-screen="my-advisor"] .advisor-checklist{margin-top:25px}
+  & .student-calendar{display:grid;gap:30px;max-width:740px}
+  & .calendar-provider {display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  & .calendar-provider>.icon{width:29px;height:29px;color:var(--signal-sky)}
+  & .calendar-provider>div{flex:1 1 220px;min-width:0;overflow-wrap:anywhere}
+  & .calendar-provider p,& .calendar-file p{font-size:13px;color:var(--muted);margin:4px 0}
+  & .calendar-last-sync{margin-top:14px;display:flex;align-items:center;gap:12px;color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+  & .calendar-file .btn{margin-top:9px}
+  & [data-screen="schedule-swap"] .panel{background:transparent;border:0;padding:0;margin:0 0 16px}
+  & [data-screen="schedule-swap"] .panel .section-head{justify-content:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:6px}
+  & [data-screen="schedule-swap"] .course-options{max-width:880px;gap:clamp(22px,5vw,70px)}
+  & [data-screen="schedule-swap"] .course-option{min-width:0;border:0;background:transparent;padding:0}
+  & [data-screen="schedule-swap"] .course-option h2{font:500 19px/1.3 Styrene,system-ui,sans-serif;margin:4px 0}
+  & [data-screen="schedule-swap"] .course-option .details{margin:13px 0;display:flex;flex-wrap:wrap;gap:15px 26px}
+  & [data-screen="schedule-swap"] .course-option .details>div{padding:0;border:0}
+  & [data-screen="schedule-swap"] .form-footer{justify-content:flex-start;gap:8px;margin-top:14px}
+  & .swap-week{list-style:none;padding:0;display:grid;grid-template-columns:repeat(5,1fr);margin:15px 0 0;gap:5px}
+  & .swap-week li{padding:7px 2px;text-align:center;border-radius:5px;background:var(--raised);color:var(--ink);font-size:12px}
+  & .swap-week .off{background:transparent;color:var(--muted);border:1px dashed var(--control)}
+  & .swap-week abbr{text-decoration:none}
+}
+@media(max-width:700px){
+  [data-workspace="claude-study"] [data-screen="my-schedule"] .week-columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));overflow:visible}
+  [data-workspace="claude-study"] [data-screen="my-schedule"] .week-day{width:auto;min-width:0}
+  [data-workspace="claude-study"] [data-screen="my-schedule"] .week-day:has(.week-free){grid-column:1/-1}
+  [data-workspace="claude-study"] [data-screen="my-courses"] .course-list article{grid-template-columns:auto minmax(0,1fr);gap:6px 12px;padding:13px 0}
+  [data-workspace="claude-study"] [data-screen="my-courses"] .course-due{grid-column:2;justify-content:flex-start;gap:8px;flex-wrap:wrap}
+  [data-workspace="claude-study"] [data-screen="schedule-swap"] .course-options{grid-template-columns:1fr}
+  [data-workspace="claude-study"] .academic-standing{gap:15px 24px}
+}

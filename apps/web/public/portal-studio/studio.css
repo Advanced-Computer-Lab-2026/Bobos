@@ -532,13 +532,6 @@ html[data-theme=dark] .portal-studio[data-palette=claude-inspired]{
   color:var(--ink);font-size:29px;padding:0;border:0;
 }
 .portal-studio .signin-copy header>.signin-university{color:var(--muted)}
-.auth-fixture {
-  display:flex;flex-wrap:wrap;gap:2px 7px;align-items:baseline;
-  font-size:12px;line-height:1.5;
-}
-.auth-fixture>span {margin-left:auto}
-.auth-fixture strong {color:var(--ink);font-weight:620;overflow-wrap:anywhere}
-#auth-error {font-size:13px;color:var(--signal-rose)}
 .portal-studio #account-menu .sign-out{
   display:block;width:100%;text-align:left;padding:10px 12px;border-radius:5px;font-size:13px;
 }
@@ -596,7 +589,6 @@ html[data-theme=dark] .portal-studio[data-palette=claude-inspired]{
   .work-module .timetable-heading~.week-columns{grid-template-columns:repeat(2,minmax(0,1fr));overflow:visible;padding-bottom:0}
   .timetable-heading~.week-columns .week-day:has(.week-free){grid-column:1/-1}
   .review-progress{grid-template-columns:1fr;gap:6px}
-  .auth-fixture>span{margin-left:0}
 }
 
 /* Queue presentations use the same tasks and their existing destinations. */
@@ -888,8 +880,6 @@ html[data-theme=dark] .portal-studio[data-palette=console-tones] .sidebar .navli
 [data-workspace=claude-study] [data-direction=illustrated] .queue-entry:has(.queue-link:is(:hover,:focus-visible)){
   background:color-mix(in srgb,var(--canvas) 96%,var(--ink));
 }
-.study-registration{display:flex;flex-wrap:wrap;gap:4px 18px;margin:12px 0 0;color:var(--muted);font-size:12px;line-height:1.5}
-.study-registration time{color:var(--ink);white-space:nowrap;font-variant-numeric:tabular-nums}
 
 /* Study navigation follows the same reading hierarchy as the greeting. */
 .portal-studio[data-workspace=claude-study] .wordmark::before{content:'';background:transparent url('study-mark.svg') center/contain no-repeat}
@@ -949,7 +939,7 @@ html[data-theme=dark] .portal-studio[data-palette=console-tones] .sidebar .navli
 @keyframes question-write{0%,6%{stroke-dashoffset:1}37%,94%{stroke-dashoffset:0}100%{stroke-dashoffset:1}}
 @keyframes reply-write{0%,44%{stroke-dashoffset:1}73%,94%{stroke-dashoffset:0}100%{stroke-dashoffset:1}}
 /* One full-width jump per exposure keeps each pen stroke sharp. */
-@keyframes dispatch-letter{to{transform:translateX(-1152px)}}
+@keyframes dispatch-letter{to{transform:translateX(-576px)}}
 @keyframes lean-in{
   0%,100%{transform:translate(0,0) rotate(0)}
   18%{transform:translate(-.4px,-.2px) rotate(-.6deg)}
@@ -1032,25 +1022,18 @@ html[data-theme=dark] .portal-studio[data-palette=console-tones] .sidebar{border
 html[data-theme=dark] [data-palette=console-tones] .sidebar .study-nav-group .navlink{color:#c0bfb4}
 html[data-theme=dark] [data-palette=console-tones] .sidebar .study-nav-group .navlink.active{color:#e7e6e2}
 @media(prefers-reduced-motion:no-preference){
-  .queue-entry:has(.queue-link:is(:hover,:focus-visible)) .letter-strip{animation:dispatch-letter 1.7s steps(18,end) infinite}
+  .queue-entry:has(.queue-link:is(:hover,:focus-visible)) .letter-strip{animation:dispatch-letter 850ms steps(9,end) forwards}
   .queue-entry:has(.queue-link:is(:hover,:focus-visible)) .arriving-student{transform-origin:50px 38px;animation:lean-in 2.1s steps(4,end) infinite}
 }
 
-.book-riffle path{visibility:hidden;fill:#eef0e5;stroke:#56728a;stroke-width:1.15}
-.book-riffle path:nth-child(2){fill:#dce6e9;animation-delay:-4.05s}
-.book-riffle path:nth-child(3){fill:#e6e5d8;animation-delay:-3.87s}
-/* Both ends of the spine stay fixed while the outside edge crosses the spread. */
-@keyframes turn-book-page{
-  0%,72%,100%{visibility:hidden;d:path("M23 14Q15 11 7 8L9 31Q17 34 26 38Z")}
-  73%{visibility:visible;d:path("M23 14Q15 11 7 8L9 31Q17 34 26 38Z")}
-  76%{d:path("M23 14Q17 9 11 4L14 28Q19 32 26 38Z")}
-  79%{d:path("M23 14Q21 7 22 2L25 26Q24 31 26 38Z")}
-  82%{d:path("M23 14Q28 6 32 3L35 27Q29 31 26 38Z")}
-  86%,89%{visibility:visible;d:path("M23 14Q30 8 40 5L42 31Q33 33 26 38Z")}
-  89.01%,99.99%{visibility:hidden;d:path("M23 14Q30 8 40 5L42 31Q33 33 26 38Z")}
+.study-book{overflow:hidden}
+.book-riffle{stroke:#738895;stroke-width:1}
+@keyframes riffle-leaves{
+  0%,13%{transform:translateX(0)}
+  33%,100%{transform:translateX(-960px)}
 }
 @media(prefers-reduced-motion:no-preference){
-  .book-riffle path{animation:turn-book-page 7s cubic-bezier(.35,.1,.4,.95) -4.23s infinite}
+  .book-riffle{animation:riffle-leaves 6s steps(20,end) infinite}
 }
 [data-workspace=claude-study] .content .page-head .study-schedule-link{
   background:var(--raised);color:var(--ink);padding:5px 9px;min-height:30px;
@@ -1058,4 +1041,14 @@ html[data-theme=dark] [data-palette=console-tones] .sidebar .study-nav-group .na
 .study-schedule-link .icon{width:12px;height:12px}
 [data-workspace=claude-study] .content .study-schedule-link:is(:hover,:focus-visible){
   box-shadow:inset 0 0 0 1px var(--control)
+}
+
+@keyframes write-request-line{
+  0%,12%{stroke-dashoffset:1}
+  56%,100%{stroke-dashoffset:0}
+}
+@media(prefers-reduced-motion:no-preference){
+  .queue-entry:has(.queue-link:is(:hover,:focus-visible)) .request-handwriting{
+    stroke-dasharray:1;animation:write-request-line 2.5s steps(12,end) 850ms infinite;
+  }
 }
