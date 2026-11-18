@@ -1043,27 +1043,23 @@ html[data-theme=dark] [data-palette=console-tones] .sidebar .study-nav-group .na
   box-shadow:inset 0 0 0 1px var(--control)
 }
 
-/* Pin the corners, crease and pen endpoints; redraw only the line between them. */
-@keyframes letter-paper-boil{
-  0%,100%{d:path("M16 11Q26 10 33 11.25T50 11.5L49 43 17 44Z")}
-  25%{d:path("M16 11Q26 10.8 33 11T50 11.5L49 43 17 44Z")}
-  50%{d:path("M16 11Q26 9.4 33 11T50 11.5L49 43 17 44Z")}
-  75%{d:path("M16 11Q26 10.3 33 11.6T50 11.5L49 43 17 44Z")}
-}
 @keyframes letter-ink-boil{
   0%,100%{d:path("M22 15L25 14.4 27 14.9 30 14.3 32 14.5 35 14 40 14.2")}
   25%{d:path("M22 15L25 14.1 27 15.2 30 14.6 32 14.3 35 13.8 40 14.2")}
   50%{d:path("M22 15L25 14.7 27 14.8 30 14.1 32 14.8 35 14.2 40 14.2")}
   75%{d:path("M22 15L25 14.3 27 15.1 30 14.3 32 14.4 35 13.7 40 14.2")}
 }
+/* Each drawing shares the entire V, both shoulders and the corners.
+   Short pen deviations occur separately along the outside edges. */
 @keyframes letter-pocket-boil{
   0%,100%{d:path("M11 24Q20 29 32 36Q44 29 55 23L54 47Q33 49 12 47Z")}
-  33%{d:path("M11 24Q20 28.2 32 36Q44 29.4 55 23L54 47Q33 49 12 47Z")}
-  66%{d:path("M11 24Q20 29.5 32 36Q44 28.2 55 23L54 47Q33 49 12 47Z")}
+  20%{d:path("M11 24Q20 29 32 36Q44 29 55 23L54.7 30Q55.1 32 54.6 35L54 47Q33 49 12 47L11.5 36Q11 34.5 11.4 32Z")}
+  43%{d:path("M11 24Q20 29 32 36Q44 29 55 23L54 47Q47 47.7 42 47.8Q39 48.7 35 48Q25 48.2 12 47L11.7 40Q12.2 38.2 11.5 35Z")}
+  67%{d:path("M11 24Q20 29 32 36Q44 29 55 23L54.4 38Q53.7 40.2 54.2 42L54 47Q33 49 12 47Z")}
+  84%{d:path("M11 24Q20 29 32 36Q44 29 55 23L54 47Q39 48.4 29 48Q26.5 47.3 23 47.8Q17 47.6 12 47Z")}
 }
 @media(prefers-reduced-motion:no-preference){
   .queue-entry:has(.queue-link:is(:hover,:focus-visible)) .letter-open{
-    .letter-sheet>path{animation:letter-paper-boil 510ms steps(1,end) 850ms infinite}
     .request-handwriting{animation:letter-ink-boil 420ms steps(1,end) 850ms infinite}
     .letter-pocket{animation:letter-pocket-boil 670ms steps(1,end) 850ms infinite}
   }
