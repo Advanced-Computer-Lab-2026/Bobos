@@ -1,0 +1,47 @@
+/* Working pages use the desktop console's compact controls and quiet surfaces. */
+[data-workspace=claude-study] .content[data-screen]:not([data-screen=overview]){
+  --surface-edge:color-mix(in srgb,var(--ink) 17%,var(--canvas));
+  max-width:1360px;
+  padding-block:clamp(24px,3vw,44px) 64px;
+}
+[data-workspace=claude-study] .content:not([data-screen=overview]) .page-head{
+  align-items:center;gap:16px 24px;flex-wrap:wrap;margin-block:0 clamp(20px,2.5vw,34px);
+}
+[data-workspace=claude-study] .content:not([data-screen=overview]) .page-head p{
+  max-width:64ch;font-size:14px;line-height:1.5;color:var(--muted);
+}
+[data-workspace=claude-study] .content:not([data-screen=overview]) :is(.toolbar,.filters,.actions){gap:8px}
+[data-workspace=claude-study] .content:not([data-screen=overview]) .filters :is(input,select){
+  min-height:36px;border-radius:7px;border-color:var(--surface-edge);background-color:var(--paper);
+}
+[data-workspace=claude-study] .content:not([data-screen=overview]) .tabs{
+  padding:3px;gap:2px;border:1px solid var(--surface-edge);background:transparent;
+}
+[data-workspace=claude-study] .content:not([data-screen=overview]) .tabs button{
+  min-height:32px;padding:5px 12px;
+}
+[data-workspace=claude-study] .content:not([data-screen=overview]) .tabs button[aria-selected=true]{
+  box-shadow:none;background:var(--raised);color:var(--ink)
+}
+[data-workspace=claude-study] .content:not([data-screen=overview]) .tablewrap{
+  border-color:var(--surface-edge);background:transparent;border-radius:10px;
+}
+[data-workspace=claude-study] .content:not([data-screen=overview]) th{
+  background:color-mix(in srgb,var(--raised) 72%,var(--canvas));
+  font:500 12px/1.4 Styrene,system-ui,sans-serif;letter-spacing:0;text-transform:none
+}
+[data-workspace=claude-study] .content:not([data-screen=overview]) td{
+  padding-block:13px;border-bottom-color:var(--rule);
+}
+[data-workspace=claude-study] :is(.content:not([data-screen=overview]),dialog) .btn.primary{
+  background:var(--ink);border-color:var(--ink);color:var(--canvas);box-shadow:none;
+}
+[data-workspace=claude-study] .content:not([data-screen=overview]) .tablefoot{margin-top:9px}
+[data-workspace=claude-study] dialog{padding:clamp(18px,3vw,30px);border:1px solid var(--control);background:var(--paper);color:var(--ink)}
+[data-workspace=claude-study] dialog .modal-head h2{font:500 20px/1.24 Styrene,system-ui,sans-serif;letter-spacing:-.03em}
+@media(max-width:600px){
+  [data-workspace=claude-study] .content:not([data-screen=overview]) .actions{flex-wrap:wrap}
+  [data-workspace=claude-study] .content:not([data-screen=overview]) .filters{width:100%}
+  [data-workspace=claude-study] .content:not([data-screen=overview]) .filters input{width:100%}
+  [data-workspace=claude-study] .content:not([data-screen=overview]) .filters select{min-width:0;max-width:100%}
+}

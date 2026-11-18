@@ -19,7 +19,6 @@ const roleNames = {coordinator:'Coordinator', administrator:'Administrator', adv
 const authPages = new Set(['login','forgot','reset']);
 const previewSessionKey = 'portal-studio-preview-session';
 const previewEmail = 'demo@portal.test';
-const previewPassword = 'portal-preview';
 const signedIn = () => localStorage.getItem(previewSessionKey) === '1';
 const pageKey = key => Object.hasOwn(pages,key) ? key : 'overview';
 const returnPage = key => authPages.has(key) ? 'overview' : pageKey(key);
@@ -39,10 +38,10 @@ const dialog = document.querySelector('#dialog');
 const escapeHtml = value => String(value).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 const student = () => ['normalStudent','advisingStudent'].includes(role);
 const person = () => student() ? 'Omar Hassan' : role === 'advisor' ? 'Dr. Salma Adel' : role === 'administrator' ? 'Youssef Ali' : 'Nadia Ahmed';
-const href = (target,index=selectedStudent) => {
+const href = (target,index=selectedStudent,course=selectedCourse) => {
   const destination = authPages.has(target) ? returnAfterSignIn : target;
   const preserveStudent = ['draft-schedule','student-detail'].includes(destination);
-  return `?page=${target}&role=${role}&layout=${lab.layout+1}&palette=${lab.palette+1}&mode=${lab.dark?'dark':'light'}${target==='login'?`&image=${signinImage.id}`:''}${authPages.has(target)&&destination!=='overview'?`&next=${destination}`:''}${preserveStudent?`&student=${index}`:''}`;
+  return `?page=${target}&role=${role}&layout=${lab.layout+1}&palette=${lab.palette+1}&mode=${lab.dark?'dark':'light'}${target==='login'?`&image=${signinImage.id}`:''}${authPages.has(target)&&destination!=='overview'?`&next=${destination}`:''}${preserveStudent?`&student=${index}`:''}${destination==='course-detail'?`&course=${encodeURIComponent(course[0])}`:''}`;
 };
 
 const link = (target, text, cls='', index) => `<a class="${cls}" href="${href(target,index)}" data-page="${target}"${index===undefined?'':` data-student="${index}"`}>${text}</a>`;
@@ -99,9 +98,8 @@ function removalLetter() {
   const poses = [
     [39,30,30,-6], [38,30,30,-6], [34,30,30,-7], [28,30,30,-7],
     [21,29,30,-6], [15,26,28,-5], [12,21,23,-5], [11,16,18,-4],
-    [12,12,13,-4], [12,11,11.5,-4], [12,11.25,11,-4], [12,12,11.5,-4],
-    [13,15,14.5,-5], [15,20,19,-5], [19,25,24,-6], [25,29,28.5,-6],
-    [32,30,30,-7], [38,30,30,-6]
+    [12,12,13,-4], [12,11,11.5,-4]
+
   ];
   const frames = poses.map(([tip,left,right,tilt],i)=>{
     const flap = `M11 24Q20 ${(24+tip)/2} 32 ${tip}Q42 ${(24+tip)/2} 55 23Q33 22 11 24Z`;
@@ -110,7 +108,8 @@ function removalLetter() {
       <path d="M11 24Q33 22 55 23L54 47Q33 49 12 47Z" fill="#966f5a"/>
       ${tip<24 ? `<path d="${flap}" fill="#d1a485"/>` : ''}
       <path d="M16 ${left}Q26 ${left-1} 33 ${mid}T50 ${right}L49 43 17 44Z" fill="#fff3da"/>
-      <g transform="translate(0 ${mid})"><path d="m20 5 13-.4m-10 4 7-.2m-7 6 19-.5" stroke="#796b56" stroke-width="1.15"/>
+      <g transform="translate(0 ${mid})"><path d="m20 5 13-.4m-10 4 7-.2" stroke="#796b56" stroke-width="1.15"/>
+      <path class="request-handwriting" pathLength="1" d="m22 15 3-.6 2 .5 3-.6 2 .2 3-.5 5 .2" fill="none" stroke="#796b56" stroke-width="1.15"/>
       <circle cx="40" cy="5" r="3.7" fill="#deab90"/><path d="m38 5 4-.2"/></g>
       <path d="M11 24Q20 29 32 36Q44 29 55 23L54 47Q33 49 12 47Z" fill="#eab698"/>
       <path d="m14 44 13-11m25 11-13-11" stroke="#a77760" stroke-width="1.1"/>
@@ -121,8 +120,26 @@ function removalLetter() {
 }
 function portalWordmark() {
   if (workspaces[lab.layout].name!=='Claude Study') return 'Portal';
+  // Both hinge points stay fixed. The lower outside corner follows the top
+  // corner a few poses later so the leaf bends as it crosses the binding.
+  const poses = [
+    [7,8,9,31], [8,7,9,31], [11,5,10,30], [15,4,12,29],
+    [20,3,16,28], [25,3,21,27], [30,3,27,27], [34,4,32,28],
+    [37,5,36,29], [39,5,39,30], [40,5,41,31], [40,5,42,31]
+  ];
+  const frames = Array.from({length:20},(_,frame)=>{
+    const sheets = [0,3,6].map((lag,index)=>{
+      const pose = frame-lag;
+      if (pose<=0 || pose>=poses.length) return '';
+      const [x,y,bottomX,bottomY] = poses[pose];
+      const curl = Math.sin(Math.PI*pose/(poses.length-1));
+      return `<path fill="${['#e6e5d8','#dce3dd','#edf0e6'][index]}" d="M23 14 Q${(23+x)/2} ${(14+y)/2-2*curl} ${x} ${y} Q${(x+bottomX)/2-2*curl} ${(y+bottomY)/2} ${bottomX} ${bottomY} Q${(26+bottomX)/2} ${(38+bottomY)/2-2*curl} 26 38Z"/>`;
+    }).join('');
+    return sheets ? `<g transform="translate(${frame*48} 0)">${sheets}</g>` : '';
+  }).join('');
   return `<svg class="study-book" viewBox="0 0 48 48" aria-hidden="true"><use href="study-mark.svg#binding"/><use href="study-mark.svg#leaf"/>
-    <g class="book-riffle"><path/><path/><path/></g></svg>Portal`;
+    <g class="book-riffle">${frames}</g></svg>Portal`;
+
 }
 function queueSketch(name) {
   const subjects = {
@@ -201,6 +218,13 @@ const courseData = [
   ['ELCT 701','Communication Systems','Electronics Engineering','5','Winter'],
   ['MATH 701','Numerical Analysis','Mathematics','4','Winter']
 ];
+const resolveCourse = code => courseData.find(c=>c[0]===code) || courseData[0];
+let selectedCourse = resolveCourse(params.get('course'));
+
+function courseLink(code,label,cls) {
+  const course = resolveCourse(code);
+  return `<a class="${cls}" href="${href('course-detail',selectedStudent,course)}" data-page="course-detail" data-course-code="${course[0]}">${label}</a>`;
+}
 function groups(){
   const managesAcademics = role === 'coordinator' || role === 'administrator';
   const advises = role === 'coordinator' || role === 'advisor';
@@ -307,7 +331,7 @@ function workspaceTimetable(view,title,target,label) {
   if (!view.inlineDates) return workspaceSection(title,target,label,weekly());
   if (view.name==='Claude Study') {
     return `<div class="timetable-heading"><h2>${title}</h2>${link(target,label,'quiet-link')}</div>
-      ${weekly()}<p class="study-registration"><span>Registration <time datetime="2026-11-22">22 Nov</time>–<time datetime="2026-12-06">6 Dec</time></span><span>Swap deadline <time datetime="2026-12-13">13 Dec</time></span></p>`;
+      ${weekly()}`;
   }
   const dates = registrationDates.map(([day,month,name,tone,short])=>`<li data-tone="${tone}" title="${name}"><span>${short}</span> <strong>${Number(day)} ${month}</strong></li>`).join('');
   return `<div class="timetable-heading"><h2>${title}</h2>${link(target,label,'quiet-link')}</div>
@@ -393,17 +417,24 @@ function studentOverview(){
   return head(title,termContext('Computer Engineering'),link('my-schedule','Open schedule'+(view.name==='Claude Study' ? icon('chevron') : ''),view.name==='Claude Study' ? 'quiet-link study-schedule-link' : 'btn primary')) + workspaceGrid(view,modules);
 }
 
+function staffIdentity(name, id) {
+  const label = `<strong>${name}</strong><small>${id}</small>`;
+  if (workspaces[lab.layout].name!=='Claude Study') return label;
+  return `<div class="staff-identity">${avatar(name)}<div>${label}</div></div>`;
+}
+
 function directory(advising=false){
   return head(advising?'Advising students':'Student directory',advising?'Review assignments, preferences, and schedules.':'Find a student and open their academic details.',advising?button('Assign advisor','assign-advisor','btn primary'):'')+
     filterbar('Search name or ID', [['All majors',['Computer Engineering','Digital Media Engineering']],['All statuses',['Ready for review','Draft','Not started']]])+
     table(['Student','Major','Semester',advising?'Advisor':'Type','Schedule',''],names.map((name,i)=>[
-      `<strong>${name}</strong><small>70-${71577+i}</small>`,i===3?'Digital Media Engineering':'Computer Engineering','7',advising?([2,8].includes(i)?'Unassigned':'Dr. Salma Adel'):(i%3?'Advising':'Normal'),badge(scheduleStates[i],statusTone(scheduleStates[i])),link('student-detail','View student','btn row-control',i)
+      staffIdentity(name,`70-${71577+i}`),i===3?'Digital Media Engineering':'Computer Engineering','7',advising?([2,8].includes(i)?'Unassigned':'Dr. Salma Adel'):(i%3?'Advising':'Normal'),badge(scheduleStates[i],statusTone(scheduleStates[i])),link('student-detail','View student','btn row-control',i)
     ]));
 }
 function profile(detail=false){
   const name=detail?names[selectedStudent]:person();
+  const study = workspaces[lab.layout].name==='Claude Study';
   return head(detail?'Student details':'My profile', '',detail?link('directory','Back to directory','btn'):'',detail?`70-${71577+selectedStudent}`:'Account')+
-    `<div class="person-title"><div class="monogram" aria-hidden="true">${name.split(' ').map(x=>x[0]).slice(0,2).join('')}</div><div><h2>${name}</h2><p>${detail?'Advising student · Computer Engineering':roleNames[role]}</p></div></div>`+
+    `<div class="person-title">${study ? avatar(name) : `<div class="monogram" aria-hidden="true">${name.split(' ').map(x=>x[0]).slice(0,2).join('')}</div>`}<div><h2>${name}</h2><p>${detail?'Advising student · Computer Engineering':roleNames[role]}</p></div></div>`+
     (detail?tabs([['details','Academic details'],['history','Advisor history'],['workflow','Schedule workflow']]):'')+
     (detail&&tab==='history'?table(['Advisor','Assigned','Status'],[['Dr. Salma Adel','5 October 2026',badge('Current')],['Dr. Hany Youssef','10 February 2026',badge('Ended','neutral')]]):detail&&tab==='workflow'?`<section class="panel"><h2>Schedule workflow</h2>${workflow()}${link('draft-schedule','Open advising draft','btn primary')}</section>`:
     `<section class="panel"><h2>${detail?'Academic information':'Account details'}</h2><dl class="details">${[
@@ -431,6 +462,7 @@ function notifications(){
     (visible.length ? `<div class="notification-list">${visible.map(([id,title,description,time]) => {
       const isUnread = !readNotifications.has(id);
       return `<article class="inbox-item ${isUnread ? 'unread' : ''}">
+        ${workspaces[lab.layout].name==='Claude Study' ? `<span class="notice-symbol" data-kind="${id}">${icon(({schedule:'book',removal:'inbox',term:'calendar'})[id]||'bell')}</span>` : ''}
         <div class="inbox-text"><h3>${title}</h3><p>${description}</p></div>
         <div class="notification-meta"><time>${time}</time>
           ${isUnread ? button('Mark as read','read-one','btn text', `data-notification="${id}"`) : '<small>Read</small>'}
@@ -438,30 +470,66 @@ function notifications(){
       </article>`;
     }).join('')}</div>` : '<div class="empty"><h2>You’re all caught up.</h2><p>No unread notifications.</p></div>');
 }
-function courses(){return head('Course catalogue','',button('Add course','add-course','btn primary')+button('Import CSV','import-csv'))+
+function academicStudy() {
+  return workspaces[lab.layout].name === 'Claude Study';
+}
+function academicCourse(course, fallback) {
+  if (!academicStudy()) return fallback;
+  const [code, title] = course;
+  const drawing = courseDrawing(code) || icon('book');
+  return `<span class="academic-course"><span class="academic-emblem" data-course="${code}" aria-hidden="true">${drawing}</span><span><strong>${title}</strong><small>${code}</small></span></span>`;
+}
+function academicStudent(name,index) {
+  const id = `70-${71577+index}`;
+  if (!academicStudy()) return `${name}<small>${id}</small>`;
+  return `<span class="academic-person">${avatar(name)}<span><strong>${name}</strong><small>${id}</small></span></span>`;
+}
+function courses(){return head('Course catalogue',academicStudy() ? `${courseData.length} courses · ${new Set(courseData.map(c=>c[2])).size} departments` : '',button('Add course','add-course','btn primary')+button('Import CSV','import-csv'))+
   filterbar('Search courses',[['All departments',['Computer Engineering','Digital Media Engineering','Electronics Engineering']],['All seasons',['Winter','Spring']]])+
-  table(['Code','Course','Department','Credits','Season',''],courseData.map(c=>[c[0],`<strong>${c[1]}</strong>`,...c.slice(2),link('course-detail','View course','btn row-control')]));}
-function courseDetail(){return head('Embedded Systems','CSEN 701 · Computer Engineering',button('Edit course','edit-course','btn primary')+link('courses','Back to catalogue','btn'),'Course details')+
-  `<div class="split"><section class="panel"><h2>Course information</h2><dl class="details">${[['Course code','CSEN 701'],['Credit hours','5'],['Department','Computer Engineering'],['Semester','7'],['Type','Mandatory'],['Offering seasons','Winter, Spring']].map(([k,v])=>`<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl></section><section class="panel"><h2>Prerequisites</h2><div class="task"><div><h3>CSEN 501</h3><p>Introduction to Computer Architecture</p></div></div><h2 style="margin-top:28px">Current offering</h2><p>Winter 2026 · 4 groups</p>${link('offerings','View offering','btn text')}</section></div>`;}
-function terms(){return head('Academic terms','',button('Create term','create-term','btn primary'))+
+  table(academicStudy() ? ['Course','Department','Credits','Season',''] : ['Code','Course','Department','Credits','Season',''],courseData.map(c=>[
+    ...(academicStudy() ? [academicCourse(c)] : [c[0],`<strong>${c[1]}</strong>`]),...c.slice(2),courseLink(c[0],'View course','btn row-control')]));}
+function courseDetail(){
+  const [code,title,department,credits,season] = selectedCourse;
+  const first = code==='CSEN 701';
+  const facts = [['Course code',code],['Credit hours',credits],['Department',department],['Semester','7'],['Type','Mandatory'],['Offering seasons',first?'Winter, Spring':season]];
+  const actions = student() ? link('my-courses','My courses','btn') : button('Edit course','edit-course','btn primary')+link('courses','Back to catalogue','btn');
+  return head(title,`${code} · ${department}`,actions,'Course details')+
+    `<div class="split"><section class="panel academic-facts"><h2>Course information</h2><dl class="details">${facts.map(([label,value])=>`<div><dt>${label}</dt><dd>${value}</dd></div>`).join('')}</dl></section>
+    <section class="panel academic-related"><h2>Prerequisites</h2>${first ? '<div class="task"><div><h3>CSEN 501</h3><p>Introduction to Computer Architecture</p></div></div>' : '<p>No prerequisites listed.</p>'}
+    <h2 style="margin-top:28px">Current offering</h2><p>${season} 2026${courseData.slice(0,4).includes(selectedCourse)?' · 4 groups':''}</p>${student()?link('my-schedule','View schedule','btn text'):link('offerings','View offering','btn text')}</section></div>`;
+}
+function terms(){
+  if (academicStudy()) {
+    const semesters = [
+      ['Winter 2026','2026 / 2027','22 Nov – 6 Dec 2026','13 Dec 2026','Active','', 'Manage'],
+      ['Spring 2027','2026 / 2027','14 – 28 Feb 2027','7 Mar 2027','Upcoming','pending','Manage'],
+      ['Spring 2026','2025 / 2026','15 Feb – 1 Mar 2026','8 Mar 2026','Archived','neutral','View']
+    ];
+    return head('Academic terms','Registration windows and schedule swap deadlines.',button('Create term','create-term','btn primary'))+
+      `<div class="semester-ledger">${semesters.map(([name,year,registration,deadline,state,tone,action])=>`
+        <article class="semester-line"><div class="semester-identity"><h2>${name}</h2><small>${year}</small></div>
+          ${badge(state,tone)}<dl><div><dt>Registration</dt><dd>${registration}</dd></div><div><dt>Swap deadline</dt><dd>${deadline}</dd></div></dl>
+          ${button(action,'manage-term','btn row-control')}</article>`).join('')}</div>`;
+  }
+  return head('Academic terms','',button('Create term','create-term','btn primary'))+
   table(['Term','Academic year','Registration','Swap deadline','Status',''],[
     ['Winter 2026','2026 / 2027','22 Nov – 6 Dec 2026','13 Dec 2026',badge('Active'),button('Manage','manage-term','btn text')],
     ['Spring 2027','2026 / 2027','14 – 28 Feb 2027','7 Mar 2027',badge('Upcoming','pending'),button('Manage','manage-term','btn text')],
     ['Spring 2026','2025 / 2026','15 Feb – 1 Mar 2026','8 Mar 2026',badge('Archived','neutral'),button('View','manage-term','btn text')]
   ]);}
-function offerings(){return head('Course offerings','',button('Add offering','add-offering','btn primary')+link('copy-offerings','Copy from another term','btn'))+
+function offerings(){return head('Course offerings',academicStudy() ? termContext('Teaching groups and sections') : '',button('Add offering','add-offering','btn primary')+link('copy-offerings','Copy from another term','btn'))+
   filterbar('Search offerings',[['Winter 2026',['Winter 2026','Spring 2027']]])+
-  table(['Course','Groups','Lecture sections','Tutorial sections','Status',''],courseData.slice(0,4).map((c,i)=>[`${c[0]}<small>${c[1]}</small>`,'4','2','4',badge(i===3?'Draft':'Published',i===3?'pending':''),button('Manage sections','manage-sections','btn text')]));}
+  table(['Course','Groups','Lecture sections','Tutorial sections','Status',''],courseData.slice(0,4).map((c,i)=>[academicCourse(c,`${c[0]}<small>${c[1]}</small>`),'4','2','4',badge(i===3?'Draft':'Published',i===3?'pending':''),button('Manage sections','manage-sections','btn text')]));}
 function copyOfferings(){return head('Copy course offerings','Choose a source term, then select the courses to copy.',link('offerings','Back to offerings','btn'))+
-  `<section class="panel"><div class="formgrid"><label>Source term<select><option>Winter 2025</option><option>Spring 2026</option></select></label><label>Destination term<select><option>Winter 2026</option><option>Spring 2027</option></select></label></div></section>`+
-  table(['Select','Course','Groups','Sections'],courseData.map(c=>[`<input type="checkbox" aria-label="Copy ${c[0]}" checked>`,`${c[0]}<small>${c[1]}</small>`,'4','6']))+
+  `<section class="panel academic-transfer"><div class="formgrid"><label>Source term<select><option>Winter 2025</option><option>Spring 2026</option></select></label>${academicStudy() ? `<span class="transfer-arrow" aria-hidden="true">${icon('chevron')}</span>` : ''}<label>Destination term<select><option>Winter 2026</option><option>Spring 2027</option></select></label></div></section>`+
+  table(['Select','Course','Groups','Sections'],courseData.map(c=>[`<input type="checkbox" aria-label="Copy ${c[0]}" checked>`,academicCourse(c,`${c[0]}<small>${c[1]}</small>`),'4','6']))+
   `<div class="form-footer">${button('Copy selected offerings','copy-confirm','btn primary')}</div>`;}
-function templates(){return head('Schedule templates','',link('template-detail','Create template','btn primary'))+
+function templates(){return head('Schedule templates',academicStudy() ? termContext('Computer Engineering') : '',link('template-detail','Create template','btn primary'))+
   filterbar('Search templates',[['All majors',['Computer Engineering','Digital Media Engineering']]])+
-  table(['Template','Major','Semester','Courses','Status',''],['Group 1','Group 2','Group 3','Group 4'].map((g,i)=>[`${g} · Winter 2026`,'Computer Engineering','7','4',badge(i===3?'Draft':'Published',i===3?'draft':''),link('template-detail','Edit template','btn row-control')]));}
+  table(['Template','Major','Semester','Courses','Status',''],['Group 1','Group 2','Group 3','Group 4'].map((g,i)=>[academicStudy() ? `<span class="template-name">${icon('calendar')}<span><strong>${g}</strong><small>Winter 2026</small></span></span>` : `${g} · Winter 2026`,'Computer Engineering','7','4',badge(i===3?'Draft':'Published',i===3?'draft':''),link('template-detail','Edit template','btn row-control')]));}
 function templateDetail(){return head('Group 4','Computer Engineering · Semester 7',button('Publish template','publish','btn primary')+button('Save draft','save-draft'), 'Template editor')+
-  `<section class="panel"><div class="formgrid"><label>Group name<input value="Group 4" required></label><label>Major<select><option>Computer Engineering</option><option>Digital Media Engineering</option></select></label><label>Semester<input type="number" min="1" max="10" value="7"></label><label>Term<select><option>Winter 2026</option></select></label></div></section>`+
-  `<div class="section-head"><h2>Course groups</h2>${button('Add course','add-offering','btn text')}</div>`+table(['Course','Lecture','Tutorial','Lab'],courseData.slice(0,4).map(c=>[`${c[0]}<small>${c[1]}</small>`,'L1 · Sun 08:30','T4 · Tue 10:00','P4 · Wed 12:00']))+`<div style="margin-top:30px">${weekly()}</div>`;}
+  `<section class="panel template-fields"><div class="formgrid"><label>Group name<input value="Group 4" required></label><label>Major<select><option>Computer Engineering</option><option>Digital Media Engineering</option></select></label><label>Semester<input type="number" min="1" max="10" value="7"></label><label>Term<select><option>Winter 2026</option></select></label></div></section>`+
+  `<div class="section-head"><h2>Course groups</h2>${button('Add course','add-offering','btn text')}</div>`+table(['Course','Lecture','Tutorial','Lab'],courseData.slice(0,4).map(c=>[academicCourse(c,`${c[0]}<small>${c[1]}</small>`),'L1 · Sun 08:30','T4 · Tue 10:00','P4 · Wed 12:00']))+`<div style="margin-top:30px">${academicStudy() ? '<h2 class="academic-week-title">Weekly timetable</h2>' : ''}${weekly()}</div>`;}
 // Small marginal drawings identify the four courses wherever the weekly schedule appears.
 function courseDrawing(code) {
   const symbol = {'CSEN 703':'algorithms','CSEN 704':'advanced-lab','DMET 701':'graphics'}[code];
@@ -488,29 +556,36 @@ function weekly(){
           <small>${workspaces[lab.layout].name==='Claude Study' ? `${code}<span class="study-place">${detail}</span>` : `${code} · ${detail}`}</small></div>`).join('') : '<p class="week-free">No classes</p>'}</section>`).join('')}</div>`;
 }
 function schedule(staff=false){
-  if(staff)return head('Student schedules','',link('draft-schedule','Create advising draft','btn primary'))+
-    `<section class="review-progress" aria-labelledby="review-progress-title"><h2 id="review-progress-title">Draft progress</h2><div>${draftProgress()}</div></section>`+filterbar('Search students',[['All statuses',['Ready for review','Draft','Not started']]])+
-    table(['Student','Major','Schedule','Last updated',''],names.map((n,i)=>[`${n}<small>70-${71577+i}</small>`,'Computer Engineering',badge(scheduleStates[i],statusTone(scheduleStates[i])),'Today, 10:42',link('draft-schedule',scheduleStates[i]==='Draft'?'Edit draft':'Review schedule','btn row-control',i)]));
-  return head('Weekly schedule','',button('Export calendar','export-calendar'),'')+
+  if(staff)return head('Student schedules',academicStudy() ? termContext('Schedule review') : '',link('draft-schedule','Create advising draft','btn primary'))+
+    `<section class="review-progress academic-progress" aria-labelledby="review-progress-title"><h2 id="review-progress-title">Draft progress</h2><div>${draftProgress()}</div></section>`+filterbar('Search students',[['All statuses',['Ready for review','Draft','Not started']]])+
+    table(['Student','Major','Schedule','Last updated',''],names.map((n,i)=>[academicStudent(n,i),'Computer Engineering',badge(scheduleStates[i],statusTone(scheduleStates[i])),'Today, 10:42',link('draft-schedule',scheduleStates[i]==='Draft'?'Edit draft':'Review schedule','btn row-control',i)]));
+  const timetableContext = workspaces[lab.layout].name==='Claude Study' ? termContext('Group 4 · Computer Engineering') : '';
+  return head('Weekly schedule',timetableContext,button('Export calendar','export-calendar'),'')+
     tabs([['week','Week'],['list','Course list']],'week')+(tab==='list'?registeredTable():weekly())+
     '';
 }
 function workflow(){return `<div class="task"><div><h3>Preferences submitted</h3><p>Student · 12 November</p></div>${badge('Complete')}</div><div class="task"><div><h3>Advisor prepared draft</h3><p>Dr. Salma Adel · 13 November</p></div>${badge('Complete')}</div><div class="task"><div><h3>Coordinator review</h3><p>Check the draft before it goes to the student.</p></div>${badge('Awaiting decision','pending')}</div>`;}
 function draft(){return head(`${names[selectedStudent].split(' ')[0]}’s advising draft`, `70-${71577+selectedStudent} · Computer Engineering · Semester 7`,button('Save draft','save-draft')+button('Process schedule','process','btn primary'),'Winter 2026')+
-  `<div class="split"><section class="panel"><h2>Selected courses</h2><div class="smallstats"><div><strong>19</strong><span>Credit hours</span></div><div><strong>4</strong><span>Courses selected</span></div><div><strong>0</strong><span>Time conflicts</span></div></div>${courseData.slice(0,4).map(c=>`<div class="task"><div><h3>${c[0]}</h3><p>${c[1]}</p></div><label><span class="sr-only">${c[0]} group</span><select aria-label="${c[0]} group"><option>Group 4</option><option>Group 2</option></select></label></div>`).join('')}</section><aside><section class="note"><div class="kicker">Student preferences</div><h2>Thursday off.</h2><p>Preferred group: 4<br>Earliest class: 08:30<br>Preferences updated 12 November.</p>${link('preferences','View preferences','btn text')}</section><section class="panel" style="margin-top:24px"><h2>Validation</h2><p>No time conflicts. Credit load is within the allowed range.</p></section></aside></div>`+weekly()+`<section class="panel" style="margin-top:24px"><h2>Workflow</h2>${workflow()}${button('Reopen schedule','reopen','btn text')}</section>`;}
-function registeredTable(){return table(['Course','Type','Credits','Group',''],courseData.slice(0,4).map(c=>[`<strong>${c[1]}</strong><small>${c[0]}</small>`,'Mandatory',c[3],'4',link('course-detail','View sections','btn row-control')]));}
+  `<div class="split academic-plan"><section class="panel"><h2>Selected courses</h2><div class="smallstats"><div><strong>19</strong><span>Credit hours</span></div><div><strong>4</strong><span>Courses selected</span></div><div><strong>0</strong><span>Time conflicts</span></div></div>${courseData.slice(0,4).map(c=>`<div class="task">${academicCourse(c,`<div><h3>${c[0]}</h3><p>${c[1]}</p></div>`)}<label><span class="sr-only">${c[0]} group</span><select aria-label="${c[0]} group"><option>Group 4</option><option>Group 2</option></select></label></div>`).join('')}</section><aside><section class="note"><div class="kicker">Student preferences</div><h2>Thursday off.</h2><p>Preferred group: 4<br>Earliest class: 08:30<br>Preferences updated 12 November.</p>${link('preferences','View preferences','btn text')}</section><section class="panel" style="margin-top:24px"><h2>Validation</h2><p>No time conflicts. Credit load is within the allowed range.</p></section></aside></div>`+(academicStudy() ? '<h2 class="academic-week-title">Proposed timetable</h2>' : '')+weekly()+`<section class="panel draft-workflow" style="margin-top:24px"><h2>Workflow</h2>${workflow()}${button('Reopen schedule','reopen','btn text')}</section>`;}
+function registeredTable(){return table(['Course','Type','Credits','Group',''],courseData.slice(0,4).map(c=>[`<strong>${c[1]}</strong><small>${c[0]}</small>`,'Mandatory',c[3],'4',courseLink(c[0],'View sections','btn row-control')]));}
+function courseEmblem(code) {
+  const courseTone = {'CSEN 701':'blue','CSEN 703':'coral','CSEN 704':'sage','DMET 701':'ivory'};
+  return `<span class="student-course-emblem" data-course-tone="${courseTone[code]}">${courseDrawing(code)}</span>`;
+}
 function registered(){
   const due = [['Assignment due 12 Nov','review'], ['Reading due 10 Nov','ice'], ['Project due 19 Nov',''], ['Quiz on 18 Nov','pending']];
-  return head('My courses','4 courses · 19 credit hours',button('Request course removal','request-removal'),'')+
+  const study = workspaces[lab.layout].name==='Claude Study';
+  return head('My courses',study ? termContext('4 courses · 19 credit hours') : '4 courses · 19 credit hours',button('Request course removal','request-removal'),'')+
     `<div class="course-list">${courseData.slice(0,4).map(([code,title,,credits], i) =>
-      `<article><div><small>${code} · ${credits} credit hours</small><h2>${title}</h2></div>
-      <div class="course-due">${badge(...due[i])}${link('course-detail','View sections','btn row-control')}</div></article>`).join('')}</div>`;
+      `<article>${study?courseEmblem(code):''}<div><small>${code} · ${credits} credit hours</small><h2>${title}</h2></div>
+      <div class="course-due">${badge(...due[i])}${courseLink(code,'View sections','btn row-control')}</div></article>`).join('')}</div>`;
 }
 function assignments(){return head('Group assignments','Assign students to a published schedule group.')+filterbar('Search students',[['All groups',['Group 1','Group 4','Unassigned']]])+
-  table(['Student','Major','Semester','Group',''],names.map((n,i)=>[`${n}<small>70-${71577+i}</small>`,'Computer Engineering','7',i%2?badge('Unassigned','pending'):'Group 4',button(i%2?'Assign group':'Reassign','assign-group','btn row-control')]));}
+  table(['Student','Major','Semester','Group',''],names.map((n,i)=>[academicStudent(n,i),'Computer Engineering','7',i%2?badge('Unassigned','pending'):'Group 4',button(i%2?'Assign group':'Reassign','assign-group','btn row-control')]));}
 function preferences(){
   const summary = student()?'Winter 2026 / 2027':'Omar Hassan · 70-71577 · Winter 2026 / 2027';
-  return head('Schedule preferences',summary,button('Save preferences','save-preferences','btn primary'))+
+  const study = workspaces[lab.layout].name==='Claude Study';
+  return head('Schedule preferences',study ? termContext(student()?'Group 4':'Omar Hassan · 70-71577') : summary,button('Save preferences','save-preferences','btn primary'))+
     `<div class="preference-workspace">
       <div class="preference-stack">
         <section class="preference-block" aria-labelledby="preferred-days">
@@ -529,7 +604,7 @@ function preferences(){
         <div class="section-head"><h2 id="preferred-groups">${icon('book')} Preferred course groups</h2></div>
         <p>Choose a group for each course or leave it open.</p>
         <div class="preference-course-list">${courseData.slice(0,4).map(([code,title],index)=>`<label class="preference-course">
-          <span class="task-icon" data-tone="${['sky','rose','mint','gold'][index]}">${icon('book')}</span>
+          ${study ? courseEmblem(code) : `<span class="task-icon" data-tone="${['sky','rose','mint','gold'][index]}">${icon('book')}</span>`}
           <span class="preference-course-name"><strong>${title}</strong><small>${code}</small></span>
           <select data-course-group="${index}" aria-label="${code} preferred group">${['Group 4','Group 2','No preference'].map(group=>`<option ${group===preferencesState.groups[index]?'selected':''}>${group}</option>`).join('')}</select>
         </label>`).join('')}</div>
@@ -537,23 +612,32 @@ function preferences(){
     </div>`;
 }
 
-function financial(){return head('Financial records','',button('Export CSV','export-csv'))+`<dl class="ledger-summary">
-    <div><dt>Received</dt><dd>EGP 22,500</dd></div>
-    <div><dt>Pending</dt><dd>EGP 15,000</dd></div>
-    <div><dt>Refunded</dt><dd>EGP 2,500</dd></div>
+function financial(){
+  const study = workspaces[lab.layout].name==='Claude Study';
+  return head('Financial records','',button('Export CSV','export-csv'))+`<dl class="ledger-summary">
+    <div><dt>${study?icon('check'):''}Received</dt><dd>EGP 22,500</dd></div>
+    <div><dt>${study?icon('clock'):''}Pending</dt><dd>EGP 15,000</dd></div>
+    <div><dt>${study?icon('inbox'):''}Refunded</dt><dd>EGP 2,500</dd></div>
   </dl>`+
   filterbar('Search name or transaction ID',[['All types',['Payment','Refund']],['All statuses',['Completed','Pending']]])+
-  table(['Transaction','Student','Type','Amount','Status',''],names.slice(0,6).map((n,i)=>[`TXN-${1042+i}<small>14 Nov 2026</small>`,`${n}<small>70-${71577+i}</small>`,i===4?'Refund':'Payment',`EGP ${i===4?'2,500':'7,500'}`,badge([1,5].includes(i)?'Pending':'Completed',[1,5].includes(i)?'payment-pending':'payment-complete'),button('View record','financial-detail','btn row-control')]));}
+  table(['Transaction','Student','Type','Amount','Status',''],names.slice(0,6).map((n,i)=>[`TXN-${1042+i}<small>14 Nov 2026</small>`,staffIdentity(n,`70-${71577+i}`),i===4?'Refund':'Payment',`EGP ${i===4?'2,500':'7,500'}`,badge([1,5].includes(i)?'Pending':'Completed',[1,5].includes(i)?'payment-pending':'payment-complete'),button('View record','financial-detail','btn row-control')]));}
 function removals(){return head('Course removals','Review mandatory-course removal requests.',student()?button('Request removal','request-removal','btn primary'):'')+
   tabs([['pending','Pending · 3'],['approved','Approved'],['rejected','Rejected']],'pending')+
   filterbar('Search student or course')+
-  table(['Student','Course','Reason','Submitted','Status',''],names.slice(0,3).map((n,i)=>[`${n}<small>70-${71577+i}</small>`,`${courseData[i][0]}<small>${courseData[i][1]}</small>`,['Credit overload','Academic difficulty','Schedule conflict'][i],'13 Nov 2026',badge(tab==='pending'?'Pending':tab==='approved'?'Approved':'Rejected',tab==='pending'?'pending':tab==='rejected'?'review':''),button('Review request','removal-decision','btn row-control','aria-label="Review request"')]));}
-function pending(){return head('Pending work','',button('Refresh','refresh'))+
-  `<div class="work-links">
-    ${link('student-schedules','Review 6 student schedules','btn primary')}
-    ${link('mandatory-removals','Decide 3 course removals')}
-    ${link('advising','Assign 2 advisors')}
-  </div>`+
+  table(['Student','Course','Reason','Submitted','Status',''],names.slice(0,3).map((n,i)=>[staffIdentity(n,`70-${71577+i}`),`${courseData[i][0]}<small>${courseData[i][1]}</small>`,['Credit overload','Academic difficulty','Schedule conflict'][i],'13 Nov 2026',badge(tab==='pending'?'Pending':tab==='approved'?'Approved':'Rejected',tab==='pending'?'pending':tab==='rejected'?'review':''),button('Review request','removal-decision','btn row-control','aria-label="Review request"')]));}
+function pending(){
+  const study = workspaces[lab.layout].name==='Claude Study';
+  const inboxLinks = [
+    ['student-schedules','Review 6 student schedules','calendar'],
+    ['mandatory-removals','Decide 3 course removals','course-removal'],
+    ['advising','Assign 2 advisors','advisor-assignment']
+  ].map(([target,label,symbol],index)=>{
+    if (!study) return link(target,label,index===0?'btn primary':'');
+    const drawing = symbol==='calendar' ? icon('calendar') : queueSketch(symbol);
+    return link(target,`<span class="staff-queue-art">${drawing}</span><span>${label}</span>${icon('chevron')}`,'staff-queue-link');
+  }).join('');
+  return head('Pending work','',button('Refresh','refresh'))+
+  `<div class="work-links">${inboxLinks}</div>`+
   table(['Work item','Student','Waiting since','Priority',''],[
     ['Review advising schedule','Omar Hassan','13 Nov 2026',badge('Review','ready'),link('draft-schedule','Open draft','btn row-control')],
     ['Decide course removal','Mariam Mostafa','13 Nov 2026',badge('Decision','review'),link('mandatory-removals','Review request','btn row-control')],
@@ -573,14 +657,18 @@ function activity(){
 
 function records(){
   const strip=tabs([['history','Course history'],['transcript','Transcript'],['wallet','Wallet']],'history');
+  const study = workspaces[lab.layout].name==='Claude Study';
+  const performance = [['Cumulative GPA','1.70','Very good standing'],['Completed credits','116','Through semester 6'],['Current semester','07','Winter 2026']];
+  const marks = study ? `<dl class="academic-standing">${performance.map(([label,value,detail])=>`<div><dt>${label}</dt><dd>${value}</dd><dd>${detail}</dd></div>`).join('')}</dl>` : stats(performance);
   return head('Academic records','Omar Hassan · 70-71577',tab==='transcript'?button('Download transcript','transcript'): '', 'Computer Engineering')+
-    stats([['Cumulative GPA','1.70','Very good standing'],['Completed credits','116','Through semester 6'],['Current semester','07','Winter 2026']])+strip+
+    marks+strip+
     (tab==='wallet'?table(['Date','Transaction','Amount','Balance'],[['14 Nov 2026','Course registration payment','− EGP 7,500','EGP 2,500'],['10 Nov 2026','Wallet deposit','+ EGP 10,000','EGP 10,000']]):table(['Course','Semester','Credits','Grade','Status'],courseData.slice(0,4).map(c=>[`${c[0]}<small>${c[1]}</small>`,'Winter 2025',c[3],'1.7',badge('Passed')])));
 }
 function advisor(){
-  return head('Academic advising','','','')+`
+  const study = workspaces[lab.layout].name==='Claude Study';
+  return head('Academic advising',study ? termContext('Semester 7') : '')+`
     <div class="advising-layout">
-      <section class="advisor-details"><h2>Dr. Salma Adel</h2><p>Computer Engineering</p>
+      <section class="advisor-details">${study ? `<header class="advisor-identity">${avatar('Dr. Salma Adel')}<div><h2>Dr. Salma Adel</h2><p>Computer Engineering</p></div></header>` : '<h2>Dr. Salma Adel</h2><p>Computer Engineering</p>'}
         <dl class="details"><div><dt>Email</dt><dd><a href="mailto:salma.adel@guc.edu.eg">salma.adel@guc.edu.eg</a></dd></div>
         <div><dt>Office</dt><dd>C3.204</dd></div><div><dt>Office hours</dt><dd>Tuesday, 12:00–14:00</dd></div>
         <div><dt>Assigned since</dt><dd>5 October 2026</dd></div></dl>
@@ -594,10 +682,25 @@ function advisor(){
       </aside>
     </div>`;
 }
-function calendarSync(){return head('Calendar sync','Keep your course schedule in your calendar.')+`<section class="panel calendar-connect"><div class="connection"><div><h2>Google Calendar</h2><p>${connected?'Connected as omar.hassan@student.guc.edu.eg':'Connect your Google account to sync course meetings.'}</p></div>${button(connected?'Disconnect':'Connect account', 'toggle-calendar', connected?'btn':'btn primary')}</div><div class="connection"><div><h3>Course schedule</h3><p>Last synced today at 09:15. Times use Africa/Cairo.</p></div>${button('Sync now','sync-now','btn')}</div></section><section class="panel"><h2>Use another calendar</h2><p>Download an .ics file for Apple Calendar, Outlook, or another calendar app.</p><div style="margin-top:20px">${button('Download calendar','export-calendar')}</div></section>`;}
-function swap(){return head('Eligible swap groups','Exchange your full schedule with a student taking the same courses.')+`<section class="panel"><div class="section-head"><h2>Your group: 4</h2><span class="count">Swap deadline · 13 December 2026</span></div><p>Computer Engineering · Semester 7 · 19 credit hours</p></section>`+
+function calendarSync(){
+  if(workspaces[lab.layout].name==='Claude Study') {
+    return head('Calendar sync',termContext('Group 4 · Africa/Cairo'))+
+      `<div class="student-calendar"><section aria-label="Google Calendar"><div class="calendar-provider">${icon('calendar')}<div><h2>Google Calendar</h2><p>${connected?'Connected as omar.hassan@student.guc.edu.eg':'Connect an account to sync course meetings.'}</p></div>${button(connected?'Disconnect':'Connect account','toggle-calendar','btn row-control')}</div>
+      ${connected?`<div class="calendar-last-sync"><span>Last synced today at 09:15</span>${button('Sync now','sync-now','btn text')}</div>`:''}</section>
+      <section class="calendar-file"><h2>Calendar file</h2><p>Import your teaching week into Apple Calendar, Outlook, or another calendar app.</p>${button('Download .ics','export-calendar','btn row-control')}</section></div>`;
+  }
+  return head('Calendar sync','Keep your course schedule in your calendar.')+`<section class="panel calendar-connect"><div class="connection"><div><h2>Google Calendar</h2><p>${connected?'Connected as omar.hassan@student.guc.edu.eg':'Connect your Google account to sync course meetings.'}</p></div>${button(connected?'Disconnect':'Connect account', 'toggle-calendar', connected?'btn':'btn primary')}</div><div class="connection"><div><h3>Course schedule</h3><p>Last synced today at 09:15. Times use Africa/Cairo.</p></div>${button('Sync now','sync-now','btn')}</div></section><section class="panel"><h2>Use another calendar</h2><p>Download an .ics file for Apple Calendar, Outlook, or another calendar app.</p><div style="margin-top:20px">${button('Download calendar','export-calendar')}</div></section>`;}
+function swapWeek(daysOff) {
+  return `<ol class="swap-week" aria-label="Teaching days">${['Sunday','Monday','Tuesday','Wednesday','Thursday'].map(day=>
+    `<li class="${day===daysOff?'off':''}"><abbr title="${day}">${day.slice(0,3)}</abbr><span class="sr-only"> ${day===daysOff?'off':'classes'}</span></li>`
+  ).join('')}</ol>`;
+}
+function swap(){
+  const study = workspaces[lab.layout].name==='Claude Study';
+  const context = study ? termContext('Group 4 · Computer Engineering') : 'Exchange your full schedule with a student taking the same courses.';
+  return head('Eligible swap groups',context)+`<section class="panel"><div class="section-head"><h2>Your group: 4</h2><span class="count">Swap deadline · 13 December 2026</span></div><p>Computer Engineering · Semester 7 · 19 credit hours</p></section>`+
   tabs([['groups','Available groups'],['open','Open requests'],['mine','My requests']],'groups')+
-  (tab==='mine'?table(['From','Requested groups','Submitted','Status',''],[['Group 4','Group 1, Group 2','13 Nov 2026',badge('Open','pending'),button('Withdraw','withdraw','btn text')]]):`<div class="course-options">${[1,2].map((n)=>`<section class="course-option"><div class="kicker">Computer Engineering</div><h2>Group ${n}</h2><p>Same 4 registered courses · 19 credits</p><dl class="details"><div><dt>Days off</dt><dd>${n===1?'Tuesday':'Sunday'}</dd></div><div><dt>Earliest class</dt><dd>${n===1?'10:00':'08:30'}</dd></div></dl><div class="form-footer">${button('View schedule','group-schedule')}${button(tab==='open'?'Exchange schedules':'Request swap',tab==='open'?'exchange':'request-swap','btn primary')}</div></section>`).join('')}</div>`);
+  (tab==='mine'?table(['From','Requested groups','Submitted','Status',''],[['Group 4','Group 1, Group 2','13 Nov 2026',badge('Open','pending'),button('Withdraw','withdraw','btn text')]]):`<div class="course-options">${[1,2].map((n)=>`<section class="course-option"><div class="kicker">Computer Engineering</div><h2>Group ${n}</h2><p>Same 4 registered courses · 19 credits</p>${study?swapWeek(n===1?'Tuesday':'Sunday'):''}<dl class="details"><div><dt>Days off</dt><dd>${n===1?'Tuesday':'Sunday'}</dd></div><div><dt>Earliest class</dt><dd>${n===1?'10:00':'08:30'}</dd></div></dl><div class="form-footer">${button('View schedule','group-schedule')}${button(tab==='open'?'Exchange schedules':'Request swap',tab==='open'?'exchange':'request-swap','btn primary')}</div></section>`).join('')}</div>`);
 }
 function auth(){
   const title=page==='login'?'Make the semester work.':page==='forgot'?'Reset your password':'Choose a new password';
@@ -608,13 +711,11 @@ function auth(){
         <h1>${title}</h1>
         <p>${page==='login'?'Plan schedules and keep student advising on track.':page==='forgot'?'We’ll send a reset code to your university email.':'Enter the six-digit code from your email.'}</p>
         <form id="auth-form">
-          ${page==='login'?'<p class="auth-fixture">Preview account <strong>'+previewEmail+'</strong><span>Password <strong>'+previewPassword+'</strong></span></p>':''}
-          <label>University email<input name="email" type="email" autocomplete="username" placeholder="${previewEmail}" required value="${page==='reset'?previewEmail:''}"></label>
-          ${page==='reset'?'<label>Reset code<input inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="000000" required></label>':''}
-          ${page!=='forgot'?`<label>${page==='reset'?'New password':'Password'}<input name="password" type="password" autocomplete="${page==='reset'?'new-password':'current-password'}" minlength="8" required placeholder="${page==='reset'?'At least 8 characters':'Enter the preview password'}"></label>`:''}
-          <p id="auth-error" role="alert" hidden></p>
-          <button type="submit" class="btn primary">${page==='login'?'Sign in':page==='forgot'?'Send reset code':'Update password'}</button>
-          ${link(page==='login'?'forgot':'login',page==='login'?'Forgot password?':'Back to sign in','auth-recovery')}
+          ${page==='login' ? '<button type="submit" class="btn primary">Sign in</button>' : `
+            <label>University email<input name="email" type="email" autocomplete="username" placeholder="${previewEmail}" required value="${page==='reset'?previewEmail:''}"></label>
+            ${page==='reset'?'<label>Reset code<input inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="000000" required></label><label>New password<input name="password" type="password" autocomplete="new-password" minlength="8" required></label>':''}
+            <button type="submit" class="btn primary">${page==='forgot'?'Send reset code':'Update password'}</button>
+            ${link('login','Back to sign in','auth-recovery')}`}
         </form>
       </section>
       <footer><span>Design preview</span></footer>
@@ -687,7 +788,13 @@ function action(name,el){
     case 'transcript':download('sample-transcript.txt','DESIGN PREVIEW - SAMPLE TRANSCRIPT\nOmar Hassan, 70-71577\nCumulative GPA: 1.70\nCompleted credits: 116\nNot an official academic record.');break;
     case 'assign-advisor':modal('Assign an advisor',fields('<label>Student<select><option>Omar Hassan · 70-71577</option><option>Ahmed Khaled · 70-71579</option></select></label><label>Advisor<select><option>Dr. Salma Adel</option><option>Dr. Hany Youssef</option></select></label>'),'Assign advisor');break;
     case 'assign-group':modal('Assign schedule group',fields('<label>Student<input value="Omar Hassan · 70-71577" readonly></label><label>Published group<select><option>Group 4 · Computer Engineering</option><option>Group 1 · Computer Engineering</option><option>Unassigned</option></select></label>'),'Save assignment');break;
-    case 'add-course':case 'edit-course':modal(name==='add-course'?'Add course':'Edit course',fields(`<div class="formgrid"><label>Course code<input required value="${name==='edit-course'?'CSEN 701':''}" placeholder="CSEN 701"></label><label>Credit hours<input type="number" min="1" max="12" required value="5"></label></div><label>Course name<input required value="${name==='edit-course'?'Embedded Systems':''}"></label><label>Department<select><option>Computer Engineering</option><option>Digital Media Engineering</option></select></label>`));break;
+    case 'add-course':case 'edit-course':{
+      const editing=name==='edit-course';
+      const [code,title,department,credits]=editing?selectedCourse:['','','Computer Engineering','5'];
+      const departments=[...new Set(courseData.map(course=>course[2]))];
+      modal(editing?'Edit course':'Add course',fields(`<div class="formgrid"><label>Course code<input required value="${code}" placeholder="CSEN 701"></label><label>Credit hours<input type="number" min="1" max="12" required value="${credits}"></label></div><label>Course name<input required value="${escapeHtml(title)}"></label><label>Department<select>${departments.map(d=>`<option ${d===department?'selected':''}>${d}</option>`).join('')}</select></label>`));
+      break;
+    }
     case 'import-csv':modal('Import courses',fields('<label>Course CSV<input type="file" accept=".csv" required></label><p>Columns: code, name, department, credits, season.</p>'),'Preview import');break;
     case 'create-term':case 'manage-term':modal(name==='create-term'?'Create academic term':'Manage Winter 2026',fields('<label>Term name<input required value="Winter 2026"></label><div class="formgrid"><label>Registration opens<input type="date" value="2026-11-22" required></label><label>Registration closes<input type="date" value="2026-12-06" required></label><label>Swap deadline<input type="date" value="2026-12-13" required></label><label>Status<select><option>Active</option><option>Upcoming</option><option>Archived</option></select></label></div>'));break;
     case 'add-offering':modal('Add course offering',fields('<label>Course<select><option>CSEN 701 · Embedded Systems</option><option>CSEN 703 · Algorithms</option></select></label><div class="formgrid"><label>Term<select><option>Winter 2026</option></select></label><label>Number of groups<input type="number" min="1" value="4" required></label></div>'),'Add offering');break;
@@ -716,7 +823,7 @@ document.addEventListener('click',event=>{
 });
 document.addEventListener('click',event=>{
   const target=event.target.closest('[data-page],[data-action],[data-tab]');if(!target)return;
-  if(target.dataset.page){if(event.ctrlKey||event.metaKey||event.shiftKey||event.altKey)return;if(target.dataset.student !== undefined)selectedStudent=Number(target.dataset.student);event.preventDefault();navigate(target.dataset.page);}
+  if(target.dataset.page){if(event.ctrlKey||event.metaKey||event.shiftKey||event.altKey)return;if(target.dataset.student !== undefined)selectedStudent=Number(target.dataset.student);if(target.dataset.courseCode)selectedCourse=resolveCourse(target.dataset.courseCode);event.preventDefault();navigate(target.dataset.page);}
   else if(target.dataset.tab){tab=target.dataset.tab;render();document.querySelector(`[data-tab="${tab}"]`)?.focus();}
   else action(target.dataset.action,target);
 });
@@ -746,20 +853,13 @@ document.addEventListener('submit',event=>{
   event.preventDefault();
   if(event.target.id==='auth-form'){
     if(page==='login'){
-      const fields = new FormData(event.target);
-      if (String(fields.get('email')).trim().toLowerCase() !== previewEmail || fields.get('password') !== previewPassword) {
-        const error = document.querySelector('#auth-error');
-        error.textContent = 'Use the preview email and password shown above.';
-        error.hidden = false;
-        return;
-      }
       localStorage.setItem(previewSessionKey,'1');
       const destination = returnAfterSignIn;
       returnAfterSignIn = 'overview';
       navigate(destination);
     }
     else if(page==='forgot'){navigate('reset');toast('Sample reset code: 123456.');}
-    else{navigate('login');toast('Reset preview complete. Use the sample password to sign in.');}
+    else{navigate('login');toast('Reset preview complete.');}
   }else if(event.target.id==='modal-form'){
     const label=event.submitter?.textContent||'Saved';const close=event.target.dataset.submitAction==='close';closeDialog();if(!close)toast(`${label} — completed in this preview.`);
   }
@@ -774,7 +874,7 @@ document.addEventListener('keydown',event=>{
   i=event.key==='Home'?0:event.key==='End'?buttons.length-1:(i+(event.key==='ArrowRight'?1:-1)+buttons.length)%buttons.length;
   event.preventDefault();tab=buttons[i].dataset.tab;render();document.querySelector(`[data-tab="${tab}"]`).focus();
 });
-window.addEventListener('popstate',()=>{const p=new URLSearchParams(location.search);page=pageKey(p.get('page'));returnAfterSignIn=returnPage(p.get('next'));role=Object.hasOwn(roleNames,p.get('role'))?p.get('role'):'coordinator';tab='';selectedStudent=studentIndex(p);restoreLook(p);render(true);});
+window.addEventListener('popstate',()=>{const p=new URLSearchParams(location.search);page=pageKey(p.get('page'));returnAfterSignIn=returnPage(p.get('next'));role=Object.hasOwn(roleNames,p.get('role'))?p.get('role'):'coordinator';tab='';selectedStudent=studentIndex(p);selectedCourse=resolveCourse(p.get('course'));restoreLook(p);render(true);});
 window.addEventListener('storage',event=>{
   if (event.key===previewSessionKey && !signedIn() && !authPages.has(page)) {
     returnAfterSignIn = 'overview';
