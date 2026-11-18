@@ -830,6 +830,31 @@ document.addEventListener('click',event=>{
   queue.querySelectorAll('[data-queue-focus]').forEach(option=>option.setAttribute('aria-pressed',String(option===choice)));
   queue.querySelectorAll('.queue-entry').forEach(entry=>entry.dataset.current=String(entry.dataset.icon===choice.dataset.queueFocus));
 });
+// Capture the press position before the action can replace its button.
+document.addEventListener('click',event=>{
+  if(event.button!==0 || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey ||
+      matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const control=event.target.closest('a[href],button,summary');
+  if(!control || control.matches(':disabled,[aria-disabled="true"]')) return;
+  if(page!=='overview' && !control.closest('[data-screen=notifications]') &&
+      !control.matches('.icon-button[data-page=notifications],main .btn')) return;
+
+  const ink=document.querySelector('#press-ink');
+  const stroke=ink.firstElementChild;
+  const bounds=control.getBoundingClientRect();
+  const x=event.detail ? event.clientX : bounds.left+bounds.width/2;
+  const y=event.detail ? event.clientY : bounds.top+bounds.height/2;
+  ink.style.left=Math.max(0,Math.min(innerWidth-33,x-12))+'px';
+  ink.style.top=Math.max(0,Math.min(innerHeight-14,y+3))+'px';
+  stroke.getAnimations().forEach(animation=>animation.cancel());
+  stroke.animate([
+    {strokeDashoffset:1,opacity:1},
+    {strokeDashoffset:0,opacity:1,offset:.46},
+    {strokeDashoffset:0,opacity:1,offset:.63},
+    {strokeDashoffset:-1,opacity:0}
+  ],{duration:380,easing:'ease-out'});
+},true);
+
 document.addEventListener('click',event=>{
   const target=event.target.closest('[data-page],[data-action],[data-tab]');if(!target)return;
   if(target.dataset.page){if(event.ctrlKey||event.metaKey||event.shiftKey||event.altKey)return;if(target.dataset.student !== undefined)selectedStudent=Number(target.dataset.student);if(target.dataset.courseCode)selectedCourse=resolveCourse(target.dataset.courseCode);event.preventDefault();navigate(target.dataset.page);}

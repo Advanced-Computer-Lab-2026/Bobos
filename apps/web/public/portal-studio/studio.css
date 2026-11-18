@@ -805,7 +805,7 @@ html[data-theme=dark] .portal-studio[data-palette=console-tones] .sidebar .navli
 [data-direction=illustrated] .queue-icon .icon{display:none}
 [data-direction=illustrated] .queue-sketch{display:block;width:50px;height:auto}
 [data-direction=illustrated] .queue-link::after{content:"";position:absolute;inset:0;border-radius:8px}
-[data-direction=illustrated] .queue-entry:has(.queue-link:is(:hover,:focus-visible)){background:var(--raised)}
+[data-direction=illustrated] .queue-entry:is(:hover,:has(.queue-link:focus-visible)){background:var(--raised)}
 [data-direction=illustrated] .queue-entry:has(.queue-link:focus-visible){outline:2px solid var(--ink);outline-offset:2px}
 @container(max-width:350px){
   [data-direction=illustrated] .queue-entry{grid-template-columns:41px minmax(0,1fr) auto;column-gap:8px}
@@ -852,7 +852,7 @@ html[data-theme=dark] .portal-studio[data-palette=console-tones] .sidebar .navli
   [data-workspace=claude-study] [data-direction=illustrated] .queue-sketch{width:60px}
   [data-workspace=claude-study] [data-direction=illustrated] .queue-icon,
   [data-workspace=claude-study] [data-direction=illustrated] .queue-link{justify-self:start}
-  [data-workspace=claude-study] [data-direction=illustrated] .queue-entry:has(.queue-link:is(:hover,:focus-visible)){
+  [data-workspace=claude-study] [data-direction=illustrated] .queue-entry:is(:hover,:has(.queue-link:focus-visible)){
     background:color-mix(in srgb,var(--raised) 91%,var(--ink));
   }
 }
@@ -876,8 +876,8 @@ html[data-theme=dark] .portal-studio[data-palette=console-tones] .sidebar .navli
   content:'';width:5px;height:5px;border:solid currentColor;border-width:1px 1px 0 0;transform:rotate(45deg);
 }
 [data-workspace=claude-study] .content .queue-link{padding-inline:0}
-[data-workspace=claude-study] .content .queue-entry:has(.queue-link:is(:hover,:focus-visible)) .queue-link{color:var(--ink)}
-[data-workspace=claude-study] [data-direction=illustrated] .queue-entry:has(.queue-link:is(:hover,:focus-visible)){
+[data-workspace=claude-study] .content .queue-entry:is(:hover,:has(.queue-link:focus-visible)) .queue-link{color:var(--ink)}
+[data-workspace=claude-study] [data-direction=illustrated] .queue-entry:is(:hover,:has(.queue-link:focus-visible)){
   background:color-mix(in srgb,var(--canvas) 96%,var(--ink));
 }
 
@@ -947,9 +947,9 @@ html[data-theme=dark] .portal-studio[data-palette=console-tones] .sidebar .navli
   80%{transform:translate(-.6px,.2px) rotate(-.8deg)}
 }
 @media(prefers-reduced-motion:no-preference){
-  .queue-entry:has(.queue-link:is(:hover,:focus-visible)) .question-outline{animation:question-boil 420ms steps(1,end) infinite}
-  .queue-entry:has(.queue-link:is(:hover,:focus-visible)) .reply-outline{animation:reply-boil 510ms steps(1,end) infinite}
-  .queue-entry:has(.queue-link:is(:hover,:focus-visible)) :is(.question-ink,.reply-ink){stroke-dasharray:1;animation:var(--ink-loop) 3.4s steps(18,end) infinite}
+  .queue-entry:is(:hover,:has(.queue-link:focus-visible)) .question-outline{animation:question-boil 420ms steps(1,end) infinite}
+  .queue-entry:is(:hover,:has(.queue-link:focus-visible)) .reply-outline{animation:reply-boil 510ms steps(1,end) infinite}
+  .queue-entry:is(:hover,:has(.queue-link:focus-visible)) :is(.question-ink,.reply-ink){stroke-dasharray:1;animation:var(--ink-loop) 3.4s steps(18,end) infinite}
   .question-ink{--ink-loop:question-write}
   .reply-ink{--ink-loop:reply-write}
 }
@@ -997,7 +997,7 @@ html[data-theme=light] [data-workspace=claude-study] .work-module :is(.section-h
 
 [data-icon=advisor-assignment] .queue-sketch{stroke:#322f29;stroke-width:1.8;shape-rendering:geometricPrecision}
 @media(prefers-reduced-motion:no-preference){
-  .queue-entry:has(.queue-link:is(:hover,:focus-visible)) :is(.portrait-left,.portrait-right,.portrait-collar){animation:var(--ink-pose) var(--ink-tempo) steps(1,end) infinite}
+  .queue-entry:is(:hover,:has(.queue-link:focus-visible)) :is(.portrait-left,.portrait-right,.portrait-collar){animation:var(--ink-pose) var(--ink-tempo) steps(1,end) infinite}
   .portrait-left{--ink-pose:portrait-left-ink;--ink-tempo:630ms}
   .portrait-right{--ink-pose:portrait-right-ink;--ink-tempo:740ms}
   .portrait-collar{--ink-pose:portrait-collar-ink;--ink-tempo:670ms}
@@ -1022,8 +1022,8 @@ html[data-theme=dark] .portal-studio[data-palette=console-tones] .sidebar{border
 html[data-theme=dark] [data-palette=console-tones] .sidebar .study-nav-group .navlink{color:#c0bfb4}
 html[data-theme=dark] [data-palette=console-tones] .sidebar .study-nav-group .navlink.active{color:#e7e6e2}
 @media(prefers-reduced-motion:no-preference){
-  .queue-entry:has(.queue-link:is(:hover,:focus-visible)) .letter-strip{animation:dispatch-letter 850ms steps(9,end) forwards}
-  .queue-entry:has(.queue-link:is(:hover,:focus-visible)) .arriving-student{transform-origin:50px 38px;animation:lean-in 2.1s steps(4,end) infinite}
+  .queue-entry:is(:hover,:has(.queue-link:focus-visible)) .letter-strip{animation:dispatch-letter 850ms steps(9,end) forwards}
+  .queue-entry:is(:hover,:has(.queue-link:focus-visible)) .arriving-student{transform-origin:50px 38px;animation:lean-in 2.1s steps(4,end) infinite}
 }
 
 .study-book{overflow:hidden}
@@ -1059,13 +1059,13 @@ html[data-theme=dark] [data-palette=console-tones] .sidebar .study-nav-group .na
   84%{d:path("M11 24Q20 29 32 36Q44 29 55 23L54 47Q39 48.4 29 48Q26.5 47.3 23 47.8Q17 47.6 12 47Z")}
 }
 @media(prefers-reduced-motion:no-preference){
-  .queue-entry:has(.queue-link:is(:hover,:focus-visible)) .letter-open{
+  .queue-entry:is(:hover,:has(.queue-link:focus-visible)) .letter-open{
     .request-handwriting{animation:letter-ink-boil 420ms steps(1,end) 850ms infinite}
     .letter-pocket{animation:letter-pocket-boil 670ms steps(1,end) 850ms infinite}
   }
 }
 @media(prefers-reduced-motion:reduce){
-  .queue-entry:has(.queue-link:is(:hover,:focus-visible)) .letter-strip{transform:translateX(-576px)}
+  .queue-entry:is(:hover,:has(.queue-link:focus-visible)) .letter-strip{transform:translateX(-576px)}
 }
 
 /* A single pen gesture per action. The label and its hit area stay in place. */
@@ -1108,3 +1108,10 @@ html[data-theme=dark] [data-palette=console-tones] .sidebar .study-nav-group .na
     &:is(:hover,:focus-visible){background-color:color-mix(in srgb,var(--raised) 90%,currentColor)}
   }
 }
+
+/* Outside the page renderer so the pen can finish as navigation takes place. */
+#press-ink{
+  position:fixed;left:0;top:0;z-index:1000;pointer-events:none;
+  fill:none;stroke:var(--accent,currentColor);stroke-width:1.65;stroke-linecap:round;
+}
+#press-ink path{opacity:0;stroke-dasharray:1 1;stroke-dashoffset:1}
