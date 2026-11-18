@@ -221,15 +221,21 @@ const calendarInkHolds = {
   11:'M5 5Q27-27 112-38Q193-51 247-40Q277-29 290 3Q190 11 5 5Z',
   13:'M5 5Q80-11 159-13Q248-17 290 3Q165 8 5 5Z'
 };
+function calendarFrontispiece(){
+  const {today}=calendarDates();
+  return `<button type="button" class="field-today" data-calendar-nav="today" aria-label="Today, ${today.toDateString()}. Return to current month">
+    <small>Today</small><strong>${today.getDate()}</strong><span>${today.toLocaleDateString('en-GB',{weekday:'short',month:'short'}).replace(/,/g,' ·')}</span>
+    <svg aria-hidden="true" viewBox="0 0 92 110" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14 108q13-32 31-54 15-21 22-46" stroke="#c1d7c2" stroke-width="2"/>
+      <g fill="#afc6a9" stroke="#293f3c" stroke-width="1.25"><path d="M23 86Q0 80 6 55q14 3 17 31Z"/><path d="M32 71q3-25-5-34-12 22 5 34Z"/><path d="M43 56q0-21-10-30-5 19 10 30Z"/><path d="M55 36q-10-13-6-28 12 10 6 28Z"/><path d="M64 19q-2-14 10-18-1 13-10 18Z"/></g>
+      <g fill="#dbd7a4" stroke="#293f3c" stroke-width="1.25"><path d="M27 79q17-20 40-16-12 17-40 16Z"/><path d="M39 61q10-18 35-18-12 15-35 18Z"/><path d="M51 43q12-19 34-20-9 16-34 20Z"/></g>
+      <g stroke="#667e68"><path d="m10 62 11 20m7-36 3 17m7-29 4 15m-9 27 24-10m-14-8 20-11m-6-7 17-11"/></g>
+      <g fill="#323c49" stroke="#a5b5b0"><ellipse cx="38" cy="80" rx="4" ry="6" transform="rotate(22 38 80)"/><ellipse cx="47" cy="75" rx="4" ry="6" transform="rotate(-16 47 75)"/></g>
+    </svg></button>`;
+}
 function deskCalendar(teaching=false) {
-  return `<section class="desk-calendar${teaching?' teaching-pad':''}" aria-label="Academic calendar">${teaching?'<h2>Academic calendar</h2>':''}<div class="folio-stack">
-    ${teaching ? `<svg class="folio-stand" viewBox="0 0 300 200" preserveAspectRatio="none" fill="none" stroke="#433d34" stroke-width="1.35" stroke-linejoin="round" aria-hidden="true">
-      <path fill="#7793a1" d="m7 5 286-3 5 192-288 7-5-4Z"/>
-      <path fill="#dad1bc" d="m4 5 286-3 3 191-288 4Z"/>
-      <path fill="#faf4e4" d="M3 4q96-2 155-1l133-1-1 167q-2 13-19 20-93 4-268 4Z"/>
-      <path fill="#e3d7be" d="M270 190q9-7 7-19 8 2 13-3-4 15-20 22Z"/>
-      <path stroke="#b3a795" d="m11 195 123-2m12 0 111-2"/>
-    </svg>` : `<svg class="folio-stand" viewBox="0 0 300 200" preserveAspectRatio="none" aria-hidden="true" stroke="#302f2c" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+  return `<section class="desk-calendar${teaching?' teaching-pad':''}" aria-label="Academic calendar">${teaching?'<h2>Academic calendar</h2>':''}${teaching?`<div class="field-spread">${calendarFrontispiece()}`:''}<div class="folio-stack">
+    ${teaching ? '' : `<svg class="folio-stand" viewBox="0 0 300 200" preserveAspectRatio="none" aria-hidden="true" stroke="#302f2c" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
       <path fill="#8fabbd" d="M6 0Q108-4 276-3q8 0 12 9l20 159q0 5-3 8l-15 26Q163 205-4 200l1-10Z"/>
       <path fill="#607d8d" d="M281 1q6 0 7 6l20 158-16 25Z"/>
       <path fill="#e4dcca" d="M291 126l8 37-6 12Z"/>
@@ -240,12 +246,9 @@ function deskCalendar(teaching=false) {
       <path fill="none" stroke="#547b8c" d="M9 37q45 1 67 0m152-1 43-1"/>
     </svg>`}
     <div class="folio-paper" aria-live="polite">${calendarPage()}</div>
-    ${teaching ? `<svg class="pad-clip" viewBox="0 0 70 34" aria-hidden="true" fill="none" stroke="#393d3b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-      <path fill="#91a9ac" d="m8 18 54-1 2 11q-27 4-58 1Z"/><path fill="#c0d0cd" d="M10 18q11-1 14-7l4-6q7-8 14 0l3 7q3 5 15 5l-1 5-48 1Z"/>
-      <path fill="#575e58" d="M32 7q2-4 5-1 2 4-2 5-4 0-3-4Z"/><path stroke="#f0eee3" d="m14 19 11-1m-15 9 43-1"/>
-    </svg>` : `<svg class="folio-wires" viewBox="0 0 300 200" preserveAspectRatio="none" aria-hidden="true" fill="none" stroke-linecap="round">
+    ${teaching ? '' : `<svg class="folio-wires" viewBox="0 0 300 200" preserveAspectRatio="none" aria-hidden="true" fill="none" stroke-linecap="round">
       ${[48,63,220,235].map((x,i)=>`<g transform="translate(${x} ${i%2})"><ellipse cx="1" cy="6" rx="3.6" ry="2.3" fill="#3f5360"/><path d="M1 6C-5 3-6-12-1-14c5-2 9 5 8 12" stroke="#353938" stroke-width="3.7"/><path d="M0 4C-3 0-4-8-1-11" stroke="#cbd4c9" stroke-width="1.2"/></g>`).join('')}
-    </svg>`}</div><div class="folio-nav"><button type="button" class="folio-today" data-calendar-nav="today" aria-label="Go to current month">Today · ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</button><button type="button" data-calendar-nav="-1" aria-label="Previous month">‹</button><button type="button" data-calendar-nav="1" aria-label="Next month">›</button></div>
+    </svg>`}</div>${teaching?'</div>':''}<div class="folio-nav"><button type="button" class="folio-today" data-calendar-nav="today" aria-label="Go to current month">Today · ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</button><button type="button" data-calendar-nav="-1" aria-label="Previous month">‹</button><button type="button" data-calendar-nav="1" aria-label="Next month">›</button></div>
     <div class="folio-agenda" aria-label="Academic deadlines this month">${calendarAgenda()}</div></section>`;
 }
 function workQueue(tasks, separateCalendar=false) {
@@ -432,6 +435,9 @@ function overview(){
   const reviewCircle = '<svg class="review-circle" aria-hidden="true" viewBox="0 0 68 30" preserveAspectRatio="none"><path pathLength="1" d="M50 5C36 1 10 3 5 12S12 26 32 26C51 27 66 22 64 14S54 4 40 4"/></svg>';
   const advisingDesk = view.name==='Claude Study' && dashboardView==='advising';
   const reviewRows = readyStudents.slice(0,advisingDesk ? readyStudents.length : 4).map(({name,index})=>`<div class="review-person">${avatar(name)}<div><strong>${name}</strong><span>${index === 0 ? '19 credits · Thursday off' : 'Semester 7 · Group 4'}</span></div>${link('draft-schedule','Review'+reviewCircle,'btn row-control',index)}</div>`).join('');
+  const teachingDesk = view.name==='Claude Study' && dashboardView==='teaching';
+  const reviewFiles = teachingDesk ? `<div class="draft-index">${readyStudents.map(({name,index})=>link('draft-schedule',
+    `<span class="draft-tab" aria-hidden="true"></span><strong>${name}</strong><small>${index===0?'19 credits · Thursday off':'Semester 7 · Group 4'}</small><span class="draft-arrow" aria-hidden="true">↗</span>`,'draft-file',index)).join('')}</div>` : '';
   const tasks = [
     ['course-removal','rose',3,'Course removals','course removal requests','Credit load and scheduling decisions','mandatory-removals','Review'],
     ...(canAdvise ? [['advisor-assignment','mint',2,'Advisors','students need an advisor','Advising assignments','advising','Assign']] : []),
@@ -453,7 +459,7 @@ function overview(){
     command:`<div class="command-box"><button type="button" class="workspace-search" data-action="quick-find">${icon('search')}<span>Find a page or action</span><kbd>/</kbd>${icon('chevron')}</button>
       <div class="task-shortcuts">${actions.map(([symbol,target,label])=>link(target,icon(symbol)+label,'btn')).join('')}</div></div>`,
     capacity:workspaceSection('Draft progress','student-schedules','View schedules',distribution),
-    review:workspaceSection('Schedule review','student-schedules','All schedules',advisingDesk ? `<p class="review-summary">${readyStudents.length} student drafts ready</p>${reviewRows}` : reviewRows),
+    review:workspaceSection('Schedule review','student-schedules','All schedules',advisingDesk ? `<p class="review-summary">${readyStudents.length} student drafts ready</p>${reviewRows}` : teachingDesk ? reviewFiles : reviewRows),
     queue:workspaceSection('Work queue','pending-work','All work',workQueue(tasks,view.name==='Claude Study')),
     dates:workspaceSection('Registration dates',canManage?'terms':'student-schedules',icon('calendar')+(canManage?'Term settings':'Schedules'),`<ol class="milestones">${registrationDates.map(date=>formatDate(...date)).join('')}</ol>`,'btn date-action'),
     activity:workspaceSection('Recent activity',canManage?'schedule-activity':'notifications',canManage?'View log':'Notifications',[
@@ -461,6 +467,12 @@ function overview(){
       ['Dr. Salma Adel','saved Omar’s advising draft','Today · 09:15'],
       ['Nadia Ahmed','published the Group 4 template','Yesterday · 16:20']
     ].map(([name,event,time],i)=>{
+      if(teachingDesk){
+        const subject=['Preferences submitted','Advising draft saved','Group template published'][i];
+        const byline=[name,`${name} · Omar Hassan`,`${name} · Group 4`][i];
+        const [day,hour]=time.split(' · ');
+        return `<div class="event desk-entry"><time><b>${hour}</b><small>${day}</small></time><i aria-hidden="true" data-entry="${i}"></i><div><strong>${subject}</strong><p>${byline}</p></div></div>`;
+      }
       if(view.name==='Claude Study' && dashboardView==='handover'){
         const subjects=['Preferences submitted','Advising draft saved','Group template published'];
         const detail=[name,`Omar Hassan · ${name}`,`Group 4 · ${name}`];
@@ -629,6 +641,27 @@ function courseDrawing(code) {
   };
   return paths[code] ? `<svg class="course-drawing" aria-hidden="true" viewBox="0 0 30 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="${paths[code]}"/></svg>` : '';
 }
+// Timetable art exposes the moving pieces while the catalogue uses the same still drawings.
+function timetableDrawing(code) {
+  const part = (symbol, id, className = '') => `<use class="${className}" href="images/symbols/${symbol}.svg#${id}"/>`;
+  const svg = (box, art) => `<svg class="course-drawing course-symbol" aria-hidden="true" viewBox="${box}" fill="none" stroke-linejoin="round" stroke-linecap="round">${art}</svg>`;
+  switch (code) {
+    case 'CSEN 701':
+      return svg('0 0 30 24', `<g stroke="currentColor" stroke-width="1.25">
+        <path d="M11 3v3m4-3v3m4-3v2m-8 12v3m4-3v3m4-4v3M6 9h3m-3 4h3m12-5h3m-3 5h3"/>
+        <path class="chip-case" d="M9 6l11-.5.6 10.5-11 1Z"/>
+        <path class="chip-core" d="M12 9l5-.4.4 4.4-5 .4Z"/></g>`);
+    case 'CSEN 703':
+      return svg('0 0 120 96', part('algorithms','graph') + `<path class="graph-trace" stroke="#933e29" stroke-width="5" pathLength="100" d="M13 47Q31 33 49 20Q80 30 106 38Q83 57 60 73Q36 61 13 47Z"/><circle class="graph-start" cx="13" cy="47" r="7.5" stroke="#933e29" stroke-width="4"/>`);
+    case 'CSEN 704':
+      return svg('0 0 120 96', `<g class="beetle-walk"><g transform="rotate(-14 60 49)" stroke="#39443c" stroke-width="4.5">
+        ${part('advanced-lab','tripod-left','beetle-legs-a')}${part('advanced-lab','tripod-right','beetle-legs-b')}${part('advanced-lab','shell')}</g></g>`);
+    case 'DMET 701':
+      return svg('0 0 120 96', part('graphics','frame') + part('graphics','mesh','graphics-mesh'));
+    default:
+      return courseDrawing(code);
+  }
+}
 function weekly(){
   const days = [
     ['Sunday', [['08:30','CSEN 701','Lecture · C2.301','ice'], ['12:00','CSEN 703','Tutorial · C3.104','cherry']]],
@@ -639,7 +672,7 @@ function weekly(){
   ];
   const illustrated = workspaces[lab.layout].name === 'Claude Study';
   function classCard([time, code, detail, color]) {
-    return `<div class="week-class ${color}">${illustrated ? courseDrawing(code) : ''}<time datetime="${time}">${time}</time>
+    return `<div class="week-class ${color}">${illustrated ? timetableDrawing(code) : ''}<time datetime="${time}">${time}</time>
       <strong>${courseData.find(course => course[0] === code)[1]}</strong>
       <small>${illustrated ? `${code}<span class="study-place">${detail}</span>` : `${code} · ${detail}`}</small></div>`;
   }
@@ -652,8 +685,8 @@ function weekly(){
         <path fill="#faf0d8" d="M18 51c12-4 34-4 49 1-4 4-34 7-49-1Z"/>
         <path fill="#a7c3bc" fill-rule="evenodd" d="M55 33c13-8 20-2 16 6-2 5-8 8-17 7l1-13Zm3 3-1 6c5 0 9-2 10-5 1-3-3-4-9-1Z"/>
         <path fill="#adc8c0" d="M22 30q18-5 37 0c-1 12-3 22-16 24-14 2-20-8-21-24Z"/>
-        <path fill="#f6ecd6" d="M22 30c2-6 33-7 37 0-2 6-33 7-37 0Z"/>
-        <path fill="#705044" d="M26 31q13-6 29-1-10 6-29 1Z"/>
+        <ellipse cx="40.5" cy="30" rx="18.2" ry="5.1" fill="#f6ecd6" stroke-width="1.35"/>
+        <ellipse cx="40.5" cy="30.4" rx="14.9" ry="2.9" fill="#705044" stroke="none"/>
         <path d="M27 37q1 8 5 11" stroke="#dfede2"/>
       </g><g class="cup-steam" fill="none" stroke="currentColor" stroke-width="1.55">
       <path d="M35 23c-7-7 7-9 2-16M46 21c-3-5 5-6 4-12"/>
@@ -969,7 +1002,7 @@ function stageOverview(main){
   greeting.append(title);
   const hour=new Date().getHours();
   const night=hour>=18 || hour<6;
-  const sky=night ? `<path class="moon-face" d="M40 10c-14 1-22 15-17 26 5 10 19 14 29 5-15 1-23-15-12-31Z"/><g class="sky-rays"><path d="m52 11 .8 3.5 3.4 1-3.4 1-.8 3.4-1-3.4-3.2-1 3.2-1Z"/><path d="m59 27 1 2m-44-12 1-2"/></g>`
+  const sky=night ? `<path class="moon-face" d="M40 8c-17 0-27 17-20 29 6 11 23 14 33 3-12 4-23-4-22-15 0-7 4-13 9-17Z"/><g class="sky-rays"><path d="m52 11 .8 3.5 3.4 1-3.4 1-.8 3.4-1-3.4-3.2-1 3.2-1Z"/><path d="m59 27 1 2m-44-12 1-2"/></g>`
     : `<path class="sun-face" d="M21 35c-6-13 5-25 16-21 8 2 10 11 7 18"/><g class="sky-rays"><path d="M32 6l1 4m-17 2 3 4M9 28h6m36-15-4 5m10 10-6 1"/></g>`;
   greeting.insertAdjacentHTML('beforeend',`<svg class="greeting-sun ${night?'night-sky':'day-sky'}" viewBox="0 0 70 60" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${sky}<path class="sky-horizon" d="M11 47q10-4 21-3t24 0"/><path d="m19 50 10 1m6 0 13-1" opacity=".5"/></svg>`);
   if(motionPreference.matches) return;
@@ -982,7 +1015,7 @@ function stageOverview(main){
     greeting:'.page-head h1',meta:'.page-head p',decoration:'.greeting-sun',
     heading:'.section-head,.timetable-heading',queue:'.queue-entry',upcoming:'.desk-calendar',
     day:'.week-day>h2',course:'.week-class',empty:'.week-day-off',
-    note:'.module-review .review-person,.module-activity .event'
+    note:'.module-review .review-person,.module-review .draft-file,.module-activity .event'
   };
   for(const [kind,selector] of Object.entries(groups)){
     shell.querySelectorAll(selector).forEach((el,index)=>units.set(el,{kind,index}));
@@ -1153,7 +1186,7 @@ document.addEventListener('click',event=>{
       <path class="folio-crease" stroke="#a0957d" stroke-width="1.25"/>
     </svg>`;
   stack.append(overlay);
-  const paths = overlay.querySelectorAll('path');
+  const paths = overlay.querySelector(':scope > svg').querySelectorAll('path');
   const leaf = overlay.querySelector('.folio-printed-leaf');
   const frames = forward ? calendarCels : [...calendarCels].reverse();
   function expose(index) {

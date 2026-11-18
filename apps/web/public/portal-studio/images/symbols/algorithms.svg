@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 96" fill="none" stroke="#463730" stroke-linecap="round" stroke-linejoin="round">
-  <g stroke-width="4.3">
+  <g id="graph" stroke="#463730" stroke-linecap="round" stroke-linejoin="round" fill="none" stroke-width="4.3">
     <path d="M13 47Q31 33 49 20m1 2q4 24 10 50M61 72q24-16 45-33M105 38Q80 30 50 20M14 49q23 12 45 24"/>
     <g fill="#f6d6bb">
       <path d="M5 47c0-5 4-8 8-7.5 5 .4 8 3 7.5 8-.4 5-4.5 8-9 7.5C7 55 4.4 52 5 47Z"/>
