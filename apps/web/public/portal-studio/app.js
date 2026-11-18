@@ -166,42 +166,38 @@ function queueSketch(name) {
   };
   return `<svg class="queue-sketch" viewBox="0 0 64 52" fill="none" stroke="#352f29" stroke-width="1.55" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">${subjects[name]}</svg>`;
 }
-const queueDirections = {
-  illustrated:'Illustrated',
-  rail:'Rail',
-  'wide-rail':'Wide Rail',
-  spotlight:'Spotlight',
-  signal:'Signal',
-  board:'Board'
-};
-const queueDirectionKey = 'portal-studio-queue-direction';
-let queueDirection = localStorage.getItem(queueDirectionKey);
-const previewDirection = params.get('queue');
-if (Object.hasOwn(queueDirections,previewDirection)) queueDirection = previewDirection;
-if (!Object.hasOwn(queueDirections,queueDirection)) queueDirection = 'illustrated';
-
+let calendarWeek = 0;
+function calendarPage() {
+  const today = new Date();
+  const days = Array.from({length:7}, (_, i) =>
+    new Date(today.getFullYear(), today.getMonth(), today.getDate() + calendarWeek * 7 + i, 12));
+  const format = (date, options) => date.toLocaleDateString('en-GB',options);
+  const cells = days.map(day=>{
+    const month = format(day,{month:'short'});
+    const deadline = day.getFullYear() === 2026 && registrationDates.find(([d,m])=>Number(d)===day.getDate() && m===month);
+    const current = day.toDateString()===today.toDateString();
+    const inner = `<small>${format(day,{weekday:'narrow'})}</small><b>${day.getDate()}</b>`;
+    return deadline ? `<button class="folio-date marked" type="button" aria-label="${format(day,{dateStyle:'full'})}, ${deadline[2]}">${inner}<span class="folio-tip" role="tooltip">${deadline[2]}</span></button>`
+      : `<span class="folio-date" ${current?'aria-current="date"':''} aria-label="${format(day,{dateStyle:'full'})}">${inner}</span>`;
+  }).join('');
+  const edge = 'M4 6 Q66 2 130 5 T264 4 L262 149 Q184 147 133 151 T4 150 Z';
+  return `<svg class="folio-outline" viewBox="0 0 268 156" preserveAspectRatio="none" aria-hidden="true"><path d="${edge}"/><path d="M4 5 Q72 4 130 4 T263 5 L263 148 Q194 149 133 150 T5 151 Z"/></svg>
+    <svg class="folio-binding" viewBox="0 0 80 18" fill="none" aria-hidden="true"><g stroke="#625b50" stroke-linecap="round" stroke-width="2"><path d="M12 13c-5 0-6-11-2-11 3 0 4 4 4 7"/><path d="M36 13c-5 0-6-10-2-11 4-1 4 5 4 8"/><path d="M61 13c-5 0-6-11-2-11 3-1 5 4 5 7"/></g></svg>
+    <div class="folio-inner"><small>${calendarWeek===0?'Today':'Week of'}</small><strong>${format(days[0],{weekday:'short',day:'numeric',month:'short'})}</strong>
+    <div class="folio-days">${cells}</div></div>`;
+}
+function deskCalendar() {
+  return `<section class="desk-calendar" aria-label="Academic calendar"><div class="folio-paper" aria-live="polite">${calendarPage()}</div>
+    <div class="folio-nav"><span>Academic calendar</span><button type="button" data-week="-1" aria-label="Previous week">‹</button><button type="button" data-week="1" aria-label="Next week">›</button></div></section>`;
+}
 function workQueue(tasks) {
-  const directions = Object.entries(queueDirections).map(([id,label])=>
-    `<option value="${id}" ${id===queueDirection ? 'selected' : ''}>${label}</option>`
-  ).join('');
-  const maxCount = Math.max(...tasks.map(([, ,count])=>count));
-  const taskOptions = tasks.map(([symbol,tone,count,subject],index)=>
-    `<button type="button" data-queue-focus="${symbol}" data-tone="${tone}" aria-pressed="${index===0}"><span>${subject}</span><strong>${count}</strong></button>`
-  ).join('');
   const entries = tasks.map(([symbol,tone,count,subject,phrase,desc,target,cta],index)=>`
     <li class="queue-entry" data-tone="${tone}" data-icon="${symbol}" data-current="${index===0}">
       <span class="queue-icon">${queueIcon(symbol)}${queueSketch(symbol)}</span>
-      <span class="queue-count">${count}</span>
-      <div class="queue-copy"><strong><span class="queue-phrase">${count} ${phrase}</span><span class="queue-subject">${subject}</span></strong><p>${desc}</p><span class="queue-signal" aria-hidden="true"><i style="--queue-share:${100*count/maxCount}%"></i></span></div>
+      <div class="queue-copy"><strong>${count} ${phrase}</strong><p>${desc}</p></div>
       ${link(target,cta+icon('chevron'),'queue-link')}
     </li>`).join('');
-  return `<div class="queue-designer" data-direction="${queueDirection}">
-    <div class="queue-stage">
-      <div class="queue-focus-controls" role="group" aria-label="Spotlight task">${taskOptions}</div>
-      <ul class="queue-entries" role="list">${entries}</ul>
-    </div>
-    <label class="queue-picker">Queue style <select data-queue-style>${directions}</select></label>
-  </div>`;
+  return `<div class="queue-calendar-layout"><div class="queue-designer" data-direction="illustrated"><div class="queue-stage"><ul class="queue-entries" role="list">${entries}</ul></div></div>${deskCalendar()}</div>`;
 }
 
 function avatar(name) {
@@ -353,7 +349,8 @@ function overview(){
   const canManage = ['administrator','coordinator'].includes(role);
   const canAdvise = ['advisor','coordinator'].includes(role);
   const formatDate = (day,month,label,tone) => `<li data-tone="${tone}"><time><strong>${day}</strong><span>${month}</span></time><span>${label}</span></li>`;
-  const reviewRows = readyStudents.slice(0,4).map(({name,index})=>`<div class="review-person">${avatar(name)}<div><strong>${name}</strong><span>${index === 0 ? '19 credits · Thursday off' : 'Semester 7 · Group 4'}</span></div>${link('draft-schedule','Review','btn row-control',index)}</div>`).join('');
+  const reviewCircle = '<svg class="review-circle" aria-hidden="true" viewBox="0 0 68 30" preserveAspectRatio="none"><path pathLength="1" d="M50 5C36 1 10 3 5 12S12 26 32 26C51 27 66 22 64 14S54 4 40 4"/></svg>';
+  const reviewRows = readyStudents.slice(0,4).map(({name,index})=>`<div class="review-person">${avatar(name)}<div><strong>${name}</strong><span>${index === 0 ? '19 credits · Thursday off' : 'Semester 7 · Group 4'}</span></div>${link('draft-schedule','Review'+reviewCircle,'btn row-control',index)}</div>`).join('');
   const tasks = [
     ['course-removal','rose',3,'Course removals','course removal requests','Credit load and scheduling decisions','mandatory-removals','Review'],
     ...(canAdvise ? [['advisor-assignment','mint',2,'Advisors','students need an advisor','Advising assignments','advising','Assign']] : []),
@@ -551,12 +548,28 @@ function weekly(){
     ['Wednesday', [['12:00','DMET 701','Lecture · C1.201','clay']]],
     ['Thursday', []]
   ];
-  return `<div class="week-columns" aria-label="Weekly course schedule">${days.map(([day, meetings]) =>
-    `<section class="week-day" aria-label="${day}"><h2>${day}</h2>
-      ${meetings.length ? meetings.map(([time, code, detail, color]) =>
-        `<div class="week-class ${color}">${workspaces[lab.layout].name==='Claude Study' ? courseDrawing(code) : ''}<time datetime="${time}">${time}</time>
-          <strong>${courseData.find(course => course[0] === code)[1]}</strong>
-          <small>${workspaces[lab.layout].name==='Claude Study' ? `${code}<span class="study-place">${detail}</span>` : `${code} · ${detail}`}</small></div>`).join('') : '<p class="week-free">No classes</p>'}</section>`).join('')}</div>`;
+  const illustrated = workspaces[lab.layout].name === 'Claude Study';
+  const slots = [...new Set(days.flatMap(([, meetings]) => meetings.map(([time]) => time)))].sort();
+  function classCard([time, code, detail, color]) {
+    return `<div class="week-class ${color}">${illustrated ? courseDrawing(code) : ''}<time datetime="${time}">${time}</time>
+      <strong>${courseData.find(course => course[0] === code)[1]}</strong>
+      <small>${illustrated ? `${code}<span class="study-place">${detail}</span>` : `${code} · ${detail}`}</small></div>`;
+  }
+  function dayContents(meetings) {
+    if (!illustrated) return meetings.map(classCard).join('') || '<p class="week-free">No classes</p>';
+    if (!meetings.length) return `<div class="week-day-off">
+      <svg aria-hidden="true" viewBox="0 0 76 60" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+        <path class="day-off-wash" d="M13 35q8-2 22 2l1 5q-2 11-12 12-12-1-11-19Z"/>
+        <path d="M13 34q10-3 23 1l-1 9q-2 9-10 9-11 0-12-19Zm23 3q11-3 9 3-1 5-10 6M9 51q-3 3 9 5t24-3M20 27c-5-6 7-6 3-13m6 14c-3-4 4-6 4-10"/>
+        <path class="day-off-sun" d="M46 15q0-6 6-6t6 6q-1 6-6 6t-6-6Zm6-13v3m9 2 2-2m0 10h4m-9 8 2 3m-18-13-4-1m6-7-2-3"/>
+      </svg><strong>No classes</strong><small>All day</small></div>`;
+    return slots.map(time => {
+      const meeting = meetings.find(([start]) => start === time);
+      return meeting ? classCard(meeting) : `<div class="week-open-slot"><time datetime="${time}">${time}</time><span>Free slot</span></div>`;
+    }).join('');
+  }
+  return `<div class="week-columns${illustrated ? ' week-by-time' : ''}" style="--day-rows:${slots.length + 1}" aria-label="Weekly course schedule">${days.map(([day, meetings]) =>
+    `<section class="week-day" aria-label="${day}"><h2>${day}</h2>${dayContents(meetings)}</section>`).join('')}</div>`;
 }
 function schedule(staff=false){
   if(staff)return head('Student schedules',academicStudy() ? termContext('Schedule review') : '',link('draft-schedule','Create advising draft','btn primary'))+
@@ -728,10 +741,80 @@ function auth(){
 }
 const renderers = {overview,notifications,profile, directory, 'student-detail':()=>profile(true),advising:()=>directory(true),'pending-work':pending,'schedule-activity':activity,'financial-records':financial,'mandatory-removals':removals,'student-schedules':()=>schedule(true),'draft-schedule':draft,courses,'course-detail':courseDetail,terms,offerings,'copy-offerings':copyOfferings,templates,'template-detail':templateDetail,'group-assignments':assignments,'my-schedule':schedule,'my-courses':registered,'schedule-swap':swap,preferences,records,'my-advisor':advisor,'calendar-sync':calendarSync};
 function accountControls(){
-  return `<a class="icon-button" href="${href('notifications')}" data-page="notifications" aria-label="Notifications" title="Notifications">${icon('bell')}<span class="notification-dot"></span></a>
+  const bell = `<svg class="icon notice-bell" aria-hidden="true" viewBox="0 0 28 28" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <path class="bell-body" d="M8 12c0-4 2.1-6.6 6-6.6s6 2.8 6 6.6c0 3.6 1.2 5.4 2.4 7.1-4.7.8-12.3.8-16.8 0C7 17.4 8 15.4 8 12Z"/>
+    <path class="bell-clapper" d="M12 22q2 2 4-.2"/>
+    <path class="bell-echo" pathLength="1" d="M4.4 7.8Q2.5 10 2.7 12.4M23.6 7.3q2.1 2.3 2 4.4"/>
+  </svg>`;
+  return `<a class="icon-button" href="${href('notifications')}" data-page="notifications" aria-label="Notifications" title="Notifications">${bell}${notificationEntries().some(([id])=>!readNotifications.has(id)) ? '<span class="notification-dot"></span>' : ''}</a>
     <button type="button" class="account-button" popovertarget="account-menu" aria-label="Account menu for ${person()}">${avatar(person())}<span>${person()}</span>${icon('down')}</button>
     <div id="account-menu" popover><div class="account-caption">${roleNames[role]}</div>${link('profile','My profile')}${button('Sign out','sign-out','sign-out')}</div>`;
 }
+
+let arrivalObserver;
+const motionPreference=matchMedia('(prefers-reduced-motion: reduce)');
+
+function finishArrival(item){
+  arrivalObserver?.unobserve(item);
+  item.removeAttribute('data-arriving');
+  item.getAnimations().filter(animation=>animation.id==='overview-arrival').forEach(animation=>animation.cancel());
+}
+
+function stageOverview(main){
+  const items=main.querySelectorAll('.queue-entry,.week-class,.week-free,.week-day-off,.module-review .review-person,.module-activity .event');
+  const grid=main.querySelector('.work-grid');
+  if(!items.length || motionPreference.matches) return;
+  const order=new Map(Array.from(items,(item,index)=>[item,index]));
+  let firstBatch=true;
+  arrivalObserver=new IntersectionObserver((entries,observer)=>{
+    const area=grid.getBoundingClientRect();
+    const visible=entries.filter(entry=>entry.isIntersecting && entry.target.hasAttribute('data-arriving'));
+    const week=firstBatch && main.querySelector('.week-columns');
+    const releaseWeek=week && week.scrollWidth<=week.clientWidth;
+    if(releaseWeek) week.classList.add('unstacking');
+    const flights=visible.map(({target:item,boundingClientRect:box},rank)=>{
+      observer.unobserve(item);
+      item.removeAttribute('data-arriving');
+      if(motionPreference.matches || item.matches(':focus-within')) return;
+      const index=order.get(item);
+      const side=index%2 ? 1 : -1;
+      const row=item.matches('.review-person,.event');
+      const gather=firstBatch && !row;
+      const centerX=box.left+box.width/2,centerY=box.top+box.height/2;
+      // Visible pieces share a pickup point. Later rows slip in from the gutter.
+      const fromGutter=row && innerWidth>800;
+      const direction=fromGutter ? (item.matches('.event') ? -1 : 1) : side;
+      const dx=gather ? area.left+area.width/2-centerX : direction*Math.min(64,box.width*.22);
+      const dy=gather ? Math.max(70,Math.min(innerHeight*.48,area.top+150))-centerY : 24;
+      const bend=(gather?24:9)*side;
+      const pose=(x,y,angle,scale)=>`translate(${x}px,${y}px) rotate(${angle}deg) scale(${scale})`;
+      return item.animate([
+        {transform:pose(dx,dy,side*(gather?7:3),gather ? .34 : .92),offset:0},
+        {transform:pose(dx*.64+bend,dy*.7-10,-side*2,gather ? .76 : .98),offset:.34},
+        {transform:pose(dx*.13-bend*.36,dy*.16+4,side*1.5,1),offset:.71},
+        {transform:pose(-side*2,-1,-side*.35,1),offset:.88},
+        {transform:'none'}
+      ],{id:'overview-arrival',duration:gather?580:350,delay:Math.min(rank,7)*24,fill:'backwards',easing:'cubic-bezier(.25,.72,.36,1)'}).finished;
+    });
+    Promise.allSettled(flights).then(()=>{if(releaseWeek) week.classList.remove('unstacking');});
+    if(visible.length) firstBatch=false;
+  },{threshold:0});
+  items.forEach(item=>{
+    item.setAttribute('data-arriving','');
+    arrivalObserver.observe(item);
+  });
+  main.addEventListener('focusin',event=>{
+    const item=event.target.closest('.queue-entry,.review-person,.event');
+    if(item) finishArrival(item);
+  });
+}
+
+motionPreference.addEventListener('change',()=>{
+  if(!motionPreference.matches) return;
+  arrivalObserver?.disconnect();
+  document.querySelectorAll('[data-arriving]').forEach(finishArrival);
+  document.getAnimations().filter(animation=>animation.id==='overview-arrival').forEach(animation=>animation.cancel());
+});
 
 function render(focus=false){
   if (!authPages.has(page) && !signedIn()) {
@@ -742,8 +825,10 @@ function render(focus=false){
   document.title=`Portal — ${layoutNames[lab.layout]} · ${pages[page]}`;
   document.body.classList.toggle('auth-screen',authPages.has(page));
   const body=authPages.has(page)?auth():`<div class="shell">${sidebar()}<div class="workspace"><header class="topbar">${link('overview',portalWordmark(),'mobile-nav wordmark')}<span class="term">${workspaces[lab.layout].name==='Claude Study'?'<small class="study-crumb">Academic workspace &nbsp; / &nbsp;</small>':''}${pages[page]}<span>Winter 2026 / 2027</span></span><div class="topactions">${button(icon('menu')+'<span class="sr-only">Menu</span>','mobile-menu','mobile-menu')}${accountControls()}</div></header><main class="content" data-screen="${page}" id="content" tabindex="-1">${renderers[page]()}</main></div></div>`;
+  arrivalObserver?.disconnect();
   app.innerHTML=body;
   syncControls(role, page);
+  if(page==='overview' && workspaces[lab.layout].name==='Claude Study') stageOverview(app.querySelector('main'));
   if(focus)document.querySelector('#content')?.focus({preventScroll:true});
 }
 function navigate(target){if(dialog.open)dialog.close();page=pageKey(target);tab='';history.pushState({},'',href(page));render(true);window.scrollTo(0,0);}
@@ -818,27 +903,29 @@ function action(name,el){
   }
 }
 document.addEventListener('click',event=>{
-  const choice = event.target.closest('[data-queue-focus]');
-  if (!choice) return;
-  const queue = choice.closest('.queue-designer');
-  queue.querySelectorAll('[data-queue-focus]').forEach(option=>option.setAttribute('aria-pressed',String(option===choice)));
-  queue.querySelectorAll('.queue-entry').forEach(entry=>entry.dataset.current=String(entry.dataset.icon===choice.dataset.queueFocus));
+  const control = event.target.closest('[data-week]');
+  if (!control) return;
+  calendarWeek += Number(control.dataset.week);
+  const paper = control.closest('.desk-calendar').querySelector('.folio-paper');
+  paper.innerHTML = calendarPage();
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    paper.getAnimations().forEach(animation=>animation.cancel());
+    paper.animate([
+      {transform:'perspective(460px) rotateX('+ (control.dataset.week==='1' ? -62 : 62) +'deg)'},
+      {transform:'perspective(460px) rotateX(3deg)',offset:.78},
+      {transform:'perspective(460px) rotateX(0)'}
+    ],{duration:320,easing:'ease-out'});
+  }
 });
 document.addEventListener('click',event=>{
   const target=event.target.closest('[data-page],[data-action],[data-tab]');if(!target)return;
-  if(target.dataset.page){if(event.ctrlKey||event.metaKey||event.shiftKey||event.altKey)return;if(target.dataset.student !== undefined)selectedStudent=Number(target.dataset.student);if(target.dataset.courseCode)selectedCourse=resolveCourse(target.dataset.courseCode);event.preventDefault();navigate(target.dataset.page);}
+  if(target.dataset.page){if(event.ctrlKey||event.metaKey||event.shiftKey||event.altKey)return;if(target.dataset.student !== undefined)selectedStudent=Number(target.dataset.student);if(target.dataset.courseCode)selectedCourse=resolveCourse(target.dataset.courseCode);event.preventDefault();
+    navigate(target.dataset.page);}
   else if(target.dataset.tab){tab=target.dataset.tab;render();document.querySelector(`[data-tab="${tab}"]`)?.focus();}
   else action(target.dataset.action,target);
 });
 document.addEventListener('change',event=>{
-  if(event.target.matches('[data-queue-style]')) {
-    queueDirection = event.target.value;
-    event.target.closest('.queue-designer').dataset.direction = queueDirection;
-    localStorage.setItem(queueDirectionKey,queueDirection);
-    const url = new URL(location.href);
-    url.searchParams.delete('queue');
-    history.replaceState(history.state,'',url);
-  } else if(event.target.id==='role-select'){role=event.target.value;navigate('overview');}
+  if(event.target.id==='role-select'){role=event.target.value;navigate('overview');}
   else if(event.target.id==='page-select')navigate(event.target.value);
   else if(event.target.matches('[data-filter]'))filterRows();
   else if(event.target.matches('.dayoff')) {
