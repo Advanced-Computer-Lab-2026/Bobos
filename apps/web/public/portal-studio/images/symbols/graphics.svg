@@ -1,8 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 96" fill="none" stroke-linejoin="round" stroke-linecap="round">
-  <path d="M7 25V9h19m68 0h19v16M7 69v16h19m68 0h19V69" stroke="#635e55" stroke-width="5"/>
+  <path id="frame" fill="none" d="M7 25V9h19m68 0h19v16M7 69v16h19m68 0h19V69" stroke="#635e55" stroke-width="5"/>
+  <g id="mesh" stroke-linecap="round" stroke-linejoin="round">
   <path d="m23 39 29-23 31 6 15 28-20 25-35 1-20-22z" fill="#b5c6c2" stroke="#373b38" stroke-width="4.6"/>
   <path d="m23 39 29-23 7 21-16 24z" fill="#e9e9da"/>
   <path d="m59 37 24-15 15 28-21 7z" fill="#90a9a4"/>
   <path d="m43 61 16-24 18 20 1 18-35 1z" fill="#81918a"/>
-  <path d="m23 39 36-2 24-15M52 16l7 21-16 24-20-7m20 7 34-4 21-7M59 37l18 20 1 18" stroke="#46514a" stroke-width="3.4"/>
+  <path fill="none" d="m23 39 36-2 24-15M52 16l7 21-16 24-20-7m20 7 34-4 21-7M59 37l18 20 1 18" stroke="#46514a" stroke-width="3.4"/>
+  </g>
 </svg>

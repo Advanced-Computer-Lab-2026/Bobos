@@ -1263,3 +1263,90 @@ html[data-theme=dark] .illustrated-greeting .night-sky{color:#c9cde6}
 @keyframes sun-ink{34%{d:path("M21 35c-5-13 5-25 16-20 8 2 10 11 7 18")}72%{d:path("M21 34c-6-12 6-25 17-20 7 3 9 12 6 18")}}
 @keyframes moon-ink{31%{d:path("M40 10c-14 2-22 15-16 26 4 10 18 14 28 5-16 1-23-16-12-31Z")}69%{d:path("M40 10c-15 1-22 16-17 26 6 11 19 13 29 5-15 0-22-15-12-31Z")}}
 }
+
+.graph-trace,.graph-start {opacity:0}
+@media (hover:hover) and (prefers-reduced-motion:no-preference) {
+  .week-class:hover .chip-case {animation:chip-contour .48s steps(1,end) infinite}
+  .week-class:hover .chip-core {animation:chip-die .63s steps(1,end) infinite}
+  .week-class:hover .graph-trace {stroke-dasharray:16 84;animation:graph-walk 2.1s linear infinite}
+  .week-class:hover .graph-start {animation:graph-visit 2.1s linear infinite;transform-origin:13px 47px}
+  .week-class:hover .beetle-walk {transform-origin:60px 46px;animation:beetle-track 2.3s ease-in-out infinite}
+  .week-class:hover :is(.beetle-legs-a,.beetle-legs-b) {transform-origin:60px 53px;animation:beetle-stride .24s steps(2,end) infinite alternate}
+  .week-class:hover .beetle-legs-b {animation-direction:alternate-reverse}
+  .week-class:hover .graphics-mesh {transform-origin:60px 47px;animation:mesh-orbit 1.85s ease-in-out infinite}
+}
+@keyframes chip-contour {
+  22% {d:path("M9.1 5.7l11.1-.1.6 10.5-11.3.7Z")}
+  48% {d:path("M8.7 6.2l11.1-.8.9 10.6-11.1 1.2Z")}
+  73% {d:path("M9.2 6l10.6-.6.6 10.7-10.9.7Z")}
+}
+@keyframes chip-die {
+  28% {d:path("M12.1 9.1l4.8-.6.5 4.4-5 .7Z")}
+  64% {d:path("M11.8 8.9l5.2-.3.2 4.8-5.1.1Z")}
+}
+@keyframes graph-walk {
+  0% {opacity:0;stroke-dashoffset:16}
+  10%,86% {opacity:1}
+  100% {opacity:0;stroke-dashoffset:-84}
+}
+@keyframes graph-visit {
+  0%,45%,100% {opacity:0;transform:scale(1)}
+  7% {opacity:1}
+  28% {opacity:0;transform:scale(1.8)}
+}
+@keyframes beetle-track {
+  0%,100% {transform:translate(0,0) rotate(0)}
+  29% {transform:translate(-3px,-7px) rotate(7deg)}
+  47% {transform:translate(1px,-11px) rotate(20deg)}
+  65% {transform:translate(5px,-6px) rotate(11deg)}
+  85% {transform:translate(2px,-2px) rotate(-3deg)}
+}
+@keyframes beetle-stride {from {transform:rotate(-6deg)} to {transform:rotate(6deg)}}
+@keyframes mesh-orbit {
+  0%,100% {transform:rotate(0) skewY(0) scaleX(1)}
+  38% {transform:rotate(7deg) skewY(-4deg) scaleX(.89)}
+  74% {transform:rotate(-4deg) skewY(3deg) scaleX(.96)}
+}
+
+/* Arriving cards can cross their layout bounds without creating scroll tracks. */
+[data-workspace=claude-study] .work-module .week-columns.compact-week{overflow:clip}
+.teaching-pad{width:100%;max-width:470px}
+.field-spread{display:grid;grid-template-columns:minmax(75px,.42fr) minmax(0,1fr);align-items:stretch;isolation:isolate;padding:3px 3px 4px;background:#889a92;border-radius:5px 8px 7px 5px;box-shadow:0 2px 0 #455854}
+.field-today{min-width:0;position:relative;display:flex;flex-direction:column;align-items:flex-start;overflow:hidden;background:#3d5555;color:#f9f2df;text-align:left;border:0;border-radius:3px 0 0 3px;padding:14px 10px;cursor:pointer;isolation:isolate}
+.field-today small{font-size:12px;color:#edeedc}
+.field-today strong{font:400 clamp(40px,4.5vw,64px)/1 Tiempos,Georgia,serif;letter-spacing:-.07em}
+.field-today span{font-size:11px}
+.field-today svg{width:90%;max-height:49%;position:absolute;right:0;bottom:-3px;z-index:-1}
+.field-today:focus-visible{outline:2px solid currentColor;outline-offset:-4px}
+.field-spread .folio-stack{background:#f8f1df;border-left:4px double #b5ae9e;border-radius:0 4px 4px 0}
+.field-spread .folio-inner{padding:10px 6px 12px}
+.field-spread .folio-month{padding:2px 5px 6px}
+.field-spread .folio-days{row-gap:2px}
+.field-spread .folio-date b{width:22px;height:22px}
+.teaching-pad .folio-nav .folio-today{display:none}
+.teaching-pad .folio-nav{float:right;margin-top:0;padding-top:5px}
+.teaching-pad .folio-agenda{padding:11px 67px 0 0}
+.teaching-pad .folio-agenda li{flex-wrap:wrap;gap:2px 7px}
+.teaching-pad .folio-agenda time{min-width:auto}
+.teaching-pad::after{content:"";display:block;clear:both}
+.night-sky .sky-horizon,.night-sky>.sky-horizon+path{opacity:.3}
+.illustrated-greeting .night-sky .moon-face{fill:#d0c5a97a}
+@keyframes moon-ink{31%{d:path("M40 8c-17 1-27 17-20 29 7 11 23 14 33 3-12 4-23-5-22-15 1-8 5-13 9-17Z")}69%{d:path("M40 8c-18 0-26 18-20 29 7 11 23 13 33 3-13 4-23-4-22-15 0-7 5-14 9-17Z")}}
+.draft-index{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px 17px;padding-top:7px}
+.draft-file{position:relative;display:flex;flex-direction:column;gap:4px;padding:13px 22px 10px 10px;background:var(--raised);border-radius:0 5px 5px 5px;color:var(--ink);text-decoration:none}
+.draft-file .draft-tab{position:absolute;bottom:100%;left:0;width:32px;height:5px;background:var(--raised);border-radius:3px 7px 0 0}
+.draft-tab::after{content:"";display:block;width:14px;height:2px;margin:3px 5px;background:#97b6c7}
+.draft-file:nth-child(3n+2) .draft-tab::after{background:#bd9f90}
+.draft-file:nth-child(3n) .draft-tab::after{background:#93afa0}
+.draft-file strong,.desk-entry strong{font-size:13px;font-weight:550}
+.draft-file small,.desk-entry p{color:var(--muted);font-size:11px}
+.draft-arrow{position:absolute;right:8px;top:12px;color:var(--muted)}
+.draft-file:is(:hover,:focus-visible) strong{text-decoration:underline;text-underline-offset:3px}
+.dashboard-edition .module-activity .desk-entry{display:grid;grid-template-columns:48px 10px minmax(0,1fr);gap:10px;align-items:start;padding:6px 0 16px}
+.desk-entry>time{margin:0!important;display:grid!important;gap:2px}
+.desk-entry time b{font:500 13px/1.4 Styrene,system-ui,sans-serif;color:var(--ink)}
+.desk-entry time small{font-size:10px}
+.desk-entry>i{position:relative;margin-top:5px;width:8px;height:8px;background:#89aebe;border-radius:50%}
+.desk-entry>i[data-entry="1"]{background:#be9f90}
+.desk-entry>i[data-entry="2"]{background:#91ad9a}
+.desk-entry:not(:last-child)>i::after{content:"";position:absolute;top:13px;left:3px;width:1px;height:25px;background:var(--line)}
