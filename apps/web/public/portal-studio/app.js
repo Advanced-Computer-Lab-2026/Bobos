@@ -897,8 +897,11 @@ document.addEventListener('click',event=>{
   queue.querySelectorAll('[data-queue-focus]').forEach(option=>option.setAttribute('aria-pressed',String(option===choice)));
   queue.querySelectorAll('.queue-entry').forEach(entry=>entry.dataset.current=String(entry.dataset.icon===choice.dataset.queueFocus));
 });
+let pendingPressNavigation;
+const inkPresses=new WeakSet();
 // Capture the press position before the action can replace its button.
 document.addEventListener('click',event=>{
+  clearTimeout(pendingPressNavigation);
   if(event.button!==0 || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey ||
       matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   const control=event.target.closest('a[href],button,summary');
@@ -906,6 +909,7 @@ document.addEventListener('click',event=>{
   if(page!=='overview' && !control.closest('[data-screen=notifications]') &&
       !control.matches('.icon-button[data-page=notifications],main .btn')) return;
 
+  inkPresses.add(event);
   const ink=document.querySelector('#press-ink');
   const bounds=control.getBoundingClientRect();
   Object.assign(ink.style,{left:bounds.left+'px',top:bounds.top+'px',width:bounds.width+'px',height:bounds.height+'px'});
@@ -922,7 +926,10 @@ document.addEventListener('click',event=>{
 
 document.addEventListener('click',event=>{
   const target=event.target.closest('[data-page],[data-action],[data-tab]');if(!target)return;
-  if(target.dataset.page){if(event.ctrlKey||event.metaKey||event.shiftKey||event.altKey)return;if(target.dataset.student !== undefined)selectedStudent=Number(target.dataset.student);if(target.dataset.courseCode)selectedCourse=resolveCourse(target.dataset.courseCode);event.preventDefault();navigate(target.dataset.page);}
+  if(target.dataset.page){if(event.ctrlKey||event.metaKey||event.shiftKey||event.altKey)return;if(target.dataset.student !== undefined)selectedStudent=Number(target.dataset.student);if(target.dataset.courseCode)selectedCourse=resolveCourse(target.dataset.courseCode);event.preventDefault();
+    if(inkPresses.has(event)){
+      pendingPressNavigation=setTimeout(()=>{if(target.isConnected) navigate(target.dataset.page);},150);
+    }else navigate(target.dataset.page);}
   else if(target.dataset.tab){tab=target.dataset.tab;render();document.querySelector(`[data-tab="${tab}"]`)?.focus();}
   else action(target.dataset.action,target);
 });
