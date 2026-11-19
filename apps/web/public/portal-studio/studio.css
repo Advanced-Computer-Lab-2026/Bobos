@@ -1070,7 +1070,7 @@ html[data-theme=dark] [data-palette=console-tones] .sidebar .study-nav-group .na
 
 /* A single pen gesture per action. The label and its hit area stay in place. */
 [data-screen=overview] :is(a,button), [data-screen=notifications] button{position:relative}
-[data-screen=overview] :is(a,button):not(:has(.review-circle))::before,
+[data-screen=overview] :is(a,button):not(.draft-file):not(:has(.review-circle))::before,
 [data-screen=notifications] button::before{
   content:"";position:absolute;pointer-events:none;bottom:2px;left:8px;
   width:calc(100% - 16px);max-width:8rem;height:4px;background:currentColor;opacity:.8;
@@ -1369,3 +1369,129 @@ html[data-theme=dark] .illustrated-greeting .night-sky{color:#c9cde6}
 .desk-entry h3{margin-bottom:9px}
 .dashboard-edition .module-activity .desk-entry{padding-bottom:10px}
 .dashboard-edition .module-activity .desk-entry[data-entry="2"]{padding-top:7px}
+.edition-filters{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:0 18px}
+.calendar-feature:empty{display:none}
+.calendar-feature svg{width:100px;max-width:44%;height:auto}
+.calendar-print,.calendar-orbit,.calendar-register,.calendar-ribbon{display:flex;align-items:center;gap:14px}
+.calendar-print{background:#ed997b;color:#392b25;justify-content:space-between;padding:3px 15px;clip-path:polygon(0 4%,99% 0,100% 95%,1% 100%);margin-bottom:10px}
+.calendar-print b{font:800 59px/.98 system-ui;letter-spacing:-.09em;transform:rotate(-4deg)}
+.calendar-orbit{color:#597d99;margin:0 0 14px}
+.calendar-orbit span,.calendar-register span{font-size:12px;line-height:1.4;color:var(--muted)}
+.calendar-orbit strong{display:block;color:var(--ink);font:26px/1.1 Georgia,serif}
+.calendar-ribbon{justify-content:space-between;background:#bfd6bf;color:#263e35;clip-path:polygon(0 3%,100% 0,97% 52%,100% 97%,0 100%,2% 49%);padding:8px 18px;margin-bottom:10px}
+.calendar-ribbon span{font:italic 25px/1.1 Georgia,serif}
+[data-calendar-style=ribbon] .folio-month{display:none}
+[data-calendar-style=ribbon] .folio-days{row-gap:0}
+[data-calendar-style=ribbon] .folio-date{border-bottom:1px solid var(--line);padding-block:4px}
+.calendar-register b{font:500 52px/1 Georgia,serif;color:var(--ink)}
+[data-calendar-style=index]{display:flex;flex-direction:column}
+[data-calendar-style=index] .folio-agenda{order:0;border-left:2px solid #cf826a;padding-left:10px;margin:10px 0 16px}
+[data-calendar-style=index] .folio-stack{order:1}
+[data-calendar-style=index] .folio-nav{order:2}
+[data-calendar-style=night] .folio-stack{padding:14px;background:#263244;border-radius:3px 10px 5px 8px;--ink:#f5f0df;--muted:#c9cfda;--paper:#263244}
+.calendar-stars{display:flex;justify-content:flex-end;margin-bottom:-8px;background:#263244;border-radius:12px 7px 0 0;color:#eed799;padding-right:8px}
+[data-calendar-style=night] .deadline-ring{stroke:#e7b873}
+@media(prefers-reduced-motion:no-preference){
+ .calendar-feature svg{animation:calendar-ink-arrive .28s steps(4,end)}
+ @keyframes calendar-ink-arrive{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0)}}
+}
+.calendar-choices{display:flex;flex-wrap:wrap;gap:4px 5px;margin:0 0 16px}
+.dashboard-edition .teaching-pad>h2{margin-bottom:9px}
+.calendar-choices button{border:1px solid var(--line);border-radius:5px;padding:5px 8px;font:inherit;font-size:12px;color:var(--muted);background:transparent;cursor:pointer}
+.calendar-choices button[aria-pressed=true]{background:var(--ink);color:var(--paper)}
+.ink-number{display:block;height:16px;width:auto;max-width:100%;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
+.calendar-print b .ink-number{height:54px;width:auto;max-width:none;stroke-width:2.1}
+
+/* A fixed hinge and two cut edges make the stationary month read as a desk pad. */
+.teaching-pad:not([data-calendar-style=clean]){
+ --sheet:#f2ecdc;--verso:#d6cbb7;--pencil:#696455;--binding:#acc3bd;--printing:#383933;
+}
+.teaching-pad[data-calendar-style=snap]{--sheet:#f8e6ca;--binding:#d6886e;--verso:#daaa8b;--printing:#452c22}
+.teaching-pad[data-calendar-style=tide]{--sheet:#e2efe9;--binding:#8eb9c0;--verso:#a7c8c1;--printing:#254946}
+.teaching-pad[data-calendar-style=bellows]{--sheet:#efe7f0;--binding:#abaabf;--verso:#cbbacf;--printing:#433a48}
+.teaching-pad[data-calendar-style=stiff]{--sheet:#f4e7c5;--binding:#d3b76f;--verso:#c8b790;--printing:#433d32}
+.teaching-pad[data-calendar-style=night]{--sheet:#273449;--binding:#394963;--printing:#f9ebce;--pencil:#bfb497;--verso:#424f65}
+.teaching-pad:not([data-calendar-style=clean]) .calendar-feature{
+ background:var(--binding);color:var(--printing);position:relative;display:flex;justify-content:flex-end;
+ height:27px;padding:0 9px;border-radius:6px 8px 0 0;margin-top:5px
+}
+.calendar-feature .binding-sketch{width:47px;height:37px;position:relative;top:-7px;z-index:1}
+.teaching-pad:not([data-calendar-style=clean]) .calendar-feature::before{content:"";position:absolute;left:15px;top:9px;width:48px;height:5px;border-block:1.5px solid currentColor;opacity:.62;transform:rotate(-2deg)}
+.teaching-pad:not([data-calendar-style=clean]) .folio-stack{
+ padding:0;color:var(--printing);--ink:var(--printing);--muted:var(--pencil);--paper:var(--sheet);
+ border-radius:0 0 4px 2px;background:var(--sheet);box-shadow:0 2px 0 var(--pencil),1px 4px 0 var(--verso),0 5px 0 var(--pencil)
+}
+.teaching-pad:not([data-calendar-style=clean]) .folio-paper{padding:12px 13px 7px}
+.teaching-pad:not([data-calendar-style=clean]) .folio-nav{margin-top:12px}
+.turn-measure,.turn-ground,.turn-cels,.turn-cels>svg{position:absolute;inset:0;pointer-events:none}
+.turn-cels{z-index:4}
+.turn-ground{background:var(--sheet)}
+.turn-cels>svg{width:100%;height:100%;overflow:visible}
+.turn-shadow{fill:#252725;opacity:.18}
+.turn-edge{fill:none;stroke:var(--pencil);stroke-width:1.1}
+.turn-cels .ring-pencil{fill:none}
+@media(prefers-reduced-motion:no-preference){
+ .binding-sketch .little-stars{transform-origin:32px 12px;animation:star-skip 1.5s steps(1,end) infinite}
+ @keyframes star-skip{33%{transform:rotate(-6deg) scale(.91)}62%{transform:rotate(4deg) scale(1.08)}77%{transform:rotate(1deg) scale(.99)}}
+}
+
+/* Separate exposures for the quick opening and the quieter held drawing. */
+@media(prefers-reduced-motion:no-preference){
+ .draft-file .folder-sheet,.draft-file .folder-cover{transition:none}
+ .draft-file:is(:hover,:focus-visible) .folder-sheet{animation:folder-lift .55s steps(1,end) both;transform-origin:48px 53px}
+ .draft-file:is(:hover,:focus-visible) .folder-cover{animation:folder-open .5s steps(1,end) both,folder-contour .49s steps(1,end) infinite}
+ .draft-file:is(:hover,:focus-visible) .folder-writing{animation:folder-pen .41s steps(1,end) infinite}
+ @keyframes folder-lift{
+  0%,8%{transform:none}16%{transform:translateY(1px) rotate(-.5deg)}
+  24%{transform:translateY(-1px) rotate(-1deg)}33%{transform:translateY(-4px) rotate(-2deg)}
+  41%{transform:translateY(-8px) rotate(-2.6deg)}49%{transform:translateY(-11px) rotate(-1.8deg)}
+  58%{transform:translateY(-13px) rotate(-1deg)}67%{transform:translateY(-12px) rotate(.3deg)}
+  78%{transform:translateY(-10px) rotate(.5deg)}90%,100%{transform:translateY(-10px) rotate(-.7deg)}
+ }
+ @keyframes folder-open{
+  0%{transform:none}10%{transform:scaleY(1.02)}21%{transform:scaleY(.96) skewX(-1deg)}
+  32%{transform:scaleY(.88) skewX(-2deg)}42%{transform:scaleY(.79) skewX(-3deg)}
+  55%{transform:scaleY(.74) skewX(-3.8deg)}69%{transform:scaleY(.76) skewX(-3deg)}
+  83%{transform:scaleY(.795) skewX(-2.5deg)}100%{transform:scaleY(.78) skewX(-2.6deg)}
+ }
+ @keyframes folder-contour{
+  24%{d:path("M5 31q0-5 5-5.1q34 .5 75 .1 5 0 5 5l-2 28q0 5-5 5H12q-5 0-5-5z")}
+  51%{d:path("M5 31q0-5 5-5q36-.65 75 .2 5-.2 5 4.8l-2 28q0 5-5 5H12q-5 0-5-5z")}
+  78%{d:path("M5 31q0-5 5-5q30 .25 75-.3 5 .3 5 5.3l-2 28q0 5-5 5H12q-5 0-5-5z")}
+ }
+ @keyframes folder-pen{
+  22%{d:path("M19 27.2q16-.7 35-.2m-35 5q20-.4 48 .2")}
+  48%{d:path("M19 27q14 .4 35-.4m-35 5.4q22-.8 48-.2")}
+  75%{d:path("M19 26.8q16 .3 35 .2m-35 5q18-.3 48 .3")}
+ }
+}
+.teaching-pad[data-calendar-style=bellows]{--sheet:var(--season-sheet);--verso:var(--season-back);--binding:var(--season-sheet);--printing:#38333c;--pencil:#59525c}
+.teaching-pad[data-calendar-style=bellows] .calendar-feature{height:10px;margin-top:12px}
+[data-calendar-style=bellows] .binding-sketch,[data-calendar-style=bellows] .calendar-feature::before{display:none!important}
+.teaching-pad[data-calendar-style=bellows] .calendar-feature::after{content:"";position:absolute;z-index:5;top:-5px;left:13%;width:74%;height:10px;border-inline:3px solid #685e70;border-radius:2px;transform:rotate(-.25deg);pointer-events:none}
+[data-calendar-style=bellows] .folio-month{position:relative;min-height:44px;align-items:center;padding-right:66px}
+[data-calendar-style=bellows] .folio-month strong{font:400 26px/1.05 Georgia,serif}
+.season-drawing{position:absolute;right:0;top:-6px;width:65px;height:52px;color:#49414b;overflow:visible}
+.season-cel{opacity:0}.season-cel.cel-4{opacity:1}
+@media(prefers-reduced-motion:no-preference){
+ .season-cel{animation:season-exposure .17s steps(1,end) both}
+ .season-cel.cel-1{animation-delay:.17s}.season-cel.cel-2{animation-delay:.34s}
+ .season-cel.cel-3,.season-cel.cel-4{animation:held-season .88s steps(1,end) infinite backwards}
+ .season-cel.cel-3{animation-delay:.51s}.season-cel.cel-4{animation-delay:.95s}
+ @keyframes season-exposure{0%,99%{opacity:1}100%{opacity:0}}
+ @keyframes held-season{0%,49%{opacity:1}50%,100%{opacity:0}}
+ .season-cel.cel-1,.season-cel.cel-2,.season-cel.cel-3,.season-cel.cel-4{animation-fill-mode:none}
+ .season-cel.cel-4{opacity:0}
+ .draft-file:is(:hover,:focus-visible) .folder-leaf-edge{animation:loose-leaf-ink .62s steps(1,end) infinite .45s}
+ @keyframes loose-leaf-ink{18%{d:path("M12 21Q45 18.8 82.4 20.4L84 59Q50 60 11 60Z")}42%{d:path("M11.7 20.8Q46 19.8 82 20L84 59Q50 60 11 60Z")}67%{d:path("M12 21.3Q44 18.9 82.3 19.7L84 59Q50 60 11 60Z")}86%{d:path("M12.2 21Q45 19.3 82 20.2L84 59Q50 60 11 60Z")}}
+}
+@media(prefers-reduced-motion:no-preference){
+ .placing-coffee .coffee-saucer{transform-origin:44px 53px;animation:saucer-slide .54s steps(1,end) backwards}
+ .placing-coffee .coffee-cup{transform-origin:39px 52px;animation:set-down .83s steps(1,end) backwards}
+ .placing-coffee .coffee-surface{transform-origin:40px 30px;animation:coffee-slosh .53s .5s steps(1,end) backwards}
+ .placing-coffee .cup-steam{animation:steam-rises .52s .78s steps(1,end) backwards}
+ @keyframes saucer-slide{0%{transform:translate(-70px,3px) rotate(-9deg)}16%{transform:translate(-42px,2px) rotate(-6deg)}30%{transform:translate(-23px,1px) rotate(-4deg)}45%{transform:translateX(-8px) rotate(-2deg)}58%{transform:translateX(3px) rotate(1deg)}72%{transform:translateX(2px)}87%{transform:translateX(-1px)}}
+ @keyframes set-down{0%,24%{transform:translate(9px,-63px) rotate(10deg)}33%{transform:translate(7px,-40px) rotate(9deg)}42%{transform:translate(5px,-22px) rotate(8deg)}51%{transform:translate(3px,-9px) rotate(5deg)}60%{transform:translate(1px,-1px) rotate(3deg)}65%{transform:rotate(-3deg)}74%{transform:translateY(-2px) rotate(-2deg)}84%{transform:rotate(1.3deg)}94%{transform:rotate(-.65deg)}}
+ @keyframes coffee-slosh{0%{transform:none}19%{transform:rotate(5deg) scaleX(.97)}39%{transform:rotate(-4deg) scaleY(.84)}60%{transform:rotate(2deg)}80%{transform:rotate(-.9deg)}}
+ @keyframes steam-rises{0%{clip-path:inset(100% 0 0)}23%{clip-path:inset(75% 0 0)}51%{clip-path:inset(42% 0 0)}74%{clip-path:inset(18% 0 0)}100%{clip-path:inset(0)}}
+}
