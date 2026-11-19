@@ -166,29 +166,47 @@ function queueSketch(name) {
   };
   return `<svg class="queue-sketch" viewBox="0 0 64 52" fill="none" stroke="#352f29" stroke-width="1.55" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">${subjects[name]}</svg>`;
 }
+// The term ledger and calendar read the same dated milestones.
+const academicTerms = [
+  {name:'Winter 2026',year:'2026 / 2027',opens:'2026-11-22',closes:'2026-12-06',swaps:'2026-12-13',status:'Active'},
+  {name:'Spring 2027',year:'2026 / 2027',opens:'2027-02-14',closes:'2027-02-28',swaps:'2027-03-07',status:'Upcoming'},
+  {name:'Spring 2026',year:'2025 / 2026',opens:'2026-02-15',closes:'2026-03-01',swaps:'2026-03-08',status:'Archived'}
+];
+const termMilestones = [
+  ['opens','Registration opens','sky','Opens'],
+  ['closes','Registration closes','gold','Closes'],
+  ['swaps','Schedule swaps close','iris','Swaps close']
+];
+const calendarDate = iso => new Date(iso+'T12:00:00');
+const formatCalendarDay = (iso, options) => calendarDate(iso).toLocaleDateString('en-GB',options);
 let calendarMonth = 0;
 function calendarDates() {
-  const today = new Date();
+  const today = calendarDate(new Date().toLocaleDateString('sv-SE',{timeZone:'Africa/Cairo'}));
   const month = new Date(today.getFullYear(),today.getMonth()+calendarMonth,1,12);
-  const shortMonth = month.toLocaleString('en-GB',{month:'short'});
-  const deadlines = month.getFullYear()===2026 ? registrationDates.filter(([,m])=>m===shortMonth) : [];
-  return {today,month,shortMonth,deadlines};
+  const prefix = month.getFullYear()+'-'+String(month.getMonth()+1).padStart(2,'0')+'-';
+  const deadlines = academicTerms.flatMap(term => termMilestones.filter(([key]) => term[key].startsWith(prefix))
+    .map(([key,label,,short]) => ({day:calendarDate(term[key]).getDate(),iso:term[key],label,short,term:term.name})))
+    .sort((a,b)=>a.day-b.day);
+  return {today,month,deadlines};
 }
 function calendarAgenda() {
-  const {shortMonth,deadlines} = calendarDates();
-  return deadlines.length ? `<ul>${deadlines.map(([day,,label])=>`<li><time>${Number(day)} ${shortMonth}</time>${label}</li>`).join('')}</ul>` : '<p>No academic deadlines this month.</p>';
+  const {deadlines} = calendarDates();
+  return deadlines.length ? `<ul>${deadlines.map(({iso,label})=>`<li><time datetime="${iso}">${formatCalendarDay(iso,{day:'numeric',month:'short'})}</time>${label}</li>`).join('')}</ul>` : '<p>No academic deadlines this month.</p>';
 }
-const deadlineRing = '<svg class="deadline-ring" viewBox="0 0 36 26" aria-hidden="true"><path d="M29 4C20 0 6 3 4 11c-4 9 7 14 18 12 10-2 13-9 9-15-2-3-6-4-8-4"/><path d="M6 19q5 5 13 4"/></svg>';
+const deadlineRing = '<svg class="deadline-ring" viewBox="0 0 36 26" aria-hidden="true"><path class="ring-pencil" d="M29 4C20 0 6 3 4 11c-4 9 7 14 18 12 10-2 13-9 9-15-2-3-6-4-8-4"/><path d="M6 19q5 5 13 4"/></svg>';
 function calendarPage() {
   const {today,month,deadlines} = calendarDates();
+  const lastDay = new Date(month.getFullYear(),month.getMonth()+1,0).getDate();
   const cells = Array.from({length:42},(_,index)=>{
     const day = 1-month.getDay()+index;
+    if(day<1 || day>lastDay) return '<span></span>';
     const date = new Date(month.getFullYear(),month.getMonth(),day,12);
-    if(date.getMonth()!==month.getMonth()) return '<span></span>';
-    const isToday = date.toDateString()===today.toDateString();
-    const deadline = deadlines.find(([d])=>Number(d)===day);
-    const attrs = `class="folio-date${deadline?' marked':''}" ${isToday?'aria-current="date"':''}`;
-    return deadline ? `<button type="button" ${attrs} aria-label="${date.toDateString()}, ${deadline[2]}"><b>${day}</b>${deadlineRing}<span class="folio-tip">${deadline[2]}</span></button>` : `<span ${attrs}><b>${day}</b></span>`;
+    const deadline = deadlines.find(event=>event.day===day);
+    const current = date.toDateString()===today.toDateString() ? ' aria-current="date"' : '';
+    if (!deadline) return `<span class="folio-date"${current}><b>${day}</b></span>`;
+    const when = formatCalendarDay(deadline.iso,{weekday:'short',day:'numeric',month:'short'});
+    const edge = index%7<2 ? 'tip-start' : index%7>4 ? 'tip-end' : '';
+    return `<button type="button" class="folio-date marked ${edge}"${current} data-deadline aria-label="${when}, ${deadline.label}, ${deadline.term}" aria-pressed="false"><b>${day}</b>${deadlineRing}<span class="folio-tip" aria-hidden="true"><small>${when} · ${deadline.term}</small><strong>${deadline.label}</strong></span></button>`;
   }).join('');
   return `<div class="folio-inner"><div class="folio-month"><strong>${month.toLocaleString('en-GB',{month:'long'})}</strong><small>${month.getFullYear()}</small></div><div class="folio-days">${['Su','Mo','Tu','We','Th','Fr','Sa'].map(d=>`<small>${d}</small>`).join('')}${cells}</div></div>`;
 }
@@ -221,20 +239,23 @@ const calendarInkHolds = {
   11:'M5 5Q27-27 112-38Q193-51 247-40Q277-29 290 3Q190 11 5 5Z',
   13:'M5 5Q80-11 159-13Q248-17 290 3Q165 8 5 5Z'
 };
-function calendarFrontispiece(){
-  const {today}=calendarDates();
-  return `<button type="button" class="field-today" data-calendar-nav="today" aria-label="Today, ${today.toDateString()}. Return to current month">
-    <small>Today</small><strong>${today.getDate()}</strong><span>${today.toLocaleDateString('en-GB',{weekday:'short',month:'short'}).replace(/,/g,' ·')}</span>
-    <svg aria-hidden="true" viewBox="0 0 92 110" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M14 108q13-32 31-54 15-21 22-46" stroke="#c1d7c2" stroke-width="2"/>
-      <g fill="#afc6a9" stroke="#293f3c" stroke-width="1.25"><path d="M23 86Q0 80 6 55q14 3 17 31Z"/><path d="M32 71q3-25-5-34-12 22 5 34Z"/><path d="M43 56q0-21-10-30-5 19 10 30Z"/><path d="M55 36q-10-13-6-28 12 10 6 28Z"/><path d="M64 19q-2-14 10-18-1 13-10 18Z"/></g>
-      <g fill="#dbd7a4" stroke="#293f3c" stroke-width="1.25"><path d="M27 79q17-20 40-16-12 17-40 16Z"/><path d="M39 61q10-18 35-18-12 15-35 18Z"/><path d="M51 43q12-19 34-20-9 16-34 20Z"/></g>
-      <g stroke="#667e68"><path d="m10 62 11 20m7-36 3 17m7-29 4 15m-9 27 24-10m-14-8 20-11m-6-7 17-11"/></g>
-      <g fill="#323c49" stroke="#a5b5b0"><ellipse cx="38" cy="80" rx="4" ry="6" transform="rotate(22 38 80)"/><ellipse cx="47" cy="75" rx="4" ry="6" transform="rotate(-16 47 75)"/></g>
-    </svg></button>`;
-}
+// Sparse strokes on the reverse side follow the edges through the turn.
+const calendarVerso = [
+  '', '', 'M282 176l5-4m-2 4 5-5',
+  'M227 175q11-2 17-6m-13 6 16-6m16-11 7-5',
+  'M72 167q17 3 32 2m83-13 12-5m-8 5 10-4m37-18 9-6',
+  'M63 131q27 6 54 3m11-5 10-1m32-2 14-4m-9 5 12-4m40-8 17-8',
+  'M59 88q19 7 48 8m23-2 10-.2m39-4 12-3m-8 5 11-3m38-12 15-7',
+  'M62 46q19 7 42 8m27 2 12-.3m47-3 11-3m-9 5 12-3m41-13 11-5',
+  'M63 18q21 8 45 8m22 4 15 1m39-2 14-2m-9 4 14-2m33-7 18-6',
+  'M61-18q21-11 42-16m28-5 14-3m36-2 11 1m-9 2 14 1m28 3 17 5',
+  'M66-31q21-10 39-14m28-5 13-3m32-2 15 1m-10 2 13 1m26 4 16 4',
+  'M63-17q22-8 45-12m28-5 15-2m27-1 16 1m-10 2 13 .5',
+  'M76-11q17-4 34-7m46-3 17-.5m-14 3 11-.4',
+  'M85-5q16-3 31-4m52-2 17 .4', ''
+];
 function deskCalendar(teaching=false) {
-  return `<section class="desk-calendar${teaching?' teaching-pad':''}" aria-label="Academic calendar">${teaching?'<h2>Academic calendar</h2>':''}${teaching?`<div class="field-spread">${calendarFrontispiece()}`:''}<div class="folio-stack">
+  return `<section class="desk-calendar${teaching?' teaching-pad':''}" aria-label="Academic calendar">${teaching?'<h2>Academic calendar</h2>':''}<div class="folio-stack">
     ${teaching ? '' : `<svg class="folio-stand" viewBox="0 0 300 200" preserveAspectRatio="none" aria-hidden="true" stroke="#302f2c" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
       <path fill="#8fabbd" d="M6 0Q108-4 276-3q8 0 12 9l20 159q0 5-3 8l-15 26Q163 205-4 200l1-10Z"/>
       <path fill="#607d8d" d="M281 1q6 0 7 6l20 158-16 25Z"/>
@@ -248,7 +269,7 @@ function deskCalendar(teaching=false) {
     <div class="folio-paper" aria-live="polite">${calendarPage()}</div>
     ${teaching ? '' : `<svg class="folio-wires" viewBox="0 0 300 200" preserveAspectRatio="none" aria-hidden="true" fill="none" stroke-linecap="round">
       ${[48,63,220,235].map((x,i)=>`<g transform="translate(${x} ${i%2})"><ellipse cx="1" cy="6" rx="3.6" ry="2.3" fill="#3f5360"/><path d="M1 6C-5 3-6-12-1-14c5-2 9 5 8 12" stroke="#353938" stroke-width="3.7"/><path d="M0 4C-3 0-4-8-1-11" stroke="#cbd4c9" stroke-width="1.2"/></g>`).join('')}
-    </svg>`}</div>${teaching?'</div>':''}<div class="folio-nav"><button type="button" class="folio-today" data-calendar-nav="today" aria-label="Go to current month">Today · ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</button><button type="button" data-calendar-nav="-1" aria-label="Previous month">‹</button><button type="button" data-calendar-nav="1" aria-label="Next month">›</button></div>
+    </svg>`}</div><div class="folio-nav"><button type="button" class="folio-today" data-calendar-nav="today" aria-label="Go to current month">Today · ${calendarDates().today.toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</button><button type="button" data-calendar-nav="-1" aria-label="Previous month">‹</button><button type="button" data-calendar-nav="1" aria-label="Next month">›</button></div>
     <div class="folio-agenda" aria-label="Academic deadlines this month">${calendarAgenda()}</div></section>`;
 }
 function workQueue(tasks, separateCalendar=false) {
@@ -383,11 +404,11 @@ function workspaceSection(title, target, label, content, actionStyle='quiet-link
   return `<div class="section-head"><h2>${title}</h2>${link(target,label,actionStyle)}</div>${content}`;
 }
 
-const registrationDates = [
-  ['22','Nov','Registration opens','sky','Opens'],
-  ['06','Dec','Registration closes','gold','Closes'],
-  ['13','Dec','Schedule swaps close','iris','Swaps close']
-];
+const currentAcademicTerm = academicTerms.find(term=>term.status==='Active');
+const registrationDates = termMilestones.map(([key,label,tone,short])=>{
+  const date = currentAcademicTerm[key];
+  return [date.slice(-2),formatCalendarDay(date,{month:'short'}),label,tone,short];
+});
 function workspaceTimetable(view,title,target,label) {
   if (!view.inlineDates) return workspaceSection(title,target,label,weekly());
   if (view.name==='Claude Study') {
@@ -437,7 +458,7 @@ function overview(){
   const reviewRows = readyStudents.slice(0,advisingDesk ? readyStudents.length : 4).map(({name,index})=>`<div class="review-person">${avatar(name)}<div><strong>${name}</strong><span>${index === 0 ? '19 credits · Thursday off' : 'Semester 7 · Group 4'}</span></div>${link('draft-schedule','Review'+reviewCircle,'btn row-control',index)}</div>`).join('');
   const teachingDesk = view.name==='Claude Study' && dashboardView==='teaching';
   const reviewFiles = teachingDesk ? `<div class="draft-index">${readyStudents.map(({name,index})=>link('draft-schedule',
-    `<span class="draft-tab" aria-hidden="true"></span><strong>${name}</strong><small>${index===0?'19 credits · Thursday off':'Semester 7 · Group 4'}</small><span class="draft-arrow" aria-hidden="true">↗</span>`,'draft-file',index)).join('')}</div>` : '';
+    `<svg class="desktop-folder" viewBox="0 0 96 72" aria-hidden="true"><path fill="#bdbaaf" d="M5 15q0-6 6-6h22l8 7h43q6 0 6 6v39H5z"/><g class="folder-sheet"><rect x="11" y="20" width="73" height="40" rx="3" fill="#fffdf6"/><path stroke="#b5afa0" stroke-width="2" d="M19 27h35m-35 5h48"/></g><path class="folder-cover" fill="var(--console-ivory,#f0eee6)" stroke="#c7c3b7" d="M5 31q0-5 5-5h75q5 0 5 5l-2 28q0 5-5 5H12q-5 0-5-5z"/></svg><strong>${name}</strong><small>${index===0?'19 credits · Thursday off':'Semester 7 · Group 4'}</small>`,'draft-file',index)).join('')}</div>` : '';
   const tasks = [
     ['course-removal','rose',3,'Course removals','course removal requests','Credit load and scheduling decisions','mandatory-removals','Review'],
     ...(canAdvise ? [['advisor-assignment','mint',2,'Advisors','students need an advisor','Advising assignments','advising','Assign']] : []),
@@ -468,10 +489,9 @@ function overview(){
       ['Nadia Ahmed','published the Group 4 template','Yesterday · 16:20']
     ].map(([name,event,time],i)=>{
       if(teachingDesk){
-        const subject=['Preferences submitted','Advising draft saved','Group template published'][i];
-        const byline=[name,`${name} · Omar Hassan`,`${name} · Group 4`][i];
         const [day,hour]=time.split(' · ');
-        return `<div class="event desk-entry"><time><b>${hour}</b><small>${day}</small></time><i aria-hidden="true" data-entry="${i}"></i><div><strong>${subject}</strong><p>${byline}</p></div></div>`;
+        return `<div class="event desk-entry" data-entry="${i}">${i!==1?`<h3>${day}</h3>`:''}<div class="entry-line"><p><strong>${name}</strong> ${event}.</p><time>${hour}</time></div></div>`;
+
       }
       if(view.name==='Claude Study' && dashboardView==='handover'){
         const subjects=['Preferences submitted','Advising draft saved','Group template published'];
@@ -600,12 +620,15 @@ function courseDetail(){
     <h2 style="margin-top:28px">Current offering</h2><p>${season} 2026${courseData.slice(0,4).includes(selectedCourse)?' · 4 groups':''}</p>${student()?link('my-schedule','View schedule','btn text'):link('offerings','View offering','btn text')}</section></div>`;
 }
 function terms(){
+  const semesters = academicTerms.map(term=>{
+    const startParts = {day:'numeric'};
+    if (term.opens.slice(0,7)!==term.closes.slice(0,7)) startParts.month='short';
+    const range = formatCalendarDay(term.opens,startParts)+' – '+formatCalendarDay(term.closes,{day:'numeric',month:'short',year:'numeric'});
+    const end = formatCalendarDay(term.swaps,{day:'numeric',month:'short',year:'numeric'});
+    const tone = term.status==='Active' ? '' : term.status==='Upcoming' ? 'pending' : 'neutral';
+    return [term.name,term.year,range,end,term.status,tone,term.status==='Archived'?'View':'Manage'];
+  });
   if (academicStudy()) {
-    const semesters = [
-      ['Winter 2026','2026 / 2027','22 Nov – 6 Dec 2026','13 Dec 2026','Active','', 'Manage'],
-      ['Spring 2027','2026 / 2027','14 – 28 Feb 2027','7 Mar 2027','Upcoming','pending','Manage'],
-      ['Spring 2026','2025 / 2026','15 Feb – 1 Mar 2026','8 Mar 2026','Archived','neutral','View']
-    ];
     return head('Academic terms','Registration windows and schedule swap deadlines.',button('Create term','create-term','btn primary'))+
       `<div class="semester-ledger">${semesters.map(([name,year,registration,deadline,state,tone,action])=>`
         <article class="semester-line"><div class="semester-identity"><h2>${name}</h2><small>${year}</small></div>
@@ -613,11 +636,9 @@ function terms(){
           ${button(action,'manage-term','btn row-control')}</article>`).join('')}</div>`;
   }
   return head('Academic terms','',button('Create term','create-term','btn primary'))+
-  table(['Term','Academic year','Registration','Swap deadline','Status',''],[
-    ['Winter 2026','2026 / 2027','22 Nov – 6 Dec 2026','13 Dec 2026',badge('Active'),button('Manage','manage-term','btn text')],
-    ['Spring 2027','2026 / 2027','14 – 28 Feb 2027','7 Mar 2027',badge('Upcoming','pending'),button('Manage','manage-term','btn text')],
-    ['Spring 2026','2025 / 2026','15 Feb – 1 Mar 2026','8 Mar 2026',badge('Archived','neutral'),button('View','manage-term','btn text')]
-  ]);}
+  table(['Term','Academic year','Registration','Swap deadline','Status',''],semesters.map(([name,year,range,end,state,tone,action])=>
+    [name,year,range,end,badge(state,tone),button(action,'manage-term','btn text')]));
+}
 function offerings(){return head('Course offerings',academicStudy() ? termContext('Teaching groups and sections') : '',button('Add offering','add-offering','btn primary')+link('copy-offerings','Copy from another term','btn'))+
   filterbar('Search offerings',[['Winter 2026',['Winter 2026','Spring 2027']]])+
   table(['Course','Groups','Lecture sections','Tutorial sections','Status',''],courseData.slice(0,4).map((c,i)=>[academicCourse(c,`${c[0]}<small>${c[1]}</small>`),'4','2','4',badge(i===3?'Draft':'Published',i===3?'pending':''),button('Manage sections','manage-sections','btn text')]));}
@@ -647,12 +668,8 @@ function timetableDrawing(code) {
   const svg = (box, art) => `<svg class="course-drawing course-symbol" aria-hidden="true" viewBox="${box}" fill="none" stroke-linejoin="round" stroke-linecap="round">${art}</svg>`;
   switch (code) {
     case 'CSEN 701':
-      return svg('0 0 30 24', `<g stroke="currentColor" stroke-width="1.25">
-        <path d="M11 3v3m4-3v3m4-3v2m-8 12v3m4-3v3m4-4v3M6 9h3m-3 4h3m12-5h3m-3 5h3"/>
-        <path class="chip-case" d="M9 6l11-.5.6 10.5-11 1Z"/>
-        <path class="chip-core" d="M12 9l5-.4.4 4.4-5 .4Z"/></g>`);
     case 'CSEN 703':
-      return svg('0 0 120 96', part('algorithms','graph') + `<path class="graph-trace" stroke="#933e29" stroke-width="5" pathLength="100" d="M13 47Q31 33 49 20Q80 30 106 38Q83 57 60 73Q36 61 13 47Z"/><circle class="graph-start" cx="13" cy="47" r="7.5" stroke="#933e29" stroke-width="4"/>`);
+      return courseDrawing(code);
     case 'CSEN 704':
       return svg('0 0 120 96', `<g class="beetle-walk"><g transform="rotate(-14 60 49)" stroke="#39443c" stroke-width="4.5">
         ${part('advanced-lab','tripod-left','beetle-legs-a')}${part('advanced-lab','tripod-right','beetle-legs-b')}${part('advanced-lab','shell')}</g></g>`);
@@ -685,8 +702,8 @@ function weekly(){
         <path fill="#faf0d8" d="M18 51c12-4 34-4 49 1-4 4-34 7-49-1Z"/>
         <path fill="#a7c3bc" fill-rule="evenodd" d="M55 33c13-8 20-2 16 6-2 5-8 8-17 7l1-13Zm3 3-1 6c5 0 9-2 10-5 1-3-3-4-9-1Z"/>
         <path fill="#adc8c0" d="M22 30q18-5 37 0c-1 12-3 22-16 24-14 2-20-8-21-24Z"/>
-        <ellipse cx="40.5" cy="30" rx="18.2" ry="5.1" fill="#f6ecd6" stroke-width="1.35"/>
-        <ellipse cx="40.5" cy="30.4" rx="14.9" ry="2.9" fill="#705044" stroke="none"/>
+        <ellipse cx="40.5" cy="30" rx="18.5" ry="5.4" fill="#f6ecd6" stroke-width="1.35"/>
+        <ellipse cx="40.5" cy="30.4" rx="15.8" ry="3.3" fill="#705044" stroke="none"/>
         <path d="M27 37q1 8 5 11" stroke="#dfede2"/>
       </g><g class="cup-steam" fill="none" stroke="currentColor" stroke-width="1.55">
       <path d="M35 23c-7-7 7-9 2-16M46 21c-3-5 5-6 4-12"/>
@@ -1002,7 +1019,7 @@ function stageOverview(main){
   greeting.append(title);
   const hour=new Date().getHours();
   const night=hour>=18 || hour<6;
-  const sky=night ? `<path class="moon-face" d="M40 8c-17 0-27 17-20 29 6 11 23 14 33 3-12 4-23-4-22-15 0-7 4-13 9-17Z"/><g class="sky-rays"><path d="m52 11 .8 3.5 3.4 1-3.4 1-.8 3.4-1-3.4-3.2-1 3.2-1Z"/><path d="m59 27 1 2m-44-12 1-2"/></g>`
+  const sky=night ? `<path class="moon-face" d="M40 8c-17 0-27 17-20 29 6 11 23 14 33 3-12 4-23-4-22-15 0-7 4-13 9-17Z"/><g class="sky-rays"><path d="m52 11 .8 3.5 3.4 1-3.4 1-.8 3.4-1-3.4-3.2-1 3.2-1Z"/><path d="m58 24 .7 2.3 2.3 .7-2.3 .7-.7 2.3-.7-2.3-2.3-.7 2.3-.7Z"/></g>`
     : `<path class="sun-face" d="M21 35c-6-13 5-25 16-21 8 2 10 11 7 18"/><g class="sky-rays"><path d="M32 6l1 4m-17 2 3 4M9 28h6m36-15-4 5m10 10-6 1"/></g>`;
   greeting.insertAdjacentHTML('beforeend',`<svg class="greeting-sun ${night?'night-sky':'day-sky'}" viewBox="0 0 70 60" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${sky}<path class="sky-horizon" d="M11 47q10-4 21-3t24 0"/><path d="m19 50 10 1m6 0 13-1" opacity=".5"/></svg>`);
   if(motionPreference.matches) return;
@@ -1158,7 +1175,36 @@ function action(name,el){
     default:toast('Updated in this preview.');
   }
 }
+function clearCalendarDetails(except) {
+  document.querySelectorAll('[data-deadline][aria-pressed="true"]').forEach(mark=>{
+    if(mark!==except) mark.setAttribute('aria-pressed','false');
+  });
+}
+document.addEventListener('keydown',event=>{
+  if (event.key!=='Escape') return;
+  document.querySelectorAll('[data-deadline]:is(:hover,:focus,[aria-pressed="true"])').forEach(mark=>{
+    mark.dataset.dismissed='';
+    mark.setAttribute('aria-pressed','false');
+  });
+});
+for (const eventName of ['pointerover','focusin']) {
+  document.addEventListener(eventName,event=>{
+    const mark=event.target.closest('[data-deadline]');
+    if (mark && !mark.contains(event.relatedTarget)) {
+      clearCalendarDetails(mark);
+      delete mark.dataset.dismissed;
+    }
+  });
+}
 document.addEventListener('click',event=>{
+  const mark=event.target.closest('[data-deadline]');
+  clearCalendarDetails(mark);
+  if (mark) {
+    const pinned=mark.getAttribute('aria-pressed')==='true';
+    mark.setAttribute('aria-pressed',String(!pinned));
+    mark.toggleAttribute('data-dismissed',pinned);
+    return;
+  }
   const control = event.target.closest('[data-calendar-nav]');
   if (!control) return;
   const previous = calendarMonth;
@@ -1172,6 +1218,10 @@ document.addEventListener('click',event=>{
   paper.innerHTML = calendarPage();
   calendar.querySelector('.folio-agenda').innerHTML = calendarAgenda();
   if (motionPreference.matches) return;
+  if (calendar.classList.contains('teaching-pad')) {
+    paper.animate([{opacity:.65,transform:'translateY(2px)'},{opacity:1,transform:'none'}],{duration:145,easing:'steps(3,end)'});
+    return;
+  }
   const forward = calendarMonth>previous;
   const overlay = document.createElement('div');
   overlay.className = 'calendar-animation';
@@ -1184,6 +1234,7 @@ document.addEventListener('click',event=>{
       <path class="folio-front-line" stroke="#635b47" stroke-width="1.2"/>
       <path class="folio-underside" fill="#e9dfc8" stroke="#635b47" stroke-width="1.5"/>
       <path class="folio-crease" stroke="#a0957d" stroke-width="1.25"/>
+      <path class="folio-verso-ink" stroke="#ab9d7b" stroke-width=".85"/>
     </svg>`;
   stack.append(overlay);
   const paths = overlay.querySelector(':scope > svg').querySelectorAll('path');
@@ -1196,6 +1247,7 @@ document.addEventListener('click',event=>{
     leaf.hidden = !face;
     [face,face,back,crease].forEach((drawing,i)=>paths[i].setAttribute('d',drawing));
     const inkFrame = forward ? index : frames.length-1-index;
+    paths[4].setAttribute('d',calendarVerso[inkFrame]);
     if (calendarInkHolds[inkFrame]) setTimeout(()=>{
       paths[2].setAttribute('d',calendarInkHolds[inkFrame]);
     },Math.round(hold*.52));
