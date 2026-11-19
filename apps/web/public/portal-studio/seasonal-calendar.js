@@ -37,11 +37,55 @@ const seasonalPaper = [
   ['#dcb09c','#b68a75'],['#d1bfdc','#ab98b9'],['#bfc6dd','#9ba6c2']
 ];
 function seasonDrawing(month){
+  if(month===0) return januaryGust();
+  if(month===1 || month===11) return inkScene('grove',month);
+  if(month>=5 && month<=7) return summerSkiff();
   const season = ['steam','steam','flower','flower','flower','sail','sail','sail','leaf','leaf','leaf','steam'][month];
-  return `<svg class="season-drawing" aria-hidden="true" viewBox="0 0 62 50" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linejoin="round" stroke-linecap="round">${seasonalSketches[season].map((d,i)=>`<path class="season-cel cel-${i}" d="${d}"/>`).join('')}</svg>`;
+  return `<svg class="season-drawing season-${season}" aria-hidden="true" viewBox="0 0 62 50" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linejoin="round" stroke-linecap="round">${seasonalSketches[season].map((d,i)=>`<path class="season-cel cel-${i}" d="${d}"/>`).join('')}</svg>`;
 }
 function tintCalendar(pad,month){
+  pad.dataset.seasonMonth=String(month);
   const [paper,back]=seasonalPaper[month];
   pad.style.setProperty('--season-sheet',paper);
   pad.style.setProperty('--season-back',back);
+}
+
+function summerSkiff(){
+  // The mast stays put on deck. The leech of the sail lags through each gust.
+  const sails=[
+    'M30 6Q35 14 42 25L30 27Z','M30 6Q38 12 43 24L30 27Z',
+    'M30 6Q42 13 45 24Q38 26 30 27Z','M30 6Q44 12 46 23Q39 27 30 27Z',
+    'M30 6Q42 15 44 24Q37 26 30 27Z','M30 6Q37 16 42 25L30 27Z'
+  ];
+  return `<svg class="season-drawing skiff" aria-hidden="true" viewBox="0 0 68 50" fill="none" stroke="#535047" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><g class="skiff-hull">
+    <path d="m29 3 1 28m-2-19-10 15 10-1z" fill="#eadcc8"/>
+    ${sails.map((d,i)=>`<path class="sail-pose sail-${i}" d="${d}" fill="#e9b98f"/>`).join('')}
+    <path d="M13 31q14 1 35-4-3 6-9 9l-19 1Z" fill="#99b6b4"/><path d="M19 33q10 0 21-2M29 4l-6 2 6 1"/>
+    </g><path class="skiff-wake" d="M5 38q5-2 11 0t13 0m6-1q7-3 15-2m-32 7 12-.5m11-1 9-1"/></svg>`;
+}
+
+// Six uneven branches, drawn separately. The gust uncurls before it
+// catches the crystal, then breaks into two short strokes as it passes.
+function januaryGust(){
+  const arms=[
+    'M0 0Q-.7-7 .4-17m-.7 6-4-4m4 8 4.3-4.5',
+    'M.5-.4 12-8m-5 3 .7-5m-.9 5 5 .4',
+    'M0 .2Q8 4 14 9m-6-3 4.8-1m-5.5.4 1 5.8',
+    'M0 0q1 7-.1 16m.3-6 3.6 3.2m-3.9-5-4 4',
+    'M-.4 .4-14 9m5-3.3-4.8-.6m4.8.6-.5 4.8',
+    'M0 0q-6-3-13-9m5 3.6-4 .4m4.7.2-.7-5.6'
+  ];
+  const gusts=[
+    'M5 27q4-3 8-3m1 6 4-1',
+    'M5 27q9-5 17-4m-10 8q6-3 12-2',
+    'M7 26q9-5 20-2m-10 5q7 0 11-4',
+    'M12 24q9-3 15-1t9-1m-13 7q7-1 10-5',
+    'M19 23q6-1 10 1t10-2m-10 5 5-3',
+    'M28 24q6 2 12-2m5-3 3-2',
+    'M36 24l5-2m5-3 5-4',
+    'M46 19l4-4'
+  ];
+  return `<svg class="season-drawing january-gust" viewBox="0 0 82 50" aria-hidden="true" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <g stroke="#758b96" stroke-width="1.25">${gusts.map((d,i)=>`<path class="gust-mark" style="--frame:${i}" d="${d}"/>`).join('')}</g>
+    <g transform="translate(53 24)"><g class="gust-crystal" stroke="#485e6b" stroke-width="1.65">${arms.map(d=>`<path d="${d}"/>`).join('')}<path d="m-3-2 3-2 3 2 .2 4-3 1.6L-3 2Z" fill="#ecf2ee" stroke-width="1.1"/></g></g></svg>`;
 }
