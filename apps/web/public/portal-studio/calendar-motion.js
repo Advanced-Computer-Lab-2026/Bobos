@@ -1,7 +1,8 @@
 const flipRates=[1,.5,.25,.1,.05,.02,0];
 const flipRateKey='portal-calendar-flip-rate';
-const initialRate=new URLSearchParams(location.search).get('flipSpeed') ?? localStorage.getItem(flipRateKey);
-let flipRate=initialRate!==null && flipRates.map(String).includes(initialRate)?Number(initialRate):1;
+const rememberedRate=localStorage.getItem(flipRateKey);
+const initialRate=new URLSearchParams(location.search).get('flipSpeed') ?? (rememberedRate==='0'?null:rememberedRate);
+let flipRate=productionPreview?1:initialRate!==null && flipRates.map(String).includes(initialRate)?Number(initialRate):1;
 let pendingExposure;
 
 function showFlipExposure(layer,frame,total,hold,draw){
@@ -9,12 +10,14 @@ function showFlipExposure(layer,frame,total,hold,draw){
   const counter=pad.querySelector('[data-flip-frame]');
   const caption=`Frame ${frame+1} of ${total}`;
   const slider=pad.querySelector('[data-flip-scrub]');
-  slider.max=total;
-  slider.value=frame+1;
-  slider.setAttribute('aria-valuetext',caption);
-  slider.disabled=false;
-  pad.querySelector('[data-flip-step="-1"]').disabled=frame===0;
-  pad.querySelector('[data-flip-step="1"]').disabled=frame===total-1;
+  if (slider) {
+    slider.max=total;
+    slider.value=frame+1;
+    slider.setAttribute('aria-valuetext',caption);
+    slider.disabled=false;
+    pad.querySelector('[data-flip-step="-1"]').disabled=frame===0;
+    pad.querySelector('[data-flip-step="1"]').disabled=frame===total-1;
+  }
   let remaining=hold, started, rate, timer;
 
   function reveal(index){
@@ -28,7 +31,7 @@ function showFlipExposure(layer,frame,total,hold,draw){
     if(started!==undefined) remaining=Math.max(0,remaining-(now-started)*rate);
     started=now;
     rate=flipRate;
-    counter.textContent=rate===1?'':caption;
+    if(counter) counter.textContent=rate===1?'':caption;
     if(rate>0) timer=setTimeout(()=>{
       pendingExposure=null;
       reveal(frame+1);

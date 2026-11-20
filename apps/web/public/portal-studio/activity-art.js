@@ -90,12 +90,16 @@ function publishingStamp(){
     <g class="stamp-descent"><g class="stamp-grip"><g transform="translate(30 32.9) rotate(-9)">${tool}</g></g></g>`;
 }
 const activitySurrounds={
-  postage:'<path class="stamp-edge" d="M5 4H65V56H5Z"/><path class="stamp-perfs" d="M5 4H65V56H5Z"/><path class="stamp-frame" d="m10 9 50-.5.5 42-51 .5z"/>',
+  postage:'<path d="m8 13 43-9 11 8 4 37-49 7-3-7-4 1Z" fill="var(--stamp-shade)"/><path d="M5 10q11-.9 23-3l24-4 2 5 4-1 4 30-2 4 3 3.5q-20 2.5-48 9l-2-3-5 1Z" fill="var(--stamp-paper)" stroke="var(--stamp-ink)" stroke-width=".8"/><path d="m16 45 16-3m3 0 7-2m8-32 2 10 7-2m-41 32 10-2" fill="none" stroke="var(--stamp-ink)" stroke-width="1" opacity=".67"/>',
   copies:'<path d="m11 9 48-2 2 44-49 3Z" fill="var(--stamp-shade)"/><path d="m7 6 48 1-1 43-49-1Z" fill="var(--stamp-paper)" stroke="var(--stamp-ink)"/><path d="M10 13h40" stroke="var(--stamp-stock)" stroke-width="1.7"/>',
-  ledger:'<path d="M8 30C8 15 19 6 33 6q20-.6 27 16 5 16-6 26-11 10-28 5C15 49 7 41 8 30Z" fill="var(--stamp-paper)"/>',
+  ledger:{
+    letter:'<path d="M5 32q11-6 29-7l20 1-4 4 9 1-3 6-13 4 7 1Q28 52 9 48l6-4-9-2 5-5Z" fill="var(--stamp-stock)" opacity=".72"/><path d="m8 45 9 1m-3 5 18-2m15-6 9-4" class="stamp-frame"/>',
+    pen:'<path d="m8 42 7-6 17-9 24-9 4 2-3 4 5 1-4 4-15 5 6 1Q29 45 9 48l3-3Z" fill="var(--stamp-stock)" opacity=".77"/><path d="M10 49q11-1 19-4m4-1 8-4m7-2 6-3" class="stamp-frame"/>',
+    press:'<path d="M10 34q13 1 20-3l22-4 5 3-5 3 4 2-2 5-18 4 5 1-30 3 2-4-7-1 7-4Z" fill="var(--stamp-stock)" opacity=".77"/><path d="m11 49 11-.5m22-3 10-3m-4-19 4-2" class="stamp-frame"/>'
+  },
   film:'<path d="m3 9 63-1 1 45-63 .7Z" fill="var(--stamp-stock)"/><path d="M7 13h6m-6 0v5m54 30h-6m6 0v-5" class="stamp-frame"/>',
   tabs:'<path d="M11 1l47 1-.8 57-21-9-26 10Z" fill="var(--stamp-stock)"/><path d="M15 4l-.7 50m39-50-.8 50" stroke="var(--stamp-ink)" opacity=".65" stroke-dasharray="3 2 2 2.5" fill="none"/>',
-  specimens:'<path d="M3 16 14 6l51-.5.3 45L4 52Z" fill="var(--stamp-paper)" stroke="var(--stamp-ink)"/><circle cx="11" cy="18" r="2.4" class="stamp-frame"/><path d="M10 17q-8-4-7-9.5 1.5-5 5-.4" class="stamp-frame"/>'
+  specimens:'<path d="M4 17 14 7q18-2 36-.5l11-1 1 11 4 5-2 8 2 20q-30-2-61 4Z" fill="var(--stamp-paper)" stroke="var(--stamp-ink)"/><circle cx="11" cy="18" r="2.4" class="stamp-frame"/><path d="M10 17Q.5 14 2 7q2-4 7.5-.5M15 48q17-2 22-1m7-.5 13 .4" class="stamp-frame"/>'
 };
 function activityStamp(kind,style){
   let art;
@@ -103,5 +107,5 @@ function activityStamp(kind,style){
   else if(kind==='press') art=publishingStamp();
   else art=penPoses.map((_,i)=>
     `<g class="impression-cel" style="--delay:${(i-10)*115}ms">${advisingPen(i)}</g>`).join('');
-  return `<svg class="activity-stamp stamp-${kind}" aria-hidden="true" viewBox="0 0 70 61"><g class="stamp-face">${activitySurrounds[style]}<g class="stamp-cut" transform="translate(${style==='specimens'?8:3} 3)">${art}</g></g></svg>`;
+  return `<svg class="activity-stamp stamp-${kind}" aria-hidden="true" viewBox="0 0 70 61"><g class="stamp-face">${style==='ledger'?activitySurrounds.ledger[kind]:activitySurrounds[style]}<g class="stamp-cut" transform="translate(${style==='specimens'?8:3} 3)">${art}</g></g></svg>`;
 }

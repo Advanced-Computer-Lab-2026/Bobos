@@ -41,7 +41,8 @@ const person = () => student() ? 'Omar Hassan' : role === 'advisor' ? 'Dr. Salma
 const href = (target,index=selectedStudent,course=selectedCourse) => {
   const destination = authPages.has(target) ? returnAfterSignIn : target;
   const preserveStudent = ['draft-schedule','student-detail'].includes(destination);
-  return `?page=${target}&role=${role}&layout=${lab.layout+1}&palette=${lab.palette+1}&mode=${lab.dark?'dark':'light'}${target==='login'?`&image=${signinImage.id}`:''}${authPages.has(target)&&destination!=='overview'?`&next=${destination}`:''}${preserveStudent?`&student=${index}`:''}${destination==='course-detail'?`&course=${encodeURIComponent(course[0])}`:''}`;
+  const look = productionPreview ? '&preview=live' : `&layout=${lab.layout+1}&palette=${lab.palette+1}&mode=${lab.dark?'dark':'light'}`;
+  return `?page=${target}&role=${role}${look}${target==='login'?`&image=${signinImage.id}`:''}${authPages.has(target)&&destination!=='overview'?`&next=${destination}`:''}${preserveStudent?`&student=${index}`:''}${destination==='course-detail'?`&course=${encodeURIComponent(course[0])}`:''}`;
 };
 
 const link = (target, text, cls='', index) => `<a class="${cls}" href="${href(target,index)}" data-page="${target}"${index===undefined?'':` data-student="${index}"`}>${text}</a>`;
@@ -181,7 +182,7 @@ const calendarDate = iso => new Date(iso+'T12:00:00');
 const formatCalendarDay = (iso, options) => calendarDate(iso).toLocaleDateString('en-GB',options);
 let calendarMonth = 0;
 const previewMonth=new URLSearchParams(location.search).get('month');
-if (/^20\d{2}-(0[1-9]|1[0-2])$/.test(previewMonth)){
+if (!productionPreview && /^20\d{2}-(0[1-9]|1[0-2])$/.test(previewMonth)){
   const {today}=calendarDates();
   const [year,month]=previewMonth.split('-').map(Number);
   calendarMonth=(year-today.getFullYear())*12+month-1-today.getMonth();
@@ -226,12 +227,13 @@ function calendarPage(ink=false) {
     const day = 1-month.getDay()+index;
     if(day<1 || day>lastDay) return '<span></span>';
     const date = new Date(month.getFullYear(),month.getMonth(),day,12);
-    const deadline = deadlines.find(event=>event.day===day);
+    const dayEvents = deadlines.filter(event=>event.day===day);
     const current = date.toDateString()===today.toDateString() ? ' aria-current="date"' : '';
-    if (!deadline) return `<span class="folio-date"${current}><b>${ink?inkNumber(day):day}</b></span>`;
-    const when = formatCalendarDay(deadline.iso,{weekday:'short',day:'numeric',month:'short'});
-    const edge = index%7<2 ? 'tip-start' : index%7>4 ? 'tip-end' : '';
-    return `<button type="button" class="folio-date marked ${edge}"${current} data-deadline aria-label="${when}, ${deadline.label}, ${deadline.term}" aria-pressed="false"><b>${ink?inkNumber(day):day}</b>${deadlineRing}<span class="folio-tip" aria-hidden="true"><small>${when} · ${deadline.term}</small><strong>${deadline.label}</strong></span></button>`;
+    if (!dayEvents.length) return `<span class="folio-date"${current}><b>${ink?inkNumber(day):day}</b></span>`;
+    const when=formatCalendarDay(dayEvents[0].iso,{weekday:'long',day:'numeric',month:'long'});
+    const entries=dayEvents.map(event=>`<span class="deadline-entry"><strong>${event.label}</strong><small>${event.term}</small></span>`).join('');
+    return `<button type="button" class="folio-date marked" ${current} data-deadline aria-label="${when}, ${dayEvents.map(event=>event.label+', '+event.term).join(', ')}" aria-pressed="false"><b>${ink?inkNumber(day):day}</b>${deadlineRing}<span popover="manual" class="deadline-note" aria-hidden="true"><span class="deadline-slip"><time datetime="${dayEvents[0].iso}">${when}</time>${entries}</span></span></button>`;
+
   }).join('');
   return `<div class="folio-inner"><div class="folio-month"><strong>${illustrated || (ink && isConcertina(calendarStyle))?`<span class="sr-only">${monthName}</span>${inkMonth(monthName)}`:monthName}</strong><small>${month.getFullYear()}</small>${illustrated?inkScene(calendarStyle,month.getMonth()):ink && isConcertina(calendarStyle)?seasonDrawing(month.getMonth()):''}</div><div class="folio-days">${['Su','Mo','Tu','We','Th','Fr','Sa'].map(d=>`<small>${d}</small>`).join('')}${cells}</div></div>`;
 }
@@ -283,7 +285,7 @@ const calendarStyles={...concertinaEditions,...sketchEditions,flutter:'Sketchpad
 const styleKey='portal-teaching-calendar';
 const requestedCalendar=new URLSearchParams(location.search).get('calendar');
 let calendarStyle=Object.hasOwn(calendarStyles,requestedCalendar)?requestedCalendar:localStorage.getItem(styleKey);
-if(!Object.hasOwn(calendarStyles,calendarStyle)) calendarStyle='bellows';
+if(productionPreview || !Object.hasOwn(calendarStyles,calendarStyle)) calendarStyle='bellows';
 
 function calendarStylePicker(){
   const options=Object.entries(calendarStyles).map(([key,label])=>
@@ -293,7 +295,7 @@ function calendarStylePicker(){
 function calendarFeature(){
   if(isConcertina(calendarStyle)){
     const seam='<svg class="cloth-needle" viewBox="0 0 300 16" preserveAspectRatio="none" aria-hidden="true"><path d="M6 10q32-.7 56 .2t50-.4 74 .3 57-.3 51-.4" fill="none" stroke="#ced9d8" stroke-width="1.3" stroke-dasharray="4 3 3.1 2.5 4.4 3"/><path d="m10 9 2 2m2-3 2 2m261-2 4 1.5m2-2 3 2" fill="none" stroke="#3d5362" stroke-width="1.1"/></svg>';
-    return calendarStyle==='linen'?seam:bindingDrawing(calendarStyle);
+    return (calendarStyle==='linen'?seam:bindingDrawing(calendarStyle))+binderRow('feet');
   }
   const sketches={
     flutter:'<path d="m7 27 20-19 6 6-21 19-8 2 3-8Zm0 0 5 6m13-23 6 6M15 33q10-6 17-4t16-3"/>',
@@ -315,7 +317,7 @@ function flipSpeedControl(){
     </div></div>`;
 }
 function deskCalendar(teaching=false) {
-  return `<section class="desk-calendar${teaching?' teaching-pad':''}" aria-label="Academic calendar" ${teaching?`data-calendar-style="${calendarStyle}" data-concertina="${isConcertina(calendarStyle)}" data-sketch="${Object.hasOwn(sketchEditions,calendarStyle)}" data-season-month="${calendarDates().month.getMonth()}" style="--season-sheet:${seasonalPaper[calendarDates().month.getMonth()][0]};--season-back:${seasonalPaper[calendarDates().month.getMonth()][1]}"`:''}>${teaching?`<header class="calendar-heading"><h2 id="academic-calendar">Academic calendar</h2>${calendarStylePicker()}</header>`:''}${teaching?`<div class="calendar-feature">${calendarFeature()}</div>`:''}<div class="folio-stack">
+  return `<section class="desk-calendar${teaching?' teaching-pad':''}" aria-label="Academic calendar" ${teaching?`data-calendar-style="${calendarStyle}" data-concertina="${isConcertina(calendarStyle)}" data-sketch="${Object.hasOwn(sketchEditions,calendarStyle)}" data-season-month="${calendarDates().month.getMonth()}" style="--season-sheet:${seasonalPaper[calendarDates().month.getMonth()][0]};--season-back:${seasonalPaper[calendarDates().month.getMonth()][1]}"`:''}>${teaching?`<header class="calendar-heading"><h2 id="academic-calendar">Academic calendar</h2>${productionPreview?'':calendarStylePicker()}</header>`:''}${teaching?`<div class="binder-body"><div class="calendar-feature">${calendarFeature()}</div>`:''}<div class="folio-stack">${teaching ? binderRow('wires') : ''}
     ${teaching ? '' : `<svg class="folio-stand" viewBox="0 0 300 200" preserveAspectRatio="none" aria-hidden="true" stroke="#302f2c" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
       <path fill="#8fabbd" d="M6 0Q108-4 276-3q8 0 12 9l20 159q0 5-3 8l-15 26Q163 205-4 200l1-10Z"/>
       <path fill="#607d8d" d="M281 1q6 0 7 6l20 158-16 25Z"/>
@@ -329,8 +331,8 @@ function deskCalendar(teaching=false) {
     <div class="folio-paper" aria-live="polite">${calendarPage(teaching && calendarStyle!=='clean')}</div>
     ${teaching ? '' : `<svg class="folio-wires" viewBox="0 0 300 200" preserveAspectRatio="none" aria-hidden="true" fill="none" stroke-linecap="round">
       ${[48,63,220,235].map((x,i)=>`<g transform="translate(${x} ${i%2})"><ellipse cx="1" cy="6" rx="3.6" ry="2.3" fill="#3f5360"/><path d="M1 6C-5 3-6-12-1-14c5-2 9 5 8 12" stroke="#353938" stroke-width="3.7"/><path d="M0 4C-3 0-4-8-1-11" stroke="#cbd4c9" stroke-width="1.2"/></g>`).join('')}
-    </svg>`}</div><div class="folio-nav"><button type="button" class="folio-today" data-calendar-nav="today" aria-label="Go to current month">Today · ${calendarDates().today.toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</button><button type="button" data-calendar-nav="-1" aria-label="Previous month">${teaching?'Previous':'‹'}</button><button type="button" data-calendar-nav="1" aria-label="Next month">${teaching?'Next':'›'}</button></div>
-    ${teaching?flipSpeedControl():''}<div class="folio-agenda" aria-label="Academic deadlines this month">${calendarAgenda()}</div></section>`;
+    </svg>`}</div>${teaching?'</div>':''}<div class="folio-nav"><button type="button" class="folio-today" data-calendar-nav="today" aria-label="Go to current month">Today · ${calendarDates().today.toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</button><button type="button" data-calendar-nav="-1" aria-label="Previous month">${teaching?'Previous':'‹'}</button><button type="button" data-calendar-nav="1" aria-label="Next month">${teaching?'Next':'›'}</button></div>
+    ${teaching&&!productionPreview?flipSpeedControl():''}<div class="folio-agenda" aria-label="Academic deadlines this month">${calendarAgenda()}</div></section>`;
 }
 function workQueue(tasks, separateCalendar=false) {
   const entries = tasks.map(([symbol,tone,count,subject,phrase,desc,target,cta],index)=>`
@@ -492,58 +494,38 @@ const recentScheduleEvents = [
   {action:'Template published',subject:'Group 4',author:'Nadia Ahmed',date:'2026-11-19',time:'16:20',tone:'payment-complete',stamp:'press',caption:'Nadia Ahmed · Group 4',target:'template-detail'}
 ];
 
-const activityStyleKey='portal-activity-edition';
-const requestedActivity=params.get('activity') || localStorage.getItem(activityStyleKey);
-let activityStyle=Object.hasOwn(activityEditions,requestedActivity)?requestedActivity:'postage';
-
 function teachingActivity(canManage){
-  const options=Object.entries(activityEditions).map(([key,label])=>
-    `<option value="${key}" ${key===activityStyle?'selected':''}>${label}</option>`).join('');
   function entry(event){
     const date=formatCalendarDay(event.date,{day:'numeric',month:'short'});
     const target=event.stamp==='press' && !canManage?'student-schedules':event.target;
-    const when=`<time datetime="${event.date}T${event.time}">${activityStyle==='ledger'?'':date+' · '}${event.time}</time>`;
+    const when=`<time datetime="${event.date}T${event.time}">${date} · ${event.time}</time>`;
     const text=`<span class="impression-copy">${when}<strong>${event.action}</strong><span class="impression-byline">${event.caption}</span></span>`;
-    return `<li>${link(target,activityStamp(event.stamp,activityStyle)+text,'activity-impression',event.index)}</li>`;
+    return `<li>${link(target,activityStamp(event.stamp,'specimens')+text,'activity-impression',event.index)}</li>`;
   }
-  const list=events=>`<ol class="activity-impressions" role="list">${events.map(entry).join('')}</ol>`;
-  const contents=activityStyle==='ledger'?[...new Set(recentScheduleEvents.map(e=>e.date))].map(day=>
-    `<div class="activity-daybook"><h3><time datetime="${day}">${formatCalendarDay(day,{day:'numeric',month:'short'})}</time></h3>${list(recentScheduleEvents.filter(e=>e.date===day))}</div>`).join(''):list(recentScheduleEvents);
-  return `<div class="activity-edition" data-activity-style="${activityStyle}"><div class="section-head activity-heading"><h2 id="recent-activity">Recent activity</h2>
-    ${link(canManage?'schedule-activity':'notifications',canManage?'View log':'Notifications','quiet-link')}
-    <label class="edition-picker">Activity style <select data-activity-picker>${options}</select></label></div>${contents}</div>`;
+  return `<div class="activity-edition" data-activity-style="specimens"><div class="section-head activity-heading"><h2 id="recent-activity">Recent activity</h2>
+    ${link(canManage?'schedule-activity':'notifications',canManage?'View log':'Notifications','quiet-link')}</div>
+    <ol class="activity-impressions" role="list">${recentScheduleEvents.map(entry).join('')}</ol></div>`;
 }
-document.addEventListener('change',event=>{
-  if(!event.target.matches('[data-activity-picker]')) return;
-  activityStyle=event.target.value;
-  localStorage.setItem(activityStyleKey,activityStyle);
-  const url=new URL(location.href);
-  url.searchParams.set('activity',activityStyle);
-  history.replaceState(history.state,'',url);
-  const module=event.target.closest('.module-activity');
-  module.innerHTML=teachingActivity(['administrator','coordinator'].includes(role));
-  module.querySelector('[data-activity-picker]').focus({preventScroll:true});
-});
 
 const dashboardViews = {
-  daybook:{label:'Daybook',columns:'1.5fr .5fr .95fr',rows:['intro intro calendar','queue queue calendar','week week week','review activity activity']},
-  teaching:{label:'Teaching week',columns:'1.25fr 1fr',rows:['intro intro','week week','tasks dateside','activity activity'],lanes:{tasks:['queue','review'],dateside:['calendar']}},
-  advising:{label:'Advising desk',columns:'1.25fr 1fr',rows:['intro intro','review queue','activity calendar','week week']},
-  almanac:{label:'Term almanac',columns:'1fr 1.5fr',rows:['calendar intro','calendar queue','week week','activity review']},
-  handover:{label:'Staff handover',columns:'1fr 1.1fr',rows:['intro intro','activity review','queue calendar','week week']}
+  daybook:{label:'Daybook',columns:'1.45fr 1fr',rows:['intro activity','queue activity','week week','review review']},
+  teaching:{label:'Teaching week',columns:'1.5fr 1fr',rows:['intro intro','week week','tasks dateside'],lanes:{tasks:['queue','review'],dateside:['calendar','activity']}},
+  advising:{label:'Advising desk',columns:'1.25fr 1fr',rows:['intro intro','review queue','review activity','week week']},
+  almanac:{label:'Term almanac',columns:'1fr 1.5fr',rows:['activity intro','activity queue','week week','review review']},
+  handover:{label:'Staff handover',columns:'1fr 1.1fr',rows:['intro intro','activity review','queue review','week week']}
 };
 const dashboardViewKey='portal-studio-dashboard-view';
 const requestedView=new URLSearchParams(location.search).get('view');
 let dashboardView=Object.hasOwn(dashboardViews,requestedView) ? requestedView : localStorage.getItem(dashboardViewKey);
-if (!Object.hasOwn(dashboardViews,dashboardView)) dashboardView='teaching';
+if (productionPreview || !Object.hasOwn(dashboardViews,dashboardView)) dashboardView='teaching';
 
 function dashboardEdition(modules,greeting){
   const view=dashboardViews[dashboardView];
   const options=Object.entries(dashboardViews).map(([id,{label}])=>
     `<option value="${id}" ${id===dashboardView?'selected':''}>${label}</option>`).join('');
   return `<div class="dashboard-edition" data-edition="${dashboardView}">
-    <div class="edition-filters">${dashboardView==='teaching'?calendarStylePicker():''}<label class="edition-picker">Dashboard view <select data-dashboard-view>${options}</select></label></div>
-    ${workspaceGrid(view,{...modules,intro:greeting,calendar:deskCalendar(dashboardView==='teaching')})}</div>`;
+    ${productionPreview?'':`<div class="edition-filters"><label class="edition-picker">Dashboard view <select data-dashboard-view>${options}</select></label></div>`}
+    ${workspaceGrid(view,{...modules,intro:greeting,...(dashboardView==='teaching'?{calendar:deskCalendar(true)}:{})})}</div>`;
 }
 
 function overview(){
@@ -672,7 +654,7 @@ function notifications(){
   const unread = entries.filter(([id]) => !readNotifications.has(id));
   const strip = tabs([['all', 'All notifications'], ['unread', `Unread · ${unread.length}`]], 'all');
   const visible = tab === 'unread' ? unread : entries;
-  return head('Notifications', '', button('Create test notification','test-notification')+
+  return head('Notifications', '', (productionPreview?'':button('Create test notification','test-notification'))+
     (unread.length ? button('Mark all as read','read-all','btn primary') : ''), '')+strip+
     (visible.length ? `<div class="notification-list">${visible.map(([id,title,description,time]) => {
       const isUnread = !readNotifications.has(id);
@@ -999,6 +981,8 @@ const motionPreference=matchMedia('(prefers-reduced-motion: reduce)');
 function finishArrival(item){
   arrivalObserver?.unobserve(item);
   item.removeAttribute('data-arriving');
+  item.removeAttribute('data-paper-reveal');
+  item.style.removeProperty('--folder-duration');
   item.getAnimations().filter(animation=>animation.id==='overview-arrival').forEach(animation=>animation.cancel());
 }
 
@@ -1130,7 +1114,8 @@ function stageOverview(main){
     greeting:'.page-head h1',meta:'.page-head p',decoration:'.greeting-sun',
     heading:'.section-head,.timetable-heading',queue:'.queue-entry',upcoming:'.desk-calendar',
     day:'.week-day>h2',course:'.week-class',empty:'.week-day-off',
-    note:'.module-review .review-person,.module-review .draft-file,.module-activity .event'
+    note:'.module-review .review-person,.module-activity :is(.event,.activity-impression)',
+    folder:'.module-review .draft-file'
   };
   for(const [kind,selector] of Object.entries(groups)){
     shell.querySelectorAll(selector).forEach((el,index)=>units.set(el,{kind,index}));
@@ -1141,6 +1126,13 @@ function stageOverview(main){
     const key=role+'-'+kind+'-'+index;
     if(revealedOverviewItems.has(key) || el.matches(':focus-within')) return;
     revealedOverviewItems.add(key);
+    if(kind==='folder'){
+      el.style.setProperty('--folder-duration',`${590+index*24}ms`);
+      el.dataset.paperReveal='folder';
+      const label=el.querySelector('strong');
+      label.addEventListener('animationend',()=>finishArrival(el),{once:true});
+      return;
+    }
     if(kind==='empty'){
       if(opening || scroll){
         el.classList.add('coffee-wait');
@@ -1174,7 +1166,7 @@ function stageOverview(main){
       arrivalObserver.unobserve(target);
       if(target.hasAttribute('data-arriving')) reveal(target,order,true);
     });
-  },{rootMargin:'0px 0px -5% 0px'});
+  });
   let order=0;
   for(const [el,{kind,index}] of units){
     const rect=el.getBoundingClientRect();
@@ -1200,11 +1192,12 @@ motionPreference.addEventListener('change',()=>{
   if(!motionPreference.matches) return;
   if(pendingExposure) pendingExposure.finish();
   arrivalObserver?.disconnect();
-  document.querySelectorAll('[data-arriving]').forEach(finishArrival);
+  document.querySelectorAll('[data-arriving],[data-paper-reveal]').forEach(finishArrival);
   document.getAnimations().filter(animation=>animation.id==='overview-arrival').forEach(animation=>animation.cancel());
 });
 
 function render(focus=false){
+  closeDeadline();
   clearFlipExposure();
   if (!authPages.has(page) && !signedIn()) {
     returnAfterSignIn = page;
@@ -1218,6 +1211,7 @@ function render(focus=false){
   app.innerHTML=body;
   syncControls(role, page);
   if(page==='overview' && workspaces[lab.layout].name==='Claude Study') stageOverview(app.querySelector('main'));
+  binderMotion.mount(app.querySelector('[data-concertina=true] .folio-stack'));
   if(focus)document.querySelector('#content')?.focus({preventScroll:true});
 }
 function navigate(target){if(dialog.open)dialog.close();page=pageKey(target);tab='';history.pushState({},'',href(page));render(true);window.scrollTo(0,0);}
@@ -1291,64 +1285,119 @@ function action(name,el){
     default:toast('Updated in this preview.');
   }
 }
-function clearCalendarDetails(except) {
-  document.querySelectorAll('[data-deadline][aria-pressed="true"]').forEach(mark=>{
-    if(mark!==except) mark.setAttribute('aria-pressed','false');
+let activeDeadline=null, noteTimer;
+function closeDeadline(){
+  clearTimeout(noteTimer);
+  if(!activeDeadline)return;
+  activeDeadline.closest('.folio-stack')?.querySelector('.deadline-shadow')?.remove();
+  activeDeadline.querySelector('.deadline-note')?.hidePopover();
+  activeDeadline.setAttribute('aria-pressed','false');
+  activeDeadline=null;
+}
+function placeDeadline(){
+  if(!activeDeadline)return;
+  if(!activeDeadline.isConnected){closeDeadline();return;}
+  const anchor=activeDeadline.getBoundingClientRect();
+  const note=activeDeadline.querySelector('.deadline-note');
+  const {width,height}=note.getBoundingClientRect();
+  // The fixed popover rotates around its center. Position its projected bounds.
+  const dx=(note.offsetWidth-width)/2,dy=(note.offsetHeight-height)/2;
+  const stack=activeDeadline.closest('.folio-stack');
+  const page=stack.getBoundingClientRect();
+  const left=24,right=Math.min(innerWidth-16,page.right-5);
+  const top=Math.max(21,page.top+8),bottom=Math.min(innerHeight-12,page.bottom-5);
+  const x=Math.max(left,Math.min(right-width,anchor.left+(anchor.width-width)/2));
+  const y=Math.max(top,Math.min(bottom-height,anchor.top+(anchor.height-height)/2));
+  note.style.left=(x-dx)+'px';
+  note.style.top=(y-dy)+'px';
+  // Map the note's resting center onto the printed page before casting the shadow.
+  const m=new DOMMatrix(getComputedStyle(note).transform==='none'?undefined:getComputedStyle(note).transform);
+  const screenToPaper=new DOMMatrix([m.a,m.b,m.c,m.d,0,0]).inverse();
+  const local=screenToPaper.transformPoint({x:x+width/2-page.left-page.width/2,y:y+height/2-page.top-page.height/2});
+  const shadow=stack.querySelector('.deadline-shadow');
+  shadow.style.setProperty('--shadow-x',stack.clientWidth/2+local.x+'px');
+  shadow.style.setProperty('--shadow-y',stack.clientHeight/2+local.y+'px');
+  shadow.style.setProperty('--shadow-width',note.offsetWidth+'px');
+  shadow.style.setProperty('--shadow-height',note.offsetHeight+'px');
+}
+function openDeadline(mark){
+  clearTimeout(noteTimer);
+  if(mark===activeDeadline)return;
+  closeDeadline();
+  activeDeadline=mark;
+  const shadow=document.createElement('span');
+  shadow.className='deadline-shadow';
+  shadow.setAttribute('aria-hidden','true');
+  mark.closest('.folio-stack').append(shadow);
+  mark.querySelector('.deadline-note').showPopover();
+  placeDeadline();
+}
+window.addEventListener('scroll',placeDeadline,{capture:true,passive:true});
+window.addEventListener('resize',placeDeadline);
+function dismissDeadline(){
+  if(activeDeadline)activeDeadline.dataset.dismissed='';
+  closeDeadline();
+}
+document.addEventListener('keydown',event=>{if(event.key==='Escape')dismissDeadline();});
+for(const type of ['pointerover','focusin']){
+  document.addEventListener(type,event=>{
+    const mark=event.target.closest('[data-deadline]');
+    if(type==='focusin' && mark)delete mark.dataset.dismissed;
+    if(mark && !mark.hasAttribute('data-dismissed') && event.pointerType!=='touch' && !mark.closest('[inert]'))openDeadline(mark);
   });
 }
-document.addEventListener('keydown',event=>{
-  if (event.key!=='Escape') return;
-  document.querySelectorAll('[data-deadline]:is(:hover,:focus,[aria-pressed="true"])').forEach(mark=>{
-    mark.dataset.dismissed='';
-    mark.setAttribute('aria-pressed','false');
-  });
-});
-for (const eventName of ['pointerover','focusin']) {
-  document.addEventListener(eventName,event=>{
+for(const type of ['pointerout','focusout']){
+  document.addEventListener(type,event=>{
     const mark=event.target.closest('[data-deadline]');
-    if (mark && !mark.contains(event.relatedTarget)) {
-      clearCalendarDetails(mark);
-      delete mark.dataset.dismissed;
-    }
+    if(mark && !mark.contains(event.relatedTarget))delete mark.dataset.dismissed;
+    if(!activeDeadline?.contains(event.target)||activeDeadline.contains(event.relatedTarget))return;
+    if(activeDeadline.getAttribute('aria-pressed')==='true'&&type==='pointerout')return;
+    if(type==='pointerout'&&activeDeadline.matches(':focus-visible'))return;
+    clearTimeout(noteTimer);
+    noteTimer=setTimeout(closeDeadline,160);
   });
 }
 document.addEventListener('click',event=>{
   const mark=event.target.closest('[data-deadline]');
-  clearCalendarDetails(mark);
-  if (mark) {
-    const pinned=mark.getAttribute('aria-pressed')==='true';
-    mark.setAttribute('aria-pressed',String(!pinned));
-    mark.toggleAttribute('data-dismissed',pinned);
+  if(mark){
+    if(mark===activeDeadline && mark.getAttribute('aria-pressed')==='true'){dismissDeadline();return;}
+    openDeadline(mark);
+    mark.setAttribute('aria-pressed','true');
     return;
   }
+  closeDeadline();
   const control = event.target.closest('[data-calendar-nav]');
   if (!control) return;
   const previous = calendarMonth;
   calendarMonth = control.dataset.calendarNav==='today' ? 0 : previous+Number(control.dataset.calendarNav);
   if(previous===calendarMonth) return;
   const calendar = control.closest('.desk-calendar');
+  pendingExposure?.finish();
   clearFlipExposure(calendar);
-  const paper = calendar.querySelector('.folio-paper');
+  const paper = calendar.querySelector('.folio-paper:not(.binder-waiting-sheet)');
   const stack = paper.parentElement;
-  stack.querySelector('.calendar-animation,.turn-cels')?.remove();
   const feature=calendar.querySelector('.calendar-feature');
-  feature?.style.removeProperty('background-color');
-  const foldConcertina=feature && isConcertina(calendarStyle) && !motionPreference.matches;
-  const oldStock=getComputedStyle(stack).backgroundColor;
-  const oldBinding=feature && getComputedStyle(feature).backgroundColor;
-  if(foldConcertina) holdMarginDrawing(paper);
+  const scene=binderMotion.scene(stack);
+  if(scene){
+    // Keep the outgoing drawing mounted so its ink animation retains its clock.
+    const next=paper.cloneNode(false);
+    paper.before(next);
+    tintCalendar(calendar,calendarDates().month.getMonth());
+    next.innerHTML=calendarPage(true);
+    calendar.querySelector('.folio-agenda').innerHTML=calendarAgenda();
+    scene.turn(next,previous,calendarMonth,productionPreview||flipRate===1?null:showFlipExposure,()=>clearFlipExposure(calendar));
+    return;
+  }
+  stack.querySelectorAll('.calendar-animation,.turn-cels,.binder-waiting-sheet').forEach(layer=>layer.remove());
   const oldPage = paper.innerHTML;
   const previousColors=['--sheet','--verso'].map(key=>getComputedStyle(stack).getPropertyValue(key).trim());
   tintCalendar(calendar,calendarDates().month.getMonth());
-  const nextPaper=foldConcertina ? paper.cloneNode(false) : paper;
-  if(foldConcertina) paper.replaceWith(nextPaper);
-  nextPaper.innerHTML = calendarPage(calendar.classList.contains('teaching-pad') && calendarStyle!=='clean');
-  if(feature) feature.innerHTML=calendarFeature();
+  paper.innerHTML = calendarPage(calendar.classList.contains('teaching-pad') && calendarStyle!=='clean');
+  if(feature && !isConcertina(calendarStyle)) feature.innerHTML=calendarFeature();
   calendar.querySelector('.folio-agenda').innerHTML = calendarAgenda();
   if (motionPreference.matches) return;
   if (calendar.classList.contains('teaching-pad')) {
-    if(foldConcertina) turnConcertina(stack,paper,calendarMonth>previous,oldStock,oldBinding);
-    else if(Object.hasOwn(sketchEditions,calendarStyle)) turnSketchPage(stack,oldPage,calendarMonth>previous,previousColors);
+    if(Object.hasOwn(sketchEditions,calendarStyle)) turnSketchPage(stack,oldPage,calendarMonth>previous,previousColors);
     else flipAcademicSheet(stack,oldPage,calendarMonth>previous,calendarStyle,previousColors);
     return;
   }
@@ -1397,7 +1446,8 @@ function chooseCalendarStyle(value){
   localStorage.setItem(styleKey,value);
   const pad=document.querySelector('.teaching-pad');
   clearFlipExposure(pad);
-  pad.querySelector('.turn-cels')?.remove();
+  pad.querySelectorAll('.turn-cels,.binder-waiting-sheet').forEach(layer=>layer.remove());
+  binderMotion.scene(pad.querySelector('.folio-stack'))?.dispose();
   pad.dataset.calendarStyle=value;
   pad.dataset.concertina=String(isConcertina(value));
   pad.querySelector('.calendar-feature').style.removeProperty('background-color');
@@ -1405,6 +1455,7 @@ function chooseCalendarStyle(value){
   tintCalendar(pad,calendarDates().month.getMonth());
   pad.querySelector('.calendar-feature').innerHTML=calendarFeature();
   pad.querySelector('.folio-paper').innerHTML=calendarPage(value!=='clean');
+  binderMotion.mount(pad.querySelector('.folio-stack'));
   document.querySelectorAll('[data-calendar-picker]').forEach(picker=>{picker.value=value;});
   const url=new URL(location.href);
   url.searchParams.set('calendar',value);

@@ -1,183 +1,60 @@
-// The drawing board is the resting sheet, 300 × 200, with the binding at y=0.
-// Each exposure has its own silhouette, folded-back flap, graphite and rolled lip.
-// Three registration lines describe where the printed middle and foot fall at
-// the left, centre and right of the sheet. Every exposure is held as drawn.
-const concertinaCels = {
-  flat: {
-    face:'M0 0H300V200H0Z'
-  },
-  nick: {
-    face:'M0 0H300V187Q298 197 286 200H0Z',
-    back:'M286 200Q297 197 300 186Q301 199 286 200Z'
-  },
-  dogear: {
-    face:'M0 0H300V173Q292 194 270 200H0Z',
-    back:'M270 200Q287 195 300 172Q304 192 286 198Q278 201 270 200Z',
-    ink:'M291 193l5-6'
-  },
-  tug: {
-    face:'M0 0H300V151C291 178 264 196 244 200H0Z',
-    back:'M244 200Q280 191 300 151Q307 179 282 193Q262 201 244 200Z',
-    ink:'M281 190q11-6 16-17'
-  },
-  peel: {
-    cast:'M211 199C245 197 286 178 299 151Q295 175 257 192Q239 199 211 201Z',
-    face:'M0 0H300L300 145C298 165 267 186 231 194Q216 199 194 200H0Z',
-    back:'M194 200C228 198 268 173 279 150Q285 140 285 127C297 134 302 139 300 148C296 171 252 198 217 199Z',
-    lip:'M285 127Q298 132 300 144Q299 154 292 162Q302 144 285 130Z',
-    ink:'M272 162q7-9 9-18m10 11-4 6',
-    register:[100,100,97,200,200,190]
-  },
-  hook: {
-    cast:'M147 200C207 194 282 159 301 123Q299 144 276 163Q223 201 147 202Z',
-    face:'M0 0H300L301 122C291 154 222 194 163 199Q96 201 0 200Z',
-    back:'M124 200C171 197 217 178 245 147C257 133 268 108 266 99C282 102 297 110 301 122C300 148 238 185 182 196Q152 201 124 200Z',
-    lip:'M266 99Q292 102 301 122Q298 134 286 145Q300 124 290 116Q282 108 266 103Z',
-    ink:'M249 142q10-14 12-28m22 34-8 7M160 197l16-3',
-    register:[100,99,91,200,197,177]
-  },
-  gather: {
-    cast:'M68 199C167 194 264 149 301 94Q302 114 271 141C211 187 123 203 68 201Z',
-    face:'M0 0H300L301 93C287 125 229 167 140 189Q79 202 0 197Z',
-    back:'M33 198C105 199 179 172 213 125C231 101 241 80 239 66Q272 68 293 83Q300 88 301 93C296 123 229 168 140 189Q83 201 33 198Z',
-    lip:'M239 66Q271 68 293 83L301 93Q297 106 289 113Q292 96 281 88Q264 75 239 70Z',
-    ink:'M213 123q14-22 19-39m28-9q9 2 15 6M110 191q30-6 47-14',
-    register:[99,97,84,198,187,153]
-  },
-  belly: {
-    cast:'M0 180C103 190 253 135 301 67Q299 89 263 118C200 168 88 193 0 184Z',
-    face:'M0 0H300L301 66C278 99 215 148 128 169Q61 188 -1 180Z',
-    back:'M-1 180C65 178 143 151 179 106C204 76 211 47 210 34C248 35 285 47 301 66C281 100 211 149 128 169Q58 188 -1 180Z',
-    lip:'M210 34Q268 34 301 66Q298 74 289 81C287 64 254 45 211 39Z',
-    ink:'M179 105q17-21 23-43m22-23 16 2M21 179q24-1 49-8m178-54 17-12',
-    register:[97,89,72,186,163,123]
-  },
-  // The fold travels up the print. The top of the sheet stays fixed under
-  // the binding. Face and verso close along the same cut edge, right to left.
-  sweep: {
-    cast:'M0 148C101 160 245 106 300 43Q295 67 250 98C169 145 75 161 0 153Z',
-    face:'M0 0H300V43',
-    back:'M0 148C53 132 98 112 139 75C167 49 174 16 176 5C229 5 274 19 300 43',
-    edge:'C264 83 201 118 115 138Q47 154 0 148Z',
-    lip:'M176 5Q257 4 300 43Q296 50 284 58C285 44 245 17 178 10Z',
-    ink:'M144 67q17-18 24-42m17-16 22 1M16 145q25-3 43-9m169-50 25-13'
-  },
-  swing: {
-    cast:'M0 108C99 120 239 68 300 23Q293 41 253 67C176 106 69 123 0 113Z',
-    face:'M0 0H300V23',
-    back:'M0 108C37 87 87 57 109 30Q131 2 136 -16C203 -20 265 -1 300 23',
-    edge:'C260 55 197 85 111 102Q46 115 0 108Z',
-    lip:'M136 -16C199 -21 262 -4 300 23L286 33C273 12 205 -11 135 -11Z',
-    ink:'M92 47q22-21 32-42m30-19 18 0M17 106q27-4 52-12m169-41 23-12'
-  },
-  crest: {
-    cast:'M0 68Q135 85 300 9Q296 20 265 35C174 73 62 84 0 72Z',
-    face:'M0 0H300V9',
-    back:'M0 68Q36 43 68 7Q86 -11 97 -32C172 -43 256 -21 300 9',
-    edge:'C250 35 184 57 108 66Q38 76 0 68Z',
-    lip:'M97 -32C169 -42 247 -24 300 9L285 16C259 -8 169 -34 96 -27Z',
-    ink:'M58 20q13-15 21-27m39-24q19-3 35-2M18 67q30 0 59-6m151-25 20-9'
-  },
-  crown: {
-    cast:'M0 32C86 50 216 29 300 0Q262 22 194 36Q62 54 0 35Z',
-    face:'M0 0H300',
-    back:'M0 32Q27 13 54 -24Q60 -33 65 -40C144 -56 242 -38 300 0',
-    edge:'C224 26 145 38 78 38Q30 40 0 32Z',
-    lip:'M65 -40C145 -55 240 -38 300 0L283 5C247 -21 145 -48 64 -35Z',
-    ink:'M29 7q13-13 22-28m28-17q20-5 42-6M24 33q28 2 54-1m145-17 13-4'
-  },
-  cross: {
-    cast:'M0 8Q116 24 300 0Q204 17 132 19Q41 20 0 10Z',
-    face:'M0 0H300',
-    back:'M0 8Q14 0 25 -18Q34 -33 41 -43C129 -61 225 -46 300 0',
-    edge:'C230 8 124 18 47 13Q23 12 0 8Z',
-    lip:'M41 -43C137 -60 229 -45 300 0L278 2C219 -36 119 -53 40 -38Z',
-    ink:'M17 -8q10-12 15-24m33-10q28-5 53-5M47 9q20 2 38 0'
-  },
-  hinge: {
-    back:'M0 1Q8 -19 26 -44C108 -63 219 -50 300 0Q226 1 151 3Q64 5 0 1Z',
-    lip:'M26 -44C128 -66 232 -47 300 0L281 .4C212 -40 119 -55 25 -39Z',
-    ink:'M11 -15l10-15m27-15q28-5 51-5M226 -28q16 4 27 9'
-  },
-  // In binding coordinates the top seam is y=0. The free corner rolls
-  // inward across it. Its folded underside narrows to a line at the seam.
-  loosen: {
-    rim:'M0 28Q9 8 25 -6C99 -23 215 -15 279 13Q290 17 297 24Q295 27 283 27.5C198 28 74 32 0 28Z',
-    curl:'M279 13Q291 17 297 24Q293 27 283 27.5Q290 24 289 22Q286 17 279 13Z',
-    ridge:'M31 -6Q87 -18 149 -14M9 28Q54 31 91 29'
-  },
-  over: {
-    rim:'M2 24Q11 5 26 -6C97 -22 206 -16 263 3Q279 8 288 14Q292 18 286 21Q278 24 263 24C177 26 66 29 2 24Z',
-    curl:'M263 3Q280 8 288 14Q293 18 286 21Q278 24 263 24Q275 19.5 277 15Q277 10 263 3Z',
-    ridge:'M35 -7Q95 -18 162 -13M269 21q8 -3 11 -7'
-  },
-  crestOver: {
-    rim:'M5 16Q14 2 29 -6C93 -20 189 -16 244 -4Q262 -1 272 4Q278 7 274 11Q270 16 251 17Q104 25 5 16Z',
-    curl:'M244 -4Q263 -1 272 4Q278 7 274 11Q268 17 251 17Q264 12 263 7Q262 1 244 -4Z',
-    ridge:'M36 -6Q98 -17 149 -13M254 15q8 -3 11 -7'
-  },
-  clearLeft: {
-    rim:'M10 7Q20 -3 34 -7C95 -19 187 -15 232 -7Q249 -4 257 -.5Q262 3 254 6Q245 9 221 9C143 11 61 13 10 7Z',
-    curl:'M232 -7Q249 -4 257 -.5Q262 3 254 6Q245 9 232 9Q246 5 246 2Q246 -2 232 -7Z',
-    ridge:'M41 -7Q93 -16 144 -12M236 8l10 -4'
-  },
-  tipOver: {
-    rim:'M19 1Q29 -5 41 -7C103 -17 185 -13 222 -7Q237 -5 242 -2Q245 0 238 1Q228 3 209 3C132 4 65 4 19 1Z',
-    curl:'M222 -7Q237 -5 242 -2Q246 1 228 2Q237 -.5 235 -2Q232 -4 222 -7Z',
-    ridge:'M48 -7Q91 -14 139 -12'
-  },
-  drop: {
-    rear:'M23 3Q33 -4 46 -7C101 -15 185 -12 219 -6Q233 -4 238 .5L238 5H23Z',
-    ridge:'M51 -7q39 -6 83 -4'
-  },
-  tuck: {
-    rear:'M30 4Q42 -3 58 -6C117 -13 186 -9 216 -4Q226 -2 230 2V6H30Z',
-    ridge:'M71 -6q42 -5 71 -3'
-  },
-  glint: {
-    rear:'M48 4Q65 -3 88 -5Q158 -12 212 -1Q219 0 223 3V6H48Z',
-    ridge:'M101 -5q40 -4 69 -1'
-  },
-  slip: {
-    rear:'M83 4Q106 -2 128 -3Q168 -7 199 -.7L210 3V6H83Z'
-  },
-  restEdge: {
-    rear:'M119 3Q139 -.8 157 -1.3Q181 -2.8 194 .8L197 4H119Z'
-  },
-  // On the return the bowed lower edge lands first at the left. The lifted
-  // right corner hesitates for a beat before the familiar little closing cels.
-  land: {
-    cast:'M181 199Q273 184 301 138Q295 166 267 180Q228 199 181 200Z',
-    face:'M0 0H300L301 138C291 170 231 194 173 199Q69 202 0 200Z',
-    back:'M158 200C208 194 252 161 269 125Q275 112 275 109Q295 117 301 138C296 164 242 191 186 198Z',
-    lip:'M275 109Q295 116 301 138L297 148Q296 129 275 113Z',
-    ink:'M251 155q12-14 17-27m-67 64 10-3',
-    register:[100,100,92,200,198,182]
-  },
-  bounce: {
-    cast:'M237 200Q288 186 300 158Q296 183 273 192Q253 200 237 201Z',
-    face:'M0 0H300V158C289 181 259 197 226 200H0Z',
-    back:'M226 200Q264 192 286 151Q288 145 288 143Q298 146 300 158Q295 186 250 197Z',
-    lip:'M288 143Q303 150 300 160L297 166Q299 155 288 147Z',
-    ink:'M278 169l6-10',
-    register:[100,100,99,200,200,196]
-  }
-};
-
-const concertinaLift = [
-  ['nick',34],['dogear',38],['tug',35],['peel',41],['hook',43],['gather',39],
-  ['belly',37],['sweep',33],['swing',33],['crest',33],['crown',37],['cross',38],
-  ['hinge',31],['loosen',28],['over',32],['crestOver',36],['clearLeft',36],['tipOver',42],['drop',47],['tuck',46],['glint',44],['slip',47],['restEdge',40]
-];
-const concertinaLower = [
-  ['restEdge',31],['slip',34],['glint',34],['tuck',36],['drop',38],['tipOver',38],['clearLeft',34],['crestOver',32],['over',31],['loosen',28],['hinge',34],['cross',39],
-  ['crown',36],['crest',34],['swing',32],['sweep',32],['belly',34],['gather',37],
-  ['land',43],['bounce',43],['tug',36],['dogear',43],['nick',48],['flat',38]
+// Each exposure is drawn in sheet coordinates. The punched margin is the
+// origin, not the top of the calendar. The first number places that margin
+// along the fixed wire; the hem and the rolled corner are drawn relative to it.
+// Positive holds face the reader, negative hems show the reverse of the leaf.
+const binderCels=[
+  {travel:0, gap:-4, print:1, hold:55, hem:'L300 190Q299 197 290 200H0', roll:'M289 200Q298 197 300 190Q301 198 289 200Z'},
+  {travel:.008, gap:-4, print:1, hold:52, hem:'L300 177Q293 196 276 200H0', roll:'M275 200Q294 193 300 177Q302 194 286 199Z'},
+  {travel:.02, gap:-4, print:.985, hold:52, hem:'L300 159C285 184 264 197 238 199Q105 201 0 199', roll:'M238 199Q280 182 292 153Q298 153 300 159Q295 180 266 194Z', ink:'M272 185Q283 176 288 165'},
+  {travel:.049, gap:-3.8, print:.947, hold:49, hem:'L300 133C284 161 230 188 180 194Q73 201 0 195', roll:'M164 195C211 185 265 150 277 121Q291 124 300 133C282 164 219 191 164 195Z', ink:'M258 148Q270 133 273 127'},
+  {travel:.087, gap:-3.6, print:.86, hold:49, hem:'L300 104C258 147 165 180 89 183Q31 187 0 181', roll:'M73 183C136 172 222 126 247 86Q283 93 300 104C254 150 155 182 73 183Z', ink:'M220 119Q233 105 241 93'},
+  {travel:.139, gap:-3, print:.715, hold:46, hem:'L300 78C243 118 129 153 51 153Q19 154 0 149', roll:'M0 149Q135 133 204 61Q262 58 300 78C236 123 110 159 0 149Z', ink:'M173 92Q191 74 198 68M237 66l21 3'},
+  {travel:.20, gap:-2.4, print:.535, hold:44, hem:'L300 54Q183 114 49 116Q18 117 0 110', roll:'M0 110Q82 90 149 38C207 28 263 36 300 54Q131 135 0 110Z', ink:'M120 62l19 -17M186 36q23 -2 37 0'},
+  {travel:.259, gap:-1.8, print:.35, hold:41, hem:'L300 33Q168 83 43 75Q20 75 0 69', roll:'M0 69Q50 53 94 22C168 6 248 12 300 33Q130 98 0 69Z', ink:'M64 42l20 -15M151 15q23 -3 51 -1'},
+  {travel:.323, gap:-1, print:.19, hold:39, hem:'L300 15Q169 48 45 38Q18 36 0 31', roll:'M0 31Q35 19 58 6Q197 -15 300 15Q150 54 0 31Z', ink:'M22 25l20 -10M99 2q23 -3 49 -4'},
+  {travel:.384, gap:-.45, print:.052, hold:37, hem:'L300 4Q166 15 44 10Q20 8 0 6', roll:'M0 6Q39 -4 57 -8Q192 -28 300 4Q153 21 0 6Z', ink:'M77 -10q36 -7 68 -6'},
+  // The free edge crosses the punched edge here. The margin rolls over and
+  // the unprinted side faces forward. The whole width remains on the rings.
+  {travel:.446, gap:.65, hold:40, hem:'L300 -5C235 -22 139 -31 51 -22Q24 -19 0 -13', ink:'M23 -14Q80 -29 137 -24'},
+  {travel:.508, gap:1.25, hold:41, hem:'L300 -15Q182 -42 72 -33Q31 -31 0 -24', ink:'M17 -23Q65 -36 117 -33'},
+  {travel:.568, gap:1.7, hold:43, hem:'L300 -24C211 -43 94 -49 0 -34', ink:'M12 -31Q57 -40 103 -40M226 -31l41 7'},
+  {travel:.622, gap:2.1, hold:49, hem:'L300 -32Q156 -57 0 -40', ink:'M17 -37Q64 -44 102 -44M233 -37l41 6'},
+  {travel:.677, gap:2.35, hold:55, hem:'L300 -38C209 -52 91 -56 0 -44', ink:'M16 -41Q58 -48 113 -47'},
+  {travel:.723, gap:2.5, hold:65, hem:'L300 -41Q146 -60 0 -45', ink:'M20 -43Q68 -50 121 -49'},
+  {travel:.765, gap:2.6, hold:57, hem:'L300 -39Q152 -56 0 -43', ink:'M24 -41Q74 -47 124 -47', rear:true},
+  {travel:.813, gap:2.5, hold:49, hem:'L300 -33C195 -46 81 -51 0 -38', ink:'M25 -36Q69 -42 109 -42', rear:true},
+  {travel:.87, gap:2.3, hold:47, hem:'L300 -24Q148 -40 0 -29', ink:'M29 -28Q78 -34 115 -33', rear:true},
+  {travel:.922, gap:2.2, hold:46, hem:'L300 -16Q163 -28 0 -21', ink:'M33 -20Q73 -23 117 -22', rear:true},
+  {travel:.961, gap:2.1, hold:45, hem:'L300 -8Q154 -18 0 -12', ink:'M39 -12Q76 -15 112 -14', rear:true},
+  {travel:.988, gap:2, hold:46, hem:'L300 -5Q157 -12 0 -7', rear:true},
+  {travel:1, gap:2, hold:46, hem:'L300 -2Q154 -5 0 -3', rear:true}
 ];
 
 const concertinaEditions = {bellows:'Concertina', linen:'Concertina · Blue linen', kraft:'Concertina · Field notes',
   ...Object.fromEntries(Object.entries(calendarBindings).map(([key,{label}])=>[key,label]))};
 const isConcertina = style => Object.hasOwn(concertinaEditions,style);
+
+// The rear feet live on the cover, the front wires sit above the leaf,
+// and the traveling holes are printed on the turning sheet.
+const binderStations=[16,50,84];
+function binderRow(part){
+  const track='M8.7 36C12.1 34.3 13.9 27.6 14.5 20.6C15.2 14.5 15.5 5.2 10.8 1.9Q9 .5 7.3 1.9C1.9 4.4 1 13 2.8 16';
+  const wire='M4.6 4.9Q5.6 2.9 7.3 1.9Q9 .5 10.8 1.9C15.5 5.2 15.2 14.5 14.5 20.6C13.9 27.6 12.1 34.3 8.7 36';
+  const art={
+    feet:`<ellipse cx="2.8" cy="16.1" rx="3.55" ry="1.95" fill="#605d50"/>
+      <path d="M2.8 16C1 13 1.9 4.4 7.4 1.9Q9 .9 10.8 1.9" fill="none" stroke="#4b4a42" stroke-width="3"/>
+      <path d="M2.8 15.8Q1.4 5.3 7.3 2.2" fill="none" stroke="#9d9e8e" stroke-width="1.35"/>`,
+    punches:`<ellipse cx="8.7" cy="36" rx="3.65" ry="2.2" fill="#4b463c" stroke="#e6dac1" stroke-width="1"/>`,
+    wires:`<path class="ring-track" d="${track}" fill="none" stroke="none"/>
+      <path d="${wire}" fill="none" stroke="#484741" stroke-width="3.3"/>
+      <path d="${wire}" fill="none" stroke="#c3c2af" stroke-width="1.55"/>
+      <path d="M8 1.8Q10.2 1 12 4.5M14.5 12.3Q15 19 13.4 24.2" fill="none" stroke="#f6f0db" stroke-width=".85"/>`,
+    threads:`<g class="threaded-wire" fill="none"><path d="${track}" pathLength="1" stroke="#484741" stroke-width="3.3"/><path d="${track}" pathLength="1" stroke="#c3c2af" stroke-width="1.55"/></g>`,
+    eyelets:'<ellipse class="traveling-punch" rx="3.3" fill="none" stroke="#817963" stroke-width="1"/>'
+  };
+  return `<div class="binder-row binder-${part}" aria-hidden="true">${binderStations.map(left=>
+    `<svg style="left:${left}%" viewBox="0 0 20 42" stroke-linecap="round">${art[part]}</svg>`).join('')}</div>`;
+}
 
 function holdMarginDrawing(paper){
   // A spent growth cel is no longer in getAnimations(). Capture the ink
@@ -192,123 +69,106 @@ function holdMarginDrawing(paper){
   }
 }
 
-// Bend the actual type, deadline rings and seasonal illustration with their
-// places on the sheet. The three control points run across the paper, never
-// through time. Changing the month or viewport keeps the ink registered.
-function concertinaPrint(leaf, stack) {
-  const box=stack.getBoundingClientRect();
-  const elements=leaf.querySelectorAll('.folio-month > strong,.folio-month > small,.season-drawing,.sketch-scene,.folio-days > small,.folio-date');
-  const stamps=Array.from(elements,el=>{
-    const rect=el.getBoundingClientRect();
-    return {el,u:(rect.left+rect.width/2-box.left)/box.width,
-      v:(rect.top+rect.height/2-box.top)/box.height,
-      original:el.style.transform};
-  });
-  function across(left,middle,right,u){
-    return (1-u)*(1-u)*left+2*u*(1-u)*middle+u*u*right;
-  }
-  return function registerInk(register){
-    if(!register){
-      for(const {el,original} of stamps) el.style.transform=original;
-      return;
-    }
-    const [ml,mc,mr,fl,fc,fr]=register;
-    for(const {el,u,v,original} of stamps){
-      const middle=across(ml,mc,mr,u),foot=across(fl,fc,fr,u);
-      const start=4*middle-foot, bend=2*foot-4*middle;
-      const y=(start+bend*v)*v;
-      const height=Math.max(.035,(start+2*bend*v)/200);
-      const midSlope=2*((1-u)*(mc-ml)+u*(mr-mc));
-      const footSlope=2*((1-u)*(fc-fl)+u*(fr-fc));
-      const slope=((4*midSlope-footSlope)*v+(2*footSlope-4*midSlope)*v*v)*box.height/(200*box.width);
-      const rise=(y/200-v)*box.height;
-      el.style.transform=`matrix(1,${slope},0,${height},0,${rise}) ${original==='none'?'':original}`;
-    }
-  };
-}
-
 function turnConcertina(stack,oldPaper,forward,oldStock,oldBinding) {
   const paper=stack.querySelector(':scope > .folio-paper');
   const binding=stack.previousElementSibling;
   const newBinding=getComputedStyle(binding).backgroundColor;
+  const pad=stack.closest('.teaching-pad');
   const layer=document.createElement('div');
   layer.className='turn-cels concertina-turn';
   layer.inert=true;
   layer.setAttribute('aria-hidden','true');
-  const id='concertina-fold-'+(++turnConcertina.serial);
-  const pencilLayer='<path class="leaf-cast"/><path class="leaf-back"/><path class="leaf-lip"/><path class="leaf-crease"/>';
-  layer.innerHTML='<div class="leaf-ground"></div><div class="leaf-face"></div>'+
-    `<svg viewBox="0 0 300 200" preserveAspectRatio="none" fill="none" aria-hidden="true">
-      <defs><clipPath id="${id}" clipPathUnits="objectBoundingBox"><path transform="scale(.003333333333 .005)"/></clipPath>
-
-      <clipPath id="${id}-above"><rect x="-15" y="-100" width="330" height="100"/></clipPath>
-      <clipPath id="${id}-below"><rect x="-15" y="0" width="330" height="215"/></clipPath>
-      </defs>
-      <g clip-path="url(#${id}-below)">${pencilLayer}</g>
-      <g class="leaf-crown"><g clip-path="url(#${id}-above)">${pencilLayer}</g></g>
-    </svg><svg class="binding-turn" viewBox="0 -16 300 44" preserveAspectRatio="none" fill="none" aria-hidden="true">
-      <defs><clipPath id="${id}-rim"><use href="#${id}-rim-stock"/></clipPath></defs>
-      <path class="rim-stock" id="${id}-rim-stock"/><path class="rim-curl" clip-path="url(#${id}-rim)"/><path class="rim-pencil" clip-path="url(#${id}-rim)"/>
-    </svg>`;
-  const face=layer.querySelector('.leaf-face');
-  const ground=layer.querySelector('.leaf-ground');
+  const id='binder-leaf-'+(++turnConcertina.serial);
+  layer.innerHTML=`<div class="leaf-ground"></div>
+    <svg class="binder-sheet" preserveAspectRatio="none" aria-hidden="true">
+      <defs><clipPath id="${id}"><path clip-rule="evenodd"/></clipPath></defs><path class="bound-stock" fill-rule="evenodd"/>
+    </svg>
+    <div class="leaf-face"></div>
+    <svg class="binder-pencil" preserveAspectRatio="none" aria-hidden="true">
+      <path class="binder-roll"/><path class="binder-grain"/>
+    </svg>`+binderRow('eyelets')+binderRow('threads');
   const leaf=forward?oldPaper:paper.cloneNode(true);
-  const stock=forward?oldStock:getComputedStyle(stack).backgroundColor;
-  layer.style.setProperty('--leaf-stock',stock);
+  const ground=layer.querySelector('.leaf-ground');
   oldPaper.removeAttribute('aria-live');
-  if(!forward){ground.style.backgroundColor=oldStock;ground.append(oldPaper);}
+  if(!forward){
+    ground.style.backgroundColor=oldStock;
+    ground.append(oldPaper);
+    ground.insertAdjacentHTML('beforeend',binderRow('punches'));
+  }
+  layer.style.setProperty('--leaf-stock',forward?oldStock:getComputedStyle(stack).backgroundColor);
+  const face=layer.querySelector('.leaf-face');
+  face.style.clipPath=`url(#${id})`;
   face.append(leaf);
   stack.append(layer);
-  const registerInk=concertinaPrint(leaf,stack);
-  face.style.clipPath=`url(#${id})`;
-  const clip=layer.querySelector('clipPath path');
-  const rim=layer.querySelector('.binding-turn');
-  rim.style.height=(44/28*binding.offsetHeight)+'px';
-  const rimStock=rim.querySelector('.rim-stock');
-  const rimPencil=rim.querySelector('.rim-pencil');
-  const rimCurl=rim.querySelector('.rim-curl');
-  const paths=Object.entries({cast:'.leaf-cast',back:'.leaf-back',lip:'.leaf-lip',ink:'.leaf-crease'})
-    .map(([part,selector])=>[part,layer.querySelectorAll(selector)]);
-  const box=stack.getBoundingClientRect();
-  const title=stack.closest('.teaching-pad').querySelector('.calendar-heading').getBoundingClientRect();
-  const headroom=box.top-title.bottom-3;
-  // Keep the high point in binding units so the hinge and loosen drawings meet
-  // at the same height on a wide pad and on a short, narrow one.
-  const crownHeight=Math.min(headroom, binding.offsetHeight*1.46);
-  const crownScale=Math.max(.05,crownHeight/(box.height*54/200));
-  layer.querySelector('.leaf-crown').setAttribute('transform',`scale(1 ${crownScale})`);
 
-  const exposures=forward?concertinaLift:concertinaLower;
-  function draw(n){
+  const track=stack.querySelector('.binder-wires .ring-track');
+  const wireLength=track.getTotalLength();
+  const stock=layer.querySelector('.bound-stock');
+  const clip=layer.querySelector('clipPath path');
+  const roll=layer.querySelector('.binder-roll');
+  const grain=layer.querySelector('.binder-grain');
+  const rows=layer.querySelectorAll('.traveling-punch');
+  const travelingHoles=layer.querySelector('.binder-eyelets');
+  const frontWires=layer.querySelectorAll('.threaded-wire');
+  const paperSvg=layer.querySelector('.binder-sheet');
+  const inkSvg=layer.querySelector('.binder-pencil');
+  const ringBox=stack.querySelector('.binder-wires');
+  const pageBox=stack.getBoundingClientRect();
+  const scaleX=pageBox.width/300;
+  const sheetHeight=pageBox.height;
+  const clipHeight=binding.offsetHeight;
+  const headroom=pageBox.top-pad.querySelector('.calendar-heading').getBoundingClientRect().bottom-4;
+
+  function draw(index){
     if(!layer.isConnected)return;
-    if(n===exposures.length || motionPreference.matches){
-      clearFlipExposure(stack.closest('.teaching-pad'));
+    if(index===binderCels.length || motionPreference.matches){
+      clearFlipExposure(pad);
       binding.style.removeProperty('background-color');
       layer.remove();return;
     }
-    const [name,hold]=exposures[n];
-    const cel=concertinaCels[name];
-    face.hidden=!cel.face;
-    layer.classList.toggle('bound-fold',Boolean(cel.edge || !cel.face));
-    if(cel.face){
-      clip.setAttribute('d',cel.face+(cel.edge || ''));
-      // Once the flap spans the sheet, it covers the already-registered ink.
-      registerInk(cel.edge ? concertinaCels.belly.register : cel.register);
+    const cel=binderCels[forward?index:binderCels.length-1-index];
+    // Arc length chooses the contact on the drawn wire. It never generates
+    // a pose. The silhouette, projection and exposure above are authored.
+    const contact=track.getPointAtLength(cel.travel*wireLength);
+    const axis=ringBox.offsetTop+contact.y;
+    const edge=axis+cel.gap;
+    const sy=cel.print ? (sheetHeight-axis)/200 : Math.min(1,(headroom+axis)/52);
+    const place=`translate(0 ${axis}) scale(${scaleX} ${sy})`;
+    // Cut the actual paper and printed face. Metal behind the leaf is visible
+    // through these slots; only the wire up to the contact lies above the leaf.
+    const ry=Math.max(.5,Math.min(1.95,Math.abs(cel.gap)*.52));
+    const slots=binderStations.map(station=>{
+      const x=station*3+(contact.x-10)/scaleX, rx=3.3/scaleX;
+      return `M${x-rx} 0a${rx} ${ry/sy} 0 1 0 ${2*rx} 0a${rx} ${ry/sy} 0 1 0 ${-2*rx} 0Z`;
+    }).join('');
+    const outline=`M0 ${cel.gap/sy} H300 ${cel.hem} Z`+slots;
+    for(const svg of [paperSvg,inkSvg]){
+      svg.setAttribute('viewBox',`0 0 ${pageBox.width} ${sheetHeight}`);
+      svg.style.clipPath=cel.rear ? `inset(-150px 0 calc(100% + ${clipHeight}px))` : '';
     }
-    for(const [part,strokes] of paths){
-      const path=(cel[part] || '')+(part==='back' ? cel.edge || '' : '');
-      for(const stroke of strokes) stroke.setAttribute('d',path);
+    for(const path of [stock,clip]){
+      path.setAttribute('d',outline);
+      path.setAttribute('transform',place);
     }
-    // The page covers the binding on the way up. Only after its trailing
-    // edge has cleared the top seam does the binding hide the returning paper.
-    layer.classList.toggle('behind-binding',Boolean(cel.rear));
-    rimStock.setAttribute('d',cel.rim || cel.rear || '');
-    rimPencil.setAttribute('d',cel.ridge || '');
-    rimCurl.setAttribute('d',cel.curl || '');
-    const mix=(cel.rim || cel.rear) ? 100 : ({swing:14,crest:32,crown:53,cross:73,hinge:89}[name] || 0);
-    const landed=forward?mix:100-mix;
-    binding.style.backgroundColor=`color-mix(in srgb,${oldBinding} ${100-landed}%,${newBinding})`;
-    showFlipExposure(layer,n,exposures.length,hold,draw);
+    roll.setAttribute('transform',place);
+    grain.setAttribute('transform',place);
+    roll.setAttribute('d',cel.roll || '');
+    grain.setAttribute('d',cel.ink || '');
+    stock.classList.toggle('verso',!cel.print);
+    face.hidden=!cel.print;
+    if(cel.print)leaf.style.transform=`translateY(${edge}px) scaleY(${cel.print})`;
+    for(const hole of rows){
+      hole.setAttribute('cx',contact.x);
+      hole.setAttribute('cy',contact.y);
+      hole.setAttribute('ry',ry);
+    }
+    travelingHoles.hidden=Boolean(cel.rear);
+    for(const wire of frontWires){
+      wire.setAttribute('stroke-dasharray',`${Math.min(.77,cel.travel+.025)} 2`);
+    }
+    const landed=forward?cel.travel:1-cel.travel;
+    binding.style.backgroundColor=`color-mix(in srgb,${oldBinding} ${(1-landed)*100}%,${newBinding})`;
+    showFlipExposure(layer,index,binderCels.length,cel.hold,draw);
   }
   draw(0);
 }

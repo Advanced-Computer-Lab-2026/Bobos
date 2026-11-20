@@ -207,3 +207,146 @@
   .published-imprint{visibility:visible}
   .preferences-insert{transform:translateY(2.8px)}
 }
+
+/* Keep the production header in view as the dashboard scrolls. */
+.live-preview #design-controls { display: none; }
+.portal-studio.live-preview[data-workspace=claude-study]:not(.auth-screen) {
+  grid-template-rows: minmax(0, 1fr);
+}
+.portal-studio.live-preview[data-workspace=claude-study] .topbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+.portal-studio.live-preview #account-menu { inset: 54px 16px auto auto; }
+
+.dashboard-edition .module-activity { container: recent-activity / inline-size; min-width: 0; }
+.dashboard-edition .activity-heading { gap: 8px 12px; }
+.dashboard-edition .activity-heading .edition-picker { font-size: 11px; }
+.dashboard-edition .activity-heading .edition-picker select { max-width: none; }
+.dashboard-edition .activity-impressions { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+.dashboard-edition .activity-impression:any-link {
+  min-height: 76px;
+  gap: clamp(10px, 3cqi, 18px);
+  padding: 5px 8px;
+  align-items: center;
+}
+.dashboard-edition .activity-impression:hover { background: var(--raised); }
+.dashboard-edition .impression-copy strong { font-size: clamp(17px, 4.5cqi, 22px); }
+.dashboard-edition .activity-stamp { width: clamp(68px, 19cqi, 86px); }
+
+/* Daybook gives each date its own heading and lets the illustrations carry the row. */
+.dashboard-edition .activity-daybook { display: block; }
+.dashboard-edition .activity-daybook h3 {
+  margin: 14px 0 4px;
+  padding: 0 0 6px 8px;
+  border-bottom: 1px solid var(--rule);
+  max-width: 16ch;
+}
+.dashboard-edition .activity-daybook .activity-impression:any-link { display: flex; border: 0; border-radius: 5px; }
+.dashboard-edition .activity-daybook .impression-copy {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0,1fr) auto;
+  gap: 4px 8px;
+}
+.dashboard-edition .activity-daybook strong { grid-area: 1 / 1; }
+.dashboard-edition .activity-daybook .impression-copy time { grid-area: 1 / 2; }
+.dashboard-edition .activity-daybook .impression-byline { grid-column: 1 / -1; }
+
+/* Correspondence uses a row of stamped records, with the metadata stacked beside the art. */
+.dashboard-edition [data-activity-style=postage] .activity-impression { border-bottom: 1px solid var(--rule); }
+.dashboard-edition [data-activity-style=postage] li:last-child .activity-impression { border-bottom-color: transparent; }
+
+/* File tags hang from a drawn rail with the record name and actor to the right. */
+.dashboard-edition [data-activity-style=specimens] .activity-impressions { position: relative; gap: 6px; }
+.dashboard-edition [data-activity-style=specimens] .activity-impressions::before {
+  position: absolute;
+  inset: 14px auto 24px 17px;
+  border-left: 1px dashed var(--control);
+  content: '';
+  pointer-events: none;
+}
+.dashboard-edition [data-activity-style=specimens] .activity-impression:any-link { position: relative; display: flex; }
+.dashboard-edition [data-activity-style=specimens] .impression-copy { display: grid; }
+.dashboard-edition [data-activity-style=specimens] .impression-copy > * { grid-area: auto; padding: 0; }
+
+@container recent-activity (max-width: 340px) {
+  .dashboard-edition .activity-heading .edition-picker { margin: 0; }
+  .dashboard-edition .activity-daybook .impression-copy { grid-template-columns: minmax(0,1fr); }
+  .dashboard-edition .activity-daybook .impression-copy time { grid-area: auto; }
+}
+
+.portal-studio[data-workspace=claude-study] .dashboard-edition[data-edition=teaching] .work-grid {
+  gap: clamp(22px, 2.8vw, 38px);
+}
+.dashboard-edition[data-edition=teaching] .module-activity { max-width: 560px; }
+/* Leave a little space inside the target for the loose sheet to rise. */
+.dashboard-edition[data-edition=teaching] .draft-index {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(12px, 1.5vw, 23px) clamp(10px, 1.4vw, 22px);
+  padding-block: 11px 6px;
+}
+.dashboard-edition[data-edition=teaching] .draft-file {
+  min-height: 95px;
+  justify-content: center;
+  border-radius: 6px;
+  padding: 8px 5px;
+}
+.dashboard-edition[data-edition=teaching] .draft-file:is(:hover,:focus-visible) { background: var(--raised); }
+.dashboard-edition[data-edition=teaching] .desktop-folder {
+  width: clamp(78px, 7.1vw, 110px);
+  max-width: 100%;
+}
+@media (min-width: 1150px) {
+  .dashboard-edition[data-edition=teaching] .draft-file {
+    display: grid;
+    grid-template-columns: clamp(82px, 6.9vw, 108px) minmax(0, 1fr);
+    gap: 3px 12px;
+    align-content: center;
+    align-items: end;
+    justify-content: stretch;
+    text-align: left;
+  }
+  .dashboard-edition[data-edition=teaching] .desktop-folder { grid-row: span 2; align-self: center; width: 100%; }
+  .dashboard-edition[data-edition=teaching] .draft-file small { align-self: start; }
+}
+@media (max-width: 899px) {
+  .dashboard-edition[data-edition=teaching] .module-activity { max-width: none; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-paper-reveal=folder] { --folder-tip: -5deg; }
+  [data-paper-reveal=folder]:nth-child(even) { --folder-tip: 4deg; }
+  [data-paper-reveal=folder] .desktop-folder {
+    transform-origin: 55% 86%;
+    animation: folder-shelve var(--folder-duration, 590ms) steps(1, end) both;
+  }
+  [data-paper-reveal=folder]:not(:hover,:focus-visible) .folder-sheet {
+    animation: folder-sheet-seat var(--folder-duration, 590ms) steps(1, end) both;
+  }
+  [data-paper-reveal=folder] :is(strong, small) { animation: folder-name-arrival var(--folder-duration, 590ms) steps(1, end) both; }
+
+  @keyframes folder-shelve {
+    0% { clip-path: inset(74% 0 0); transform: translateY(15px) rotate(var(--folder-tip)); }
+    12% { clip-path: inset(61% 0 0); transform: translateY(13px) rotate(var(--folder-tip)); }
+    25% { clip-path: inset(21% 0 0); transform: translateY(7px) rotate(calc(var(--folder-tip) * .8)); }
+    42% { clip-path: inset(-12% -15%); transform: translateY(-4px) rotate(calc(var(--folder-tip) * -.35)); }
+    55% { clip-path: inset(-12% -15%); transform: translateY(3px) rotate(calc(var(--folder-tip) * .22)) scaleY(.96); }
+    69% { clip-path: inset(-12% -15%); transform: translateY(-1px) rotate(calc(var(--folder-tip) * -.13)); }
+    81%, 100% { clip-path: inset(-12% -15%); transform: none; }
+  }
+  @keyframes folder-sheet-seat {
+    0%, 25% { transform: translateY(3px); }
+    42% { transform: translateY(-5px) rotate(-1deg); }
+    55% { transform: translateY(-3px) rotate(.7deg); }
+    69% { transform: translateY(1px); }
+    81%, 100% { transform: none; }
+  }
+  @keyframes folder-name-arrival {
+    0%, 44% { clip-path: inset(0 100% 0 0); }
+    55% { clip-path: inset(0 63% 0 0); transform: translateY(2px); }
+    69% { clip-path: inset(0 12% 0 0); transform: translateY(-1px); }
+    81%, 100% { clip-path: inset(0); transform: none; }
+  }
+}

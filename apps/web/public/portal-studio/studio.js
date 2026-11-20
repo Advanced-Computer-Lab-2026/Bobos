@@ -37,11 +37,18 @@ const palettes = [
   ['Console tones','#f0eee6','#f8f6ef','#302d28','#615c52','#285ca1','#8dbbfa',['#151515','#151515','#efeee9','#bdbbb0']]
 ];
 
+const studioQuery = new URLSearchParams(location.search);
+const productionPreview = studioQuery.get('preview') === 'live' || (!studioQuery.has('layout') && studioQuery.get('preview') !== 'studio');
 const lab = {layout:0,palette:6,dark:true};
 const layoutFamily = index => workspaces[index].family ?? (index < 10 ? 0 : 1);
 const family = () => layoutFamily(lab.layout);
 const lastLayouts = [0,10];
 function restoreLook(params) {
+  if (productionPreview) {
+    Object.assign(lab, {layout:workspaces.findIndex(view=>view.name==='Claude Study'),palette:9,dark:true});
+    applyLook();
+    return;
+  }
   const layout = Number(params.get('layout')) - 1;
   const palette = Number(params.get('palette')) - 1;
   lab.layout = workspaces[layout] ? layout : 0;
@@ -64,6 +71,7 @@ function applyLook() {
   const accent = lab.dark ? darkAccent : lightAccent;
   document.documentElement.dataset.theme = lab.dark ? 'dark' : 'light';
   document.body.classList.add('portal-studio');
+  document.body.classList.toggle('live-preview',productionPreview);
   document.body.classList.toggle('chat-family',chat);
   document.body.classList.toggle('claude-family',!chat);
   document.body.dataset.palette = palettes[lab.palette][0].toLowerCase().replaceAll(' ','-');
@@ -87,6 +95,10 @@ function saveLook() {
 function mountControls(roles,screens,changeLayout) {
   const options = data => Object.entries(data).map(([key,label])=>`<option value="${key}">${label}</option>`).join('');
   const controls = document.querySelector('#design-controls');
+  if (productionPreview) {
+    controls.hidden = true;
+    return;
+  }
   controls.innerHTML = `<div class="studio-title"><span>Design studio</span></div>
     <div class="style-controls"><nav aria-label="Style family">
       <button type="button" data-family="0">Claude style</button>
@@ -133,6 +145,7 @@ function syncTheme() {
   toggle.setAttribute('aria-pressed',String(lab.dark));
 }
 function syncControls(role,page) {
+  if (productionPreview) return;
   document.querySelector('#role-select').value=role;
   document.querySelector('#page-select').value=page;
   document.querySelector('#palette-select').value=lab.palette;
