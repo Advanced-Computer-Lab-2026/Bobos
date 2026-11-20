@@ -91,46 +91,31 @@ function marginLoop(name, drawings, ground='', beat=125){
 }
 
 function septemberKite(){
-  // The string is pegged at (5,45) and tied to the bridle at (x,y).
-  // A kink travels up the loose line. The nose pitches only after it arrives.
+  // The bridle is the pivot. The tether stays under tension. The tail's
+  // last knot lags behind the first and hangs below it throughout the gust.
   const poses=[
-    // hold, bridle, tilt, two cubic handles on the string, tail drawing
-    [270,46,19,-12,'20 49 35 37',0],
-    [125,46,19,-12,'15 45 35 42',0],
-    [100,47,19,-13,'13 40 33 46',1],
-    [85,48,19,-10,'17 36 34 45',1],
-    [80,49,18,-7,'22 36 35 42',2],
-    [75,52,16,-3,'27 37 41 33',3],
-    [65,55,14,4,'26 39 43 26',4],
-    [80,58,12,12,'22 40 46 20',5],
-    [105,59,11,18,'22 36 46 19',6],
-    [180,59,11,20,'25 33 46 20',7],
-    [90,59,11,16,'27 36 44 17',8],
-    [105,58,12,10,'30 41 43 16',8],
-    [90,56,13,3,'29 44 42 16',7],
-    [100,53,15,-4,'26 46 44 21',6],
-    [95,50,16,-12,'23 48 41 27',5],
-    [105,47,18,-17,'20 48 40 34',3],
-    [135,45,20,-19,'18 48 38 39',2],
-    [95,44,20,-16,'19 50 35 40',1],
-    [125,45,20,-12,'21 50 34 37',0],
-    [170,46,19,-10,'21 49 35 36',0]
+    // Hold, bridle x/y, pitch, tether sag, tail drawing.
+    [300,49,15,-8,36.8,0],[135,49,15,-8,36.5,0],[110,49.2,15,-7.8,36.2,1],
+    [100,49.5,14.8,-7.4,35.8,1],[95,50,14.6,-6.7,35.4,2],
+    [100,50.7,14.3,-5.8,35,2],[100,51.4,14,-4.8,34.8,3],
+    [125,51.8,13.9,-4.2,34.7,4],[240,52,13.9,-4,34.8,5],
+    [125,51.9,14,-4.3,35,5],[115,51.6,14.1,-4.9,35.3,4],
+    [115,51.1,14.3,-5.6,35.7,4],[115,50.6,14.5,-6.4,36.1,3],
+    [125,50.1,14.7,-7.2,36.5,2],[145,49.6,14.9,-7.9,36.8,1],
+    [150,49.1,15,-8.3,37,1],[170,48.9,15.1,-8.2,37,0],
+    [220,49,15,-8,36.9,0]
   ];
-  // Each knot belongs to the end of its own curve. The tail curls over
-  // first, then the last bow whips round a beat later.
   const tails=[
-    [8,14,18,21,'4 15','14 14',-12,10], [9,13,20,19,'3 14','16 13',-22,4],
-    [10,13,21,16,'4 14','16 12',-27,-8], [10,14,22,16,'4 14','17 14',-16,-15],
-    [9,16,21,19,'3 14','15 17',0,-7], [7,18,17,23,'2 15','12 20',14,5],
-    [4,19,11,27,'0 15','9 21',23,16], [2,20,6,30,'-1 16','5 24',32,26],
-    [1,20,3,31,'-2 16','3 23',37,36]
+    [1.8,19.5,3.5,25.4,-5,5],[2,19.5,3.6,25.4,-4,5],
+    [2.4,19.4,3.9,25.3,-2,4],[2.8,19.2,4.4,25.2,0,3],
+    [3.1,19.1,5.1,24.9,2,2],[3.1,19.1,5.5,24.8,2,0]
   ];
   const bow=(x,y,angle)=>`<path transform="translate(${x} ${y}) rotate(${angle})" d="M-3.3-2.3.1-.3l3-1.6-.7 4L0 .5l-3.5 1Z" fill="#b77c69" stroke-width=".9"/>`;
-  return marginLoop('september-kite',poses.map(([hold,x,y,tilt,handles,tail])=>{
-    const [bx,by,cx,cy,first,second,twist,tip]=tails[tail];
-    return {hold,art:`<path d="M5 45C${handles} ${x} ${y}" stroke="#746859" stroke-width="1.4"/>
+  return marginLoop('september-kite',poses.map(([hold,x,y,tilt,sag,tail])=>{
+    const [bx,by,cx,cy,twist,tip]=tails[tail];
+    return {hold,art:`<path d="M5 45Q28 ${sag} ${x} ${y}" stroke="#746859" stroke-width="1.4"/>
       <g transform="translate(${x} ${y}) rotate(${tilt})">
-        <path d="M-2 11Q${first} ${bx} ${by}Q${second} ${cx} ${cy}" stroke="#776453" stroke-width="1.15"/>
+        <path d="M-2 12.4Q-1 16.7 ${bx} ${by}Q${bx+1.6} ${by+3.2} ${cx} ${cy}" stroke="#776453" stroke-width="1.15"/>
         ${bow(bx,by,twist)}${bow(cx,cy,tip)}
         <path d="M1-9Q-4-5-12 0L-2 12.4 10 .4Z" fill="#dca987"/>
         <path d="M1-9-2 12.4 10 .4Z" fill="#91afae" stroke="none"/>
@@ -143,12 +128,14 @@ function septemberKite(){
 function octoberAcorns(){
   // The short stalk catches up first. Its nut taps its neighbour, then
   // the little recoil dies out while the leaf still turns on its petiole.
+  // Rounded oak lobes taper to a short petiole. Keep the midrib rooted
+  // as the blade rolls slightly towards its underside.
   const leaf=[
-    'M0 0C-4 .3-7-2-10-2c-3 1-6-.5-6-3-3 0-6-2-6-4-3-.7-5-3-6.4-5 3.5-1 6.2 0 8.4 1 .5-2 3-2.5 5-.3l3 3.2q1-3 3.7-.8L-4-5q2 1.5 4 5Z',
-    'M0 0q-5 0-10-2.8-5 .9-6.5-3.4-5-.9-6.6-4-3.6-2-5-4.2 6-1.1 9.2 2.5 2-2.6 5.2 1.4l3 2q2-2 5 1.5Z',
-    'M0 0q-6-1.6-11-3.6-4.5-.1-6.9-2.6-5-1.7-10.5-6.5 4.6-.4 10.5 2.2 2-1.2 5.4 1.6l2.5 1.8q2-.8 5 1.3Z',
-    'M0 0q-7-2.4-12-4.9-7.2-1.9-16-8 6.8 1.2 14 4.5l7 3.2Z',
-    'M0 0q-7-2-10.5-3.1-5-.3-7-2.7-5.4-1.4-10.5-6 5.8-.4 11 2.3 1.8-.9 5.3 1.1l2.7 2.1q1.7-.7 4.6 1.6Z'
+    'M-3 0q-2 2-4.8 2.1-2 .3-1.3 1.8.3 2-3.2 2.4-2 .2-2.2-1.8-.2-1.4-1.5-.7-3 2-5.1.8-1.1-.9-.3-2.1-3.7 1-5.5-1.9-.6-1.5 1.5-2.9 1.7-1 3.9-1-1.5-2.6 1.2-3.2 2.5-.5 5.3 1.2-1-2.2 1.2-3 3.1-.9 5 2.4.4 1 1.5 1.2Q-5-4-3 0Z',
+    'M-3 0q-2.3 2-5 2-2.1.3-1.6 1.7.4 1.6-2.8 1.9-2.1.2-2.6-1.5-.4-1.2-1.6-.5-3.1 1.6-4.8.5-1.1-.7-.5-1.7-4 .5-5.1-2-.8-1.6 1.6-2.8 1.8-.9 3.6-.9-1.2-2.4 1.2-2.9 2.4-.6 5 1-1-2 1.3-2.7 3-.8 4.8 2 .8 1.1 1.8 1.4Q-5-4-3 0Z',
+    'M-3 0q-2.6 2-5.6 1.9-1.6.3-1.4 1.2.4 1.5-2.6 1.7-2 .1-2.5-1.2-.5-1.1-1.7-.5-3.2 1.1-4.6.3-.8-.6-.6-1.4-3.2.4-5-1.8-.7-1.5 1.5-2.5 1.8-.8 3.6-.7-1.1-2 1.4-2.6 2.7-.3 5 1-1-2 1.3-2.5 3.1-.6 5 1.8l1.6 1Q-5-3.2-3 0Z',
+    'M-3 0q-3.4 1.8-6.5 1.4 1.1 1.7-2.8 2.2-2.4.2-3.2-1.1-3.9 1.7-6.5.3l-.3-.9q-3.4 0-4.7-1.8 1.1-2 5-2.4-.5-2 2.1-2.1 2.4-.1 4.6.9-.5-1.7 1.8-1.8 2.6 0 4.7 2.1Q-5-2.8-3 0Z',
+    'M-3 0q-2.5 1.9-5.6 1.6-1.7.1-1.3 1.3.4 1.5-3 1.7-1.9 0-2.5-1.5-4 1.8-6.1.4-.7-.6-.4-1.3-3.8.2-5-1.8 1.1-2.4 5.1-2.9-1.2-1.9 1.4-2.4 2.7-.4 5.2 1-.8-1.9 1.6-2.3 3-.4 5.1 2.2Q-5.3-2.9-3 0Z'
   ];
   const nuts=[
     ['M-7.1 1.2C-8 7.8-5.1 13.8-1.1 15.2l1.5 1.9 1.2-1.8C7 13.2 8.1 6.1 7.6 1Z','M-8.8 1.4q.2-6.3 7.3-7.6C4.7-7.3 8.4-4 9 .2l-.2 1.6C4 4.7-3.6 5-8.8 3Z'],
@@ -179,7 +166,7 @@ function octoberAcorns(){
   }
   const twig='<path d="M13 20q12-2.6 23-6.3Q50 8 68 5m-17 3.4q5-3.3 8-6.1" stroke="#76684f" stroke-width="2.1"/>';
   return marginLoop('october-acorns',poses.map(([hold,front,rear,fold,roll,ink],i)=>({
-    hold,art:`<g transform="translate(32 15) scale(.88 .53) rotate(${roll})"><path d="${leaf[fold]}" fill="${fold===3?'#baa36c':'#aba574'}"/><path d="M-23-11.1Q-12-6 0 0" stroke="#766b4d" stroke-width=".9"/></g>
+    hold,art:`<g transform="translate(32 15) rotate(${13+roll*.2})"><path d="${leaf[fold]}" fill="${fold===3?'#baa36c':'#aba574'}"/><path d="M0 0Q-4-.5-8-.8L-22-1.4m8 .3-2.5-2.3m4.7 2.4-2.2 2" stroke="#766b4d" stroke-width=".9"/></g>
       ${hangingNut(52,8.5,rear,13,.83,(ink+1)%3)}
       ${hangingNut(32,15,front,14,1,ink)}
       ${i===15?'<path d="m44 36 1.3 2.6m1.6-5 2.2 1" stroke-width="1.05"/>':''}`

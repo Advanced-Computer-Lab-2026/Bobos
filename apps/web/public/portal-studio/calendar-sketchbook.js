@@ -42,6 +42,7 @@ function turnSketchPage(stack,oldPage,forward,oldColors){
   function draw(n){
     if(!layer.isConnected)return;
     if(n===drawings.length||motionPreference.matches){
+      clearFlipExposure(stack.closest('.teaching-pad'));
       layer.remove(); arriving.forEach(animation=>animation.play());return;
     }
     const k=forward?n:drawings.length-1-n;
@@ -58,7 +59,7 @@ function turnSketchPage(stack,oldPage,forward,oldColors){
       'polygon(-5% -55%,105% -55%,105% -7%,0 0%)',
       'polygon(-5% -55%,105% -55%,105% -10%,0 -5%)'];
     verso.parentElement.style.clipPath=k<crest?'none':eclipse[Math.min(k-crest,3)];
-    setTimeout(()=>draw(n+1),hold);
+    showFlipExposure(layer,n,drawings.length,hold,()=>draw(n+1));
   }
   const ns='http://www.w3.org/2000/svg',defs=document.createElementNS(ns,'defs'),mask=document.createElementNS(ns,'clipPath'),clip=document.createElementNS(ns,'path');
   const clipId='sketch-fold-'+(++turnSketchPage.serial);

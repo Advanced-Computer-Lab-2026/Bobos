@@ -305,6 +305,10 @@ function calendarFeature(){
   };
   return sketches[calendarStyle]?`<svg class="binding-sketch" aria-hidden="true" viewBox="0 0 48 38" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${sketches[calendarStyle]}</svg>`:'';
 }
+function flipSpeedControl(){
+  const options=flipRates.map(rate=>`<option value="${rate}"${rate===flipRate?' selected':''}>${rate===0?'Paused':rate+'×'}</option>`).join('');
+  return `<div class="flip-playback"><label>Flip speed <select data-flip-speed>${options}</select></label><span data-flip-frame></span></div>`;
+}
 function deskCalendar(teaching=false) {
   return `<section class="desk-calendar${teaching?' teaching-pad':''}" aria-label="Academic calendar" ${teaching?`data-calendar-style="${calendarStyle}" data-concertina="${isConcertina(calendarStyle)}" data-sketch="${Object.hasOwn(sketchEditions,calendarStyle)}" data-season-month="${calendarDates().month.getMonth()}" style="--season-sheet:${seasonalPaper[calendarDates().month.getMonth()][0]};--season-back:${seasonalPaper[calendarDates().month.getMonth()][1]}"`:''}>${teaching?`<header class="calendar-heading"><h2 id="academic-calendar">Academic calendar</h2>${calendarStylePicker()}</header>`:''}${teaching?`<div class="calendar-feature">${calendarFeature()}</div>`:''}<div class="folio-stack">
     ${teaching ? '' : `<svg class="folio-stand" viewBox="0 0 300 200" preserveAspectRatio="none" aria-hidden="true" stroke="#302f2c" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
@@ -321,7 +325,7 @@ function deskCalendar(teaching=false) {
     ${teaching ? '' : `<svg class="folio-wires" viewBox="0 0 300 200" preserveAspectRatio="none" aria-hidden="true" fill="none" stroke-linecap="round">
       ${[48,63,220,235].map((x,i)=>`<g transform="translate(${x} ${i%2})"><ellipse cx="1" cy="6" rx="3.6" ry="2.3" fill="#3f5360"/><path d="M1 6C-5 3-6-12-1-14c5-2 9 5 8 12" stroke="#353938" stroke-width="3.7"/><path d="M0 4C-3 0-4-8-1-11" stroke="#cbd4c9" stroke-width="1.2"/></g>`).join('')}
     </svg>`}</div><div class="folio-nav"><button type="button" class="folio-today" data-calendar-nav="today" aria-label="Go to current month">Today · ${calendarDates().today.toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</button><button type="button" data-calendar-nav="-1" aria-label="Previous month">${teaching?'Previous':'‹'}</button><button type="button" data-calendar-nav="1" aria-label="Next month">${teaching?'Next':'›'}</button></div>
-    <div class="folio-agenda" aria-label="Academic deadlines this month">${calendarAgenda()}</div></section>`;
+    ${teaching?flipSpeedControl():''}<div class="folio-agenda" aria-label="Academic deadlines this month">${calendarAgenda()}</div></section>`;
 }
 function workQueue(tasks, separateCalendar=false) {
   const entries = tasks.map(([symbol,tone,count,subject,phrase,desc,target,cta],index)=>`
@@ -1189,12 +1193,14 @@ function stageOverview(main){
 }
 motionPreference.addEventListener('change',()=>{
   if(!motionPreference.matches) return;
+  if(pendingExposure) pendingExposure.finish();
   arrivalObserver?.disconnect();
   document.querySelectorAll('[data-arriving]').forEach(finishArrival);
   document.getAnimations().filter(animation=>animation.id==='overview-arrival').forEach(animation=>animation.cancel());
 });
 
 function render(focus=false){
+  clearFlipExposure();
   if (!authPages.has(page) && !signedIn()) {
     returnAfterSignIn = page;
     page = 'login';
@@ -1316,6 +1322,7 @@ document.addEventListener('click',event=>{
   calendarMonth = control.dataset.calendarNav==='today' ? 0 : previous+Number(control.dataset.calendarNav);
   if(previous===calendarMonth) return;
   const calendar = control.closest('.desk-calendar');
+  clearFlipExposure(calendar);
   const paper = calendar.querySelector('.folio-paper');
   const stack = paper.parentElement;
   stack.querySelector('.calendar-animation,.turn-cels')?.remove();
@@ -1384,6 +1391,7 @@ function chooseCalendarStyle(value){
   calendarStyle=value;
   localStorage.setItem(styleKey,value);
   const pad=document.querySelector('.teaching-pad');
+  clearFlipExposure(pad);
   pad.querySelector('.turn-cels')?.remove();
   pad.dataset.calendarStyle=value;
   pad.dataset.concertina=String(isConcertina(value));
@@ -1398,7 +1406,14 @@ function chooseCalendarStyle(value){
   history.replaceState(history.state,'',url);
 }
 document.addEventListener('change',event=>{
-  if(event.target.matches('[data-calendar-picker]')){
+  if(event.target.matches('[data-flip-speed]')){
+    flipRate=Number(event.target.value);
+    localStorage.setItem(flipRateKey,String(flipRate));
+    pendingExposure?.schedule();
+    const url=new URL(location.href);
+    url.searchParams.set('flipSpeed',String(flipRate));
+    history.replaceState(history.state,'',url);
+  } else if(event.target.matches('[data-calendar-picker]')){
     chooseCalendarStyle(event.target.value);
   } else if(event.target.matches('[data-dashboard-view]')){
     dashboardView=event.target.value;

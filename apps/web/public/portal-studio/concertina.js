@@ -275,6 +275,7 @@ function turnConcertina(stack,oldPaper,forward,oldStock,oldBinding) {
   function draw(n){
     if(!layer.isConnected)return;
     if(n===exposures.length || motionPreference.matches){
+      clearFlipExposure(stack.closest('.teaching-pad'));
       binding.style.removeProperty('background-color');
       layer.remove();return;
     }
@@ -295,7 +296,7 @@ function turnConcertina(stack,oldPaper,forward,oldStock,oldBinding) {
     const mix=cel.rim || cel.rear ? 100 : ({swing:14,crest:32,crown:53,cross:73,hinge:89}[name] || 0);
     const landed=forward?mix:100-mix;
     binding.style.backgroundColor=`color-mix(in srgb,${oldBinding} ${100-landed}%,${newBinding})`;
-    setTimeout(()=>draw(n+1),hold);
+    showFlipExposure(layer,n,exposures.length,hold,()=>draw(n+1));
   }
   draw(0);
 }

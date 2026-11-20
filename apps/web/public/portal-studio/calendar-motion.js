@@ -1,3 +1,42 @@
+const flipRates=[1,.5,.25,.1,.05,.02,0];
+const flipRateKey='portal-calendar-flip-rate';
+const initialRate=new URLSearchParams(location.search).get('flipSpeed') ?? localStorage.getItem(flipRateKey);
+let flipRate=initialRate!==null && flipRates.map(String).includes(initialRate)?Number(initialRate):1;
+let pendingExposure;
+
+function showFlipExposure(layer,frame,total,hold,advance){
+  const pad=layer.closest('.teaching-pad');
+  const counter=pad.querySelector('[data-flip-frame]');
+  const caption=`Frame ${frame+1} of ${total}`;
+  let remaining=hold, started, rate, timer;
+
+  function schedule(){
+    clearTimeout(timer);
+    const now=performance.now();
+    if(started!==undefined) remaining=Math.max(0,remaining-(now-started)*rate);
+    started=now;
+    rate=flipRate;
+    counter.textContent=rate===1?'':caption;
+    if(rate>0) timer=setTimeout(()=>{
+      pendingExposure=null;
+      if(layer.isConnected) advance();
+    },remaining/rate);
+  }
+  pendingExposure={schedule,cancel:()=>clearTimeout(timer),finish:()=>{
+    clearTimeout(timer);
+    pendingExposure=null;
+    if(layer.isConnected) advance();
+  }};
+  schedule();
+}
+
+function clearFlipExposure(pad){
+  pendingExposure?.cancel();
+  pendingExposure=null;
+  const counter=pad?.querySelector('[data-flip-frame]');
+  if(counter) counter.textContent='';
+}
+
 // Each exposure sets the angle at the sewn edge and the extra bend at the foot.
 // Negative bends let a loose tip trail the sheet, positive bends roll it over.
 const paperTurns = {
@@ -76,7 +115,7 @@ function flipAcademicSheet(stack, oldPage, forward, style, previousColors) {
   const shadow=svg.querySelector('.turn-shadow'), edge=svg.querySelector('.turn-edge');
   function pose(frame){
     if (!overlay.isConnected) return;
-    if(frame>=frames.length || motionPreference.matches){overlay.remove();return;}
+    if(frame>=frames.length || motionPreference.matches){clearFlipExposure(stack.closest('.teaching-pad'));overlay.remove();return;}
     const [hinge,curl]=frames[forward?frame:frames.length-frame-1];
     let y=0,z=0,lastX=0,lastY=0;
     const amplitude=Math.sin(hinge*Math.PI/180);
@@ -103,7 +142,8 @@ function flipAcademicSheet(stack, oldPage, forward, style, previousColors) {
     });
     edge.setAttribute('d',`M${-lastX} ${lastY}Q${width*.47} ${lastY+amplitude*(frame%2?2:1)} ${width+lastX} ${lastY}`);
     shadow.setAttribute('d',`M0 0H${width}V${Math.max(0,lastY+amplitude*9)}Q${width/2} ${lastY+amplitude*16} 0 ${Math.max(0,lastY)}Z`);
-    setTimeout(()=>pose(frame+1),style==='snap'&&frame>9&&frame<16?28:frame<3?55:42);
+    const hold=style==='snap'&&frame>9&&frame<16?28:frame<3?55:42;
+    showFlipExposure(overlay,frame,frames.length,hold,()=>pose(frame+1));
   }
   if (style==='bellows' && forward) {
     // Let the sprout start coming up when the bottom of the old page clears it.

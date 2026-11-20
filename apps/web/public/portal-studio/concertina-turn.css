@@ -59,3 +59,22 @@
 [data-calendar-style=ticket] .folio-month{border-bottom:2px double #b8997f}
 .teaching-pad[data-calendar-style=herbarium]{--cover:#65745c;--sheet:#eeefdf;--printing:#384b39;--pencil:#607059;--verso:#abb79c}
 [data-calendar-style=herbarium] .folio-days>small{font-family:Georgia,serif;font-style:italic}
+
+.teaching-pad[data-calendar-style=bellows]{
+  --sheet:color-mix(in srgb,var(--console-ivory,#f0eee6) 90%,var(--season-sheet));
+  --binding:color-mix(in srgb,var(--season-back) 59%,var(--console-sage,#bcd1ca));
+  --printing:#363830;--pencil:#626157
+}
+.teaching-pad[data-calendar-style=bellows]:is([data-season-month="0"],[data-season-month="1"],[data-season-month="11"]){
+  --binding:color-mix(in srgb,var(--season-back) 65%,var(--console-blue,#6da7ec))
+}
+.teaching-pad[data-calendar-style=bellows]:is([data-season-month="7"],[data-season-month="9"]){
+  --binding:color-mix(in srgb,var(--season-back) 61%,var(--console-coral,#f09978))
+}
+.teaching-pad[data-calendar-style=bellows] .calendar-feature{background-color:var(--binding)}
+.flip-playback{display:flex;align-items:center;flex-wrap:wrap;gap:6px 12px;margin:5px 2px 10px;color:var(--muted);font:400 12px/1.4 Styrene,system-ui,sans-serif}
+.flip-playback label{display:inline-flex;align-items:center;gap:8px}
+.flip-playback select{font:inherit;font-variant-numeric:tabular-nums;color:var(--ink);background:var(--raised);border:1px solid var(--line);border-radius:5px;min-height:29px;padding:3px 6px;cursor:pointer}
+.flip-playback [data-flip-frame]{font-variant-numeric:tabular-nums}
+[data-calendar-style=clean] .flip-playback{display:none}
+@media(prefers-reduced-motion:reduce){.flip-playback{display:none}}
