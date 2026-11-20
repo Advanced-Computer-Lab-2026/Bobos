@@ -285,6 +285,11 @@ const requestedCalendar=new URLSearchParams(location.search).get('calendar');
 let calendarStyle=Object.hasOwn(calendarStyles,requestedCalendar)?requestedCalendar:localStorage.getItem(styleKey);
 if(!Object.hasOwn(calendarStyles,calendarStyle)) calendarStyle='bellows';
 
+function calendarStylePicker(){
+  const options=Object.entries(calendarStyles).map(([key,label])=>
+    `<option value="${key}" ${key===calendarStyle?'selected':''}>${label}</option>`).join('');
+  return `<label class="edition-picker">Calendar style <select data-calendar-picker>${options}</select></label>`;
+}
 function calendarFeature(){
   const sketches={
     flutter:'<path d="m7 27 20-19 6 6-21 19-8 2 3-8Zm0 0 5 6m13-23 6 6M15 33q10-6 17-4t16-3"/>',
@@ -297,7 +302,7 @@ function calendarFeature(){
   return sketches[calendarStyle]?`<svg class="binding-sketch" aria-hidden="true" viewBox="0 0 48 38" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${sketches[calendarStyle]}</svg>`:'';
 }
 function deskCalendar(teaching=false) {
-  return `<section class="desk-calendar${teaching?' teaching-pad':''}" aria-label="Academic calendar" ${teaching?`data-calendar-style="${calendarStyle}" data-concertina="${isConcertina(calendarStyle)}" data-sketch="${Object.hasOwn(sketchEditions,calendarStyle)}" data-season-month="${calendarDates().month.getMonth()}" style="--season-sheet:${seasonalPaper[calendarDates().month.getMonth()][0]};--season-back:${seasonalPaper[calendarDates().month.getMonth()][1]}"`:''}>${teaching?`<h2 id="academic-calendar">Academic calendar</h2><div class="calendar-choices" role="group" aria-label="Calendar style">${Object.entries(calendarStyles).map(([key,label])=>`<button type="button" data-calendar-choice="${key}" aria-pressed="${key===calendarStyle}">${label}</button>`).join('')}</div>`:''}${teaching?`<div class="calendar-feature">${calendarFeature()}</div>`:''}<div class="folio-stack">
+  return `<section class="desk-calendar${teaching?' teaching-pad':''}" aria-label="Academic calendar" ${teaching?`data-calendar-style="${calendarStyle}" data-concertina="${isConcertina(calendarStyle)}" data-sketch="${Object.hasOwn(sketchEditions,calendarStyle)}" data-season-month="${calendarDates().month.getMonth()}" style="--season-sheet:${seasonalPaper[calendarDates().month.getMonth()][0]};--season-back:${seasonalPaper[calendarDates().month.getMonth()][1]}"`:''}>${teaching?`<header class="calendar-heading"><h2 id="academic-calendar">Academic calendar</h2>${calendarStylePicker()}</header>`:''}${teaching?`<div class="calendar-feature">${calendarFeature()}</div>`:''}<div class="folio-stack">
     ${teaching ? '' : `<svg class="folio-stand" viewBox="0 0 300 200" preserveAspectRatio="none" aria-hidden="true" stroke="#302f2c" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
       <path fill="#8fabbd" d="M6 0Q108-4 276-3q8 0 12 9l20 159q0 5-3 8l-15 26Q163 205-4 200l1-10Z"/>
       <path fill="#607d8d" d="M281 1q6 0 7 6l20 158-16 25Z"/>
@@ -468,9 +473,38 @@ function draftProgress() {
     <ul class="meter-key">${statusCounts.map(([label,count])=>`<li><i aria-hidden="true"></i><strong>${count}</strong> ${label}</li>`).join('')}</ul>`;
 }
 
+const recentScheduleEvents = [
+  {action:'Preferences submitted',subject:'Mariam Mostafa',author:'Mariam Mostafa',date:'2026-11-20',time:'10:42',tone:'ready',stamp:'letter',caption:'Mariam Mostafa',target:'student-detail',index:1},
+  {action:'Advising draft saved',subject:'Omar Hassan',author:'Dr. Salma Adel',date:'2026-11-20',time:'09:15',tone:'draft',stamp:'pen',caption:'Dr. Salma Adel · Omar Hassan',target:'draft-schedule',index:0},
+  {action:'Template published',subject:'Group 4',author:'Nadia Ahmed',date:'2026-11-19',time:'16:20',tone:'payment-complete',stamp:'press',caption:'Nadia Ahmed · Group 4',target:'template-detail'}
+];
+
+function activityStamp(kind) {
+  const illustrations = {
+    letter:`<path class="stamp-motion" d="m15 27 18-12 18 10-17 12z" fill="var(--stamp-stock)"/><path d="m15 27 19 10 17-12 1 17-35 2z" fill="var(--stamp-stock)"/><path d="m17 42 12-11m21 10-11-10m-18 8 3-3m19 1 3 2M8 20l9-2m-10 6 7-1"/><path class="stamp-motion" d="m22 24 1-12 21 2-1 14-9 6z" fill="var(--stamp-stock)"/><path class="stamp-motion" d="m27 18 11 1m-12 3 8 1"/> `,
+    pen:`<path d="M10 40q6-5 10-1c4 5 6-6 10-2m-18 6 23-1"/><g class="stamp-motion"><path d="M24 37l3-11 16-17q3-2 6 1t1 5L34 32z" fill="var(--stamp-stock)"/><path d="m27 26 7 6m-5-9 7 6m4-17 7 6m-2-9 4 4m-3 5-9 9m-5 2-7 7"/><circle cx="30.5" cy="30.5" r="1.2"/></g>`,
+    press:`<path d="m12 37 30-2 9 6-31 3z" fill="var(--stamp-stock)"/><path d="m18 39 24-1m-23 4 20-1"/><g class="stamp-motion"><path d="M24 24q3-1 4-5c1-3-5-5-4-10s15-6 16-1-5 8-4 11q1 3 5 5z" fill="var(--stamp-stock)"/><path d="M18 24q13-3 27-1l2 6-31 2z" fill="var(--stamp-stock)"/><path d="m16 31 31-2-.1 3-31 2zm10-19q-1-3 3-5m3 9-2 5m-9 6 19-1"/></g>`
+  };
+  return `<svg class="activity-stamp stamp-${kind}" aria-hidden="true" viewBox="0 0 70 61"><g class="stamp-face">
+    <path class="stamp-edge" d="M5 4H65V56H5Z"/>
+    <path class="stamp-perfs" d="M5 4H65V56H5Z"/>
+    <path class="stamp-frame" d="m10 9 50-.5.5 42-51 .5z"/>
+    <g class="stamp-cut" transform="translate(3 3)">${illustrations[kind]}</g></g></svg>`;
+}
+
+function teachingActivity(canManage) {
+  const impressions = recentScheduleEvents.map(event=>{
+    const date = formatCalendarDay(event.date,{day:'numeric',month:'short'});
+    const target = event.stamp==='press' && !canManage ? 'student-schedules' : event.target;
+    const text = `<time datetime="${event.date}T${event.time}">${date} <span aria-hidden="true">·</span> ${event.time}</time><strong>${event.action}</strong><span class="impression-byline">${event.caption}</span>`;
+    return `<li>${link(target,activityStamp(event.stamp)+`<span class="impression-copy">${text}</span>`,'activity-impression',event.index)}</li>`;
+  }).join('');
+  return workspaceSection('Recent activity',canManage?'schedule-activity':'notifications',canManage?'View log':'Notifications',`<ol class="activity-impressions" role="list">${impressions}</ol>`);
+}
+
 const dashboardViews = {
   daybook:{label:'Daybook',columns:'1.5fr .5fr .95fr',rows:['intro intro calendar','queue queue calendar','week week week','review activity activity']},
-  teaching:{label:'Teaching week',columns:'1.25fr 1fr',rows:['intro intro','week week','tasks dateside'],lanes:{tasks:['queue','review'],dateside:['calendar','activity']}},
+  teaching:{label:'Teaching week',columns:'1.25fr 1fr',rows:['intro intro','week week','tasks dateside','activity activity'],lanes:{tasks:['queue','review'],dateside:['calendar']}},
   advising:{label:'Advising desk',columns:'1.25fr 1fr',rows:['intro intro','review queue','activity calendar','week week']},
   almanac:{label:'Term almanac',columns:'1fr 1.5fr',rows:['calendar intro','calendar queue','week week','activity review']},
   handover:{label:'Staff handover',columns:'1fr 1.1fr',rows:['intro intro','activity review','queue calendar','week week']}
@@ -485,7 +519,7 @@ function dashboardEdition(modules,greeting){
   const options=Object.entries(dashboardViews).map(([id,{label}])=>
     `<option value="${id}" ${id===dashboardView?'selected':''}>${label}</option>`).join('');
   return `<div class="dashboard-edition" data-edition="${dashboardView}">
-    <div class="edition-filters">${dashboardView==='teaching'?`<label class="edition-picker">Calendar style <select data-calendar-picker>${Object.entries(calendarStyles).map(([key,label])=>`<option value="${key}" ${key===calendarStyle?'selected':''}>${label}</option>`).join('')}</select></label>`:''}<label class="edition-picker">Dashboard view <select data-dashboard-view>${options}</select></label></div>
+    <div class="edition-filters">${dashboardView==='teaching'?calendarStylePicker():''}<label class="edition-picker">Dashboard view <select data-dashboard-view>${options}</select></label></div>
     ${workspaceGrid(view,{...modules,intro:greeting,calendar:deskCalendar(dashboardView==='teaching')})}</div>`;
 }
 
@@ -525,16 +559,11 @@ function overview(){
     review:workspaceSection('Schedule review','student-schedules','All schedules',advisingDesk ? `<p class="review-summary">${readyStudents.length} student drafts ready</p>${reviewRows}` : teachingDesk ? reviewFiles : reviewRows),
     queue:workspaceSection('Work queue','pending-work','All work',workQueue(tasks,view.name==='Claude Study')),
     dates:workspaceSection('Registration dates',canManage?'terms':'student-schedules',icon('calendar')+(canManage?'Term settings':'Schedules'),`<ol class="milestones">${registrationDates.map(date=>formatDate(...date)).join('')}</ol>`,'btn date-action'),
-    activity:workspaceSection('Recent activity',canManage?'schedule-activity':'notifications',canManage?'View log':'Notifications',[
+    activity:teachingDesk ? teachingActivity(canManage) : workspaceSection('Recent activity',canManage?'schedule-activity':'notifications',canManage?'View log':'Notifications',[
       ['Mariam Mostafa','submitted her preferences','Today · 10:42'],
       ['Dr. Salma Adel','saved Omar’s advising draft','Today · 09:15'],
       ['Nadia Ahmed','published the Group 4 template','Yesterday · 16:20']
     ].map(([name,event,time],i)=>{
-      if(teachingDesk){
-        const [day,hour]=time.split(' · ');
-        return `<div class="event desk-entry" data-entry="${i}">${i!==1?`<h3>${day}</h3>`:''}<div class="entry-line"><p><strong>${name}</strong> ${event}.</p><time>${hour}</time></div></div>`;
-
-      }
       if(view.name==='Claude Study' && dashboardView==='handover'){
         const subjects=['Preferences submitted','Advising draft saved','Group template published'];
         const detail=[name,`Omar Hassan · ${name}`,`Group 4 · ${name}`];
@@ -847,13 +876,16 @@ function pending(){
   ]);}
 function activity(){
   const events = [
-    ['Draft saved','Omar Hassan','Dr. Salma Adel','14 Nov','10:42','draft'],
-    ['Schedule processed','Mariam Mostafa','Nadia Ahmed','14 Nov','09:15','payment-complete'],
-    ['Schedule reopened','Ahmed Khaled','Nadia Ahmed','13 Nov','14:30','review'],
-    ['Draft saved','Farah Mahmoud','Dr. Salma Adel','13 Nov','11:00','draft']
+    ...recentScheduleEvents,
+    {action:'Draft saved',subject:'Omar Hassan',author:'Dr. Salma Adel',date:'2026-11-14',time:'10:42',tone:'draft'},
+    {action:'Schedule processed',subject:'Mariam Mostafa',author:'Nadia Ahmed',date:'2026-11-14',time:'09:15',tone:'payment-complete'},
+    {action:'Schedule reopened',subject:'Ahmed Khaled',author:'Nadia Ahmed',date:'2026-11-13',time:'14:30',tone:'review'},
+    {action:'Draft saved',subject:'Farah Mahmoud',author:'Dr. Salma Adel',date:'2026-11-13',time:'11:00',tone:'draft'}
   ];
-  return head('Schedule activity','','','')+filterbar('Search activity',[['All actions',['Draft saved','Schedule processed','Schedule reopened']]])+
-    `<div class="activity-log">${['14 Nov','13 Nov'].map(date=>`<section class="activity-day"><h2>${date}<small>2026</small></h2><ol>${events.filter(e=>e[3]===date).map(([action,name,author,,time,tone],i)=>`<li data-search-row><time>${time}</time>${avatar(name)}<div><h3>${name}</h3><p>${action} by ${author}</p></div>${badge(action,tone)}</li>`).join('')}</ol></section>`).join('')}</div><p id="result-count">4 records</p>`;
+  const days = [...new Set(events.map(event=>event.date))];
+  const actions = [...new Set(events.map(event=>event.action))];
+  return head('Schedule activity','','','')+filterbar('Search activity',[['All actions',actions]])+
+    `<div class="activity-log">${days.map(date=>`<section class="activity-day"><h2>${formatCalendarDay(date,{day:'numeric',month:'short'})}<small>${date.slice(0,4)}</small></h2><ol>${events.filter(event=>event.date===date).map(({action,subject,author,time,tone})=>`<li data-search-row><time datetime="${date}T${time}">${time}</time>${avatar(subject)}<div><h3>${subject}</h3><p>${action} by ${author}</p></div>${badge(action,tone)}</li>`).join('')}</ol></section>`).join('')}</div><p id="result-count">${events.length} records</p>`;
 }
 
 function records(){
@@ -1181,7 +1213,7 @@ function filterRows(){
   const query=(document.querySelector('#search')?.value||'').toLowerCase();
   const filters=Array.from(document.querySelectorAll('[data-filter]')).map(el=>el.value.toLowerCase()).filter(Boolean);
   let count=0;document.querySelectorAll('[data-search-row]').forEach(row=>{const text=row.textContent.toLowerCase();const match=text.includes(query)&&filters.every(f=>text.includes(f));row.hidden=!match;if(match)count++;});
-  const result=document.querySelector('#result-count');if(result)result.textContent=`${count} records`;const empty=document.querySelector('.search-empty');if(empty)empty.hidden=count>0;
+  const result=document.querySelector('#result-count');if(result)result.textContent=`${count} ${count===1?'record':'records'}`;const empty=document.querySelector('.search-empty');if(empty)empty.hidden=count>0;
 }
 function action(name,el){
   switch(name){
@@ -1345,13 +1377,11 @@ function chooseCalendarStyle(value){
   tintCalendar(pad,calendarDates().month.getMonth());
   pad.querySelector('.calendar-feature').innerHTML=calendarFeature();
   pad.querySelector('.folio-paper').innerHTML=calendarPage(value!=='clean');
-  pad.querySelectorAll('[data-calendar-choice]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.calendarChoice===value)));
-  document.querySelector('[data-calendar-picker]').value=value;
+  document.querySelectorAll('[data-calendar-picker]').forEach(picker=>{picker.value=value;});
+  const url=new URL(location.href);
+  url.searchParams.set('calendar',value);
+  history.replaceState(history.state,'',url);
 }
-document.addEventListener('click',event=>{
-  const choice=event.target.closest('[data-calendar-choice]');
-  if(choice) chooseCalendarStyle(choice.dataset.calendarChoice);
-});
 document.addEventListener('change',event=>{
   if(event.target.matches('[data-calendar-picker]')){
     chooseCalendarStyle(event.target.value);

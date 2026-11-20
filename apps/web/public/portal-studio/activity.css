@@ -1,0 +1,65 @@
+/* Each impression keeps its timestamp and author with the object that changed. */
+[data-edition="teaching"] .module-activity {
+  container: recent-activity / inline-size;
+  width: 100%;
+}
+.activity-impressions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(14px, 2vw, 36px);
+  list-style: none;
+  margin: 0;
+  padding: 6px 0 0;
+}
+.activity-impressions li { min-width: 0; }
+.dashboard-edition .activity-impression:any-link {
+  display: flex;
+  align-items: center;
+  gap: clamp(9px, 1vw, 17px);
+  min-height: 84px;
+  color: var(--ink);
+  text-decoration: none;
+  border-radius: 4px;
+}
+.activity-impression:focus-visible { outline: 2px solid currentColor; outline-offset: 4px; }
+.impression-copy { display: grid; gap: 3px; min-width: 0; }
+.impression-copy time, .impression-byline { color: var(--muted); font: 400 12px/1.4 Styrene, system-ui, sans-serif; }
+.impression-copy time { font-variant-numeric: tabular-nums; }
+.impression-copy time span { padding-inline: 1px; }
+.impression-copy strong { font: 400 clamp(19px, 1.5vw, 26px)/1.16 Tiempos, Georgia, serif; letter-spacing: -.035em; }
+.activity-impression:is(:hover, :focus-visible) strong { text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+.activity-stamp {
+  flex: none;
+  width: clamp(53px, 5vw, 78px);
+  height: auto;
+  overflow: visible;
+  --stamp-stock: #bfcdb5;
+  --stamp-ink: #364d40;
+  --stamp-angle: -5deg;
+}
+.stamp-pen { --stamp-stock: #d6bdca; --stamp-ink: #624153; --stamp-angle: 3deg; }
+.stamp-press { --stamp-stock: #e2b294; --stamp-ink: #71452f; --stamp-angle: -3deg; }
+.stamp-face { transform: rotate(var(--stamp-angle)); transform-origin: center; }
+.stamp-edge { fill: var(--stamp-stock); }
+.stamp-perfs { fill: none; stroke: var(--canvas); stroke-linecap: round; stroke-dasharray: .2 8; stroke-width: 4.3; }
+.stamp-frame, .stamp-cut { fill: none; stroke: var(--stamp-ink); stroke-linejoin: round; stroke-linecap: round; }
+.stamp-frame { stroke-width: 1.1; }
+.stamp-cut { stroke-width: 1.7; }
+@container recent-activity (max-width: 780px) {
+  .activity-impressions { grid-template-columns: 1fr; gap: 5px; }
+  .dashboard-edition .activity-impression:any-link { gap: 16px; min-height: 82px; }
+  .activity-stamp { width: 65px; }
+  .impression-copy strong { font-size: 22px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .activity-impression:is(:hover, :focus-visible) .stamp-face { animation: impression-settle 420ms ease-out both; }
+  .activity-impression:is(:hover, :focus-visible) .stamp-letter .stamp-motion { animation: impression-deliver 600ms ease-out both; }
+  .activity-impression:is(:hover, :focus-visible) .stamp-pen .stamp-motion { animation: impression-write 600ms ease-in-out both; }
+  .activity-impression:is(:hover, :focus-visible) .stamp-press .stamp-motion { animation: impression-print 540ms ease-out both; }
+  @keyframes impression-settle { 45% { transform: translateY(-2px) rotate(0); } }
+  @keyframes impression-deliver { 35% { transform: translateY(-4px); } 75% { transform: translateY(1px); } }
+  @keyframes impression-write { 25% { transform: translate(-3px, 1px); } 55% { transform: translate(2px, -1px); } 80% { transform: translate(4px, -3px); } }
+  @keyframes impression-print { 28% { transform: translateY(-2px); } 55%, 68% { transform: translateY(5px); } }
+}
+.activity-log .activity-day:not(:has(li:not([hidden]))) { display: none; }
+.activity-log [data-search-row][hidden] { display: none; }

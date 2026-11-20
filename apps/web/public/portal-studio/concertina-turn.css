@@ -1,0 +1,23 @@
+.concertina-turn > svg {
+  clip-path: inset(-68% -2% -2px);
+}
+.concertina-turn .leaf-back {
+  fill: color-mix(in srgb, var(--leaf-stock) 92%, #a49984);
+  stroke: color-mix(in srgb, var(--leaf-stock) 43%, #514c45);
+  stroke-width: 1.05;
+}
+.concertina-turn .leaf-lip {
+  fill: color-mix(in srgb, var(--leaf-stock) 76%, #958775);
+}
+.concertina-turn .leaf-crease {
+  fill: none;
+  stroke: color-mix(in srgb, var(--leaf-stock) 53%, #746a5c);
+  stroke-width: .9;
+}
+.concertina-turn .leaf-cast {
+  fill: #584c40;
+  opacity: .13;
+}
+.teaching-pad:has(.concertina-turn) .calendar-feature {
+  isolation: isolate;
+}

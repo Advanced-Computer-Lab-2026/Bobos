@@ -1,31 +1,150 @@
-// Each drawing is the fold from left to right, then the free edge coming back.
-// The print scale is a separate exposure: the lettering foreshortens as the
-// page lifts, while the last few millimetres at the spine stay registered.
-const concertinaTurns = [
-  // hold, print height, start of fold, fold contour, returning edge, pencil marks
-  [38,1,'300 200','','',''],
-  [35,1,'286 200','Q297 197 300 186','Q301 199 286 200Z',''],
-  [42,1,'270 200','Q287 195 300 172','Q304 192 286 198Q278 201 270 200Z','M291 193l5-6'],
-  [38,.998,'244 200','Q280 191 300 151','Q307 179 282 193Q262 201 244 200Z','M281 190q11-6 16-17'],
-  [35,.99,'205 198','Q263 187 300 132','Q310 165 282 185Q251 201 205 198Z','M276 183q15-9 20-23'],
-  [32,.96,'152 192','Q245 182 300 112','Q314 146 284 172Q242 200 152 192Z','M254 181q25-9 38-25'],
-  [34,.90,'82 180','Q213 178 300 96','Q314 134 283 159Q217 205 82 180Z','M162 187q21 3 44-1m60-19q18-10 26-23'],
-  [32,.81,'0 162','Q177 173 300 79','Q315 117 279 147Q173 215 0 162Z','M54 173q33 9 71 10m133-25q22-11 34-30'],
-  [32,.70,'0 140','Q164 156 300 62','Q315 102 278 133Q171 208 0 153Q-1 146 0 140Z','M25 157q35 15 78 18m151-29q22-11 34-28'],
-  [33,.57,'0 114','Q162 137 300 48','Q315 90 274 122Q161 201 0 140Q-2 126 0 114Z','M17 141q32 15 71 21m153-22q25-12 39-27'],
-  [31,.43,'0 86','Q148 117 300 34','Q316 76 271 112Q151 191 0 124Q-3 106 0 86Z','M14 123q30 16 62 23m154-15q23-11 38-23'],
-  [32,.30,'0 60','Q135 92 300 23','Q316 65 267 101Q142 179 0 107Q-3 84 0 60Z','M12 104q27 18 60 25m141-6q23-9 40-21'],
-  [36,.19,'0 38','Q124 64 300 13','Q315 54 262 89Q132 164 0 88Q-3 64 0 38Z','M11 84q23 18 57 27m129-2q25-8 43-19'],
-  [34,.095,'0 19','Q121 39 300 6','Q312 44 258 76Q123 144 0 68Q-3 45 0 19Z','M9 63q23 19 55 26m112 4q27-6 44-15'],
-  [33,.035,'0 7','Q128 17 300 1','Q308 32 251 61Q113 121 0 48Q-3 27 0 7Z','M8 43q19 17 47 26m109 6q22-3 41-11'],
-  [35,0,'0 0','Q108 4 300 -2','Q305 23 243 46Q102 96 0 30Q-2 15 0 0Z','M7 26q15 14 39 23m98 8 31-5'],
-  [36,0,'0 0','Q125 -7 300 -3','Q301 13 234 32Q91 73 0 16Q-2 7 0 0Z','M8 16q13 10 30 16'],
-  [37,0,'0 0','Q117 -13 300 -4','Q292 9 221 20Q82 50 0 7Z','M8 8q13 8 28 12'],
-  [39,0,'0 0','Q128 -18 300 -5','Q280 4 209 12Q78 29 0 2Z','M9 4q14 5 32 8'],
-  [40,0,'0 0','Q122 -19 300 -5','Q255 0 197 5Q77 14 0 0Z',''],
-  [44,0,'0 0','Q127 -15 300 -4','Q239 -2 189 1Q74 5 0 0Z',''],
-  [45,0,'0 0','Q146 -10 300 -2','Q169 -1 0 0Z',''],
-  [40,0,'0 0','Q155 -5 300 -1','Q171 -1 0 0Z','']
+// The drawing board is the resting sheet, 300 × 200, with the binding at y=0.
+// Each exposure has its own silhouette, folded-back flap, graphite and rolled lip.
+// Three registration lines describe where the printed middle and foot fall at
+// the left, centre and right of the sheet. Every exposure is held as drawn.
+const concertinaCels = {
+  flat: {
+    face:'M0 0H300V200H0Z'
+  },
+  nick: {
+    face:'M0 0H300V187Q298 197 286 200H0Z',
+    back:'M286 200Q297 197 300 186Q301 199 286 200Z'
+  },
+  dogear: {
+    face:'M0 0H300V173Q292 194 270 200H0Z',
+    back:'M270 200Q287 195 300 172Q304 192 286 198Q278 201 270 200Z',
+    ink:'M291 193l5-6'
+  },
+  tug: {
+    face:'M0 0H300V151C291 178 264 196 244 200H0Z',
+    back:'M244 200Q280 191 300 151Q307 179 282 193Q262 201 244 200Z',
+    ink:'M281 190q11-6 16-17'
+  },
+  peel: {
+    cast:'M211 199C245 197 286 178 299 151Q295 175 257 192Q239 199 211 201Z',
+    face:'M0 0H300L300 145C298 165 267 186 231 194Q216 199 194 200H0Z',
+    back:'M194 200C228 198 268 173 279 150Q285 140 285 127C297 134 302 139 300 148C296 171 252 198 217 199Z',
+    lip:'M285 127Q298 132 300 144Q299 154 292 162Q302 144 285 130Z',
+    ink:'M272 162q7-9 9-18m10 11-4 6',
+    register:[100,100,97,200,200,190]
+  },
+  hook: {
+    cast:'M147 200C207 194 282 159 301 123Q299 144 276 163Q223 201 147 202Z',
+    face:'M0 0H300L301 122C291 154 222 194 163 199Q96 201 0 200Z',
+    back:'M124 200C171 197 217 178 245 147C257 133 268 108 266 99C282 102 297 110 301 122C300 148 238 185 182 196Q152 201 124 200Z',
+    lip:'M266 99Q292 102 301 122Q298 134 286 145Q300 124 290 116Q282 108 266 103Z',
+    ink:'M249 142q10-14 12-28m22 34-8 7M160 197l16-3',
+    register:[100,99,91,200,197,177]
+  },
+  gather: {
+    cast:'M68 199C167 194 264 149 301 94Q302 114 271 141C211 187 123 203 68 201Z',
+    face:'M0 0H300L301 93C287 125 229 167 140 189Q79 202 0 197Z',
+    back:'M33 198C105 199 179 172 213 125C231 101 241 80 239 66Q272 68 293 83Q300 88 301 93C296 123 229 168 140 189Q83 201 33 198Z',
+    lip:'M239 66Q271 68 293 83L301 93Q297 106 289 113Q292 96 281 88Q264 75 239 70Z',
+    ink:'M213 123q14-22 19-39m28-9q9 2 15 6M110 191q30-6 47-14',
+    register:[99,97,84,198,187,153]
+  },
+  belly: {
+    cast:'M0 180C103 190 253 135 301 67Q299 89 263 118C200 168 88 193 0 184Z',
+    face:'M0 0H300L301 66C278 99 215 148 128 169Q61 188 -1 180Z',
+    back:'M-1 180C65 178 143 151 179 106C204 76 211 47 210 34C248 35 285 47 301 66C281 100 211 149 128 169Q58 188 -1 180Z',
+    lip:'M210 34Q268 34 301 66Q298 74 289 81C287 64 254 45 211 39Z',
+    ink:'M179 105q17-21 23-43m22-23 16 2M21 179q24-1 49-8m178-54 17-12',
+    register:[97,89,72,186,163,123]
+  },
+  sweep: {
+    cast:'M0 148C101 160 245 106 301 43Q295 67 250 98C169 145 75 161 0 153Z',
+    face:'M0 0H300L301 43C263 83 201 117 115 138Q49 155 -2 148Z',
+    back:'M-2 148C53 132 98 112 139 75C167 49 174 16 176 5C229 5 274 19 301 43C264 83 201 118 115 138Q47 154 -2 148Z',
+    lip:'M176 5Q257 4 301 43Q296 50 284 58C285 44 245 17 178 10Z',
+    ink:'M144 67q17-18 24-42m17-16 22 1M16 145q25-3 43-9m169-50 25-13',
+    register:[87,75,54,159,130,90]
+  },
+  swing: {
+    cast:'M0 108C99 120 239 68 301 23Q293 41 253 67C176 106 69 123 0 113Z',
+    face:'M0 0H300L301 23C264 52 201 85 111 102Q43 115 -2 108Z',
+    back:'M-2 108C37 87 87 57 109 30Q131 2 136 -16C203 -20 265 -1 301 23C260 55 197 85 111 102Q46 115 -2 108Z',
+    lip:'M136 -16C199 -21 262 -4 301 23L286 33C273 12 205 -11 135 -11Z',
+    ink:'M92 47q22-21 32-42m30-19 18 0M17 106q27-4 52-12m169-41 23-12',
+    register:[67,51,35,115,94,57]
+  },
+  crest: {
+    cast:'M0 68Q135 85 300 9Q296 20 265 35C174 73 62 84 0 72Z',
+    face:'M0 0H300V9C252 31 192 54 108 66Q39 76 -1 68Z',
+    back:'M-1 68Q36 43 68 7Q86 -11 97 -32C172 -43 256 -21 300 9C250 35 184 57 108 66Q38 76 -1 68Z',
+    lip:'M97 -32C169 -42 247 -24 300 9L285 16C259 -8 169 -34 96 -27Z',
+    ink:'M58 20q13-15 21-27m39-24q19-3 35-2M18 67q30 0 59-6m151-25 20-9',
+    register:[42,28,16,76,54,28]
+  },
+  crown: {
+    cast:'M0 32C86 50 216 29 300 0Q262 22 194 36Q62 54 0 35Z',
+    face:'M0 0H292C226 20 150 34 86 37Q36 41 0 32Z',
+    back:'M0 32Q27 13 54 -24Q60 -33 65 -40C144 -56 242 -38 299 -1C224 26 145 38 78 38Q30 40 0 32Z',
+    lip:'M65 -40C145 -55 240 -38 299 -1L283 5C247 -21 145 -48 64 -35Z',
+    ink:'M29 7q13-13 22-28m28-17q20-5 42-6M24 33q28 2 54-1m145-17 13-4',
+    register:[22,11,3,39,20,4]
+  },
+  cross: {
+    cast:'M0 6Q116 24 263 0Q204 17 132 19Q41 20 0 8Z',
+    face:'M0 0H201Q112 15 49 12Q18 11 0 6Z',
+    back:'M0 6Q20 -9 41 -43C129 -61 225 -46 297 -9C230 7 124 16 47 12Q16 10 0 6Z',
+    lip:'M41 -43C137 -60 229 -45 297 -9L278 -5C219 -36 119 -53 40 -38Z',
+    ink:'M17 -8q10-12 15-24m33-10q28-5 53-5M47 9q20 2 38 0',
+    register:[7,2,0,15,5,0]
+  },
+  hinge: {
+    back:'M1 0Q8 -17 22 -41C108 -60 219 -48 296 -13Q225 -4 151 -1Q65 3 1 0Z',
+    lip:'M22 -41C128 -64 232 -43 296 -13L281 -11C212 -40 119 -51 21 -36Z',
+    ink:'M12 -13l6-14m27-14q28-5 51-5M226 -28q16 4 27 9'
+  },
+  over: {
+    back:'M2 -2Q5 -22 10 -35C87 -58 211 -46 296 -16Q191 -8 111 -4Q49 -1 2 -2Z',
+    lip:'M10 -35C112 -64 232 -39 296 -16L273 -14C200 -39 91 -48 9 -31Z',
+    ink:'M21 -35q23-8 51-10m148 15 15 4'
+  },
+  drop: {
+    back:'M2 -10L6 -26C84 -47 190 -48 294 -19Q215 -15 124 -12Q61 -8 2 -10Z',
+    lip:'M6 -26C88 -51 206 -44 294 -19L268 -18C185 -38 88 -39 6 -23Z',
+    ink:'M38 -30q24-6 47-7m117 6 11 1'
+  },
+  tuck: {
+    back:'M3 -18L5 -21C103 -36 197 -39 294 -20Q215 -19 117 -17Q50 -16 3 -18Z',
+    lip:'M5 -21Q148 -49 294 -20L270 -20Q144 -40 5 -19Z',
+    ink:'M74 -27q28-4 50-4'
+  },
+  slip: {
+    back:'M4 -20Q139 -36 293 -20Q160 -15 4 -20Z',
+    ink:'M144 -26q25-1 44 1'
+  },
+  // On the return the bowed lower edge lands first at the left. The lifted
+  // right corner hesitates for a beat before the familiar little closing cels.
+  land: {
+    cast:'M181 199Q273 184 301 138Q295 166 267 180Q228 199 181 200Z',
+    face:'M0 0H300L301 138C291 170 231 194 173 199Q69 202 0 200Z',
+    back:'M158 200C208 194 252 161 269 125Q275 112 275 109Q295 117 301 138C296 164 242 191 186 198Z',
+    lip:'M275 109Q295 116 301 138L297 148Q296 129 275 113Z',
+    ink:'M251 155q12-14 17-27m-67 64 10-3',
+    register:[100,100,92,200,198,182]
+  },
+  bounce: {
+    cast:'M237 200Q288 186 300 158Q296 183 273 192Q253 200 237 201Z',
+    face:'M0 0H300V158C289 181 259 197 226 200H0Z',
+    back:'M226 200Q264 192 286 151Q288 145 288 143Q298 146 300 158Q295 186 250 197Z',
+    lip:'M288 143Q303 150 300 160L297 166Q299 155 288 147Z',
+    ink:'M278 169l6-10',
+    register:[100,100,99,200,200,196]
+  }
+};
+
+const concertinaLift = [
+  ['nick',34],['dogear',38],['tug',35],['peel',41],['hook',43],['gather',39],
+  ['belly',37],['sweep',33],['swing',33],['crest',33],['crown',37],['cross',38],
+  ['hinge',42],['over',45],['drop',40],['tuck',39],['slip',38]
+];
+const concertinaLower = [
+  ['slip',32],['tuck',36],['drop',38],['over',41],['hinge',44],['cross',39],
+  ['crown',36],['crest',34],['swing',32],['sweep',32],['belly',34],['gather',37],
+  ['land',43],['bounce',43],['tug',36],['dogear',43],['nick',48],['flat',38]
 ];
 
 const concertinaEditions = {bellows:'Concertina', linen:'Concertina · Blue linen', kraft:'Concertina · Field notes'};
@@ -44,7 +163,42 @@ function holdMarginDrawing(paper){
   }
 }
 
-function turnConcertina(stack, oldPaper, forward, oldStock, oldBinding) {
+// Bend the actual type, deadline rings and seasonal illustration with their
+// places on the sheet. The three control points run across the paper, never
+// through time. Changing the month or viewport keeps the ink registered.
+function concertinaPrint(leaf, stack) {
+  const box=stack.getBoundingClientRect();
+  const elements=leaf.querySelectorAll('.folio-month > strong,.folio-month > small,.season-drawing,.sketch-scene,.folio-days > small,.folio-date');
+  const stamps=Array.from(elements,el=>{
+    const rect=el.getBoundingClientRect();
+    return {el,u:(rect.left+rect.width/2-box.left)/box.width,
+      v:(rect.top+rect.height/2-box.top)/box.height,
+      original:el.style.transform};
+  });
+  function across(left,middle,right,u){
+    return (1-u)*(1-u)*left+2*u*(1-u)*middle+u*u*right;
+  }
+  return function registerInk(register){
+    if(!register){
+      for(const {el,original} of stamps) el.style.transform=original;
+      return;
+    }
+    const [ml,mc,mr,fl,fc,fr]=register;
+    for(const {el,u,v,original} of stamps){
+      const middle=across(ml,mc,mr,u),foot=across(fl,fc,fr,u);
+      const start=4*middle-foot, bend=2*foot-4*middle;
+      const y=(start+bend*v)*v;
+      const height=Math.max(.035,(start+2*bend*v)/200);
+      const midSlope=2*((1-u)*(mc-ml)+u*(mr-mc));
+      const footSlope=2*((1-u)*(fc-fl)+u*(fr-fc));
+      const slope=((4*midSlope-footSlope)*v+(2*footSlope-4*midSlope)*v*v)*box.height/(200*box.width);
+      const rise=(y/200-v)*box.height;
+      el.style.transform=`matrix(1,${slope},0,${height},0,${rise}) ${original==='none'?'':original}`;
+    }
+  };
+}
+
+function turnConcertina(stack,oldPaper,forward,oldStock,oldBinding) {
   const paper=stack.querySelector(':scope > .folio-paper');
   const binding=stack.previousElementSibling;
   const newBinding=getComputedStyle(binding).backgroundColor;
@@ -53,38 +207,61 @@ function turnConcertina(stack, oldPaper, forward, oldStock, oldBinding) {
   layer.inert=true;
   layer.setAttribute('aria-hidden','true');
   const id='concertina-fold-'+(++turnConcertina.serial);
+  const pencilLayer='<path class="leaf-cast"/><path class="leaf-back"/><path class="leaf-lip"/><path class="leaf-crease"/>';
   layer.innerHTML='<div class="leaf-ground"></div><div class="leaf-face"></div>'+
-    `<svg viewBox="0 0 300 200" preserveAspectRatio="none" fill="none" aria-hidden="true"><defs><clipPath id="${id}" clipPathUnits="objectBoundingBox"><path transform="scale(.003333333333 .005)"/></clipPath></defs><path class="leaf-back"/><path class="leaf-crease"/></svg>`;
+    `<svg viewBox="0 0 300 200" preserveAspectRatio="none" fill="none" aria-hidden="true">
+      <defs><clipPath id="${id}" clipPathUnits="objectBoundingBox"><path transform="scale(.003333333333 .005)"/></clipPath>
+      <clipPath id="${id}-binding"><rect x="-15" y="-100" width="330" height="315"/></clipPath>
+      <clipPath id="${id}-above"><rect x="-15" y="-100" width="330" height="100"/></clipPath>
+      <clipPath id="${id}-below"><rect x="-15" y="0" width="330" height="215"/></clipPath>
+      </defs>
+      <g clip-path="url(#${id}-below)"><g clip-path="url(#${id}-binding)">${pencilLayer}</g></g>
+      <g class="leaf-crown"><g clip-path="url(#${id}-above)"><g clip-path="url(#${id}-binding)">${pencilLayer}</g></g></g>
+    </svg>`;
   const face=layer.querySelector('.leaf-face');
   const ground=layer.querySelector('.leaf-ground');
-  const leaf=forward ? oldPaper : paper.cloneNode(true);
-  const stock=forward ? oldStock : getComputedStyle(stack).backgroundColor;
+  const leaf=forward?oldPaper:paper.cloneNode(true);
+  const stock=forward?oldStock:getComputedStyle(stack).backgroundColor;
   layer.style.setProperty('--leaf-stock',stock);
   oldPaper.removeAttribute('aria-live');
   if(!forward){ground.style.backgroundColor=oldStock;ground.append(oldPaper);}
-  face.style.clipPath=`url(#${id})`;
   face.append(leaf);
   stack.append(layer);
+  const registerInk=concertinaPrint(leaf,stack);
+  face.style.clipPath=`url(#${id})`;
   const clip=layer.querySelector('clipPath path');
-  const back=layer.querySelector('.leaf-back');
-  const crease=layer.querySelector('.leaf-crease');
+  const bindingClip=layer.querySelector('clipPath rect');
+  const paths=Object.entries({cast:'.leaf-cast',back:'.leaf-back',lip:'.leaf-lip',ink:'.leaf-crease'})
+    .map(([part,selector])=>[part,layer.querySelectorAll(selector)]);
+  const box=stack.getBoundingClientRect();
+  const title=stack.closest('.teaching-pad').querySelector('.calendar-heading').getBoundingClientRect();
+  const headroom=box.top-title.bottom-3;
+  const crownScale=Math.min(1,Math.max(.05,headroom/(box.height*54/200)));
+  layer.querySelector('.leaf-crown').setAttribute('transform',`scale(1 ${crownScale})`);
+  const bindingDepth=200*binding.offsetHeight/(box.height*crownScale);
+  const exposures=forward?concertinaLift:concertinaLower;
   function draw(n){
     if(!layer.isConnected)return;
-    if(n===concertinaTurns.length || motionPreference.matches){
+    if(n===exposures.length || motionPreference.matches){
       binding.style.removeProperty('background-color');
       layer.remove();return;
     }
-    const k=forward?n:concertinaTurns.length-1-n;
-    const [hold,scale,start,fold,edge,marks]=concertinaTurns[k];
-    const [left,y]=start.split(' ').map(Number);
-    // A local corner peel first; once the left edge lifts, the full sheet bends.
-    const fixedLeft=left>0?`L0 ${200*scale}L${start}`:`L0 ${y}`;
-    clip.setAttribute('d',`M0 0${fixedLeft}${fold}L300 0Z`);
-    face.hidden=scale===0;
-    leaf.style.transform=`scaleY(${scale})`;
-    back.setAttribute('d',edge?`M${start}${fold}${edge}`:'');
-    crease.setAttribute('d',marks);
-    binding.style.backgroundColor=(forward?k<14:k>=14)?oldBinding:newBinding;
+    const [name,hold]=exposures[n];
+    const cel=concertinaCels[name];
+    face.hidden=!cel.face;
+    if(cel.face){
+      clip.setAttribute('d',cel.face);
+      registerInk(cel.register);
+    }
+    for(const [part,strokes] of paths){
+      for(const stroke of strokes) stroke.setAttribute('d',cel[part] || '');
+    }
+    // The loose edge drapes over the cloth, then drops out of sight behind it.
+    const behind={over:.22,drop:.56,tuck:.83,slip:1}[name];
+    bindingClip.setAttribute('height',behind?100-behind*bindingDepth:315);
+    const mix={swing:14,crest:32,crown:53,cross:73,hinge:89,over:100,drop:100,tuck:100,slip:100}[name] || 0;
+    const landed=forward?mix:100-mix;
+    binding.style.backgroundColor=`color-mix(in srgb,${oldBinding} ${100-landed}%,${newBinding})`;
     setTimeout(()=>draw(n+1),hold);
   }
   draw(0);
