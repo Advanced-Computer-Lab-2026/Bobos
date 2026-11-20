@@ -16,9 +16,9 @@ function seasonDrawing(month){
   if(month<=1) return winterGust(month===1);
   if(month===11) return decemberPine();
   if(month>=5 && month<=7) return summerSkiff();
-  if(month===8) return septemberSwallows();
+  if(month===8) return septemberKite();
   if(month===9) return octoberAcorns();
-  if(month===10) return novemberRobin();
+  if(month===10) return novemberRain();
   const lawn=month===3 ? aprilMeadow : '';
   return `<svg class="season-drawing season-flower" aria-hidden="true" viewBox="0 0 62 50" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linejoin="round" stroke-linecap="round">${lawn}${springFlower.map((d,i)=>`<path class="season-cel cel-${i}" d="${d}"/>`).join('')}</svg>`;
 }
@@ -80,37 +80,36 @@ const aprilMeadow = `<g fill="none" stroke="#697b55" stroke-width="1.1" class="a
 // also the still used by the reduced-motion view.
 function marginLoop(name, drawings, ground='', beat=125){
   const frames=drawings.map((art,i)=>
-    `<g class="margin-cel" style="--delay:${(i-drawings.length)*beat}ms">${art}</g>`).join('');
+    `<g class="margin-cel${i===0?' still':''}" style="--delay:${(i-drawings.length)*beat}ms">${art}</g>`).join('');
   return `<svg class="season-drawing seasonal-margin ${name}" aria-hidden="true" viewBox="0 0 84 52" fill="none" stroke="#504b42" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round" style="--cycle:${drawings.length*beat}ms">${ground}${frames}</svg>`;
 }
 
-function septemberSwallows(){
-  const flight=[
-    'M45 26Q34 20 17 3q12 3 22 9 10 6 12 13', 'M45 26Q33 14 24 2q14 4 22 15l5 8',
-    'M45 26Q40 13 35 2q13 8 16 23','M45 26q1-13 4-18 7 8 2 18',
-    'M45 25q9-7 17-7-1 6-13 10','M44 25q12 0 18 5-6 3-16 0',
-    'M44 24q12 7 17 18-9-2-19-12','M44 24q9 12 10 24-9-6-15-18',
-    'M44 25q1 10-5 18-3-7-2-15','M45 25q-8 4-14 1 4-3 10-5',
-    'M45 25q-13-3-22-13 12 1 24 9','M45 25Q30 18 20 7q15 4 28 15'
+function septemberKite(){
+  // The line pulls tight before the nose turns. The two cloth bows follow last.
+  const poses=[
+    [49,13,-8,'M8 46Q32 43 47 23','q5 6 9 6t9 6',9,29,18,34],
+    [50,13,-5,'M8 46Q32 42 48 23','q5 5 9 6t9 5',9,29,18,33],
+    [52,12,1,'M8 46Q33 40 50 22','q4 5 8 7t10 4',8,29,18,33],
+    [54,10,8,'M8 46Q32 38 52 20','q3 5 6 8t9 5',6,28,15,33],
+    [55,9,13,'M8 46Q31 35 53 19','q1 6 4 9t8 7',4,28,12,35],
+    [55,8,15,'M8 46Q30 34 53 18','q0 6 2 10t6 8',2,28,8,36],
+    [54,8,11,'M8 46Q29 35 52 18','q0 7 1 11t5 8',1,29,6,37],
+    [53,9,6,'M8 46Q29 37 51 19','q1 7 2 11t4 9',2,30,6,39],
+    [52,10,0,'M8 46Q30 40 50 20','q2 7 4 10t5 9',4,30,9,39],
+    [50,12,-6,'M8 46Q30 43 48 22','q3 7 6 9t6 8',6,31,12,39],
+    [49,13,-10,'M8 46Q31 44 47 23','q4 7 7 8t8 7',7,31,15,38],
+    [49,13,-9,'M8 46Q32 44 47 23','q5 6 8 7t9 6',8,30,17,36]
   ];
-  const farWing=[
-    'M47 23Q43 11 44 3q8 8 10 20Z','M47 23q-2-13 2-18 6 9 5 18Z',
-    'M47 23q4-10 10-12 2 6-4 13Z','M47 24q9-5 15-4-2 6-11 8Z',
-    'M46 25q11 1 16 7-7 0-13-3Z','M46 25q8 6 11 14-7-3-12-9Z',
-    'M45 25q5 9 4 17-6-6-8-13Z','M46 25q-2 9-6 13-1-7 1-12Z',
-    'M47 24q-6 3-10 1l7-4Z','M47 24q-8-4-11-10 9 3 13 8Z',
-    'M47 23Q39 15 37 5q10 7 14 17Z','M47 23Q41 12 40 3q10 8 13 19Z'
-  ];
-  const dip=[0,-.6,-1,-.7,.2,1,2,2.3,1.8,.8,.2,0];
-  return marginLoop('september-swallows',flight.map((wing,i)=>`<g transform="translate(0 ${dip[i]})">
-    <path d="${farWing[i]}" fill="#8b9e9e"/>
-    <path d="M6 38Q20 31 32 25q12-8 21-6 3-6 10-5 6 .4 7 5l7 1.4-8.2 2.2q-5 5-11 6-9 6-24 3l-18 12 8-13Z" fill="#526879"/>
-    <path d="M24 34q12-9 23-9l11-1-3 5q-10 5-21 2Z" fill="#efe6d1" stroke="none"/>
-    <path d="M58 20q5 1 11-.6-1 5-9 7l-5 .2Z" fill="#c08266" stroke="none"/>
-    <path d="M68 19.3l7 1-7 1.8Z" fill="#443e39" stroke-width=".7"/>
-    <circle cx="65" cy="17.8" r="1.05" fill="#f4e9d0" stroke="none"/>
-    <path d="${wing}Q47 30 40 28" fill="#637985"/>
-    <path d="M28 28l-13 8" stroke="#c1c3b5" stroke-width=".8"/></g>`),'',105);
+  const bow=(x,y)=>`<path d="M${x-3} ${y-2.4}l3 2.3 3.1-2.1-.6 4.6-2.6-2.2-3.2 1.3Z" fill="#ae7467" stroke-width=".85"/>`;
+  return marginLoop('september-kite',poses.map(([x,y,angle,line,tail,bx,by,cx,cy])=>`
+    <path d="${line}" stroke="#786b5b" stroke-width="1.15"/>
+    <g transform="translate(${x} ${y}) rotate(${angle})">
+      <path d="M-2 11${tail}" stroke="#776453"/>
+      ${bow(bx-2,by-12)}${bow(cx-2,cy-12)}
+      <path d="M1-7-11 .2-2 13 9 1Z" fill="#dca987"/>
+      <path d="m1-7-3 20L9 1Z" fill="#91afae" stroke="none"/>
+      <path d="M1-7-2 13M-10.5.2q8-2 19.2.8" stroke="#645c4e" stroke-width="1"/>
+    </g>`),'',160);
 }
 
 function octoberAcorns(){
@@ -133,29 +132,31 @@ function octoberAcorns(){
   }),'<path d="M13 18q16 1 32-9l19-6m-22 8q5-7 11-9" stroke="#72664d" stroke-width="2"/><path d="M24 17q-4-2-4-5-1-3-4-2l-1-3q-1-2-4-1-3-2-6-1 0 3 3 4-2 2 1 4l3 1q-1 3 4 3l3 .2 4 1Z" fill="#aaa477"/><path d="m12 12 9 5" stroke-width=".8"/>',150);
 }
 
-function novemberRobin(){
-  // A wren grips the twig between calls. Tail, throat and beak move separately.
+function novemberRain(){
+  // Two drips take turns. Their crowns collapse into broken ellipses.
   const poses=[
-    [-2,0,0,0,''],[-3,0,-1,0,''],[-6,1,-3,.7,''],[-9,1,-6,2,'M61 15l3-2'],
-    [-13,.5,-9,3,'m62 14 4-3m-3 7 5-.5'],[-14,0,-8,1.5,'m66 11 3-2m-2 8 4-.4'],
-    [-10,-.5,-5,0,'m70 9 2-1'],[-6,-.7,-3,0,''],[-4,-.5,-5,1.9,'m61 15 3-2'],
-    [-7,0,-7,2.5,'m64 14 4-2m-2 6 3 .2'],[-6,0,-3,.5,'m69 12 2-1'],[-3,0,0,0,'']
+    ['M37 8l-1.2 4.4m23 1.8-.5 2','','M46 36q10 1 15-1m-43 0q4 2 11 2'],
+    ['M36 13l-1.1 5.4m22.4-1.7-.6 2.8','','M48 37q7 .3 12-1.4'],
+    ['M35 20l-1.4 6m22.8-7.3-.8 3.6','',''],
+    ['M33.5 28l-.5 3.3m22.5-8.6-.9 4.6','M29 32q3 .8 5-.2',''],
+    ['M54.5 27.5l-.8 4','M27 32l1.1-3.6 3.2 2.4 3.5-4 .8 5m-10-5-1.1-1.2m12-.6 1-1.4','M25 33q4 2.2 12 .5'],
+    ['M54 32l-.4 2','M25 29l-.7-2m13 .3 1.2-1.4','M22 33q-1.5 2 6.7 2.6 8.5 1 14-1.8m-15-2.6q3-1 7.5-.7'],
+    ['M37.3 3l-.4 1.3','M48 35l-.3-3.2 3.5 1.9 3.4-3.9 1.1 4.5','M18 33q-1 3.6 12 4 11 .7 16-2.1m-24-4.7q5-1.4 12-1.2'],
+    ['M37.5 3.4l-.5 1.7','M46.5 31l-.6-2m12 1 1.2-1.3','M15 34q.8 4 14 4.4m9.7-.3 6-1.1m1-2q5.8 2.2 12.8-.1'],
+    ['M37.6 4l-.7 2','','M14 35q4 4 15 4m12-4.7q-1 2.4 8 3.2 9.5.8 15.3-2m-16.5-3.6 6-.2'],
+    ['M37.5 4.8l-.8 2.6','','M16 37q4.7 2.3 10 2.3m12.4-3.7q3.6 3 13 3 10 .3 15-2.8'],
+    ['M37.4 5.4l-.8 3.1m22.6 7 .2-.4','','M39 37.4q4 2 12 2m9.2-.6 6-1.7'],
+    ['M37.2 6.5l-1 3.8m22.8 4.2-.3 1.2','','M44 37q6 1.5 13 .7']
   ];
-  const perch='<path d="M12 48q17-4 36-6t27-8m-12 6 6 1m-46 5-5-3" stroke="#776f54" stroke-width="1.9"/><path d="m37 36 2 7-4 2m4-2 3 1m4-8 3 5-3 2m3-2 3 1" stroke="#655745" stroke-width="1.35"/>';
-  return marginLoop('november-wren',poses.map(([tail,lift,tilt,gape,call])=>`
-    <g transform="translate(0 ${lift})">
-      <g transform="rotate(${tail} 31 31)"><path d="M34 34q-10-2-15-11l-6-13q5 1 8 7l-2-10q6 2 9 12l4 10Z" fill="#987354"/>
-      <path d="m19 16 5 9m.4-5.3 3 6" stroke="#dcc9a2" stroke-width="1"/></g>
-      <path d="M25 28q3-10 14-12 10-4 16 4 7 6 3 13-4 7-15 8-12 1-18-7l-4-2Z" fill="#ae8c66"/>
-      <g transform="rotate(${tilt} 49 24)"><path d="M37 21c2-7 7-11 13-10q9 0 11 9l-3 7q-2 5-7 7-8 1-13-5" stroke="none" fill="#ae8c66"/>
-      <path d="M37 21q4-11 13-10 8 0 11 9" fill="none"/>
-      <path d="M42 18q6-5 14-2" stroke="#e9d9b7" stroke-width="2.1"/><circle cx="55" cy="18.7" r="1.45" stroke="none" fill="#362e2a"/>
-      <path d="m60 20 9-1.2-8.2 3.3Z" fill="#625343" stroke-width=".8"/>
-      <path d="M59 22l8 ${-1+gape}q-4 1.7-8 1.6Z" fill="#af8c65" stroke-width=".8"/>
-      <path d="M58 24q-.5 8-8 11-5 1-8-1 6-4 7-9" fill="#ddcbaa" stroke="none"/></g>
-      <path d="M44 23q-10-3-16 5l-6 5q10 3 17-2 4-3 5-8Z" fill="#8c6b50"/>
-      <path d="m27 31 9-4m-4 5 7-4m-4-3 2.6 1.4m-1.4-3 3 1.4" stroke="#dbc5a0" stroke-width="1.12"/>
-    </g><path d="${call}" stroke="#8b7964"/>`),perch,160);
+  const puddle='<path d="M9 33q2-3 15-3.5c8-.3 14 1 21-.1 10-1.5 21-.5 26 2.1 3.8 1.7-.3 3.6-4.5 4.5-5.2 1 0 3-9 4.8-8 1.7-15-.6-22-.2-13.8 1-23.7-.6-23.4-3.6.4-1.8-5.2-1.7-3.1-4Z" fill="#b0c6c7" stroke="#71868a" stroke-width="1.1"/><path d="m14 44 5.3.4m43-2.8 4.4-.9" stroke="#ac9f8e" stroke-width="1"/>';
+  const umbrella=`<g transform="rotate(-13 24 23)">
+    <path d="M24 8v28q-.2 5-3.7 4.8-2.9-.2-3.1-3" stroke="#6b5b50" stroke-width="1.8"/>
+    <path d="M6.5 23.1q1.8-12.5 16-14.6l1.1-2.1 1.3 2.2c8.4.9 15.8 7.1 17.5 15.6q-5.1-3.6-9.5-.3-4.7-4.4-9.1-1-4.5-3.7-8.4-.3-4.7-3.1-8.9.5Z" fill="#d59981"/>
+    <path d="M23.5 9q-6.1 4.9-8.1 12.8M24.5 9q6.8 5.7 8.3 14" stroke="#946956" stroke-width=".95"/>
+    <path d="M11 18q2.1-4 5.3-5.7" stroke="#f0c8a5" stroke-width="1.25"/></g>`;
+  return marginLoop('november-rain',poses.map(([drop,splash,ring])=>
+    `<path d="${drop}" stroke="#637f8f" stroke-width="1.8"/><path d="${splash}" stroke="#526c78"/><path d="${ring}" stroke="#5f7c83" stroke-width="1.1"/>`
+  ),puddle+umbrella,130);
 }
 
 function decemberPine(){

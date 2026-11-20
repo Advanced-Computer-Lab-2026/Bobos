@@ -54,7 +54,7 @@ const concertinaCels = {
   },
   sweep: {
     cast:'M0 148C101 160 245 106 301 43Q295 67 250 98C169 145 75 161 0 153Z',
-    face:'M0 0H300L301 43C263 83 201 117 115 138Q49 155 -2 148Z',
+    face:'M.4 0H300L301 43C263 83 201 117 115 138Q49 155 -2 148Q1.5 83 .4 0Z',
     back:'M-2 148C53 132 98 112 139 75C167 49 174 16 176 5C229 5 274 19 301 43C264 83 201 118 115 138Q47 154 -2 148Z',
     lip:'M176 5Q257 4 301 43Q296 50 284 58C285 44 245 17 178 10Z',
     ink:'M144 67q17-18 24-42m17-16 22 1M16 145q25-3 43-9m169-50 25-13',
@@ -62,61 +62,65 @@ const concertinaCels = {
   },
   swing: {
     cast:'M0 108C99 120 239 68 301 23Q293 41 253 67C176 106 69 123 0 113Z',
-    face:'M0 0H300L301 23C264 52 201 85 111 102Q43 115 -2 108Z',
-    back:'M-2 108C37 87 87 57 109 30Q131 2 136 -16C203 -20 265 -1 301 23C260 55 197 85 111 102Q46 115 -2 108Z',
+    face:'M1.4 0H300L301 23C264 52 201 85 111 102Q43 115 .3 108Q3 54 1.4 0Z',
+    back:'M.3 108C37 87 87 57 109 30Q131 2 136 -16C203 -20 265 -1 301 23C260 55 197 85 111 102Q46 115 .3 108Z',
     lip:'M136 -16C199 -21 262 -4 301 23L286 33C273 12 205 -11 135 -11Z',
     ink:'M92 47q22-21 32-42m30-19 18 0M17 106q27-4 52-12m169-41 23-12',
     register:[67,51,35,115,94,57]
   },
   crest: {
     cast:'M0 68Q135 85 300 9Q296 20 265 35C174 73 62 84 0 72Z',
-    face:'M0 0H300V9C252 31 192 54 108 66Q39 76 -1 68Z',
-    back:'M-1 68Q36 43 68 7Q86 -11 97 -32C172 -43 256 -21 300 9C250 35 184 57 108 66Q38 76 -1 68Z',
+    face:'M3.6 0Q20 1 43 0H300V9C252 31 192 54 108 66Q39 76 1.8 68Q5.6 36 3.6 0Z',
+    back:'M1.8 68Q36 43 68 7Q86 -11 97 -32C172 -43 256 -21 300 9C250 35 184 57 108 66Q38 76 1.8 68Z',
     lip:'M97 -32C169 -42 247 -24 300 9L285 16C259 -8 169 -34 96 -27Z',
     ink:'M58 20q13-15 21-27m39-24q19-3 35-2M18 67q30 0 59-6m151-25 20-9',
     register:[42,28,16,76,54,28]
   },
   crown: {
     cast:'M0 32C86 50 216 29 300 0Q262 22 194 36Q62 54 0 35Z',
-    face:'M0 0H292C226 20 150 34 86 37Q36 41 0 32Z',
-    back:'M0 32Q27 13 54 -24Q60 -33 65 -40C144 -56 242 -38 299 -1C224 26 145 38 78 38Q30 40 0 32Z',
+    face:'M6 2Q24 3 55 0H292C226 20 150 34 86 37Q36 41 4.5 32Q7.5 16 6 2Z',
+    back:'M4.5 32Q27 13 54 -24Q60 -33 65 -40C144 -56 242 -38 299 -1C224 26 145 38 78 38Q30 40 4.5 32Z',
     lip:'M65 -40C145 -55 240 -38 299 -1L283 5C247 -21 145 -48 64 -35Z',
     ink:'M29 7q13-13 22-28m28-17q20-5 42-6M24 33q28 2 54-1m145-17 13-4',
     register:[22,11,3,39,20,4]
   },
   cross: {
     cast:'M0 6Q116 24 263 0Q204 17 132 19Q41 20 0 8Z',
-    face:'M0 0H201Q112 15 49 12Q18 11 0 6Z',
-    back:'M0 6Q20 -9 41 -43C129 -61 225 -46 297 -9C230 7 124 16 47 12Q16 10 0 6Z',
+    face:'M8 3Q31 4 65 0H201Q112 15 49 12Q21 11 7.5 8Z',
+    back:'M7.5 8Q19 0 27 -18Q34 -33 41 -43C129 -61 225 -46 297 -9C230 7 124 16 47 12Q23 12 7.5 8Z',
     lip:'M41 -43C137 -60 229 -45 297 -9L278 -5C219 -36 119 -53 40 -38Z',
     ink:'M17 -8q10-12 15-24m33-10q28-5 53-5M47 9q20 2 38 0',
     register:[7,2,0,15,5,0]
   },
   hinge: {
-    back:'M1 0Q8 -17 22 -41C108 -60 219 -48 296 -13Q225 -4 151 -1Q65 3 1 0Z',
-    lip:'M22 -41C128 -64 232 -43 296 -13L281 -11C212 -40 119 -51 21 -36Z',
-    ink:'M12 -13l6-14m27-14q28-5 51-5M226 -28q16 4 27 9'
+    back:'M9.5 .6C11.5 -10 19 -30 26 -40C108 -59 219 -48 296 -13Q225 -4 151 -1Q64 4 12.5 2.1Z',
+    lip:'M26 -40C128 -62 232 -43 296 -13L281 -11C212 -40 119 -51 25 -35Z',
+    ink:'M15 -13l6-14m27-14q28-5 51-5M226 -28q16 4 27 9'
   },
   // The last drawings use binding coordinates: 0 is the TOP seam and
   // 28 is the bottom. The right corner crosses last, then falls away behind.
+  loosen: {
+    rim:'M10.5 27.8Q12.5 18 23.5-4C100-20 222-13.5 296.5 16Q225 23.7 154 26.6Q58 31 10.5 27.8Z',
+    ridge:'M24-3.5Q100-18 171-11M15 26.8q31 2.1 55 .3'
+  },
   over: {
-    rim:'M3 25Q9 12 18 2C81-11 196-10 260 3Q281 7 297 13Q199 13 98 22Q43 27 3 25Z',
-    ridge:'M18 2C93-12 205-7 264 5M5 24q34 0 68-4'
+    rim:'M12 24Q16 12 24 1C81-11 196-10 260 3Q281 7 297 13Q199 13 98 22Q44 27 12 24Z',
+    ridge:'M24 1C93-12 205-7 264 5M15 23q32 1 58-3'
   },
   crestOver: {
-    rim:'M4 15Q8 7 14-.3C83-12 201-11 266-.2Q288 4 298 8Q212 6 133 10Q42 17 4 15Z',
+    rim:'M14 15Q17 5 23-1.1C83-12 201-11 266-.2Q288 4 298 8Q212 6 133 10Q46 18 14 15Z',
     ridge:'M18-1Q104-12 192-7m46 2 29 4'
   },
   clearLeft: {
-    rim:'M5 3Q9-2 15-4C88-13 211-11 265-4Q290-.6 299 4Q243 2 181 3Q80 7 5 3Z',
+    rim:'M17 4Q20-2 26-4C88-13 211-11 265-4Q290-.6 299 4Q243 2 181 3Q80 7 17 4Z',
     ridge:'M23-4q59-8 108-6m106 4q25 1 43 5'
   },
   tipOver: {
-    rim:'M8-.8Q16-6 29-7C125-15 220-10 267-5Q288-3 298 .8Q261-.6 213-.5Q91 1.8 8-.8Z',
+    rim:'M20-.4Q25-6 34-7C125-15 220-10 267-5Q288-3 298 .8Q261-.6 213-.5Q96 2 20-.4Z',
     ridge:'M30-6Q84-13 154-10'
   },
   drop: {
-    rear:'M8 4Q18-3 34-6C108-12 211-10 264-4Q288-2 296 3L296 8H8Z',
+    rear:'M23 4Q29-3 40-6C108-12 211-10 264-4Q288-2 296 3L296 8H23Z',
     ridge:'M40-6q52-5 91-4'
   },
   tuck: {
@@ -156,15 +160,16 @@ const concertinaCels = {
 const concertinaLift = [
   ['nick',34],['dogear',38],['tug',35],['peel',41],['hook',43],['gather',39],
   ['belly',37],['sweep',33],['swing',33],['crest',33],['crown',37],['cross',38],
-  ['hinge',42],['over',38],['crestOver',36],['clearLeft',36],['tipOver',42],['drop',47],['tuck',46],['glint',44],['slip',47],['restEdge',40]
+  ['hinge',31],['loosen',28],['over',32],['crestOver',36],['clearLeft',36],['tipOver',42],['drop',47],['tuck',46],['glint',44],['slip',47],['restEdge',40]
 ];
 const concertinaLower = [
-  ['restEdge',31],['slip',34],['glint',34],['tuck',36],['drop',38],['tipOver',38],['clearLeft',34],['crestOver',32],['over',37],['hinge',44],['cross',39],
+  ['restEdge',31],['slip',34],['glint',34],['tuck',36],['drop',38],['tipOver',38],['clearLeft',34],['crestOver',32],['over',31],['loosen',28],['hinge',34],['cross',39],
   ['crown',36],['crest',34],['swing',32],['sweep',32],['belly',34],['gather',37],
   ['land',43],['bounce',43],['tug',36],['dogear',43],['nick',48],['flat',38]
 ];
 
-const concertinaEditions = {bellows:'Concertina', linen:'Concertina · Blue linen', kraft:'Concertina · Field notes'};
+const concertinaEditions = {bellows:'Concertina', linen:'Concertina · Blue linen', kraft:'Concertina · Field notes',
+  ...Object.fromEntries(Object.entries(calendarBindings).map(([key,{label}])=>[key,label]))};
 const isConcertina = style => Object.hasOwn(concertinaEditions,style);
 
 function holdMarginDrawing(paper){
@@ -260,7 +265,10 @@ function turnConcertina(stack,oldPaper,forward,oldStock,oldBinding) {
   const box=stack.getBoundingClientRect();
   const title=stack.closest('.teaching-pad').querySelector('.calendar-heading').getBoundingClientRect();
   const headroom=box.top-title.bottom-3;
-  const crownScale=Math.min(1,Math.max(.05,headroom/(box.height*54/200)));
+  // Keep the high point in binding units so the hinge and loosen drawings meet
+  // at the same height on a wide pad and on a short, narrow one.
+  const crownHeight=Math.min(headroom, binding.offsetHeight*1.46);
+  const crownScale=Math.max(.05,crownHeight/(box.height*54/200));
   layer.querySelector('.leaf-crown').setAttribute('transform',`scale(1 ${crownScale})`);
 
   const exposures=forward?concertinaLift:concertinaLower;

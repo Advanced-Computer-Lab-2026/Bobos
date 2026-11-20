@@ -1149,7 +1149,7 @@ html[data-theme=dark] [data-palette=console-tones] .sidebar .study-nav-group .na
 @keyframes date-pencil{33%{border-radius:42% 53% 44% 49%}66%{border-radius:50% 42% 49% 44%}}
 }
 .illustrated-greeting{display:flex;align-items:center;gap:clamp(6px,1vw,14px)}
-.illustrated-greeting .greeting-sun{width:clamp(37px,3.5vw,50px);height:auto;flex:none;color:#9b6835;pointer-events:none}
+.illustrated-greeting .greeting-sun{width:clamp(41px,4.4vw,61px);height:auto;flex:none;color:#9b6835;pointer-events:none}
 html[data-theme=dark] .illustrated-greeting .greeting-sun{color:#e0b882}
 
 
@@ -1187,7 +1187,7 @@ html[data-theme=dark] .illustrated-greeting .greeting-sun{color:#e0b882}
 .edition-picker select{width:auto;max-width:185px;min-height:33px;padding:4px 8px;color:var(--ink);background:var(--raised);border:1px solid var(--line);border-radius:6px;font:inherit;cursor:pointer}
 .portal-studio[data-workspace=claude-study] .dashboard-edition .page-head{display:flex;align-items:center;min-height:clamp(135px,15vh,195px);margin:0;padding:12px 0}
 .portal-studio[data-workspace=claude-study] .dashboard-edition .page-head h1{font-size:clamp(35px,3.6vw,55px);line-height:1.08;text-wrap:balance}
-.dashboard-edition .illustrated-greeting{gap:10px}
+.dashboard-edition .illustrated-greeting{gap:clamp(10px,1.05vw,17px)}
 .dashboard-edition .module-calendar{align-self:center}
 .dashboard-edition .desk-calendar{margin-inline:auto}
 .dashboard-edition .section-head{margin-bottom:16px}
@@ -1233,6 +1233,8 @@ html[data-theme=dark] .illustrated-greeting .greeting-sun{color:#e0b882}
 .dashboard-edition .handover-entry+.handover-entry::before{content:"";position:absolute;left:13px;bottom:calc(100% - 5px);width:1px;height:24px;background:var(--line)}
 .dashboard-edition .handover-entry>div>strong{font-size:14px;font-weight:550;color:var(--ink)}
 .dashboard-edition .handover-entry p{color:var(--muted);margin-top:2px}
+.greeting-name{white-space:nowrap}
+.greeting-name .greeting-sun{display:inline-block;vertical-align:-.17em;margin-inline-start:clamp(10px,1.05vw,17px)}
 .dashboard-edition .greeting-sun{shape-rendering:geometricPrecision;stroke-width:1.75}
 .dashboard-edition .greeting-sun path{vector-effect:non-scaling-stroke}
 @media(min-width:900px){
@@ -1657,7 +1659,7 @@ html[data-theme=dark] .illustrated-greeting .night-sky{color:#c9cde6}
 }
 
 .seasonal-margin{width:85px;height:54px;top:-3px}
-.margin-cel{visibility:hidden}.margin-cel:first-of-type{visibility:visible}
+.margin-cel{visibility:hidden}.margin-cel.still{visibility:visible}
 @media(prefers-reduced-motion:no-preference){
  .margin-cel{animation:margin-exposure var(--cycle) var(--delay) steps(1,end) infinite}
  @keyframes margin-exposure{0%{visibility:visible}8.333333%,100%{visibility:hidden}}

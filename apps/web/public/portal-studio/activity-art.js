@@ -5,17 +5,11 @@ const activityEditions={
   film:'Contact strip', tabs:'Linen tabs', specimens:'Specimen labels'
 };
 
-const envelopePoses=[
-  ['M15 27l17-12 19 10',0,'M27 19l11 .6m-11 3.6 7-.3'],
-  ['M15 27q7-5 17-12l19 10',1,'M27 19.3l11 .2m-11 3.5 7 .1'],
-  ['M15 27q6-8 17-14l19 12',-1,'M27 19l11 .6m-11 3.6 7-.3'],
-  ['M15 27q5-9 17-15l19 13',-4,'M27 19.2l11 .1m-11 4 7-.4'],
-  ['M15 27q7-10 17-15.7L51 25',-6,'M27 19l11 .4m-11 3.2 7 .2'],
-  ['M15 27q7-10 17-15l19 13',-6,'M27 19.3l11 .2m-11 3.6 7-.3'],
-  ['M15 27q7-9 17-15l19 13',-5,'M27 19l11 .5m-11 3.6 7-.1'],
-  ['M15 27q6-9 17-14l19 12',-3,'M27 19.4l11 .1m-11 3.5 7 .1'],
-  ['M15 27q8-7 17-13l19 11',-1,'M27 19.2l11 .3m-11 3.7 7-.3'],
-  ['M15 27l17-12 19 10',0,'M27 19l11 .6m-11 3.6 7-.3']
+// The folded corner catches the pocket, then the slip settles into it.
+const slipPoses=[
+  [-1,-1,-5,30],[-1,-2,-6,30],[-2,-4,-8,29.5],[-2,-5,-7,29.3],
+  [-1,-4,-4,29.7],[0,-1,-2,30.5],[0,3,0,31.5],[.6,4,1,31],
+  [.4,1.6,-1,30.4],[0,0,-3,30]
 ];
 const penPoses=[
   [0,0,-4,'M10 40q4-4 8-2'],[1,-1,-2,'M10 40q4-4 8-2'],
@@ -25,25 +19,38 @@ const penPoses=[
   [7,-6,1,'M10 40q4-4 8-2t7-.5 7-1.5l3-2'],[1,-3,-3,'M10 40q4-4 8-2t7-.5 7-1.5l3-2']
 ];
 const pressPoses=[
-  [0,0,''],[-1,-2,''],[-3,-4,''],[-2,-2,''],[1,2,''],[4,1,'M10 38l-4-1m40-4 5-2'],
-  [4,0,'M8 37l-3-2m44-3 5-2'],[1,-1,'M9 35l-2-2m44-3 3-1'],
-  [-1,-1,''],[0,0,'']
+  [0,0,-2,false],[-.8,-2,-5,false],[-1,-4,-6,false],[-1,-3,-4,false],
+  [0,1,-2,false],[1,5,0,false],[1,5,0,false],[.8,2,1,true],
+  [.2,-1,-1,true],[0,-.4,-2,true]
 ];
 function activityDrawing(kind,i){
   if(kind==='letter'){
-    const [flap,y,ink]=envelopePoses[i];
-    return `<path d="${flap}l-17 15Z" fill="var(--stamp-shade)"/>
-      <g transform="translate(0 ${y})"><path d="m21 31 1.6-18.5 20.8 1.3.6 17.2-11 5Z" fill="var(--stamp-paper)"/><path d="${ink}" stroke-width="1.35"/></g>
-      <path d="M15 27l17 9.5 19-11.2.8 17.5-36 1.6Z" fill="var(--stamp-stock)"/><path d="m17 41 11-9m21 8-11-9M10 24l3-1m-6-3 7-1"/> `;
+    const [x,y,tilt,lip]=slipPoses[i];
+    return `<path d="M12 27.5 28 17q2-1.5 4-.5l17 9.7-1 16.3-34.7 1Z" fill="#91a995"/>
+      <g transform="translate(${x} ${y}) rotate(${tilt} 31 31)">
+        <path d="M20.5 34.5 20 11l18.2-.8 5.2 5.7.4 18Z" fill="#faf2de"/>
+        <path d="m38.2 10.2-.3 6 5.5-.3" fill="#dddbc5" stroke-width="1.05"/>
+        <path d="m23.8 18.8 1.2 1.3 2.2-2.7m-3.2 7.4 1.3 1.1 2.1-2.6" stroke="#536d56" stroke-width="1.4"/>
+        <path d="m30.2 19.7 6.2-.2m-6.2 6.1 8.7-.3" stroke-width="1.25"/>
+      </g>
+      <path d="M12 27.4q7.2 2.4 16.5 7.7 1.9 1 3.6-.1L49 26.2l.8 17.3q-16.5 1.2-37.2 1Z" fill="#b6c9ac"/>
+      <path d="M13.2 43q6.2-5.1 12.4-8m10.3-.6q7.4 4 12.9 7.6" stroke="#617864" stroke-width="1.2"/>
+      <path d="M12.2 27.7q9.5 ${lip-27} 17.4 7.8" stroke="#f2e9cc" stroke-width=".8"/>`;
   }
   if(kind==='pen'){
     const [x,y,r,ink]=penPoses[i];
     return `<path d="${ink}M14 44q8-.6 15-.2" fill="none"/>
       <g transform="translate(${x-6} ${y}) rotate(${r} 25 35)"><path d="M24 37l3-11 16-17q3-2 6 1t1 5L34 32Z" fill="var(--stamp-stock)"/><path d="m27 26 7 6m-5-9 7 6m4-17 7 6m-2-9 4 4m-3 5-9 9m-5 2-7 7"/><circle cx="30.5" cy="30.5" r="1.2"/></g>`;
   }
-  const [y,r,impact]=pressPoses[i];
-  return `<path d="m12 37 30-2 9 6-31 3Z" fill="var(--stamp-paper)"/><path d="m18 39 24-1m-23 4 20-1"/>
-    <g transform="translate(0 ${y}) rotate(${r} 32 31)"><path d="M24 24q3-1 4-5c1-3-5-5-4-10s15-6 16-1-5 8-4 11q1 3 5 5Z" fill="var(--stamp-stock)"/><path d="M18 24q13-3 27-1l2 6-31 2Z" fill="var(--stamp-stock)"/><path d="m16 31 31-2-.1 3-31 2Zm10-19q-1-3 3-5m3 9-2 5m-9 6 19-1"/></g><path d="${impact}"/>`;
+  const [x,y,r,printed]=pressPoses[i];
+  return `<path d="m13 34.8 29.9-1.3 6.6 9.2-31.8 1.9Z" fill="#f9ecd1" stroke-width="1.35"/>
+    ${printed?'<path d="m25 37.8 12-.7 1.6 2.7-12.2.8Z" fill="none" stroke="#987759" stroke-width="1.05"/>':''}
+    <g transform="translate(${x} ${y}) rotate(${r} 31 30)">
+      <path d="M26.8 23.4c1.5-3.6 2-6.1-.8-9.1-3.3-3.4-3.4-6.3-.3-8.2 3.7-2.3 9.7-2.3 13.2.6 2.9 2.4 1.7 5.8-1.2 8.3-2.9 2.5-3.1 4.7-.9 8.2Z" fill="#c88d67"/>
+      <path d="M26.6 9q1.9-2.3 5.3-2.1" stroke="#f2d7ad" stroke-width="1.35"/>
+      <path d="M18.4 24.1q13.3-2.1 26.1-1.3l2 6.9-29.9 1.5Z" fill="#e8b988"/>
+      <path d="m16.6 31.2 29.9-1.5-.3 3.4-29.3 1.4Z" fill="#795a52" stroke-width="1.2"/>
+    </g>`;
 }
 const activitySurrounds={
   postage:'<path class="stamp-edge" d="M5 4H65V56H5Z"/><path class="stamp-perfs" d="M5 4H65V56H5Z"/><path class="stamp-frame" d="m10 9 50-.5.5 42-51 .5z"/>',

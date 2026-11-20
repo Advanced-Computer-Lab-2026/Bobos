@@ -30,3 +30,32 @@
 .teaching-pad[data-calendar-style=linen] .calendar-feature{background-image:repeating-linear-gradient(7deg,transparent 0 4px,#dce2d418 4px 4.8px,transparent 4.8px 7px),repeating-linear-gradient(94deg,transparent 0 5px,#2d47541b 5px 5.8px)}
 .teaching-pad[data-calendar-style=linen] .calendar-feature::before{display:none!important}
 .teaching-pad .calendar-feature .cloth-needle{position:absolute;left:0;bottom:0;width:100%;height:16px;max-width:none;animation:none}
+
+/* The binding, paper stock, and ruling are paired for each edition. The
+   material travels with the leaf when it is lifted. */
+.teaching-pad:has(.material-binding) .calendar-feature {
+  background:var(--cover);border-radius:var(--cover-radius,4px 5px 0 1px);
+}
+.teaching-pad:has(.material-binding) .calendar-feature::before,
+.teaching-pad:has(.material-binding) .calendar-feature::after{display:none!important}
+.teaching-pad .calendar-feature .material-binding{
+  position:absolute;inset:0;width:100%;max-width:none;height:100%;animation:none;
+}
+.teaching-pad[data-calendar-style=sashiko]{--cover:#425c70;--sheet:#efece0;--pencil:#56666d;--printing:#334650;--verso:#a0aeb1}
+[data-calendar-style=sashiko] .folio-month{border-bottom:1px dashed #a6afa8}
+.teaching-pad[data-calendar-style=marble]{--cover:#c68b79;--sheet:#f5ead9;--printing:#55453f;--pencil:#73655c;--verso:#c59885}
+[data-calendar-style=marble] .folio-days>small{color:#885b50}
+.teaching-pad[data-calendar-style=survey]{--cover:#53716e;--sheet:#e7ece1;--verso:#98afa4;--printing:#2a4945;--pencil:#4f6860;--cover-radius:1px}
+[data-calendar-style=survey] .folio-paper{background-image:linear-gradient(90deg,#627e6a13 1px,transparent 1px),linear-gradient(#627e6a13 1px,transparent 1px);background-size:13px 13px}
+.teaching-pad[data-calendar-style=birch]{--cover:#ceb08b;--sheet:#f3efdc;--printing:#484337;--pencil:#736c58;--verso:#bcb494;--cover-radius:8px 8px 3px 3px}
+[data-calendar-style=birch] .folio-month{border-bottom:1px solid #c9bda5}
+.teaching-pad[data-calendar-style=lunar]{--cover:#36465b;--sheet:#283445;--printing:#f1e9d6;--pencil:#c2cccb;--verso:#657184}
+[data-calendar-style=lunar] .season-drawing{background:#e7e4d5;border-radius:54% 43% 47% 39% / 52% 44% 48% 42%;padding:2px 4px}
+[data-calendar-style=lunar] .deadline-ring{stroke:#efb797}
+.teaching-pad[data-calendar-style=lunar] .folio-date[aria-current=date] b{background:#e8d9aa;color:#283445}
+[data-calendar-style=lunar] .folio-days>small{color:#c4d4d8}
+.teaching-pad[data-calendar-style=ticket]{--cover:#93594f;--sheet:#f2e7ce;--printing:#57473b;--pencil:#756454;--verso:#c4ab90}
+[data-calendar-style=ticket] .folio-days{background:repeating-linear-gradient(0deg,transparent 0,transparent calc(100% / 7 - 1px),#ae837025 calc(100% / 7 - 1px),#ae837025 calc(100% / 7))}
+[data-calendar-style=ticket] .folio-month{border-bottom:2px double #b8997f}
+.teaching-pad[data-calendar-style=herbarium]{--cover:#65745c;--sheet:#eeefdf;--printing:#384b39;--pencil:#607059;--verso:#abb79c}
+[data-calendar-style=herbarium] .folio-days>small{font-family:Georgia,serif;font-style:italic}

@@ -294,7 +294,7 @@ function calendarFeature(){
   if(isConcertina(calendarStyle)){
     const rear='<svg class="rear-paper" viewBox="0 0 300 5" preserveAspectRatio="none" aria-hidden="true"><path d="M4 5Q35 2 94 3t92-.4Q247-.5 292 2.9l5 2.1Z" fill="var(--sheet)" stroke="#a69f92" stroke-width=".8"/></svg>';
     const seam='<svg class="cloth-needle" viewBox="0 0 300 16" preserveAspectRatio="none" aria-hidden="true"><path d="M6 10q32-.7 56 .2t50-.4 74 .3 57-.3 51-.4" fill="none" stroke="#ced9d8" stroke-width="1.3" stroke-dasharray="4 3 3.1 2.5 4.4 3"/><path d="m10 9 2 2m2-3 2 2m261-2 4 1.5m2-2 3 2" fill="none" stroke="#3d5362" stroke-width="1.1"/></svg>';
-    return rear+(calendarStyle==='linen'?seam:'');
+    return rear+(calendarStyle==='linen'?seam:bindingDrawing(calendarStyle));
   }
   const sketches={
     flutter:'<path d="m7 27 20-19 6 6-21 19-8 2 3-8Zm0 0 5 6m13-23 6 6M15 33q10-6 17-4t16-3"/>',
@@ -450,7 +450,7 @@ function workspaceGrid(view, modules) {
 function studyGreeting() {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
-  return `${greeting}, ${person().replace(/^Dr\. /,'').split(' ')[0]}`;
+  return `${greeting}, <span class="greeting-name">${person().replace(/^Dr\. /,'').split(' ')[0]}</span>`;
 }
 function workspaceSection(title, target, label, content, actionStyle='quiet-link') {
   return `<div class="section-head"><h2>${title}</h2>${link(target,label,actionStyle)}</div>${content}`;
@@ -1110,7 +1110,8 @@ function stageOverview(main){
   const night=hour>=18 || hour<6;
   const sky=night ? `<path class="moon-face" d="M40 8c-17 0-27 17-20 29 6 11 23 14 33 3-12 4-23-4-22-15 0-7 4-13 9-17Z"/><g class="sky-rays"><path d="m52 11 .8 3.5 3.4 1-3.4 1-.8 3.4-1-3.4-3.2-1 3.2-1Z"/><path d="m58 24 .7 2.3 2.3 .7-2.3 .7-.7 2.3-.7-2.3-2.3-.7 2.3-.7Z"/></g>`
     : `<path class="sun-face" d="M21 35c-6-13 5-25 16-21 8 2 10 11 7 18"/><g class="sky-rays"><path d="M32 6l1 4m-17 2 3 4M9 28h6m36-15-4 5m10 10-6 1"/></g>`;
-  greeting.insertAdjacentHTML('beforeend',`<svg class="greeting-sun ${night?'night-sky':'day-sky'}" viewBox="0 0 70 60" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${sky}<path class="sky-horizon" d="M11 47q10-4 21-3t24 0"/><path d="m19 50 10 1m6 0 13-1" opacity=".5"/></svg>`);
+  const nameOrRow=title.querySelector('.greeting-name') || greeting;
+  nameOrRow.insertAdjacentHTML('beforeend',`<svg class="greeting-sun ${night?'night-sky':'day-sky'}" viewBox="4 3 59 52" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${sky}<path class="sky-horizon" d="M11 47q10-4 21-3t24 0"/><path d="m19 50 10 1m6 0 13-1" opacity=".5"/></svg>`);
   if(motionPreference.matches) return;
   const opening=!overviewOpened;
   overviewOpened=true;
