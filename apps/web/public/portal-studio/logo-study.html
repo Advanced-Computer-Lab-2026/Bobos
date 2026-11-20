@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Portal — Ten logo studies</title>
+<style>
+@font-face{font-family:Tiempos;src:local('TiemposText-Regular')}
+*{box-sizing:border-box}
+:root{--ground:#24231f;--paper:#ece6d9;--muted:#b6ad9c;--rule:#49453c;color-scheme:dark;font-family:system-ui,sans-serif;color:var(--paper);background:var(--ground)}
+body{margin:0}
+main{max-width:1496px;margin:auto;padding:clamp(22px,4vw,65px)}
+header{display:flex;justify-content:space-between;align-items:flex-end;gap:26px;margin-bottom:clamp(24px,3vw,45px)}
+h1,h2,p{margin:0}
+h1,h2,.name,.word{font-family:Tiempos,Georgia,serif;font-weight:400}
+h1{font-size:clamp(40px,6.3vw,96px);letter-spacing:-.065em;line-height:.98}
+header p{color:var(--muted);font-size:14px;line-height:1.55;max-width:245px}
+.sheet{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border-top:1px solid var(--rule);border-left:1px solid var(--rule)}
+button{font:inherit;color:inherit;cursor:pointer}
+.proof{position:relative;display:flex;flex-direction:column;align-items:stretch;text-align:left;background:var(--ground);border:0;border-right:1px solid var(--rule);border-bottom:1px solid var(--rule);padding:clamp(12px,1.5vw,26px);min-width:0}
+.proof:hover{--ground:#2d2b26}
+.proof:focus-visible,dialog button:focus-visible{outline:2px solid #f0c399;outline-offset:-4px}
+.proof .large{align-self:center;width:clamp(76px,8.4vw,132px);height:clamp(76px,8.4vw,132px);margin:clamp(9px,1.3vw,24px) 0 clamp(18px,1.6vw,28px)}
+.name{font-size:clamp(18px,1.7vw,27px);letter-spacing:-.035em;margin-bottom:13px}
+.lockup{display:inline-flex;align-items:center;gap:8px}
+.lockup svg{width:34px;height:34px}
+.word{font-size:34px;line-height:1.1;letter-spacing:-.052em}
+.proof .lockup{border-top:1px dotted var(--rule);padding-top:13px}
+svg{display:block}
+dialog{--ground:#282721;background:var(--ground);color:var(--paper);border:1px solid #77705f;padding:0;width:min(680px,calc(100% - 26px));max-height:92dvh}
+dialog::backdrop{background:#12110ed9}
+.inner{padding:clamp(20px,4vw,46px)}
+.handle,.foot{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.handle{color:var(--muted);font-size:13px}
+dialog button{color:var(--paper);background:transparent;border:1px solid var(--rule);padding:8px 14px;min-height:42px}
+dialog button:hover{background:#3b382f}
+#hero{width:min(52vw,230px);height:min(52vw,230px);margin:10px auto 20px}
+dialog h2{font-size:clamp(31px,5vw,51px);line-height:1;letter-spacing:-.045em}
+dialog p{color:var(--muted);line-height:1.5;margin-top:10px;font-size:15px;max-width:50ch}
+.foot{border-top:1px solid var(--rule);margin-top:22px;padding-top:20px}
+.foot nav{display:flex;gap:6px}
+defs .cut{fill:var(--ground)}
+.cut{fill:var(--ground)}
+@media(max-width:960px){.sheet{grid-template-columns:repeat(3,minmax(0,1fr))}.proof .large{width:104px;height:104px}.name{font-size:22px}}
+@media(max-width:620px){header{display:block}header p{max-width:none;margin-top:12px}.sheet{grid-template-columns:repeat(2,minmax(0,1fr))}.proof{padding:14px}.proof .large{width:90px;height:90px}.name{font-size:19px}.foot nav button{padding-inline:10px}}
+@media(max-width:350px){main{padding:14px}.proof{padding:10px}.foot{flex-wrap:wrap}}
+</style>
+</head>
+<body>
+<svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden" xmlns="http://www.w3.org/2000/svg"><defs>
+<!-- Paths are cut as solids, like the inked face of a relief block. -->
+<symbol id="hoopoe" viewBox="0 0 100 100">
+<g fill="currentColor">
+<path d="M8 74 Q25 68 36 56 Q40 41 53 37 Q56 28 64 28 Q73 28 76 36 L96 42 L75 40 Q71 49 65 59 Q60 69 50 72 L54 82 L59 83 L60 85 L49 84 L45 73 L39 73 L38 82 L43 85 L33 83 L35 72 L14 78 Z"/>
+<path d="M59 32 Q43 24 37 12 Q43 11 47 14 L61 30 Z M62 30 Q52 13 53 7 Q59 7 60 13 L65 28 Z M67 29 Q64 12 67 8 Q71 10 70 16 L70 30 Z"/>
+</g><g class="cut"><circle cx="68" cy="34" r="2"/><path d="M26 66 Q45 47 57 47 Q48 58 26 66 Z M35 67 Q52 59 60 51 Q54 62 35 67 Z M47 67 L60 59 L55 65 Z"/></g></symbol>
+<symbol id="selvedge" viewBox="0 0 100 100">
+<g fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="square"><path d="M22 29 Q36 15 47 29 T73 29 L80 22 M15 47 Q29 33 42 47 T68 47 L85 34 M15 65 Q28 51 42 65 T70 64 L83 53 M23 76 Q34 69 44 78 T68 78 L76 72"/></g>
+<g fill="none" stroke="var(--ground)" stroke-width="5"><path d="M28 17L16 81 M48 16L35 86 M66 13L53 89 M85 14L72 85"/></g>
+<g fill="none" stroke="currentColor" stroke-width="6"><path d="M33 15L28 38 M24 56L19 81 M51 19L48 34 M44 48L39 73 M69 13L64 38 M60 52L54 85 M85 19L82 35 M78 51L73 72"/></g></symbol>
+<symbol id="transom" viewBox="0 0 100 100"><g fill="currentColor"><path d="M10 64Q9 23 47 15 Q81 11 92 52 L85 54 Q75 22 49 23 Q19 27 19 62Z"/><path d="M24 59 Q25 45 31 38 L43 54 Z M35 33 Q42 28 48 28 L49 50 Z M54 27 Q65 28 71 35 L54 50 Z M75 39 Q80 44 81 51 L60 55 Z M15 69 L87 56 L86 61 L14 77 Z M27 78 L73 69 L57 80 L25 85 Z"/></g></symbol>
+<symbol id="felucca" viewBox="0 0 100 100"><g fill="currentColor"><path d="M26 68 Q51 49 75 12 L80 6 Q75 41 71 68 Q50 60 26 68Z"/><path d="M18 72 L70 71 Q80 71 90 65 Q83 79 66 81 L34 84 Q24 82 12 70Z M74 19 L48 69 L44 69Z M16 90 Q35 85 54 87 Q68 88 82 82 Q69 92 53 91 Q34 89 16 92Z"/></g><path class="cut" d="M44 61 Q61 51 72 29 Q66 49 62 59 Q54 58 44 61Z"/></symbol>
+<symbol id="manicule" viewBox="0 0 100 100"><g fill="currentColor"><path d="M8 63 L25 47 L42 70 L25 88 Z M27 47 Q35 44 42 34 Q46 26 54 23 Q67 19 88 18 Q96 18 91 24 Q77 29 60 31 L57 35 Q69 30 72 36 Q75 41 68 45 Q72 51 64 55 Q65 62 56 65 Q50 67 44 70Z"/></g><g fill="none" stroke="var(--ground)" stroke-width="2.5" stroke-linecap="round"><path d="M45 46 Q48 38 55 34 M66 40 Q58 40 55 45 Q55 48 60 48 L66 45 M63 51 L57 54 Q51 55 51 50 M56 59 Q49 63 48 57 M20 61 L30 75 M17 64 L26 77"/></g><circle class="cut" cx="25" cy="80" r="1.7"/></symbol>
+<symbol id="pendulum" viewBox="0 0 100 100"><g fill="currentColor"><path d="M27 17 Q49 7 72 16 L71 22 Q49 16 28 23Z M48 22 L52 20 L67 66 L63 68 Z"/><path d="M60 62 Q72 56 79 67 Q85 80 72 85 Q60 89 55 77 Q52 67 60 62Z M18 55 Q25 74 48 83 Q25 82 16 60Z M23 48 Q33 66 46 72 Q29 69 21 52Z"/></g><path class="cut" d="M64 67 Q70 63 74 68 Q68 66 63 73Z"/></symbol>
+<symbol id="whorl" viewBox="0 0 100 100"><path fill="currentColor" d="M84 64 Q82 73 69 82 L56 77 Q34 88 20 72 Q5 57 15 35 Q26 12 51 12 Q77 12 85 36 Q89 48 84 64Z"/><g fill="none" stroke="var(--ground)" stroke-linecap="round"><path stroke-width="4" d="M77 67 Q91 32 62 22 Q40 13 24 34 Q10 56 27 70 Q42 82 58 67 Q72 52 61 39 Q51 27 38 38 Q26 49 36 59 Q46 68 53 55 Q56 48 50 46 Q44 45 44 51"/><path stroke-width="2" d="M67 24 L74 18 M74 30 L80 25 M79 38 L84 35 M81 46 L86 45 M80 56 L85 57 M75 69 L80 72 M70 73 L71 80"/></g></symbol>
+<symbol id="loop" viewBox="0 0 100 100"><path fill="currentColor" fill-rule="evenodd" d="M10 69 Q13 51 39 41 Q63 32 68 19 Q71 12 65 12 Q52 12 51 38 Q50 63 67 70 Q77 75 88 64 L91 67 Q77 89 59 78 Q39 66 42 38 Q45 10 63 6 Q79 2 81 15 Q82 29 65 39 Q52 46 34 53 Q20 59 19 66 Q17 73 24 75 Q35 78 44 62 L49 68 Q36 91 20 84 Q8 80 10 69Z"/><path fill="var(--ground)" d="M39 41 L54 34 L55 38 L38 45 Z M38 48 L52 41 L54 45 L38 52Z"/></symbol>
+<symbol id="blotter" viewBox="0 0 100 100"><g fill="currentColor"><path d="M34 40 Q45 36 41 29 Q31 27 32 20 Q33 13 44 11 Q57 8 60 14 Q65 21 54 26 Q51 33 64 34 L68 38 L33 47Z"/><path d="M10 53 L80 35 L91 54 L20 77Z M21 80 L92 59 Q91 70 78 76 Q52 87 31 85Z"/></g><path class="cut" d="M18 55 L76 41 L74 44 L22 59Z M40 17 Q48 11 55 14 Q48 14 41 20Z M30 73 L85 55 L85 57 L32 75Z"/></symbol>
+<symbol id="fig" viewBox="0 0 100 100"><g fill="currentColor"><path d="M17 84 Q40 70 46 50 Q35 36 27 28 L31 27 Q40 37 48 44 Q53 26 67 16 L70 17 Q54 33 52 50 Q62 50 72 44 L76 45 Q68 52 51 56 Q42 74 21 89Z"/><path d="M43 48 Q43 31 33 25 Q24 19 12 20 Q16 38 28 44 Q34 47 43 48Z M53 36 Q53 20 65 14 Q74 9 84 9 Q78 28 67 32Z M60 53 Q69 39 80 38 Q90 38 95 33 Q92 50 80 54 Q69 59 60 53Z M40 64 Q29 51 18 57 Q7 65 14 76 Q23 86 34 75Z"/></g><g fill="none" stroke="var(--ground)" stroke-width="2.2"><path d="M18 24L38 42 M61 30L78 15 M68 51L87 42 M18 63Q13 70 20 74 M22 60Q18 67 24 70"/></g></symbol>
+</defs></svg>
+<main><header><h1>Portal logo studies</h1><p>Ten marks for the academic workspace. Select a study to inspect the cut and its sidebar signature.</p></header>
+<section class="sheet" aria-label="Ten logo directions"></section></main>
+<dialog aria-labelledby="specimen-title"><div class="inner"><div class="handle"><span id="position"></span><button type="button" id="close">Close</button></div><svg id="hero" aria-hidden="true"><use></use></svg><h2 id="specimen-title"></h2><p id="description"></p><div class="foot"><div id="signature"></div><nav aria-label="Browse studies"><button type="button" id="prev" aria-label="Previous study">←</button><button type="button" id="next" aria-label="Next study">→</button></nav></div></div></dialog>
+<script>
+const studies = [
+  ['hoopoe','Campus hoopoe','#e5ad83','A hoopoe pauses on the path between classes. Two cuts through its wing carry the bird’s striped plumage down to sidebar size.'],
+  ['selvedge','The selvedge','#d7c9aa','Short runs of warp and weft catch on the bias. The loose ends keep the edge of the portal’s linen in the mark.'],
+  ['transom','Office hours','#deb67a','A fanlight above an office door throws a sliver of afternoon sun across the threshold.'],
+  ['felucca','Upstream','#b3c9c7','The lateen sail of a Nile felucca holds the wind. A shallow hull and a single ripple balance its steep cut.'],
+  ['manicule','In the margin','#e2b69e','A pointing hand, once drawn by readers beside passages worth revisiting, becomes a teacher’s marginal note.'],
+  ['pendulum','Between bells','#c2bfa5','A pendulum hangs a beat past center. Two short sweeps describe the interval between classes.'],
+  ['whorl','The specimen','#d5be95','A spiral shell from a teaching collection, with a cutaway curl and fine ribs along the outer lip.'],
+  ['loop','Flourish','#cdb0aa','One broad pen stroke loops into a knot, like the last stroke of a tutor’s signature.'],
+  ['blotter','The blotter','#c2cabc','A rocking ink blotter rests on its curved sole. The raised handle and slanted block preserve its silhouette.'],
+  ['fig','Fig cutting','#bac79c','A fig branch holds one ripe fruit. Three pointed leaves break away from a single sweeping stem.']
+];
+const sheet=document.querySelector('.sheet'), dialog=document.querySelector('dialog');
+function mark(id,cls=''){return '<svg aria-hidden="true" class="'+cls+'" viewBox="0 0 100 100"><use href="#'+id+'"></use></svg>'}
+function signature(id){return '<span class="lockup">'+mark(id)+'<span class="word">Portal</span></span>'}
+let current=0;
+function inspect(index){
+  current=(index+studies.length)%studies.length;
+  const [id,name,ink,description]=studies[current];
+  document.querySelector('#position').textContent='Study '+(current+1)+' of '+studies.length;
+  document.querySelector('#specimen-title').textContent=name;
+  document.querySelector('#description').textContent=description;
+  document.querySelector('#hero').style.color=ink;
+  document.querySelector('#hero use').setAttribute('href','#'+id);
+  document.querySelector('#signature').innerHTML=signature(id);
+  document.querySelector('#signature svg').style.color=ink;
+  if(!dialog.open)dialog.showModal();
+}
+studies.forEach(([id,name,ink],index)=>{
+  const proof=document.createElement('button');
+  proof.type='button';proof.className='proof';proof.setAttribute('aria-label','Inspect '+name);
+  proof.innerHTML=mark(id,'large')+'<span class="name">'+name+'</span>'+signature(id);
+  proof.querySelectorAll('svg').forEach(svg=>svg.style.color=ink);
+  proof.onclick=()=>inspect(index);
+  sheet.append(proof);
+});
+document.querySelector('#close').onclick=()=>dialog.close();
+document.querySelector('#prev').onclick=()=>inspect(current-1);
+document.querySelector('#next').onclick=()=>inspect(current+1);
+dialog.onkeydown=event=>{
+  if(event.key==='ArrowLeft'||event.key==='ArrowRight'){event.preventDefault();inspect(current+(event.key==='ArrowRight'?1:-1))}
+};
+dialog.onclick=event=>{if(event.target===dialog)dialog.close()};
+</script>
+</body></html>
