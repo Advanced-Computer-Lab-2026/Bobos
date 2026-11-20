@@ -122,22 +122,22 @@ const concertinaCels = {
     ridge:'M37 -6Q84 -15 154 -12'
   },
   drop: {
-    rim:'M23 4Q29-3 40-6C108-12 211-10 264-4Q288-2 296 3L296 8H23Z',
+    rear:'M23 4Q29-3 40-6C108-12 211-10 264-4Q288-2 296 3L296 8H23Z',
     ridge:'M40-6q52-5 91-4'
   },
   tuck: {
-    rim:'M18 6Q49 1 78-3C129-9 208-9 255-4Q278-2 294 3V9H18Z',
+    rear:'M18 6Q49 1 78-3C129-9 208-9 255-4Q278-2 294 3V9H18Z',
     ridge:'M108-5q50-6 100-2'
   },
   glint: {
-    rim:'M62 6Q98 3 139-.8Q192-7 237-3.8Q267-2 290 2V8H62Z',
+    rear:'M62 6Q98 3 139-.8Q192-7 237-3.8Q267-2 290 2V8H62Z',
     ridge:'M164-2q33-4 62-1'
   },
   slip: {
-    rim:'M145 5Q172 2 201-.8Q231-4 262-.6L285 3V7H145Z'
+    rear:'M145 5Q172 2 201-.8Q231-4 262-.6L285 3V7H145Z'
   },
   restEdge: {
-    rim:'M194 4q23-4 51-4.7 18 .4 32 2.7v4Z'
+    rear:'M194 4q23-4 51-4.7 18 .4 32 2.7v4Z'
   },
   // On the return the bowed lower edge lands first at the left. The lifted
   // right corner hesitates for a beat before the familiar little closing cels.
@@ -293,9 +293,12 @@ function turnConcertina(stack,oldPaper,forward,oldStock,oldBinding) {
       const path=(cel[part] || '')+(part==='back' ? cel.edge || '' : '');
       for(const stroke of strokes) stroke.setAttribute('d',path);
     }
-    rimStock.setAttribute('d',cel.rim || '');
+    // The page covers the binding on the way up. Only after its trailing
+    // edge has cleared the top seam does the binding hide the returning paper.
+    layer.classList.toggle('behind-binding',Boolean(cel.rear));
+    rimStock.setAttribute('d',cel.rim || cel.rear || '');
     rimPencil.setAttribute('d',cel.ridge || '');
-    const mix=cel.rim ? 100 : ({swing:14,crest:32,crown:53,cross:73,hinge:89}[name] || 0);
+    const mix=(cel.rim || cel.rear) ? 100 : ({swing:14,crest:32,crown:53,cross:73,hinge:89}[name] || 0);
     const landed=forward?mix:100-mix;
     binding.style.backgroundColor=`color-mix(in srgb,${oldBinding} ${100-landed}%,${newBinding})`;
     showFlipExposure(layer,n,exposures.length,hold,draw);

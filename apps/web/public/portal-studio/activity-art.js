@@ -64,7 +64,7 @@ function publishingStamp(){
   return `<path d="M11.7 33.1q10.6-2.1 23.4-2.5l6.9.3 7.1 9.9-4 3.5-25.4 2.1Z" fill="#f6e8cd" stroke-width="1.45"/>
     <path d="m44.6 44.3-1.3-3.1 5.6-.4m-32.5-5.4 7.2-1.1m-5.4 4 5.3-.6" stroke-width=".95"/>
     <path class="published-imprint" d="M27 38.5q-1-2.5 3.2-3.6 4.3-1 6 .8m.4 1.6q-.9 2.4-5.6 3l-2.2-.2m.8-3.5 1.8 1 3.1-2.7" stroke="#9d5949" stroke-width="1.3"/>
-    <g class="stamp-descent"><g transform="translate(30 31) rotate(-9)">${tool}</g></g>`;
+    <g class="stamp-descent"><g class="stamp-grip"><g transform="translate(30 31) rotate(-9)">${tool}</g></g></g>`;
 }
 const activitySurrounds={
   postage:'<path class="stamp-edge" d="M5 4H65V56H5Z"/><path class="stamp-perfs" d="M5 4H65V56H5Z"/><path class="stamp-frame" d="m10 9 50-.5.5 42-51 .5z"/>',

@@ -23,11 +23,20 @@
   fill: #584c40;
   opacity: .13;
 }
-.teaching-pad:has(.concertina-turn) .calendar-feature {
+.teaching-pad:has(.concertina-turn.behind-binding) .calendar-feature {
   z-index: 1;
 }
 
-.teaching-pad[data-concertina=true] .calendar-feature{overflow:hidden}
+.teaching-pad[data-concertina=true] .calendar-feature {
+  isolation:isolate;
+  overflow:hidden;
+  margin-inline:0;
+  border-bottom-left-radius:0;
+  border-bottom-right-radius:0;
+}
+.teaching-pad[data-concertina=true] .folio-stack {
+  box-shadow:0 2px 0 var(--pencil),0 4px 0 var(--verso),0 5px 0 var(--pencil);
+}
 .teaching-pad[data-concertina=true] .calendar-heading{margin-bottom:21px}
 .turn-cels>svg.binding-turn{inset:auto 0 100%;overflow:visible;clip-path:none}
 .concertina-turn .rim-stock,.concertina-turn .rim-pencil{stroke-width:.8;vector-effect:non-scaling-stroke}

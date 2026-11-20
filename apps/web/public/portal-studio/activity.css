@@ -152,13 +152,13 @@
     animation:preferences-settle 440ms steps(1,end) both
   }
   .activity-impression:is(:hover,:focus-visible) .stamp-descent{
-    animation:publish-press 690ms steps(1,end) both
+    animation:publish-press 640ms steps(1,end) both
   }
   .activity-impression:is(:hover,:focus-visible) .stamp-rubber{
-    animation:publish-contact 690ms steps(1,end) both
+    animation:publish-contact 640ms steps(1,end) both
   }
   .activity-impression:is(:hover,:focus-visible) .published-imprint{
-    animation:publish-transfer 690ms steps(1,end) both
+    animation:publish-transfer 640ms steps(1,end) both
   }
   @keyframes activity-ink-pass{0%{visibility:visible}25%,100%{visibility:hidden}}
   @keyframes preferences-settle{
@@ -167,19 +167,45 @@
     51%{transform:translateY(1.9px)}67%{transform:translateY(2.55px)}
     85%,100%{transform:translateY(2.8px)}
   }
+  /* The low edge touches first. Pressure levels the foot, then one edge
+     peels free. The last drawing holds while the ink passes keep cycling. */
   @keyframes publish-press{
-    0%,12%{transform:translateY(0)}
-    19%{transform:translateY(.5px)}26%{transform:translateY(1.6px)}
-    33%{transform:translateY(3.5px)}40%{transform:translateY(5.35px)}
-    46%,56%{transform:translateY(6.1px)}63%{transform:translateY(5.35px)}
-    70%{transform:translateY(3.5px)}77%{transform:translateY(1.75px)}
-    84%{transform:translateY(.65px)}91%,100%{transform:translateY(0)}
+    0%,9%,100%{transform:translateY(0)}
+    17%{transform:translateY(-.55px)}
+    28%{transform:translateY(-.85px)}
+    33%{transform:translateY(.1px)}
+    37%{transform:translateY(2.35px)}
+    41%{transform:translateY(5.8px)}
+    44%,57%{transform:translateY(6.3px)}
+    62%{transform:translateY(5.9px)}
+    65%{transform:translateY(4.9px)}
+    70%{transform:translateY(1.55px)}
+    76%{transform:translateY(-.35px)}
+    83%{transform:translateY(-.55px)}
+    91%{transform:translateY(0)}
+  }
+  .activity-impression:is(:hover,:focus-visible) .stamp-grip{
+    transform-origin:30px 33px;
+    animation:publish-grip 640ms steps(1,end) both
+  }
+  @keyframes publish-grip{
+    0%,9%,100%{transform:rotate(0)}
+    17%{transform:rotate(-1.5deg)}28%,33%{transform:rotate(-3deg)}
+    37%{transform:rotate(-.5deg)}41%{transform:rotate(3deg)}
+    44%,57%{transform:rotate(7deg)}
+    62%{transform:rotate(5deg)}65%{transform:rotate(1deg)}
+    70%{transform:rotate(-2.5deg)}76%{transform:rotate(-3deg)}
+    83%{transform:rotate(-1deg)}91%{transform:rotate(0)}
   }
   @keyframes publish-contact{
-    0%,40%{transform:scaleY(1)}46%,56%{transform:scaleY(.73)}
-    63%{transform:scaleY(.94)}70%,100%{transform:scaleY(1)}
+    0%,37%{transform:scale(1)}
+    41%{transform:scale(1.015,.88)}
+    44%,57%{transform:scale(1.045,.69)}
+    62%{transform:scale(1.025,.82)}
+    65%{transform:scale(.995,1.04)}
+    70%,100%{transform:scale(1)}
   }
-  @keyframes publish-transfer{0%{visibility:hidden}46%,100%{visibility:visible}}
+  @keyframes publish-transfer{0%{visibility:hidden}44%,100%{visibility:visible}}
 }
 @media(prefers-reduced-motion:reduce){
   .published-imprint{visibility:visible}
