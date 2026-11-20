@@ -140,3 +140,48 @@
   .dashboard-edition .activity-heading .edition-picker{font-size:0;gap:0}
   .activity-heading select{max-width:125px;font-size:12px}
 }
+
+.activity-ink-pass{visibility:hidden}
+.activity-ink-pass:first-child{visibility:visible}
+.published-imprint{visibility:hidden}
+@media(prefers-reduced-motion:no-preference){
+  .activity-impression:is(:hover,:focus-visible) .activity-ink-pass{
+    animation:activity-ink-pass 540ms steps(1,end) var(--ink-delay) infinite
+  }
+  .activity-impression:is(:hover,:focus-visible) .preferences-insert{
+    animation:preferences-settle 440ms steps(1,end) both
+  }
+  .activity-impression:is(:hover,:focus-visible) .stamp-descent{
+    animation:publish-press 690ms steps(1,end) both
+  }
+  .activity-impression:is(:hover,:focus-visible) .stamp-rubber{
+    animation:publish-contact 690ms steps(1,end) both
+  }
+  .activity-impression:is(:hover,:focus-visible) .published-imprint{
+    animation:publish-transfer 690ms steps(1,end) both
+  }
+  @keyframes activity-ink-pass{0%{visibility:visible}25%,100%{visibility:hidden}}
+  @keyframes preferences-settle{
+    0%,12%{transform:translateY(0)}
+    24%{transform:translateY(.35px)}38%{transform:translateY(1px)}
+    51%{transform:translateY(1.9px)}67%{transform:translateY(2.55px)}
+    85%,100%{transform:translateY(2.8px)}
+  }
+  @keyframes publish-press{
+    0%,12%{transform:translateY(0)}
+    19%{transform:translateY(.5px)}26%{transform:translateY(1.6px)}
+    33%{transform:translateY(3.5px)}40%{transform:translateY(5.35px)}
+    46%,56%{transform:translateY(6.1px)}63%{transform:translateY(5.35px)}
+    70%{transform:translateY(3.5px)}77%{transform:translateY(1.75px)}
+    84%{transform:translateY(.65px)}91%,100%{transform:translateY(0)}
+  }
+  @keyframes publish-contact{
+    0%,40%{transform:scaleY(1)}46%,56%{transform:scaleY(.73)}
+    63%{transform:scaleY(.94)}70%,100%{transform:scaleY(1)}
+  }
+  @keyframes publish-transfer{0%{visibility:hidden}46%,100%{visibility:visible}}
+}
+@media(prefers-reduced-motion:reduce){
+  .published-imprint{visibility:visible}
+  .preferences-insert{transform:translateY(2.8px)}
+}
