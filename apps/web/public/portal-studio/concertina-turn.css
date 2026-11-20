@@ -10,7 +10,8 @@
   stroke: color-mix(in srgb, var(--leaf-stock) 43%, #514c45);
   stroke-width: 1.05;
 }
-.concertina-turn .leaf-lip {
+.concertina-turn .leaf-lip,
+.concertina-turn .rim-curl {
   fill: color-mix(in srgb, var(--leaf-stock) 76%, #958775);
 }
 .concertina-turn .leaf-crease,

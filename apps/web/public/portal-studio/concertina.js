@@ -99,45 +99,50 @@ const concertinaCels = {
     lip:'M26 -44C128 -66 232 -47 300 0L281 .4C212 -40 119 -55 25 -39Z',
     ink:'M11 -15l10-15m27-15q28-5 51-5M226 -28q16 4 27 9'
   },
-  // These drawings use binding coordinates: 0 is the top, 28 the bottom.
-  // The last sliver clears the bottom seam as the arc crests behind the top.
+  // In binding coordinates the top seam is y=0. The free corner rolls
+  // inward across it. Its folded underside narrows to a line at the seam.
   loosen: {
-    rim:'M0 28Q8 7 24 -6C102 -23 220 -14 300 21Q222 28 152 29Q59 31 0 28Z',
-    ridge:'M32 -6.1C72 -13.6 125 -15.7 161 -13.5M13 28q31 2 55 .3'
+    rim:'M0 28Q9 8 25 -6C99 -23 215 -15 279 13Q290 17 297 24Q295 27 283 27.5C198 28 74 32 0 28Z',
+    curl:'M279 13Q291 17 297 24Q293 27 283 27.5Q290 24 289 22Q286 17 279 13Z',
+    ridge:'M31 -6Q87 -18 149 -14M9 28Q54 31 91 29'
   },
   over: {
-    rim:'M0 24Q10 7 24 -6.5C92 -23 208 -18 300 14Q205 15 101 23Q45 26 0 24Z',
-    ridge:'M33 -7C81 -17.3 149 -17.4 199 -12.9'
+    rim:'M2 24Q11 5 26 -6C97 -22 206 -16 263 3Q279 8 288 14Q292 18 286 21Q278 24 263 24C177 26 66 29 2 24Z',
+    curl:'M263 3Q280 8 288 14Q293 18 286 21Q278 24 263 24Q275 19.5 277 15Q277 10 263 3Z',
+    ridge:'M35 -7Q95 -18 162 -13M269 21q8 -3 11 -7'
   },
   crestOver: {
-    rim:'M4 15Q14 2 25 -6C92 -22 207 -18 271 -3Q289 1 300 8Q212 6 133 10Q46 18 4 15Z',
-    ridge:'M33 -6Q104 -21 189 -13m47 5 30 6'
+    rim:'M5 16Q14 2 29 -6C93 -20 189 -16 244 -4Q262 -1 272 4Q278 7 274 11Q270 16 251 17Q104 25 5 16Z',
+    curl:'M244 -4Q263 -1 272 4Q278 7 274 11Q268 17 251 17Q264 12 263 7Q262 1 244 -4Z',
+    ridge:'M36 -6Q98 -17 149 -13M254 15q8 -3 11 -7'
   },
   clearLeft: {
-    rim:'M10 6Q18 -2 29 -6C92 -20 211 -16 266 -6Q290 -2 300 4Q243 2 181 3Q80 7 10 6Z',
-    ridge:'M32 -5q59 -12 108 -10m96 7q25 2 43 6'
+    rim:'M10 7Q20 -3 34 -7C95 -19 187 -15 232 -7Q249 -4 257 -.5Q262 3 254 6Q245 9 221 9C143 11 61 13 10 7Z',
+    curl:'M232 -7Q249 -4 257 -.5Q262 3 254 6Q245 9 232 9Q246 5 246 2Q246 -2 232 -7Z',
+    ridge:'M41 -7Q93 -16 144 -12M236 8l10 -4'
   },
   tipOver: {
-    rim:'M20 1Q25 -4 34 -7C125 -17 220 -13 267 -6Q288 -3 298 .8Q261 -.6 213 -.5Q96 2 20 1Z',
-    ridge:'M37 -6Q84 -15 154 -12'
+    rim:'M19 1Q29 -5 41 -7C103 -17 185 -13 222 -7Q237 -5 242 -2Q245 0 238 1Q228 3 209 3C132 4 65 4 19 1Z',
+    curl:'M222 -7Q237 -5 242 -2Q246 1 228 2Q237 -.5 235 -2Q232 -4 222 -7Z',
+    ridge:'M48 -7Q91 -14 139 -12'
   },
   drop: {
-    rear:'M23 4Q29-3 40-6C108-12 211-10 264-4Q288-2 296 3L296 8H23Z',
-    ridge:'M40-6q52-5 91-4'
+    rear:'M23 3Q33 -4 46 -7C101 -15 185 -12 219 -6Q233 -4 238 .5L238 5H23Z',
+    ridge:'M51 -7q39 -6 83 -4'
   },
   tuck: {
-    rear:'M18 6Q49 1 78-3C129-9 208-9 255-4Q278-2 294 3V9H18Z',
-    ridge:'M108-5q50-6 100-2'
+    rear:'M30 4Q42 -3 58 -6C117 -13 186 -9 216 -4Q226 -2 230 2V6H30Z',
+    ridge:'M71 -6q42 -5 71 -3'
   },
   glint: {
-    rear:'M62 6Q98 3 139-.8Q192-7 237-3.8Q267-2 290 2V8H62Z',
-    ridge:'M164-2q33-4 62-1'
+    rear:'M48 4Q65 -3 88 -5Q158 -12 212 -1Q219 0 223 3V6H48Z',
+    ridge:'M101 -5q40 -4 69 -1'
   },
   slip: {
-    rear:'M145 5Q172 2 201-.8Q231-4 262-.6L285 3V7H145Z'
+    rear:'M83 4Q106 -2 128 -3Q168 -7 199 -.7L210 3V6H83Z'
   },
   restEdge: {
-    rear:'M194 4q23-4 51-4.7 18 .4 32 2.7v4Z'
+    rear:'M119 3Q139 -.8 157 -1.3Q181 -2.8 194 .8L197 4H119Z'
   },
   // On the return the bowed lower edge lands first at the left. The lifted
   // right corner hesitates for a beat before the familiar little closing cels.
@@ -243,7 +248,7 @@ function turnConcertina(stack,oldPaper,forward,oldStock,oldBinding) {
       <g class="leaf-crown"><g clip-path="url(#${id}-above)">${pencilLayer}</g></g>
     </svg><svg class="binding-turn" viewBox="0 -16 300 44" preserveAspectRatio="none" fill="none" aria-hidden="true">
       <defs><clipPath id="${id}-rim"><use href="#${id}-rim-stock"/></clipPath></defs>
-      <path class="rim-stock" id="${id}-rim-stock"/><path class="rim-pencil" clip-path="url(#${id}-rim)"/>
+      <path class="rim-stock" id="${id}-rim-stock"/><path class="rim-curl" clip-path="url(#${id}-rim)"/><path class="rim-pencil" clip-path="url(#${id}-rim)"/>
     </svg>`;
   const face=layer.querySelector('.leaf-face');
   const ground=layer.querySelector('.leaf-ground');
@@ -261,6 +266,7 @@ function turnConcertina(stack,oldPaper,forward,oldStock,oldBinding) {
   rim.style.height=(44/28*binding.offsetHeight)+'px';
   const rimStock=rim.querySelector('.rim-stock');
   const rimPencil=rim.querySelector('.rim-pencil');
+  const rimCurl=rim.querySelector('.rim-curl');
   const paths=Object.entries({cast:'.leaf-cast',back:'.leaf-back',lip:'.leaf-lip',ink:'.leaf-crease'})
     .map(([part,selector])=>[part,layer.querySelectorAll(selector)]);
   const box=stack.getBoundingClientRect();
@@ -298,6 +304,7 @@ function turnConcertina(stack,oldPaper,forward,oldStock,oldBinding) {
     layer.classList.toggle('behind-binding',Boolean(cel.rear));
     rimStock.setAttribute('d',cel.rim || cel.rear || '');
     rimPencil.setAttribute('d',cel.ridge || '');
+    rimCurl.setAttribute('d',cel.curl || '');
     const mix=(cel.rim || cel.rear) ? 100 : ({swing:14,crest:32,crown:53,cross:73,hinge:89}[name] || 0);
     const landed=forward?mix:100-mix;
     binding.style.backgroundColor=`color-mix(in srgb,${oldBinding} ${100-landed}%,${newBinding})`;
