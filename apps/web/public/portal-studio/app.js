@@ -307,7 +307,12 @@ function calendarFeature(){
 }
 function flipSpeedControl(){
   const options=flipRates.map(rate=>`<option value="${rate}"${rate===flipRate?' selected':''}>${rate===0?'Paused':rate+'×'}</option>`).join('');
-  return `<div class="flip-playback"><label>Flip speed <select data-flip-speed>${options}</select></label><span data-flip-frame></span></div>`;
+  return `<div class="flip-playback"><label>Flip speed <select data-flip-speed>${options}</select></label><span data-flip-frame></span>
+    <div class="flip-frames" role="group" aria-label="Frame controls">
+      <button type="button" data-flip-step="-1" disabled>Previous frame</button>
+      <input type="range" min="1" max="1" value="1" step="1" data-flip-scrub aria-label="Animation frame" disabled>
+      <button type="button" data-flip-step="1" disabled>Next frame</button>
+    </div></div>`;
 }
 function deskCalendar(teaching=false) {
   return `<section class="desk-calendar${teaching?' teaching-pad':''}" aria-label="Academic calendar" ${teaching?`data-calendar-style="${calendarStyle}" data-concertina="${isConcertina(calendarStyle)}" data-sketch="${Object.hasOwn(sketchEditions,calendarStyle)}" data-season-month="${calendarDates().month.getMonth()}" style="--season-sheet:${seasonalPaper[calendarDates().month.getMonth()][0]};--season-back:${seasonalPaper[calendarDates().month.getMonth()][1]}"`:''}>${teaching?`<header class="calendar-heading"><h2 id="academic-calendar">Academic calendar</h2>${calendarStylePicker()}</header>`:''}${teaching?`<div class="calendar-feature">${calendarFeature()}</div>`:''}<div class="folio-stack">
@@ -1405,14 +1410,32 @@ function chooseCalendarStyle(value){
   url.searchParams.set('calendar',value);
   history.replaceState(history.state,'',url);
 }
+function setFlipRate(value){
+  flipRate=value;
+  localStorage.setItem(flipRateKey,String(value));
+  pendingExposure?.schedule();
+  const url=new URL(location.href);
+  url.searchParams.set('flipSpeed',String(value));
+  history.replaceState(history.state,'',url);
+}
+function inspectFlipFrame(input,index){
+  if(!pendingExposure) return;
+  if(flipRate!==0){
+    input.closest('.flip-playback').querySelector('[data-flip-speed]').value='0';
+    setFlipRate(0);
+  }
+  pendingExposure.seek(index);
+}
+document.addEventListener('input',event=>{
+  if(event.target.matches('[data-flip-scrub]')) inspectFlipFrame(event.target,event.target.valueAsNumber-1);
+});
+document.addEventListener('click',event=>{
+  const step=event.target.closest('[data-flip-step]');
+  if(step && pendingExposure) inspectFlipFrame(step,pendingExposure.frame+Number(step.dataset.flipStep));
+});
 document.addEventListener('change',event=>{
   if(event.target.matches('[data-flip-speed]')){
-    flipRate=Number(event.target.value);
-    localStorage.setItem(flipRateKey,String(flipRate));
-    pendingExposure?.schedule();
-    const url=new URL(location.href);
-    url.searchParams.set('flipSpeed',String(flipRate));
-    history.replaceState(history.state,'',url);
+    setFlipRate(Number(event.target.value));
   } else if(event.target.matches('[data-calendar-picker]')){
     chooseCalendarStyle(event.target.value);
   } else if(event.target.matches('[data-dashboard-view]')){

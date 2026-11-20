@@ -59,7 +59,7 @@ function turnSketchPage(stack,oldPage,forward,oldColors){
       'polygon(-5% -55%,105% -55%,105% -7%,0 0%)',
       'polygon(-5% -55%,105% -55%,105% -10%,0 -5%)'];
     verso.parentElement.style.clipPath=k<crest?'none':eclipse[Math.min(k-crest,3)];
-    showFlipExposure(layer,n,drawings.length,hold,()=>draw(n+1));
+    showFlipExposure(layer,n,drawings.length,hold,draw);
   }
   const ns='http://www.w3.org/2000/svg',defs=document.createElementNS(ns,'defs'),mask=document.createElementNS(ns,'clipPath'),clip=document.createElementNS(ns,'path');
   const clipId='sketch-fold-'+(++turnSketchPage.serial);

@@ -78,3 +78,8 @@
 .flip-playback [data-flip-frame]{font-variant-numeric:tabular-nums}
 [data-calendar-style=clean] .flip-playback{display:none}
 @media(prefers-reduced-motion:reduce){.flip-playback{display:none}}
+.flip-frames{display:flex;align-items:center;gap:8px;flex-basis:100%;min-width:0}
+.flip-playback:has([data-flip-speed] option[value="1"]:checked) .flip-frames{display:none}
+.flip-frames button{font:inherit;color:var(--ink);border:1px solid var(--line);background:var(--raised);border-radius:5px;min-height:30px;padding:3px 8px;cursor:pointer}
+.flip-frames button:disabled{color:var(--muted);opacity:.52;cursor:default}
+.flip-frames input{flex:1;min-width:30px;accent-color:var(--ink);cursor:pointer}

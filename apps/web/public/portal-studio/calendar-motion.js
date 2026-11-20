@@ -4,11 +4,23 @@ const initialRate=new URLSearchParams(location.search).get('flipSpeed') ?? local
 let flipRate=initialRate!==null && flipRates.map(String).includes(initialRate)?Number(initialRate):1;
 let pendingExposure;
 
-function showFlipExposure(layer,frame,total,hold,advance){
+function showFlipExposure(layer,frame,total,hold,draw){
   const pad=layer.closest('.teaching-pad');
   const counter=pad.querySelector('[data-flip-frame]');
   const caption=`Frame ${frame+1} of ${total}`;
+  const slider=pad.querySelector('[data-flip-scrub]');
+  slider.max=total;
+  slider.value=frame+1;
+  slider.setAttribute('aria-valuetext',caption);
+  slider.disabled=false;
+  pad.querySelector('[data-flip-step="-1"]').disabled=frame===0;
+  pad.querySelector('[data-flip-step="1"]').disabled=frame===total-1;
   let remaining=hold, started, rate, timer;
+
+  function reveal(index){
+    clearTimeout(timer);
+    if(layer.isConnected) draw(index);
+  }
 
   function schedule(){
     clearTimeout(timer);
@@ -19,14 +31,16 @@ function showFlipExposure(layer,frame,total,hold,advance){
     counter.textContent=rate===1?'':caption;
     if(rate>0) timer=setTimeout(()=>{
       pendingExposure=null;
-      if(layer.isConnected) advance();
+      reveal(frame+1);
     },remaining/rate);
   }
-  pendingExposure={schedule,cancel:()=>clearTimeout(timer),finish:()=>{
-    clearTimeout(timer);
-    pendingExposure=null;
-    if(layer.isConnected) advance();
-  }};
+  pendingExposure={
+    schedule,
+    cancel:()=>clearTimeout(timer),
+    finish:()=>reveal(total),
+    seek:index=>reveal(Math.max(0,Math.min(total-1,index))),
+    frame
+  };
   schedule();
 }
 
@@ -34,7 +48,13 @@ function clearFlipExposure(pad){
   pendingExposure?.cancel();
   pendingExposure=null;
   const counter=pad?.querySelector('[data-flip-frame]');
-  if(counter) counter.textContent='';
+  if(counter){
+    counter.textContent='';
+    const slider=pad.querySelector('[data-flip-scrub]');
+    slider.value=1;
+    slider.removeAttribute('aria-valuetext');
+    pad.querySelectorAll('[data-flip-step],[data-flip-scrub]').forEach(el=>{el.disabled=true;});
+  }
 }
 
 // Each exposure sets the angle at the sewn edge and the extra bend at the foot.
@@ -143,7 +163,7 @@ function flipAcademicSheet(stack, oldPage, forward, style, previousColors) {
     edge.setAttribute('d',`M${-lastX} ${lastY}Q${width*.47} ${lastY+amplitude*(frame%2?2:1)} ${width+lastX} ${lastY}`);
     shadow.setAttribute('d',`M0 0H${width}V${Math.max(0,lastY+amplitude*9)}Q${width/2} ${lastY+amplitude*16} 0 ${Math.max(0,lastY)}Z`);
     const hold=style==='snap'&&frame>9&&frame<16?28:frame<3?55:42;
-    showFlipExposure(overlay,frame,frames.length,hold,()=>pose(frame+1));
+    showFlipExposure(overlay,frame,frames.length,hold,pose);
   }
   if (style==='bellows' && forward) {
     // Let the sprout start coming up when the bottom of the old page clears it.
