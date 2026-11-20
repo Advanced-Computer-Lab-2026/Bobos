@@ -67,7 +67,7 @@ function winterGust(flurry){
   return `<svg class="season-drawing january-gust" viewBox="0 0 82 50" aria-hidden="true" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <g stroke="#758b96" stroke-width="1.25">${gusts.map((d,i)=>`<path class="gust-mark" style="--frame:${i}" d="${d}"/>`).join('')}</g>
     ${flurry?`<g stroke="#7c8a96" class="february-flurry"><g class="flurry-far"><path d="m18 6 .2 7m-3.4-5.1 6.3 3.4m-6.2.4 6-4" stroke-width="1.35"/></g><g class="flurry-near"><path d="m29 25 .2 10m-4.5-7.2 8.4 4.2m-.5-5-7.4 5.6" stroke-width="1.4"/></g></g>`:''}
-    <g transform="translate(53 24)"><g class="gust-crystal" stroke="#485e6b" stroke-width="1.65">${arms.map(d=>`<path d="${d}"/>`).join('')}<path d="m-3-2 3-2 3 2 .2 4-3 1.6L-3 2Z" fill="#ecf2ee" stroke-width="1.1"/></g></g></svg>`;
+    <g transform="translate(53 24)"><g class="gust-crystal"><g class="crystal-roll" stroke="#485e6b" stroke-width="1.65">${arms.map(d=>`<path d="${d}"/>`).join('')}<path d="m-3-2 3-2 3 2 .2 4-3 1.6L-3 2Z" fill="#ecf2ee" stroke-width="1.1"/></g></g></g></svg>`;
 }
 
 const aprilMeadow = `<g fill="none" stroke="#697b55" stroke-width="1.1" class="april-grass">
@@ -76,60 +76,114 @@ const aprilMeadow = `<g fill="none" stroke="#697b55" stroke-width="1.1" class="a
   <path d="M53 35q-3-1-2-3 1-1 3 1 1-3 3-2 1 2-1 4Z" fill="#ebc679" stroke="#9e8e68"/>
   </g>`;
 
-// Twelve discrete drawings play on a shared exposure sheet. The first is
-// also the still used by the reduced-motion view.
+// A full exposure includes the time the drawing stays on the page. A long
+// hold at the top of a swing and a short contact can share the same sheet.
 function marginLoop(name, drawings, ground='', beat=125){
-  const frames=drawings.map((art,i)=>
-    `<g class="margin-cel${i===0?' still':''}" style="--delay:${(i-drawings.length)*beat}ms">${art}</g>`).join('');
-  return `<svg class="season-drawing seasonal-margin ${name}" aria-hidden="true" viewBox="0 0 84 52" fill="none" stroke="#504b42" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round" style="--cycle:${drawings.length*beat}ms">${ground}${frames}</svg>`;
+  const holds=drawings.map(drawing=>typeof drawing==='string'?beat:drawing.hold);
+  const cycle=holds.reduce((sum,hold)=>sum+hold,0);
+  let elapsed=0;
+  const frames=drawings.map((drawing,i)=>{
+    const delay=elapsed-cycle;
+    elapsed+=holds[i];
+    return `<g class="margin-cel${i===0?' still':''}" style="--delay:${delay}ms;--hold:${100*holds[i]/cycle}%">${drawing.art ?? drawing}</g>`;
+  }).join('');
+  return `<svg class="season-drawing seasonal-margin ${name}" aria-hidden="true" viewBox="0 0 84 52" fill="none" stroke="#504b42" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round" style="--cycle:${cycle}ms">${ground}${frames}</svg>`;
 }
 
 function septemberKite(){
-  // The line pulls tight before the nose turns. The two cloth bows follow last.
+  // The string is pegged at (5,45) and tied to the bridle at (x,y).
+  // A kink travels up the loose line. The nose pitches only after it arrives.
   const poses=[
-    [49,13,-8,'M8 46Q32 43 47 23','q5 6 9 6t9 6',9,29,18,34],
-    [50,13,-5,'M8 46Q32 42 48 23','q5 5 9 6t9 5',9,29,18,33],
-    [52,12,1,'M8 46Q33 40 50 22','q4 5 8 7t10 4',8,29,18,33],
-    [54,10,8,'M8 46Q32 38 52 20','q3 5 6 8t9 5',6,28,15,33],
-    [55,9,13,'M8 46Q31 35 53 19','q1 6 4 9t8 7',4,28,12,35],
-    [55,8,15,'M8 46Q30 34 53 18','q0 6 2 10t6 8',2,28,8,36],
-    [54,8,11,'M8 46Q29 35 52 18','q0 7 1 11t5 8',1,29,6,37],
-    [53,9,6,'M8 46Q29 37 51 19','q1 7 2 11t4 9',2,30,6,39],
-    [52,10,0,'M8 46Q30 40 50 20','q2 7 4 10t5 9',4,30,9,39],
-    [50,12,-6,'M8 46Q30 43 48 22','q3 7 6 9t6 8',6,31,12,39],
-    [49,13,-10,'M8 46Q31 44 47 23','q4 7 7 8t8 7',7,31,15,38],
-    [49,13,-9,'M8 46Q32 44 47 23','q5 6 8 7t9 6',8,30,17,36]
+    // hold, bridle, tilt, two cubic handles on the string, tail drawing
+    [270,46,19,-12,'20 49 35 37',0],
+    [125,46,19,-12,'15 45 35 42',0],
+    [100,47,19,-13,'13 40 33 46',1],
+    [85,48,19,-10,'17 36 34 45',1],
+    [80,49,18,-7,'22 36 35 42',2],
+    [75,52,16,-3,'27 37 41 33',3],
+    [65,55,14,4,'26 39 43 26',4],
+    [80,58,12,12,'22 40 46 20',5],
+    [105,59,11,18,'22 36 46 19',6],
+    [180,59,11,20,'25 33 46 20',7],
+    [90,59,11,16,'27 36 44 17',8],
+    [105,58,12,10,'30 41 43 16',8],
+    [90,56,13,3,'29 44 42 16',7],
+    [100,53,15,-4,'26 46 44 21',6],
+    [95,50,16,-12,'23 48 41 27',5],
+    [105,47,18,-17,'20 48 40 34',3],
+    [135,45,20,-19,'18 48 38 39',2],
+    [95,44,20,-16,'19 50 35 40',1],
+    [125,45,20,-12,'21 50 34 37',0],
+    [170,46,19,-10,'21 49 35 36',0]
   ];
-  const bow=(x,y)=>`<path d="M${x-3} ${y-2.4}l3 2.3 3.1-2.1-.6 4.6-2.6-2.2-3.2 1.3Z" fill="#ae7467" stroke-width=".85"/>`;
-  return marginLoop('september-kite',poses.map(([x,y,angle,line,tail,bx,by,cx,cy])=>`
-    <path d="${line}" stroke="#786b5b" stroke-width="1.15"/>
-    <g transform="translate(${x} ${y}) rotate(${angle})">
-      <path d="M-2 11${tail}" stroke="#776453"/>
-      ${bow(bx-2,by-12)}${bow(cx-2,cy-12)}
-      <path d="M1-7-11 .2-2 13 9 1Z" fill="#dca987"/>
-      <path d="m1-7-3 20L9 1Z" fill="#91afae" stroke="none"/>
-      <path d="M1-7-2 13M-10.5.2q8-2 19.2.8" stroke="#645c4e" stroke-width="1"/>
-    </g>`),'',160);
+  // Each knot belongs to the end of its own curve. The tail curls over
+  // first, then the last bow whips round a beat later.
+  const tails=[
+    [8,14,18,21,'4 15','14 14',-12,10], [9,13,20,19,'3 14','16 13',-22,4],
+    [10,13,21,16,'4 14','16 12',-27,-8], [10,14,22,16,'4 14','17 14',-16,-15],
+    [9,16,21,19,'3 14','15 17',0,-7], [7,18,17,23,'2 15','12 20',14,5],
+    [4,19,11,27,'0 15','9 21',23,16], [2,20,6,30,'-1 16','5 24',32,26],
+    [1,20,3,31,'-2 16','3 23',37,36]
+  ];
+  const bow=(x,y,angle)=>`<path transform="translate(${x} ${y}) rotate(${angle})" d="M-3.3-2.3.1-.3l3-1.6-.7 4L0 .5l-3.5 1Z" fill="#b77c69" stroke-width=".9"/>`;
+  return marginLoop('september-kite',poses.map(([hold,x,y,tilt,handles,tail])=>{
+    const [bx,by,cx,cy,first,second,twist,tip]=tails[tail];
+    return {hold,art:`<path d="M5 45C${handles} ${x} ${y}" stroke="#746859" stroke-width="1.4"/>
+      <g transform="translate(${x} ${y}) rotate(${tilt})">
+        <path d="M-2 11Q${first} ${bx} ${by}Q${second} ${cx} ${cy}" stroke="#776453" stroke-width="1.15"/>
+        ${bow(bx,by,twist)}${bow(cx,cy,tip)}
+        <path d="M1-9Q-4-5-12 0L-2 12.4 10 .4Z" fill="#dca987"/>
+        <path d="M1-9-2 12.4 10 .4Z" fill="#91afae" stroke="none"/>
+        <path d="M1-9-2 12.4M-11.7 0Q-2-1.6 9.7.4" stroke="#635b4e" stroke-width="1.05"/>
+        <path d="m-3-2 3 2-3 4" stroke="#756549" stroke-width=".85"/>
+      </g>`};
+  }));
 }
 
 function octoberAcorns(){
-  const arc=[
-    [2,-5,'M31 15q4 5 6 10m4-13q4 2 7 7'],[4,-7,'M31 15q5 4 7 10m3-13q5 2 8 7'],
-    [9,-9,'M31 15q5 3 8 10m2-13q5 1 9 6'],[14,-7,'M31 15q6 3 10 9m0-12q6 1 10 6'],
-    [19,0,'M31 15q7 2 11 8m-1-11q5 2 10 7'],[11,10,'M31 15q6 3 9 9m1-12q5 3 8 8'],
-    [2,15,'M31 15q5 5 6 10m4-13q3 4 6 9'],[-6,12,'M31 15q3 4 4 10m6-13q3 4 5 9'],
-    [-9,5,'M31 15q2 5 3 11m7-14q3 3 5 8'],[-7,-2,'M31 15q3 5 4 11m6-14q3 3 6 8'],
-    [-3,-5,'M31 15q3 5 5 11m5-14q4 2 7 7'],[0,-5,'M31 15q4 5 6 10m4-13q4 2 7 7']
+  // The short stalk catches up first. Its nut taps its neighbour, then
+  // the little recoil dies out while the leaf still turns on its petiole.
+  const leaf=[
+    'M0 0C-4 .3-7-2-10-2c-3 1-6-.5-6-3-3 0-6-2-6-4-3-.7-5-3-6.4-5 3.5-1 6.2 0 8.4 1 .5-2 3-2.5 5-.3l3 3.2q1-3 3.7-.8L-4-5q2 1.5 4 5Z',
+    'M0 0q-5 0-10-2.8-5 .9-6.5-3.4-5-.9-6.6-4-3.6-2-5-4.2 6-1.1 9.2 2.5 2-2.6 5.2 1.4l3 2q2-2 5 1.5Z',
+    'M0 0q-6-1.6-11-3.6-4.5-.1-6.9-2.6-5-1.7-10.5-6.5 4.6-.4 10.5 2.2 2-1.2 5.4 1.6l2.5 1.8q2-.8 5 1.3Z',
+    'M0 0q-7-2.4-12-4.9-7.2-1.9-16-8 6.8 1.2 14 4.5l7 3.2Z',
+    'M0 0q-7-2-10.5-3.1-5-.3-7-2.7-5.4-1.4-10.5-6 5.8-.4 11 2.3 1.8-.9 5.3 1.1l2.7 2.1q1.7-.7 4.6 1.6Z'
   ];
-  const caps=[[37,25,48,19],[38,25,49,19],[39,25,50,18],[41,24,51,18],[42,23,51,19],[40,24,49,20],[37,25,47,21],[35,25,46,21],[34,26,46,20],[35,26,47,20],[36,26,48,19],[37,25,48,19]];
-  const acorn=`<path d="M-8 2.6C-9 10-6.9 15-2 17.3q1.5.9 2.3 2 1-1.4 2.9-2.5C8.1 13.9 9.4 7.8 8.7 2Z" fill="#bd8452"/>
-    <path d="M-6 6q-.6 6.3 3.6 9.1" stroke="#ebc58d" stroke-width="1.7"/>
-    <path d="M-10 2.7C-9.7-.5-7.8-4.8-2.7-5.4 3.4-7 9.3-4.2 10.4.6l.4 2.1C5.5 6.2-3 7.2-9.7 4.1Z" fill="#89735a"/>
-    <path d="m-8 .4 2.1 1.5 1.4-2m1.1-2.5 2.2 1.8 1.6-1.9m1.5 3.1 2.3 1.4L6-.2m.1-2.8 1.8 1.3m-10 5L.2 5l1.9-2" stroke="#594b3f" stroke-width=".92"/>`;
-  return marginLoop('october-acorns',arc.map(([a,b,stem],i)=>{
-    const [x,y,u,v]=caps[i];
-    return `<path d="${stem}"/><g transform="translate(${u} ${v}) rotate(${b}) scale(.8)">${acorn}</g><g transform="translate(${x} ${y}) rotate(${a})">${acorn}</g>`;
-  }),'<path d="M13 18q16 1 32-9l19-6m-22 8q5-7 11-9" stroke="#72664d" stroke-width="2"/><path d="M24 17q-4-2-4-5-1-3-4-2l-1-3q-1-2-4-1-3-2-6-1 0 3 3 4-2 2 1 4l3 1q-1 3 4 3l3 .2 4 1Z" fill="#aaa477"/><path d="m12 12 9 5" stroke-width=".8"/>',150);
+  const nuts=[
+    ['M-7.1 1.2C-8 7.8-5.1 13.8-1.1 15.2l1.5 1.9 1.2-1.8C7 13.2 8.1 6.1 7.6 1Z','M-8.8 1.4q.2-6.3 7.3-7.6C4.7-7.3 8.4-4 9 .2l-.2 1.6C4 4.7-3.6 5-8.8 3Z'],
+    ['M-7.3 1.3C-7.9 8.6-5 13.6-.8 15.4L.6 17l1.3-1.8C6.6 13.4 8.4 6.2 7.4 1Z','M-8.9 1.5q.6-6.7 7.2-7.8C5-7 8.3-3.9 9.1.4l-.3 1.4C3.9 5-3.6 4.8-8.8 3Z'],
+    ['M-7 1.2C-8.3 7.7-5 14-1 15.1l1.3 1.8 1.5-1.8C7.1 12.9 8 6.3 7.7 1Z','M-8.7 1.4q.1-6.6 7.1-7.4C4.6-7.4 8.6-4 9 .1v1.5C4.3 4.5-3.4 5.2-8.8 3Z']
+  ];
+  // Exposure, angle of each stalk, leaf silhouette and roll, front ink cel.
+  const poses=[
+    [270,-3,5,0,0,0],[120,-3,4,1,3,1],[85,-2,3,2,6,0],
+    [70,0,3,3,9,2],[70,4,6,3,12,1],[75,9,11,4,14,2],
+    [85,15,17,2,17,0],[95,20,23,1,19,1],[140,23,26,0,20,2],
+    [80,23,22,1,17,1],[70,19,14,3,12,2],[70,12,6,4,6,0],
+    [65,3,1,2,1,1],[60,-6,2,0,-4,2],[55,-14,6,1,-6,1],
+    [85,-18,9,0,-7,0],[65,-13,1,2,-5,2],[80,-8,-8,3,-3,1],
+    [100,-6,-12,4,1,0],[90,-5,-10,2,4,1],[80,-7,-5,1,5,2],
+    [85,-9,2,0,4,1],[100,-10,7,1,2,0],[95,-7,4,2,-1,2],
+    [110,-4,0,4,-2,1],[100,-2,0,2,-1,0],[145,-2,3,1,0,1],
+    [190,-3,5,0,0,2]
+  ];
+  function hangingNut(x,y,angle,length,scale,ink){
+    const [shell,cap]=nuts[ink];
+    return `<g transform="translate(${x} ${y}) rotate(${angle})">
+      <path d="M0 0Q2.2 ${length*.33} .4 ${length}" stroke="#655b46" stroke-width="1.45"/>
+      <g transform="translate(0 ${length}) scale(${scale})">
+        <path d="${shell}" fill="#c18a59"/><path d="M-4.9 6.3q0 4.7 3 6.6" stroke="#ebc793" stroke-width="1.3"/>
+        <path d="${cap}" fill="#8e795b"/><path d="m-6-.8 1.9 1.6 1.4-2.1M-2.3-3.3l1.9 1.5 1.5-2M2 .5l2 1.3L5.4-.6" stroke-width="1"/>
+      </g></g>`;
+  }
+  const twig='<path d="M13 20q12-2.6 23-6.3Q50 8 68 5m-17 3.4q5-3.3 8-6.1" stroke="#76684f" stroke-width="2.1"/>';
+  return marginLoop('october-acorns',poses.map(([hold,front,rear,fold,roll,ink],i)=>({
+    hold,art:`<g transform="translate(32 15) scale(.88 .53) rotate(${roll})"><path d="${leaf[fold]}" fill="${fold===3?'#baa36c':'#aba574'}"/><path d="M-23-11.1Q-12-6 0 0" stroke="#766b4d" stroke-width=".9"/></g>
+      ${hangingNut(52,8.5,rear,13,.83,(ink+1)%3)}
+      ${hangingNut(32,15,front,14,1,ink)}
+      ${i===15?'<path d="m44 36 1.3 2.6m1.6-5 2.2 1" stroke-width="1.05"/>':''}`
+  })),twig);
 }
 
 function novemberRain(){

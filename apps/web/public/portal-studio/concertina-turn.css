@@ -22,8 +22,8 @@
   isolation: isolate;
 }
 
+.teaching-pad[data-concertina=true] .calendar-feature{overflow:hidden}
 .teaching-pad[data-concertina=true] .calendar-heading{margin-bottom:21px}
-.teaching-pad .calendar-feature .rear-paper{position:absolute;top:-4px;left:0;width:100%;height:4px;max-width:none;animation:none}
 .turn-cels>svg.binding-turn{inset:auto 0 100%;overflow:visible;clip-path:none}
 .rim-stock{fill:color-mix(in srgb,var(--leaf-stock) 92%,#a49984);stroke:#aaa294;stroke-width:.8;vector-effect:non-scaling-stroke}
 .rim-pencil{fill:none;stroke:#afa89c;stroke-width:.8;vector-effect:non-scaling-stroke}

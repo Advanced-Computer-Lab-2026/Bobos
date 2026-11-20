@@ -292,9 +292,8 @@ function calendarStylePicker(){
 }
 function calendarFeature(){
   if(isConcertina(calendarStyle)){
-    const rear='<svg class="rear-paper" viewBox="0 0 300 5" preserveAspectRatio="none" aria-hidden="true"><path d="M4 5Q35 2 94 3t92-.4Q247-.5 292 2.9l5 2.1Z" fill="var(--sheet)" stroke="#a69f92" stroke-width=".8"/></svg>';
     const seam='<svg class="cloth-needle" viewBox="0 0 300 16" preserveAspectRatio="none" aria-hidden="true"><path d="M6 10q32-.7 56 .2t50-.4 74 .3 57-.3 51-.4" fill="none" stroke="#ced9d8" stroke-width="1.3" stroke-dasharray="4 3 3.1 2.5 4.4 3"/><path d="m10 9 2 2m2-3 2 2m261-2 4 1.5m2-2 3 2" fill="none" stroke="#3d5362" stroke-width="1.1"/></svg>';
-    return rear+(calendarStyle==='linen'?seam:bindingDrawing(calendarStyle));
+    return calendarStyle==='linen'?seam:bindingDrawing(calendarStyle);
   }
   const sketches={
     flutter:'<path d="m7 27 20-19 6 6-21 19-8 2 3-8Zm0 0 5 6m13-23 6 6M15 33q10-6 17-4t16-3"/>',

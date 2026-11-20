@@ -1642,27 +1642,33 @@ html[data-theme=dark] .illustrated-greeting .night-sky{color:#c9cde6}
  .gust-mark{animation:gust-ink 2.88s steps(1,end) infinite;animation-delay:calc(var(--frame) * .18s)}
  @keyframes gust-ink{0%,6.24%{visibility:visible}6.25%,100%{visibility:hidden}}
  .gust-crystal{animation:catch-a-gust 2.88s steps(1,end) infinite}
+ /* The outer pose carries the centre on the wind. Each gust hands the next
+    arm its place at the top, so the crystal can settle without rewinding. */
+ .crystal-roll{animation:crystal-index 17.28s steps(6,end) infinite}
+ @keyframes crystal-index{to{transform:rotate(360deg)}}
  @keyframes catch-a-gust{
-  0%,16%{transform:translate(-1px,1px) rotate(-7deg)}
-  22%{transform:translate(-1px,0) rotate(-9deg)}
-  28%{transform:translate(0,-1px) rotate(-5deg)}
-  34%{transform:translate(2px,-2px) rotate(1deg)}
-  40%{transform:translate(4px,-3px) rotate(9deg)}
-  46%{transform:translate(5px,-3px) rotate(14deg)}
-  53%{transform:translate(5px,-2px) rotate(17deg)}
-  61%{transform:translate(4px,-1px) rotate(15deg)}
-  69%{transform:translate(3px,0) rotate(10deg)}
-  77%{transform:translate(2px,1px) rotate(3deg)}
-  84%{transform:translate(1px,2px) rotate(-2deg)}
-  92%{transform:translate(0,1px) rotate(-5deg)}
+  0%,12%{transform:translate(-2px,1px) rotate(-5deg)}
+  17%{transform:translate(-2px,1px) rotate(-7deg)}
+  23%{transform:translate(-1px,.5px) rotate(-6deg)}
+  28%{transform:translate(0,0) rotate(-2deg)}
+  33%{transform:translate(2px,-1.5px) rotate(6deg)}
+  38%{transform:translate(4px,-3px) rotate(19deg)}
+  43%{transform:translate(6px,-4px) rotate(35deg)}
+  49%{transform:translate(7px,-4px) rotate(49deg)}
+  55%{transform:translate(7px,-3px) rotate(58deg)}
+  62%{transform:translate(6px,-2px) rotate(63deg)}
+  70%{transform:translate(4px,-.5px) rotate(62deg)}
+  77%{transform:translate(2px,1px) rotate(59deg)}
+  84%{transform:translate(0,1.8px) rotate(56deg)}
+  93%,100%{transform:translate(-2px,1px) rotate(55deg)}
  }
 }
 
 .seasonal-margin{width:85px;height:54px;top:-3px}
 .margin-cel{visibility:hidden}.margin-cel.still{visibility:visible}
 @media(prefers-reduced-motion:no-preference){
- .margin-cel{animation:margin-exposure var(--cycle) var(--delay) steps(1,end) infinite}
- @keyframes margin-exposure{0%{visibility:visible}8.333333%,100%{visibility:hidden}}
+ .margin-cel{animation:margin-exposure var(--cycle) var(--delay) linear(0,0 var(--hold),1 var(--hold),1) infinite}
+ @keyframes margin-exposure{from{visibility:visible}to{visibility:hidden}}
  .flurry-far{animation:february-drift 3.1s -.9s steps(1,end) infinite}
  .flurry-near{animation:february-drift 3.6s -2s steps(1,end) infinite}
  @keyframes february-drift{
