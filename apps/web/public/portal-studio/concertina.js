@@ -52,90 +52,92 @@ const concertinaCels = {
     ink:'M179 105q17-21 23-43m22-23 16 2M21 179q24-1 49-8m178-54 17-12',
     register:[97,89,72,186,163,123]
   },
+  // The fold travels up the print. The top of the sheet stays fixed under
+  // the binding. Face and verso close along the same cut edge, right to left.
   sweep: {
-    cast:'M0 148C101 160 245 106 301 43Q295 67 250 98C169 145 75 161 0 153Z',
-    face:'M.4 0H300L301 43C263 83 201 117 115 138Q49 155 -2 148Q1.5 83 .4 0Z',
-    back:'M-2 148C53 132 98 112 139 75C167 49 174 16 176 5C229 5 274 19 301 43C264 83 201 118 115 138Q47 154 -2 148Z',
-    lip:'M176 5Q257 4 301 43Q296 50 284 58C285 44 245 17 178 10Z',
-    ink:'M144 67q17-18 24-42m17-16 22 1M16 145q25-3 43-9m169-50 25-13',
-    register:[87,75,54,159,130,90]
+    cast:'M0 148C101 160 245 106 300 43Q295 67 250 98C169 145 75 161 0 153Z',
+    face:'M0 0H300V43',
+    back:'M0 148C53 132 98 112 139 75C167 49 174 16 176 5C229 5 274 19 300 43',
+    edge:'C264 83 201 118 115 138Q47 154 0 148Z',
+    lip:'M176 5Q257 4 300 43Q296 50 284 58C285 44 245 17 178 10Z',
+    ink:'M144 67q17-18 24-42m17-16 22 1M16 145q25-3 43-9m169-50 25-13'
   },
   swing: {
-    cast:'M0 108C99 120 239 68 301 23Q293 41 253 67C176 106 69 123 0 113Z',
-    face:'M1.4 0H300L301 23C264 52 201 85 111 102Q43 115 .3 108Q3 54 1.4 0Z',
-    back:'M.3 108C37 87 87 57 109 30Q131 2 136 -16C203 -20 265 -1 301 23C260 55 197 85 111 102Q46 115 .3 108Z',
-    lip:'M136 -16C199 -21 262 -4 301 23L286 33C273 12 205 -11 135 -11Z',
-    ink:'M92 47q22-21 32-42m30-19 18 0M17 106q27-4 52-12m169-41 23-12',
-    register:[67,51,35,115,94,57]
+    cast:'M0 108C99 120 239 68 300 23Q293 41 253 67C176 106 69 123 0 113Z',
+    face:'M0 0H300V23',
+    back:'M0 108C37 87 87 57 109 30Q131 2 136 -16C203 -20 265 -1 300 23',
+    edge:'C260 55 197 85 111 102Q46 115 0 108Z',
+    lip:'M136 -16C199 -21 262 -4 300 23L286 33C273 12 205 -11 135 -11Z',
+    ink:'M92 47q22-21 32-42m30-19 18 0M17 106q27-4 52-12m169-41 23-12'
   },
   crest: {
     cast:'M0 68Q135 85 300 9Q296 20 265 35C174 73 62 84 0 72Z',
-    face:'M3.6 0Q20 1 43 0H300V9C252 31 192 54 108 66Q39 76 1.8 68Q5.6 36 3.6 0Z',
-    back:'M1.8 68Q36 43 68 7Q86 -11 97 -32C172 -43 256 -21 300 9C250 35 184 57 108 66Q38 76 1.8 68Z',
+    face:'M0 0H300V9',
+    back:'M0 68Q36 43 68 7Q86 -11 97 -32C172 -43 256 -21 300 9',
+    edge:'C250 35 184 57 108 66Q38 76 0 68Z',
     lip:'M97 -32C169 -42 247 -24 300 9L285 16C259 -8 169 -34 96 -27Z',
-    ink:'M58 20q13-15 21-27m39-24q19-3 35-2M18 67q30 0 59-6m151-25 20-9',
-    register:[42,28,16,76,54,28]
+    ink:'M58 20q13-15 21-27m39-24q19-3 35-2M18 67q30 0 59-6m151-25 20-9'
   },
   crown: {
     cast:'M0 32C86 50 216 29 300 0Q262 22 194 36Q62 54 0 35Z',
-    face:'M6 2Q24 3 55 0H292C226 20 150 34 86 37Q36 41 4.5 32Q7.5 16 6 2Z',
-    back:'M4.5 32Q27 13 54 -24Q60 -33 65 -40C144 -56 242 -38 299 -1C224 26 145 38 78 38Q30 40 4.5 32Z',
-    lip:'M65 -40C145 -55 240 -38 299 -1L283 5C247 -21 145 -48 64 -35Z',
-    ink:'M29 7q13-13 22-28m28-17q20-5 42-6M24 33q28 2 54-1m145-17 13-4',
-    register:[22,11,3,39,20,4]
+    face:'M0 0H300',
+    back:'M0 32Q27 13 54 -24Q60 -33 65 -40C144 -56 242 -38 300 0',
+    edge:'C224 26 145 38 78 38Q30 40 0 32Z',
+    lip:'M65 -40C145 -55 240 -38 300 0L283 5C247 -21 145 -48 64 -35Z',
+    ink:'M29 7q13-13 22-28m28-17q20-5 42-6M24 33q28 2 54-1m145-17 13-4'
   },
   cross: {
-    cast:'M0 6Q116 24 263 0Q204 17 132 19Q41 20 0 8Z',
-    face:'M8 3Q31 4 65 0H201Q112 15 49 12Q21 11 7.5 8Z',
-    back:'M7.5 8Q19 0 27 -18Q34 -33 41 -43C129 -61 225 -46 297 -9C230 7 124 16 47 12Q23 12 7.5 8Z',
-    lip:'M41 -43C137 -60 229 -45 297 -9L278 -5C219 -36 119 -53 40 -38Z',
-    ink:'M17 -8q10-12 15-24m33-10q28-5 53-5M47 9q20 2 38 0',
-    register:[7,2,0,15,5,0]
+    cast:'M0 8Q116 24 300 0Q204 17 132 19Q41 20 0 10Z',
+    face:'M0 0H300',
+    back:'M0 8Q14 0 25 -18Q34 -33 41 -43C129 -61 225 -46 300 0',
+    edge:'C230 8 124 18 47 13Q23 12 0 8Z',
+    lip:'M41 -43C137 -60 229 -45 300 0L278 2C219 -36 119 -53 40 -38Z',
+    ink:'M17 -8q10-12 15-24m33-10q28-5 53-5M47 9q20 2 38 0'
   },
   hinge: {
-    back:'M9.5 .6C11.5 -10 19 -30 26 -40C108 -59 219 -48 296 -13Q225 -4 151 -1Q64 4 12.5 2.1Z',
-    lip:'M26 -40C128 -62 232 -43 296 -13L281 -11C212 -40 119 -51 25 -35Z',
-    ink:'M15 -13l6-14m27-14q28-5 51-5M226 -28q16 4 27 9'
+    back:'M0 1Q8 -19 26 -44C108 -63 219 -50 300 0Q226 1 151 3Q64 5 0 1Z',
+    lip:'M26 -44C128 -66 232 -47 300 0L281 .4C212 -40 119 -55 25 -39Z',
+    ink:'M11 -15l10-15m27-15q28-5 51-5M226 -28q16 4 27 9'
   },
-  // The last drawings use binding coordinates: 0 is the TOP seam and
-  // 28 is the bottom. The right corner crosses last, then falls away behind.
+  // These drawings use binding coordinates: 0 is the top, 28 the bottom.
+  // The last sliver clears the bottom seam as the arc crests behind the top.
   loosen: {
-    rim:'M10.5 27.8Q12.5 18 23.5-4C100-20 222-13.5 296.5 16Q225 23.7 154 26.6Q58 31 10.5 27.8Z',
-    ridge:'M24-3.5Q100-18 171-11M15 26.8q31 2.1 55 .3'
+    rim:'M0 28Q8 7 24 -6C102 -23 220 -14 300 21Q222 28 152 29Q59 31 0 28Z',
+    ridge:'M32 -6.1C72 -13.6 125 -15.7 161 -13.5M13 28q31 2 55 .3'
   },
   over: {
-    rim:'M12 24Q16 12 24 1C81-11 196-10 260 3Q281 7 297 13Q199 13 98 22Q44 27 12 24Z',
-    ridge:'M24 1C93-12 205-7 264 5M15 23q32 1 58-3'
+    rim:'M0 24Q10 7 24 -6.5C92 -23 208 -18 300 14Q205 15 101 23Q45 26 0 24Z',
+    ridge:'M33 -7C81 -17.3 149 -17.4 199 -12.9'
   },
   crestOver: {
-    rim:'M14 15Q17 5 23-1.1C83-12 201-11 266-.2Q288 4 298 8Q212 6 133 10Q46 18 14 15Z',
-    ridge:'M18-1Q104-12 192-7m46 2 29 4'
+    rim:'M4 15Q14 2 25 -6C92 -22 207 -18 271 -3Q289 1 300 8Q212 6 133 10Q46 18 4 15Z',
+    ridge:'M33 -6Q104 -21 189 -13m47 5 30 6'
   },
   clearLeft: {
-    rim:'M17 4Q20-2 26-4C88-13 211-11 265-4Q290-.6 299 4Q243 2 181 3Q80 7 17 4Z',
-    ridge:'M23-4q59-8 108-6m106 4q25 1 43 5'
+    rim:'M10 6Q18 -2 29 -6C92 -20 211 -16 266 -6Q290 -2 300 4Q243 2 181 3Q80 7 10 6Z',
+    ridge:'M32 -5q59 -12 108 -10m96 7q25 2 43 6'
   },
   tipOver: {
-    rim:'M20-.4Q25-6 34-7C125-15 220-10 267-5Q288-3 298 .8Q261-.6 213-.5Q96 2 20-.4Z',
-    ridge:'M30-6Q84-13 154-10'
+    rim:'M20 1Q25 -4 34 -7C125 -17 220 -13 267 -6Q288 -3 298 .8Q261 -.6 213 -.5Q96 2 20 1Z',
+    ridge:'M37 -6Q84 -15 154 -12'
   },
   drop: {
-    rear:'M23 4Q29-3 40-6C108-12 211-10 264-4Q288-2 296 3L296 8H23Z',
+    rim:'M23 4Q29-3 40-6C108-12 211-10 264-4Q288-2 296 3L296 8H23Z',
     ridge:'M40-6q52-5 91-4'
   },
   tuck: {
-    rear:'M18 6Q49 1 78-3C129-9 208-9 255-4Q278-2 294 3V9H18Z',
+    rim:'M18 6Q49 1 78-3C129-9 208-9 255-4Q278-2 294 3V9H18Z',
     ridge:'M108-5q50-6 100-2'
   },
   glint: {
-    rear:'M62 6Q98 3 139-.8Q192-7 237-3.8Q267-2 290 2V8H62Z',
+    rim:'M62 6Q98 3 139-.8Q192-7 237-3.8Q267-2 290 2V8H62Z',
     ridge:'M164-2q33-4 62-1'
   },
   slip: {
-    rear:'M145 5Q172 2 201-.8Q231-4 262-.6L285 3V7H145Z'
+    rim:'M145 5Q172 2 201-.8Q231-4 262-.6L285 3V7H145Z'
   },
   restEdge: {
-    rear:'M194 4q23-4 51-4.7 18 .4 32 2.7v4Z'
+    rim:'M194 4q23-4 51-4.7 18 .4 32 2.7v4Z'
   },
   // On the return the bowed lower edge lands first at the left. The lifted
   // right corner hesitates for a beat before the familiar little closing cels.
@@ -240,8 +242,8 @@ function turnConcertina(stack,oldPaper,forward,oldStock,oldBinding) {
       <g clip-path="url(#${id}-below)">${pencilLayer}</g>
       <g class="leaf-crown"><g clip-path="url(#${id}-above)">${pencilLayer}</g></g>
     </svg><svg class="binding-turn" viewBox="0 -16 300 44" preserveAspectRatio="none" fill="none" aria-hidden="true">
-      <defs><clipPath id="${id}-rear"><rect x="0" y="-16" width="300" height="16"/></clipPath></defs>
-      <g class="rim-drawing"><path class="rim-stock"/><path class="rim-pencil"/></g>
+      <defs><clipPath id="${id}-rim"><use href="#${id}-rim-stock"/></clipPath></defs>
+      <path class="rim-stock" id="${id}-rim-stock"/><path class="rim-pencil" clip-path="url(#${id}-rim)"/>
     </svg>`;
   const face=layer.querySelector('.leaf-face');
   const ground=layer.querySelector('.leaf-ground');
@@ -257,7 +259,6 @@ function turnConcertina(stack,oldPaper,forward,oldStock,oldBinding) {
   const clip=layer.querySelector('clipPath path');
   const rim=layer.querySelector('.binding-turn');
   rim.style.height=(44/28*binding.offsetHeight)+'px';
-  const rimDrawing=rim.querySelector('g');
   const rimStock=rim.querySelector('.rim-stock');
   const rimPencil=rim.querySelector('.rim-pencil');
   const paths=Object.entries({cast:'.leaf-cast',back:'.leaf-back',lip:'.leaf-lip',ink:'.leaf-crease'})
@@ -282,18 +283,19 @@ function turnConcertina(stack,oldPaper,forward,oldStock,oldBinding) {
     const [name,hold]=exposures[n];
     const cel=concertinaCels[name];
     face.hidden=!cel.face;
+    layer.classList.toggle('bound-fold',Boolean(cel.edge || !cel.face));
     if(cel.face){
-      clip.setAttribute('d',cel.face);
-      registerInk(cel.register);
+      clip.setAttribute('d',cel.face+(cel.edge || ''));
+      // Once the flap spans the sheet, it covers the already-registered ink.
+      registerInk(cel.edge ? concertinaCels.belly.register : cel.register);
     }
     for(const [part,strokes] of paths){
-      for(const stroke of strokes) stroke.setAttribute('d',cel[part] || '');
+      const path=(cel[part] || '')+(part==='back' ? cel.edge || '' : '');
+      for(const stroke of strokes) stroke.setAttribute('d',path);
     }
-    rimStock.setAttribute('d',cel.rim || cel.rear || '');
+    rimStock.setAttribute('d',cel.rim || '');
     rimPencil.setAttribute('d',cel.ridge || '');
-    if(cel.rear) rimDrawing.setAttribute('clip-path',`url(#${id}-rear)`);
-    else rimDrawing.removeAttribute('clip-path');
-    const mix=cel.rim || cel.rear ? 100 : ({swing:14,crest:32,crown:53,cross:73,hinge:89}[name] || 0);
+    const mix=cel.rim ? 100 : ({swing:14,crest:32,crown:53,cross:73,hinge:89}[name] || 0);
     const landed=forward?mix:100-mix;
     binding.style.backgroundColor=`color-mix(in srgb,${oldBinding} ${100-landed}%,${newBinding})`;
     showFlipExposure(layer,n,exposures.length,hold,draw);

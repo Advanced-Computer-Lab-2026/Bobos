@@ -1,7 +1,11 @@
 .concertina-turn > svg {
   clip-path: inset(-68% -2% -2px);
 }
-.concertina-turn .leaf-back {
+.concertina-turn.bound-fold > svg:first-of-type {
+  clip-path: inset(-68% 0 -2px);
+}
+.concertina-turn .leaf-back,
+.concertina-turn .rim-stock {
   fill: color-mix(in srgb, var(--leaf-stock) 92%, #a49984);
   stroke: color-mix(in srgb, var(--leaf-stock) 43%, #514c45);
   stroke-width: 1.05;
@@ -9,7 +13,8 @@
 .concertina-turn .leaf-lip {
   fill: color-mix(in srgb, var(--leaf-stock) 76%, #958775);
 }
-.concertina-turn .leaf-crease {
+.concertina-turn .leaf-crease,
+.concertina-turn .rim-pencil {
   fill: none;
   stroke: color-mix(in srgb, var(--leaf-stock) 53%, #746a5c);
   stroke-width: .9;
@@ -19,14 +24,13 @@
   opacity: .13;
 }
 .teaching-pad:has(.concertina-turn) .calendar-feature {
-  isolation: isolate;
+  z-index: 1;
 }
 
 .teaching-pad[data-concertina=true] .calendar-feature{overflow:hidden}
 .teaching-pad[data-concertina=true] .calendar-heading{margin-bottom:21px}
 .turn-cels>svg.binding-turn{inset:auto 0 100%;overflow:visible;clip-path:none}
-.rim-stock{fill:color-mix(in srgb,var(--leaf-stock) 92%,#a49984);stroke:#aaa294;stroke-width:.8;vector-effect:non-scaling-stroke}
-.rim-pencil{fill:none;stroke:#afa89c;stroke-width:.8;vector-effect:non-scaling-stroke}
+.concertina-turn .rim-stock,.concertina-turn .rim-pencil{stroke-width:.8;vector-effect:non-scaling-stroke}
 .teaching-pad[data-calendar-style=linen] .calendar-feature{background-image:repeating-linear-gradient(7deg,transparent 0 4px,#dce2d418 4px 4.8px,transparent 4.8px 7px),repeating-linear-gradient(94deg,transparent 0 5px,#2d47541b 5px 5.8px)}
 .teaching-pad[data-calendar-style=linen] .calendar-feature::before{display:none!important}
 .teaching-pad .calendar-feature .cloth-needle{position:absolute;left:0;bottom:0;width:100%;height:16px;max-width:none;animation:none}
