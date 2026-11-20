@@ -51,15 +51,92 @@
   .activity-stamp { width: 65px; }
   .impression-copy strong { font-size: 22px; }
 }
-@media (prefers-reduced-motion: no-preference) {
-  .activity-impression:is(:hover, :focus-visible) .stamp-face { animation: impression-settle 420ms ease-out both; }
-  .activity-impression:is(:hover, :focus-visible) .stamp-letter .stamp-motion { animation: impression-deliver 600ms ease-out both; }
-  .activity-impression:is(:hover, :focus-visible) .stamp-pen .stamp-motion { animation: impression-write 600ms ease-in-out both; }
-  .activity-impression:is(:hover, :focus-visible) .stamp-press .stamp-motion { animation: impression-print 540ms ease-out both; }
-  @keyframes impression-settle { 45% { transform: translateY(-2px) rotate(0); } }
-  @keyframes impression-deliver { 35% { transform: translateY(-4px); } 75% { transform: translateY(1px); } }
-  @keyframes impression-write { 25% { transform: translate(-3px, 1px); } 55% { transform: translate(2px, -1px); } 80% { transform: translate(4px, -3px); } }
-  @keyframes impression-print { 28% { transform: translateY(-2px); } 55%, 68% { transform: translateY(5px); } }
-}
 .activity-log .activity-day:not(:has(li:not([hidden]))) { display: none; }
 .activity-log [data-search-row][hidden] { display: none; }
+
+.dashboard-edition .activity-heading {flex-wrap:wrap;row-gap:8px}
+.dashboard-edition .activity-heading .edition-picker {margin:0 0 0 auto}
+.activity-stamp {--stamp-shade:color-mix(in srgb,var(--stamp-stock) 70%,var(--stamp-ink));--stamp-paper:color-mix(in srgb,var(--stamp-stock) 22%,#f1e9d9)}
+.impression-cel {display:none}
+.impression-cel:first-child {display:inline}
+.activity-edition .activity-impression,.activity-edition .activity-impression *{transition:none}
+@media (prefers-reduced-motion:no-preference){
+  .activity-impression:is(:hover,:focus-visible) .impression-cel {
+    display:inline;animation:activity-ink 1150ms var(--delay) steps(1,end) infinite
+  }
+  @keyframes activity-ink{0%{visibility:visible}10%,100%{visibility:hidden}}
+}
+
+/* A carbon form keeps the registration mark, time and signature on one slip. */
+[data-activity-style=copies] .activity-impressions{gap:20px;padding:10px 5px 9px 0}
+[data-activity-style=copies] .activity-impression:any-link{
+  position:relative;isolation:isolate;align-items:flex-start;gap:10px;padding:14px 14px 13px;
+  color:#393e49;background:#e3e5df;border-radius:2px;box-shadow:2px 3px #8d9caa,4px 5px #657883
+}
+[data-activity-style=copies] li:nth-child(2) .activity-impression{background:#e7e1d3}
+[data-activity-style=copies] li:nth-child(3) .activity-impression{background:#e6e4d8}
+[data-activity-style=copies] .activity-stamp{width:49px;margin-top:3px}
+[data-activity-style=copies] time,[data-activity-style=copies] .impression-byline{color:#545a61;font:11px/1.45 'Courier New',monospace}
+[data-activity-style=copies] .impression-copy{gap:7px}
+[data-activity-style=copies] .impression-copy strong{font:600 17px/1.24 Styrene,system-ui,sans-serif;letter-spacing:-.03em}
+
+/* The daybook groups the same records by their actual dates. */
+.activity-daybook{display:grid;grid-template-columns:78px minmax(0,1fr);gap:16px;align-items:start}
+.activity-daybook+.activity-daybook{margin-top:12px}
+.dashboard-edition .activity-daybook h3{font:italic 19px/1.2 Tiempos,Georgia,serif;margin:16px 0 0;color:var(--muted)}
+.activity-daybook .activity-impressions{display:block;padding:0}
+.activity-daybook .activity-impression:any-link{min-height:50px;display:grid;grid-template-columns:40px 1fr;gap:11px;border-bottom:1px solid var(--line);border-radius:0}
+.activity-daybook .activity-stamp{width:40px}
+.activity-daybook .impression-copy{display:grid;grid-template-columns:44px minmax(150px,.9fr) minmax(100px,1fr);align-items:baseline;gap:12px}
+.activity-daybook .impression-copy strong{font-size:19px}
+.activity-daybook .stamp-cut{stroke:var(--stamp-ink);stroke-width:2}
+
+/* A continuous strip of film, with sprocket holes on both long edges. */
+[data-activity-style=film] .activity-impressions{
+  position:relative;gap:0;padding:20px 10px;border-radius:3px;isolation:isolate;
+  background:#373c40;color:#f3efe3
+}
+[data-activity-style=film] .activity-impressions::before,[data-activity-style=film] .activity-impressions::after{
+  content:"";position:absolute;left:9px;right:9px;height:5px;
+  background:repeating-linear-gradient(90deg,var(--canvas) 0 7px,transparent 7px 19px)
+}
+[data-activity-style=film] .activity-impressions::before{top:6px}
+[data-activity-style=film] .activity-impressions::after{bottom:6px}
+[data-activity-style=film] .activity-impression:any-link{align-items:center;gap:10px;min-height:77px;padding:0 12px;color:inherit}
+[data-activity-style=film] li+li{border-left:1px solid #787974}
+[data-activity-style=film] .activity-stamp{width:62px}
+[data-activity-style=film] time,[data-activity-style=film] .impression-byline{color:#d1cfc5}
+[data-activity-style=film] .impression-copy strong{font:500 17px/1.23 Styrene,system-ui,sans-serif}
+
+[data-activity-style=tabs] .activity-impressions{border-top:2px solid var(--line);padding:0;gap:23px}
+[data-activity-style=tabs] .activity-impression:any-link{align-items:flex-start;gap:9px}
+[data-activity-style=tabs] .activity-stamp{width:67px;margin-top:-2px}
+[data-activity-style=tabs] .stamp-face,[data-activity-style=film] .stamp-face{transform:none}
+[data-activity-style=tabs] .impression-copy{padding-top:16px}
+[data-activity-style=tabs] .impression-byline{margin-top:3px}
+
+[data-activity-style=specimens] .activity-impressions{grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+[data-activity-style=specimens] .activity-impression:any-link{display:grid;grid-template-columns:auto 1fr;align-items:end;gap:0 10px}
+[data-activity-style=specimens] .activity-stamp{width:87px;grid-row:1;grid-column:1}
+[data-activity-style=specimens] .impression-copy{display:contents}
+[data-activity-style=specimens] .impression-copy time{grid-row:1;grid-column:2;align-self:center;font:12px/1.3 'Courier New',monospace}
+[data-activity-style=specimens] .impression-copy strong{grid-column:1 / -1;padding:8px 0 0}
+[data-activity-style=specimens] .impression-byline{grid-column:1 / -1}
+
+@container recent-activity (max-width:780px){
+  [data-activity-style=film] li+li{border-left:0;border-top:1px solid #575b5c}
+  [data-activity-style=tabs] .activity-impressions{border-top:0;gap:4px}
+  [data-activity-style=tabs] .activity-stamp{margin-top:5px;width:60px}
+  [data-activity-style=specimens] .activity-impressions{grid-template-columns:1fr;gap:12px}
+  [data-activity-style=specimens] .activity-impression:any-link{grid-template-columns:76px 1fr;align-items:center;gap:3px 13px}
+  [data-activity-style=specimens] .activity-stamp{width:76px;grid-row:1 / span 3}
+  [data-activity-style=specimens] .impression-copy strong,[data-activity-style=specimens] .impression-byline{grid-column:2;padding:0}
+  .activity-daybook{grid-template-columns:52px minmax(0,1fr);gap:5px}
+  .activity-daybook .impression-copy{display:flex;flex-wrap:wrap;align-items:baseline;gap:3px 7px}
+  .activity-daybook .impression-byline{flex-basis:100%}
+  .activity-daybook .activity-impression:any-link{min-height:70px}
+}
+@container recent-activity (max-width:420px){
+  .dashboard-edition .activity-heading .edition-picker{font-size:0;gap:0}
+  .activity-heading select{max-width:125px;font-size:12px}
+}

@@ -1673,3 +1673,4 @@ html[data-theme=dark] .illustrated-greeting .night-sky{color:#c9cde6}
  .april-grass{transform-origin:24px 46px;animation:april-breeze 3.6s steps(1,end) infinite}
  @keyframes april-breeze{21%{transform:skewX(-2deg)}34%{transform:skewX(-5deg)}46%{transform:skewX(-6deg)}59%{transform:skewX(-3deg)}75%{transform:skewX(2deg)}89%{transform:skewX(1deg)}}
 }
+@media(prefers-reduced-motion:no-preference){.pine-flurry{animation:february-drift 3.6s -.9s steps(1,end) infinite}}

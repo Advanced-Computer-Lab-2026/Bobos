@@ -97,24 +97,41 @@ const concertinaCels = {
     lip:'M22 -41C128 -64 232 -43 296 -13L281 -11C212 -40 119 -51 21 -36Z',
     ink:'M12 -13l6-14m27-14q28-5 51-5M226 -28q16 4 27 9'
   },
+  // The last drawings use binding coordinates: 0 is the TOP seam and
+  // 28 is the bottom. The right corner crosses last, then falls away behind.
   over: {
-    back:'M2 -2Q5 -22 10 -35C87 -58 211 -46 296 -16Q191 -8 111 -4Q49 -1 2 -2Z',
-    lip:'M10 -35C112 -64 232 -39 296 -16L273 -14C200 -39 91 -48 9 -31Z',
-    ink:'M21 -35q23-8 51-10m148 15 15 4'
+    rim:'M3 25Q9 12 18 2C81-11 196-10 260 3Q281 7 297 13Q199 13 98 22Q43 27 3 25Z',
+    ridge:'M18 2C93-12 205-7 264 5M5 24q34 0 68-4'
+  },
+  crestOver: {
+    rim:'M4 15Q8 7 14-.3C83-12 201-11 266-.2Q288 4 298 8Q212 6 133 10Q42 17 4 15Z',
+    ridge:'M18-1Q104-12 192-7m46 2 29 4'
+  },
+  clearLeft: {
+    rim:'M5 3Q9-2 15-4C88-13 211-11 265-4Q290-.6 299 4Q243 2 181 3Q80 7 5 3Z',
+    ridge:'M23-4q59-8 108-6m106 4q25 1 43 5'
+  },
+  tipOver: {
+    rim:'M8-.8Q16-6 29-7C125-15 220-10 267-5Q288-3 298 .8Q261-.6 213-.5Q91 1.8 8-.8Z',
+    ridge:'M30-6Q84-13 154-10'
   },
   drop: {
-    back:'M2 -10L6 -26C84 -47 190 -48 294 -19Q215 -15 124 -12Q61 -8 2 -10Z',
-    lip:'M6 -26C88 -51 206 -44 294 -19L268 -18C185 -38 88 -39 6 -23Z',
-    ink:'M38 -30q24-6 47-7m117 6 11 1'
+    rear:'M8 4Q18-3 34-6C108-12 211-10 264-4Q288-2 296 3L296 8H8Z',
+    ridge:'M40-6q52-5 91-4'
   },
   tuck: {
-    back:'M3 -18L5 -21C103 -36 197 -39 294 -20Q215 -19 117 -17Q50 -16 3 -18Z',
-    lip:'M5 -21Q148 -49 294 -20L270 -20Q144 -40 5 -19Z',
-    ink:'M74 -27q28-4 50-4'
+    rear:'M18 6Q49 1 78-3C129-9 208-9 255-4Q278-2 294 3V9H18Z',
+    ridge:'M108-5q50-6 100-2'
+  },
+  glint: {
+    rear:'M62 6Q98 3 139-.8Q192-7 237-3.8Q267-2 290 2V8H62Z',
+    ridge:'M164-2q33-4 62-1'
   },
   slip: {
-    back:'M4 -20Q139 -36 293 -20Q160 -15 4 -20Z',
-    ink:'M144 -26q25-1 44 1'
+    rear:'M145 5Q172 2 201-.8Q231-4 262-.6L285 3V7H145Z'
+  },
+  restEdge: {
+    rear:'M194 4q23-4 51-4.7 18 .4 32 2.7v4Z'
   },
   // On the return the bowed lower edge lands first at the left. The lifted
   // right corner hesitates for a beat before the familiar little closing cels.
@@ -139,10 +156,10 @@ const concertinaCels = {
 const concertinaLift = [
   ['nick',34],['dogear',38],['tug',35],['peel',41],['hook',43],['gather',39],
   ['belly',37],['sweep',33],['swing',33],['crest',33],['crown',37],['cross',38],
-  ['hinge',42],['over',45],['drop',40],['tuck',39],['slip',38]
+  ['hinge',42],['over',38],['crestOver',36],['clearLeft',36],['tipOver',42],['drop',47],['tuck',46],['glint',44],['slip',47],['restEdge',40]
 ];
 const concertinaLower = [
-  ['slip',32],['tuck',36],['drop',38],['over',41],['hinge',44],['cross',39],
+  ['restEdge',31],['slip',34],['glint',34],['tuck',36],['drop',38],['tipOver',38],['clearLeft',34],['crestOver',32],['over',37],['hinge',44],['cross',39],
   ['crown',36],['crest',34],['swing',32],['sweep',32],['belly',34],['gather',37],
   ['land',43],['bounce',43],['tug',36],['dogear',43],['nick',48],['flat',38]
 ];
@@ -211,12 +228,15 @@ function turnConcertina(stack,oldPaper,forward,oldStock,oldBinding) {
   layer.innerHTML='<div class="leaf-ground"></div><div class="leaf-face"></div>'+
     `<svg viewBox="0 0 300 200" preserveAspectRatio="none" fill="none" aria-hidden="true">
       <defs><clipPath id="${id}" clipPathUnits="objectBoundingBox"><path transform="scale(.003333333333 .005)"/></clipPath>
-      <clipPath id="${id}-binding"><rect x="-15" y="-100" width="330" height="315"/></clipPath>
+
       <clipPath id="${id}-above"><rect x="-15" y="-100" width="330" height="100"/></clipPath>
       <clipPath id="${id}-below"><rect x="-15" y="0" width="330" height="215"/></clipPath>
       </defs>
-      <g clip-path="url(#${id}-below)"><g clip-path="url(#${id}-binding)">${pencilLayer}</g></g>
-      <g class="leaf-crown"><g clip-path="url(#${id}-above)"><g clip-path="url(#${id}-binding)">${pencilLayer}</g></g></g>
+      <g clip-path="url(#${id}-below)">${pencilLayer}</g>
+      <g class="leaf-crown"><g clip-path="url(#${id}-above)">${pencilLayer}</g></g>
+    </svg><svg class="binding-turn" viewBox="0 -16 300 44" preserveAspectRatio="none" fill="none" aria-hidden="true">
+      <defs><clipPath id="${id}-rear"><rect x="0" y="-16" width="300" height="16"/></clipPath></defs>
+      <g class="rim-drawing"><path class="rim-stock"/><path class="rim-pencil"/></g>
     </svg>`;
   const face=layer.querySelector('.leaf-face');
   const ground=layer.querySelector('.leaf-ground');
@@ -230,7 +250,11 @@ function turnConcertina(stack,oldPaper,forward,oldStock,oldBinding) {
   const registerInk=concertinaPrint(leaf,stack);
   face.style.clipPath=`url(#${id})`;
   const clip=layer.querySelector('clipPath path');
-  const bindingClip=layer.querySelector('clipPath rect');
+  const rim=layer.querySelector('.binding-turn');
+  rim.style.height=(44/28*binding.offsetHeight)+'px';
+  const rimDrawing=rim.querySelector('g');
+  const rimStock=rim.querySelector('.rim-stock');
+  const rimPencil=rim.querySelector('.rim-pencil');
   const paths=Object.entries({cast:'.leaf-cast',back:'.leaf-back',lip:'.leaf-lip',ink:'.leaf-crease'})
     .map(([part,selector])=>[part,layer.querySelectorAll(selector)]);
   const box=stack.getBoundingClientRect();
@@ -238,7 +262,7 @@ function turnConcertina(stack,oldPaper,forward,oldStock,oldBinding) {
   const headroom=box.top-title.bottom-3;
   const crownScale=Math.min(1,Math.max(.05,headroom/(box.height*54/200)));
   layer.querySelector('.leaf-crown').setAttribute('transform',`scale(1 ${crownScale})`);
-  const bindingDepth=200*binding.offsetHeight/(box.height*crownScale);
+
   const exposures=forward?concertinaLift:concertinaLower;
   function draw(n){
     if(!layer.isConnected)return;
@@ -256,10 +280,11 @@ function turnConcertina(stack,oldPaper,forward,oldStock,oldBinding) {
     for(const [part,strokes] of paths){
       for(const stroke of strokes) stroke.setAttribute('d',cel[part] || '');
     }
-    // The loose edge drapes over the cloth, then drops out of sight behind it.
-    const behind={over:.22,drop:.56,tuck:.83,slip:1}[name];
-    bindingClip.setAttribute('height',behind?100-behind*bindingDepth:315);
-    const mix={swing:14,crest:32,crown:53,cross:73,hinge:89,over:100,drop:100,tuck:100,slip:100}[name] || 0;
+    rimStock.setAttribute('d',cel.rim || cel.rear || '');
+    rimPencil.setAttribute('d',cel.ridge || '');
+    if(cel.rear) rimDrawing.setAttribute('clip-path',`url(#${id}-rear)`);
+    else rimDrawing.removeAttribute('clip-path');
+    const mix=cel.rim || cel.rear ? 100 : ({swing:14,crest:32,crown:53,cross:73,hinge:89}[name] || 0);
     const landed=forward?mix:100-mix;
     binding.style.backgroundColor=`color-mix(in srgb,${oldBinding} ${100-landed}%,${newBinding})`;
     setTimeout(()=>draw(n+1),hold);

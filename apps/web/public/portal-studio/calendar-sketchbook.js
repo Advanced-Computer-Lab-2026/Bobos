@@ -97,7 +97,7 @@ function inkScene(style,month){
    const fallen=path('M35 41q6-8 14-6-3 8-14 6Zm-3 3 12-7m8 7 7-2','class="autumn-leaf" fill="#bb855d"');
    art=path(blossomBranch)+[[21,16,.78],[33,18,.9],[38,10,.67],[51,9,.89],[59,11,.6],[63,18,.8]].map(p=>sprig(...p)).join('')+(month>=5&&month<8?cherries:month>=8&&month<11?fallen:'')+path('M49 26q4-4 5-1-1 4-5 1Zm9 6q2-2 4-1-1 3-4 1Z','class="weather-drift" fill="#e5b6b4"');
  }else if(style==='grove'){
-   art=`<g transform="translate(31 8) scale(.72)">${path(winterTree)}</g>${path(winterTree)}`+path('M9 46q10-3 18-1m5-1 16-2')+(winter?snow+path('m14 23 8 6m8-9 6-4','stroke="#fffdf2" stroke-width="2.5"'):(month===10?crystal:'')+sprig(16,16,.85)+sprig(35,11,.8)+path('M52 8q9-5 15-2m-12 5 8-1','class="wind-lines"'));
+   art=`<g transform="${winter?'translate(12 18) scale(.55)':'translate(31 8) scale(.72)'}">${path(winterTree)}</g>${path(winterTree)}`+path('M9 46q10-3 18-1m5-1 16-2')+(winter?snow+path('m14 23 8 6m8-9 6-4','stroke="#fffdf2" stroke-width="2.5"'):(month===10?crystal:'')+sprig(16,16,.85)+sprig(35,11,.8)+path('M52 8q9-5 15-2m-12 5 8-1','class="wind-lines"'));
  }else if(style==='meadow'){
    art=path('M4 45q17-3 35 0t28-2')+`<g class="wind-stems">${path('M25 44q6-15 6-23m-2 14q-7-2-9-9 8 2 9 9m1-7q5-6 10-6-4 7-10 6 M45 44q-1-9 4-16m-2 7 7-4')}${sprig(31,20,1.25)}${sprig(50,26,.75)}</g>`+path('M3 13q8-4 15-3m-10 8 8-2m35-8q7-3 14-1','class="wind-lines"');
  }else{

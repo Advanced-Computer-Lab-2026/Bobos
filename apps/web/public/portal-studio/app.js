@@ -291,6 +291,11 @@ function calendarStylePicker(){
   return `<label class="edition-picker">Calendar style <select data-calendar-picker>${options}</select></label>`;
 }
 function calendarFeature(){
+  if(isConcertina(calendarStyle)){
+    const rear='<svg class="rear-paper" viewBox="0 0 300 5" preserveAspectRatio="none" aria-hidden="true"><path d="M4 5Q35 2 94 3t92-.4Q247-.5 292 2.9l5 2.1Z" fill="var(--sheet)" stroke="#a69f92" stroke-width=".8"/></svg>';
+    const seam='<svg class="cloth-needle" viewBox="0 0 300 16" preserveAspectRatio="none" aria-hidden="true"><path d="M6 10q32-.7 56 .2t50-.4 74 .3 57-.3 51-.4" fill="none" stroke="#ced9d8" stroke-width="1.3" stroke-dasharray="4 3 3.1 2.5 4.4 3"/><path d="m10 9 2 2m2-3 2 2m261-2 4 1.5m2-2 3 2" fill="none" stroke="#3d5362" stroke-width="1.1"/></svg>';
+    return rear+(calendarStyle==='linen'?seam:'');
+  }
   const sketches={
     flutter:'<path d="m7 27 20-19 6 6-21 19-8 2 3-8Zm0 0 5 6m13-23 6 6M15 33q10-6 17-4t16-3"/>',
     snap:'<path d="m10 32 14-18m-11 20 14-18M24 14c-4-7 6-15 7-10 3 5 1 11-5 12ZM32 13l6-3m-8-8 2-2m2 16 7 1"/>',
@@ -479,28 +484,38 @@ const recentScheduleEvents = [
   {action:'Template published',subject:'Group 4',author:'Nadia Ahmed',date:'2026-11-19',time:'16:20',tone:'payment-complete',stamp:'press',caption:'Nadia Ahmed · Group 4',target:'template-detail'}
 ];
 
-function activityStamp(kind) {
-  const illustrations = {
-    letter:`<path class="stamp-motion" d="m15 27 18-12 18 10-17 12z" fill="var(--stamp-stock)"/><path d="m15 27 19 10 17-12 1 17-35 2z" fill="var(--stamp-stock)"/><path d="m17 42 12-11m21 10-11-10m-18 8 3-3m19 1 3 2M8 20l9-2m-10 6 7-1"/><path class="stamp-motion" d="m22 24 1-12 21 2-1 14-9 6z" fill="var(--stamp-stock)"/><path class="stamp-motion" d="m27 18 11 1m-12 3 8 1"/> `,
-    pen:`<path d="M10 40q6-5 10-1c4 5 6-6 10-2m-18 6 23-1"/><g class="stamp-motion"><path d="M24 37l3-11 16-17q3-2 6 1t1 5L34 32z" fill="var(--stamp-stock)"/><path d="m27 26 7 6m-5-9 7 6m4-17 7 6m-2-9 4 4m-3 5-9 9m-5 2-7 7"/><circle cx="30.5" cy="30.5" r="1.2"/></g>`,
-    press:`<path d="m12 37 30-2 9 6-31 3z" fill="var(--stamp-stock)"/><path d="m18 39 24-1m-23 4 20-1"/><g class="stamp-motion"><path d="M24 24q3-1 4-5c1-3-5-5-4-10s15-6 16-1-5 8-4 11q1 3 5 5z" fill="var(--stamp-stock)"/><path d="M18 24q13-3 27-1l2 6-31 2z" fill="var(--stamp-stock)"/><path d="m16 31 31-2-.1 3-31 2zm10-19q-1-3 3-5m3 9-2 5m-9 6 19-1"/></g>`
-  };
-  return `<svg class="activity-stamp stamp-${kind}" aria-hidden="true" viewBox="0 0 70 61"><g class="stamp-face">
-    <path class="stamp-edge" d="M5 4H65V56H5Z"/>
-    <path class="stamp-perfs" d="M5 4H65V56H5Z"/>
-    <path class="stamp-frame" d="m10 9 50-.5.5 42-51 .5z"/>
-    <g class="stamp-cut" transform="translate(3 3)">${illustrations[kind]}</g></g></svg>`;
-}
+const activityStyleKey='portal-activity-edition';
+const requestedActivity=params.get('activity') || localStorage.getItem(activityStyleKey);
+let activityStyle=Object.hasOwn(activityEditions,requestedActivity)?requestedActivity:'postage';
 
-function teachingActivity(canManage) {
-  const impressions = recentScheduleEvents.map(event=>{
-    const date = formatCalendarDay(event.date,{day:'numeric',month:'short'});
-    const target = event.stamp==='press' && !canManage ? 'student-schedules' : event.target;
-    const text = `<time datetime="${event.date}T${event.time}">${date} <span aria-hidden="true">·</span> ${event.time}</time><strong>${event.action}</strong><span class="impression-byline">${event.caption}</span>`;
-    return `<li>${link(target,activityStamp(event.stamp)+`<span class="impression-copy">${text}</span>`,'activity-impression',event.index)}</li>`;
-  }).join('');
-  return workspaceSection('Recent activity',canManage?'schedule-activity':'notifications',canManage?'View log':'Notifications',`<ol class="activity-impressions" role="list">${impressions}</ol>`);
+function teachingActivity(canManage){
+  const options=Object.entries(activityEditions).map(([key,label])=>
+    `<option value="${key}" ${key===activityStyle?'selected':''}>${label}</option>`).join('');
+  function entry(event){
+    const date=formatCalendarDay(event.date,{day:'numeric',month:'short'});
+    const target=event.stamp==='press' && !canManage?'student-schedules':event.target;
+    const when=`<time datetime="${event.date}T${event.time}">${activityStyle==='ledger'?'':date+' · '}${event.time}</time>`;
+    const text=`<span class="impression-copy">${when}<strong>${event.action}</strong><span class="impression-byline">${event.caption}</span></span>`;
+    return `<li>${link(target,activityStamp(event.stamp,activityStyle)+text,'activity-impression',event.index)}</li>`;
+  }
+  const list=events=>`<ol class="activity-impressions" role="list">${events.map(entry).join('')}</ol>`;
+  const contents=activityStyle==='ledger'?[...new Set(recentScheduleEvents.map(e=>e.date))].map(day=>
+    `<div class="activity-daybook"><h3><time datetime="${day}">${formatCalendarDay(day,{day:'numeric',month:'short'})}</time></h3>${list(recentScheduleEvents.filter(e=>e.date===day))}</div>`).join(''):list(recentScheduleEvents);
+  return `<div class="activity-edition" data-activity-style="${activityStyle}"><div class="section-head activity-heading"><h2 id="recent-activity">Recent activity</h2>
+    ${link(canManage?'schedule-activity':'notifications',canManage?'View log':'Notifications','quiet-link')}
+    <label class="edition-picker">Activity style <select data-activity-picker>${options}</select></label></div>${contents}</div>`;
 }
+document.addEventListener('change',event=>{
+  if(!event.target.matches('[data-activity-picker]')) return;
+  activityStyle=event.target.value;
+  localStorage.setItem(activityStyleKey,activityStyle);
+  const url=new URL(location.href);
+  url.searchParams.set('activity',activityStyle);
+  history.replaceState(history.state,'',url);
+  const module=event.target.closest('.module-activity');
+  module.innerHTML=teachingActivity(['administrator','coordinator'].includes(role));
+  module.querySelector('[data-activity-picker]').focus({preventScroll:true});
+});
 
 const dashboardViews = {
   daybook:{label:'Daybook',columns:'1.5fr .5fr .95fr',rows:['intro intro calendar','queue queue calendar','week week week','review activity activity']},
