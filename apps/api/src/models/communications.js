@@ -12,6 +12,7 @@ const notificationSchema = withTimestamps(
     deliveryStatus: { type: String, enum: ["pending", "sent", "failed"], default: "pending" },
     readAt: { type: Date, default: null },
     sentAt: { type: Date, default: null },
+    deliveryLeaseUntil: { type: Date, select: false },
     relatedModel: { type: String, trim: true },
     relatedId: { type: String, trim: true },
     deduplicationKey: { type: String, trim: true, select: false },
@@ -46,6 +47,8 @@ const calendarConnectionSchema = withTimestamps({
   scopes: { type: [String], default: [] },
   syncEnabled: { type: Boolean, default: true },
   lastSyncedAt: Date,
+  calendarId: { type: String, default: "primary" },
+  lastSyncedEventIds: { type: [String], default: [] },
 });
 
 calendarConnectionSchema.index({ user: 1, provider: 1 }, { unique: true });

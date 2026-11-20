@@ -269,7 +269,6 @@ async function seedCurrentTermOfferings(term) {
       { $setOnInsert: {
         course: course._id,
         term: term._id,
-        academicYear: term.academicYear,
         instructors: [{ fullName: 'Evaluation Faculty Member', email: 'evaluation.faculty@guc.edu.eg' }],
         ...fields,
       } },
@@ -295,7 +294,6 @@ async function seedCurrentTermOfferings(term) {
       { $setOnInsert: {
         course: course._id,
         term: term._id,
-        academicYear: term.academicYear,
         instructors: [{ fullName: 'Evaluation Faculty Member', email: 'evaluation.faculty@guc.edu.eg' }],
         eligibleGroups,
         isPublished: true,

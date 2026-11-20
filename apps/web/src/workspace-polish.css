@@ -1,0 +1,94 @@
+/* Local UI review: retain Portal's palette and chrome, unify the workspace pages. */
+.portal-skip-link { position: fixed; z-index: 100; top: 12px; left: 12px; padding: 12px 16px; border: 1px solid var(--control); border-radius: 7px; color: var(--ink); background: var(--paper); transform: translateY(-180%); }
+.portal-skip-link:focus { transform: none; }
+#workspace-content { scroll-margin-top: 90px; }
+.workspace-page { display: grid; gap: 24px; min-width: 0; }
+.workspace-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
+.workspace-header > div:first-child { min-width: 0; }
+.workspace-header h1 { margin: 0; color: var(--ink); font-size: clamp(25px, 2.5vw, 32px); line-height: 1.2; text-wrap: balance; }
+.workspace-header p { max-width: 68ch; margin: 10px 0 0; color: var(--muted); font-size: 14px; line-height: 1.6; }
+.workspace-header-actions { display: flex; flex: none; flex-wrap: wrap; align-items: center; gap: 10px; }
+.workspace-page .panel { min-width: 0; padding: 24px; border: 1px solid var(--line); background: var(--paper); }
+.workspace-page .panel-heading, .workspace-page .results-heading { align-items: center; gap: 16px; margin-bottom: 20px; }
+.workspace-page .panel-heading p { max-width: 65ch; margin: 8px 0 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.workspace-page .panel h2 { font-size: 17px; line-height: 1.35; }
+.workspace-page .panel h3 { font-size: 15px; }
+.workspace-page .result-count, .workspace-meta { flex: none; padding: 5px 10px; border: 1px solid var(--line); border-radius: 6px; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; background: var(--canvas); }
+.workspace-page .filter-grid, .workspace-page .slot-request-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr)); gap: 18px 16px; align-items: end; }
+.workspace-page .filter-grid .span-two { grid-column: span 2; }
+.workspace-page.finance-page .filter-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.workspace-page.finance-page .filter-grid .span-two { grid-column: 1 / -1; }
+.workspace-page.removal-page .filter-grid, .workspace-page .slot-request-filters { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.workspace-page .field > span { color: var(--muted); font-size: 12px; font-weight: 600; }
+.workspace-page .field input, .workspace-page .field select { min-height: 42px; }
+.workspace-page .filter-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+.workspace-page .filter-hint { margin: 0; color: var(--muted); font-size: 12px; }
+.workspace-page .form-actions { flex-wrap: wrap; }
+.workspace-page .text-button { min-height: 36px; padding: 8px 6px; }
+.workspace-page .table-scroll, .workspace-page .table-wrap { border: 1px solid var(--line); border-radius: 8px; overscroll-behavior-inline: contain; }
+.workspace-page table { font-variant-numeric: tabular-nums; }
+.workspace-page th { padding: 13px 14px; color: var(--muted); background: var(--raised); font-size: 12px; font-weight: 600; }
+.workspace-page td { padding: 15px 14px; line-height: 1.5; }
+.workspace-page td small { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; }
+.workspace-page .table-scroll:focus-visible, .workspace-page .table-wrap:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.workspace-page .workspace-table { min-width: 820px; }
+.workspace-page .status-pill { padding: 5px 8px; font-size: 11px; line-height: 1.4; }
+.workspace-empty { display: grid; justify-items: center; align-content: center; min-height: 238px; padding: 32px 20px; text-align: center; }
+.workspace-empty-icon { display: grid; width: 44px; height: 44px; margin-bottom: 16px; place-items: center; border: 1px solid var(--line); border-radius: 12px; color: var(--muted); background: var(--canvas); }
+.workspace-empty h3 { margin: 0; font-size: 15px; font-weight: 600; }
+.workspace-empty p { max-width: 48ch; margin: 9px 0 0; color: var(--muted); font-size: 13px; line-height: 1.65; text-wrap: pretty; }
+.workspace-empty > button { margin-top: 18px; }
+.workspace-page .feedback { margin: 0; font-size: 13px; }
+.workspace-page .feedback p:last-child { margin-bottom: 0; }
+.workspace-tabs { display: flex; flex-wrap: wrap; gap: 4px; width: fit-content; padding: 4px; border: 1px solid var(--line); border-radius: 9px; background: var(--raised); }
+.workspace-tabs button { min-height: 38px; padding: 8px 15px; border: 1px solid transparent; border-radius: 6px; color: var(--muted); background: transparent; font-size: 13px; font-weight: 600; cursor: pointer; }
+.workspace-tabs button[aria-pressed="true"] { border-color: var(--line); color: var(--ink); background: var(--paper); }
+.workspace-tabs button:hover:not(:disabled) { color: var(--ink); }
+.pending-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 155px), 1fr)); gap: 12px; }
+.pending-summary-card { padding: 18px; border: 1px solid var(--line); border-radius: 9px; background: var(--paper); }
+.pending-summary-card strong { display: block; margin-bottom: 9px; font-size: 27px; line-height: 1; font-variant-numeric: tabular-nums; font-weight: 600; }
+.pending-summary-card span { color: var(--muted); font-size: 12px; line-height: 1.5; }
+.pending-summary-card.is-student { background: var(--raised); }
+.pending-advisors { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; padding-block: 16px; border-block: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+.pending-advisors p { margin: 0; }
+.pending-advisors strong { color: var(--ink); font-weight: 500; }
+.pending-students .table-wrap { margin-top: 20px; }
+.workspace-page .roster-search { max-width: 440px; margin-bottom: 22px; }
+.workspace-page .roster-search input { padding-inline-start: 13px; }
+.workspace-page .scheduling-page .table-actions { gap: 8px; }
+.workspace-page .review-filters { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.workspace-page .review-filters .review-search { grid-column: span 2; }
+.workspace-page .planner-course-tools { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 16px; margin-block: 24px 16px; }
+.workspace-page .planner-course-tools .field { width: min(360px, 100%); }
+.workspace-page .planner-course-table { max-height: 400px; overflow: auto; }
+.workspace-page .planner-course-table th { position: sticky; top: 0; z-index: 1; }
+.workspace-page .planner-course-table select { width: 100%; min-width: 140px; min-height: 38px; padding: 7px 9px; border: 1px solid var(--control); border-radius: 6px; color: var(--ink); background: var(--paper); }
+.workspace-page .planner-actions { justify-content: flex-end; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--line); }
+.calendar-layout { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(240px, .75fr); gap: 24px; }
+.calendar-intro-icon { display: grid; width: 50px; height: 50px; margin-bottom: 22px; place-items: center; border-radius: 12px; color: var(--ready-ink); background: var(--ready-bg); }
+.calendar-copy { max-width: 55ch; margin: 12px 0 24px; color: var(--muted); font-size: 14px; line-height: 1.7; }
+.calendar-steps { display: grid; gap: 20px; padding: 0; margin: 22px 0 0; list-style: none; counter-reset: calendar-step; }
+.calendar-steps li { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 12px; color: var(--muted); font-size: 13px; line-height: 1.65; counter-increment: calendar-step; }
+.calendar-steps li::before { content: counter(calendar-step); display: grid; width: 24px; height: 24px; place-items: center; border-radius: 50%; color: var(--ink); background: var(--raised); font-size: 11px; }
+.calendar-steps strong { display: block; color: var(--ink); font-weight: 500; }
+.workspace-page .panel-details { margin-top: 20px; }
+.workspace-page .workflow-note { padding: 14px 16px; border-left: 3px solid var(--accent); background: var(--raised); color: var(--muted); font-size: 13px; line-height: 1.6; }
+@media (hover: hover) and (pointer: fine) {
+  .workspace-page tbody tr:hover { background: var(--canvas); }
+}
+@media (max-width: 1000px) {
+  .workspace-page .review-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 700px) {
+  .workspace-header { flex-direction: column; gap: 16px; }
+  .workspace-header-actions { width: 100%; }
+  .workspace-page .panel { padding: 18px; }
+  .workspace-page .filter-grid, .workspace-page .review-filters, .workspace-page.finance-page .filter-grid, .workspace-page.removal-page .filter-grid { grid-template-columns: minmax(0, 1fr); }
+  .workspace-page .filter-grid .span-two, .workspace-page .review-filters .review-search { grid-column: auto; }
+  .workspace-page .panel-heading, .workspace-page .results-heading { flex-wrap: wrap; }
+  .calendar-layout { grid-template-columns: minmax(0, 1fr); }
+  .workspace-page button { touch-action: manipulation; }
+  .workspace-page .primary-button, .workspace-page .outline-button, .workspace-tabs button { min-height: 44px; }
+  .workspace-page .text-button { min-height: 44px; }
+  .workspace-page .slot-request-filters { grid-template-columns: minmax(0, 1fr); }
+}

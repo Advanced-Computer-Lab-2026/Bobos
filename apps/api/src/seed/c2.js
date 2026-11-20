@@ -136,7 +136,6 @@ async function seedC2() {
       {
         course: course._id,
         term: term._id,
-        academicYear: term.academicYear,
         instructors: [{ fullName: "C2 Demo Instructor", email: "c2.demo@guc.edu.eg" }],
         eligibleGroups: [{ major: "CS", semester: 3, studyGroup: "C2-DEMO-G1" }],
         ...offeringFields,

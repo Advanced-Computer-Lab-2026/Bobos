@@ -136,7 +136,6 @@ async function seed() {
     // 8. Sample Course Offerings with slots (Req 22 demo data)
     await CourseOffering.create({
       course: insertedCourses[0]._id, // CSEN102
-      academicYear: springTerm.academicYear,
       term: springTerm._id,
       instructors: [
         { fullName: "Dr. Slim Abdennadher", email: "slim.abdennadher@guc.edu.eg" },
@@ -158,7 +157,6 @@ async function seed() {
 
     await CourseOffering.create({
       course: insertedCourses[5]._id, // MATH103
-      academicYear: springTerm.academicYear,
       term: springTerm._id,
       instructors: [
         { fullName: "Dr. Ahmed ElSheikh", email: "ahmed.elsheikh@guc.edu.eg" },
@@ -179,7 +177,6 @@ async function seed() {
     // Unpublished offering: CSEN202 must NOT be schedulable this term
     await CourseOffering.create({
       course: insertedCourses[1]._id, // CSEN202
-      academicYear: springTerm.academicYear,
       term: springTerm._id,
       instructors: [
         { fullName: "Dr. Slim Abdennadher", email: "slim.abdennadher@guc.edu.eg" },

@@ -79,6 +79,7 @@ advisorAssignmentSchema.index(
   { unique: true, partialFilterExpression: { endedAt: null } },
 );
 advisorAssignmentSchema.index({ advisor: 1, createdAt: -1 });
+advisorAssignmentSchema.index({ student: 1, createdAt: -1 });
 
 export const AdvisorAssignment = registerModel("AdvisorAssignment", advisorAssignmentSchema);
 

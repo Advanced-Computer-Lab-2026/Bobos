@@ -48,3 +48,15 @@ See [the authentication backend guide](docs/authentication.md) for login, email 
 See [scheduling preferences](docs/scheduling-preferences.md) for requirements 57/58: students submit ranked term-specific hints before the advising deadline, and Advisors/Coordinators read the latest hints without making them mandatory. Run `npm run test:group-a` for the Group A API integration and edge-case checks.
 
 See [Group B API coverage](docs/group-b-verification.md) for the student directory, account status, advisor roster, advising directory, and advisor assignment routes. Run `npm run test:group-b` for Group B role, filtering, and assignment-history checks.
+
+See [the Group A Sprint 2 audit](docs/group-a-sprint2-audit.md) for the integrated student workflows, all 36 assigned requirements, and reproduced missing/partial behavior. Run `npm run test:a` for strict acceptance (known gaps fail) or `npm run test:a:regression` to keep those same gap assertions explicitly marked TODO.
+
+### Probation warning emails (Req. 118)
+
+Administrators can record official semester standings in **Academic terms → Record standing**. The API stores one standing per student and term. API clients can also use `PUT /api/academic-terms/academicTerm/<termCode>/standings/<studentId>` with `academicStanding` set to `probation` or `goodAcademicStanding`.
+
+With SMTP configured, the production API checks the student when a standing is saved. It also checks at startup and hourly. It sends a warning to an advising student's GUC email after the second consecutive completed Winter or Spring semester on probation. The student's **Notifications** shows the email delivery status. Development can enable the same check with `PROBATION_WARNINGS_ENABLED=true` and a local SMTP catcher.
+
+### Google Calendar sync
+
+For requirement 116, configure a Google OAuth client with the redirect URI `http://localhost:3000/api/calendar/oauth/callback` (use the matching public API URI when hosted). Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `GOOGLE_REDIRECT_URI` in the ignored `.env` file. Generate an encryption key with `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"` and set it as `CALENDAR_TOKEN_ENCRYPTION_KEY`. Set `UNIVERSITY_TIMEZONE` to the institution's IANA timezone. Students can connect Google Calendar from **Calendar sync** after signing in. The app stores encrypted OAuth tokens and never requests a calendar password.

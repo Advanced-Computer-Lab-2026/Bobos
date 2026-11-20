@@ -15,6 +15,8 @@
     "seed:unpublish-review": "node --env-file-if-exists=../../.env src/seed/unpublish-review.js",
     "seed:preference-clash": "node --env-file-if-exists=../../.env src/seed/preference-clash.js",
     "seed:advising": "node --env-file-if-exists=../../.env seed.js",
+    "seed:b3": "node --env-file-if-exists=../../.env src/seed/seed-b3-demo.js",
+    "test:b3": "node --test --env-file-if-exists=../../.env src/controllers/b3.edge-cases.test.js",
     "import:courses": "node src/scripts/importCourses.js"
   },
   "dependencies": {

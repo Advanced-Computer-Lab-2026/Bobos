@@ -7,7 +7,7 @@ const week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
 
 export default function AcademicWorkspace({ token, role, section, notify }) {
   if (section === "courses") return <CoursesWorkspace token={token} role={role} notify={notify} />;
-  if (section === "terms") return <TermsWorkspace token={token} notify={notify} />;
+  if (section === "terms") return <TermsWorkspace token={token} role={role} notify={notify} />;
   if (section === "offerings") return role === "administrator" ? <OfferingsWorkspace token={token} notify={notify} /> : <div className="feedback error" role="alert">Only administrators can manage course offerings.</div>;
   if (section === "templates") return role === "coordinator" ? <TemplatesWorkspace token={token} notify={notify} /> : <div className="feedback error" role="alert">Only coordinators can manage schedule templates.</div>;
   return null;
@@ -86,7 +86,7 @@ function CoursesWorkspace({ token, role, notify }) {
 
 const blankTerm = { code: "", academicYear: "2026/2027", season: "spring", termStart: "", termEnd: "", teachingStart: "", teachingEnd: "", registrationStart: "", registrationEnd: "", advisingDeadline: "", wholeScheduleSwapDeadline: "", isActive: false };
 const termDateFields = ["termStart", "termEnd", "teachingStart", "teachingEnd", "registrationStart", "registrationEnd", "advisingDeadline", "wholeScheduleSwapDeadline"];
-function TermsWorkspace({ token, notify }) {
+function TermsWorkspace({ token, role, notify }) {
   const [form, setForm] = useState(blankTerm);
   const [termId, setTermId] = useState("");
   const [terms, setTerms] = useState([]);
@@ -94,6 +94,7 @@ function TermsWorkspace({ token, notify }) {
   const [fetchingTerms, setFetchingTerms] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [recordingStanding, setRecordingStanding] = useState(false);
 
   const loadTerms = async () => {
     setFetchingTerms(true);
@@ -190,12 +191,24 @@ function TermsWorkspace({ token, notify }) {
     setError("");
   };
 
+  const standingSaved = ({ warningEmailStatus }) => {
+    setRecordingStanding(false);
+    setMessage(warningEmailStatus === "sent" ? "Semester standing saved. Probation warning email sent." : "Semester standing saved.");
+    if (warningEmailStatus === "failed") setError("The probation warning email could not be delivered.");
+    if (warningEmailStatus === "pending") setMessage("Semester standing saved. The probation warning check is pending.");
+  };
+
   return (
     <div className="page-stack">
       <PageTitle
         eyebrow="ACADEMIC CALENDAR"
         title="Academic terms"
         description="Define term dates and deadlines used by offerings and scheduling."
+        action={role === "administrator" && terms.length > 0 && (
+          <button className="outline-button" type="button" onClick={() => { setMessage(""); setError(""); setRecordingStanding(true); }}>
+            Record standing
+          </button>
+        )}
       />
       {message && <div className="feedback success" role="status">{message}</div>}
       {error && <div className="feedback error" role="alert">{error}</div>}
@@ -338,8 +351,72 @@ function TermsWorkspace({ token, notify }) {
           </label>
         </section>
       </div>
+      {recordingStanding && (
+        <TermStandingModal
+          token={token}
+          terms={terms}
+          selectedTerm={terms.find(term => term._id === termId || term.code === termId)}
+          onClose={() => setRecordingStanding(false)}
+          onSaved={standingSaved}
+        />
+      )}
     </div>
   );
+}
+
+function TermStandingModal({ token, terms, selectedTerm, onClose, onSaved }) {
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const save = async (event) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const term = form.get("term");
+    const studentId = form.get("studentId").trim();
+    if (!studentId) {
+      setError("Enter a student ID.");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      const result = await api(`/api/academic-terms/academicTerm/${encodeURIComponent(term)}/standings/${encodeURIComponent(studentId)}`, {
+        token,
+        method: "PUT",
+        body: { academicStanding: form.get("academicStanding") },
+      });
+      onSaved(result);
+    } catch (requestError) {
+      setError(explainApiError(requestError, "Semester standing"));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return <Modal title="Record semester standing" eyebrow="ACADEMIC TERMS" onClose={() => !saving && onClose()}>
+    <form className="form-stack" onSubmit={save}>
+      <Field label="Academic term">
+        <select name="term" defaultValue={selectedTerm?._id || selectedTerm?.code || ""} required>
+          <option value="" disabled>Choose a term</option>
+          {terms.map(term => <option key={term._id || term.code} value={term._id || term.code}>
+            {term.code} · {pretty(term.season)} {term.academicYear}
+          </option>)}
+        </select>
+      </Field>
+      <Field label="Student ID">
+        <input name="studentId" placeholder="e.g. 61-00002" maxLength={24} required />
+      </Field>
+      <Field label="Academic standing">
+        <select name="academicStanding" defaultValue="" required>
+          <option value="" disabled>Choose a standing</option>
+          <option value="goodAcademicStanding">Good academic standing</option>
+          <option value="probation">Probation</option>
+        </select>
+      </Field>
+      {error && <div className="feedback error" role="alert">{error}</div>}
+      <FormFooter onCancel={onClose} busy={saving} submitText="Save standing" />
+    </form>
+  </Modal>;
 }
 
 function OfferingsWorkspace({ token, notify }) {
@@ -355,7 +432,7 @@ function OfferingsWorkspace({ token, notify }) {
     <section className="panel term-picker"><form className="inline-controls" onSubmit={load}><label className="field"><span>Academic term code or ID</span><input required value={termId} onChange={(event) => setTermId(event.target.value)} placeholder="e.g. 61-" /></label><button className="outline-button" type="submit" disabled={loading}>{loading ? "Loading…" : "Load offerings"}</button></form><p className="helper-text">Use the official MET/DMET term code, such as 61-, or a MongoDB term ID.</p></section>
     {termSummary && <DuplicateOfferings key={termSummary._id} token={token} target={termSummary} targetOfferings={offerings} loading={loading} onCopied={() => load(undefined, termSummary.code)} />}
     {error && <div className="feedback error" role="alert">{error}</div>}
-    <section className="panel results-panel"><div className="results-heading"><div><p className="eyebrow">TERM OFFERINGS</p><h2>Course groups</h2></div><span className="result-count">{loading ? "Loading" : `${offerings.length} offerings`}</span></div>{loading ? <Loading /> : offerings.length === 0 ? <EmptyState title="No offerings loaded" text="Enter a term code and load offerings, or create the first offering." icon="▤" /> : <div className="offering-grid">{offerings.map((offering) => <article className="offering-card" key={offering._id}><div className="offering-card-top"><span className="course-code-pill">{offering.course?.code || "COURSE"}</span><span className={`status-pill ${offering.isPublished ? "good" : "muted"}`}>{offering.isPublished ? "Published" : "Draft"}</span></div><h3>{offering.course?.name || "Course offering"}</h3><p>{offering.course?.creditHours ?? "—"} credits <span>·</span> {pretty(offering.course?.courseType)}</p><p className="offering-term-year">{offering.term?.code || termSummary?.code} · Academic year {offering.academicYear || offering.term?.academicYear || termSummary?.academicYear}</p><div className="offering-meta"><span>▧ {(offering.slots || []).length} groups</span><span>♙ {(offering.instructors || []).length} instructors</span></div><div className="offering-slot-preview">{(offering.slots || []).slice(0, 3).map((slot) => <span key={slot._id}>{pretty(slot.componentType)} {slot.groupNumber} · {slot.day} {formatMinutes(slot.startMinute)}</span>)}</div><div className="offering-actions"><button type="button" className="text-button" onClick={() => openDetails(offering)}>Manage</button><button type="button" className="text-button" onClick={() => togglePublish(offering)}>{offering.isPublished ? "Unpublish" : "Publish"}</button><button type="button" className="text-button danger-text" onClick={() => { setDeleteError(""); setConfirmingDelete(offering); }}>Delete</button></div></article>)}</div>}</section>
+    <section className="panel results-panel"><div className="results-heading"><div><p className="eyebrow">TERM OFFERINGS</p><h2>Course groups</h2></div><span className="result-count">{loading ? "Loading" : `${offerings.length} offerings`}</span></div>{loading ? <Loading /> : offerings.length === 0 ? <EmptyState title="No offerings loaded" text="Enter a term code and load offerings, or create the first offering." icon="▤" /> : <div className="offering-grid">{offerings.map((offering) => <article className="offering-card" key={offering._id}><div className="offering-card-top"><span className="course-code-pill">{offering.course?.code || "COURSE"}</span><span className={`status-pill ${offering.isPublished ? "good" : "muted"}`}>{offering.isPublished ? "Published" : "Draft"}</span></div><h3>{offering.course?.name || "Course offering"}</h3><p>{offering.course?.creditHours ?? "—"} credits <span>·</span> {pretty(offering.course?.courseType)}</p><p className="offering-term-year">{offering.term?.code || termSummary?.code} · Academic year {offering.term?.academicYear || termSummary?.academicYear}</p><div className="offering-meta"><span>▧ {(offering.slots || []).length} groups</span><span>♙ {(offering.instructors || []).length} instructors</span></div><div className="offering-slot-preview">{(offering.slots || []).slice(0, 3).map((slot) => <span key={slot._id}>{pretty(slot.componentType)} {slot.groupNumber} · {slot.day} {formatMinutes(slot.startMinute)}</span>)}</div><div className="offering-actions"><button type="button" className="text-button" onClick={() => openDetails(offering)}>Manage</button><button type="button" className="text-button" onClick={() => togglePublish(offering)}>{offering.isPublished ? "Unpublish" : "Publish"}</button><button type="button" className="text-button danger-text" onClick={() => { setDeleteError(""); setConfirmingDelete(offering); }}>Delete</button></div></article>)}</div>}</section>
     {creating && <OfferingModal token={token} courses={courses} termId={termId} term={termSummary} onClose={() => setCreating(false)} onSaved={afterSave} />}
     {details && <OfferingDetailsModal token={token} offering={details} onClose={() => setDetails(null)} onChanged={afterSave} />}
     {confirmingDelete && <Modal title="Delete course offering?" eyebrow="REMOVE OFFERING" onClose={() => !deleting && setConfirmingDelete(null)}>
@@ -620,8 +697,8 @@ function OfferingModal({ token, courses, termId, term, onClose, onSaved }) {
     return { ...slot, [key]: value };
   }));
   const addSlot = () => setSlots((current) => [...current, emptySlot(nextGroupNumber(current, -1, "lecture"))]);
-  const submit = async (event) => { event.preventDefault(); setSaving(true); setError(""); const form = new FormData(event.currentTarget); const instructors = splitLines(form.get("instructors")).map((line) => { const [fullName, email] = line.split("|").map((part) => part.trim()); return { fullName, ...(email ? { email } : {}) }; }); const eligibleGroups = splitLines(form.get("eligibleGroups")).map((line) => { const [major, semester, studyGroup] = line.split("|").map((part) => part.trim()); return { major, ...(semester ? { semester: Number(semester) } : {}), ...(studyGroup ? { studyGroup } : {}) }; }); const payload = { course: form.get("course"), term: termId.trim(), academicYear: form.get("academicYear"), instructors, eligibleGroups, isPublished, slots: slots.map((slot) => ({ componentType: slot.componentType, groupNumber: slot.groupNumber.trim(), day: slot.day, startMinute: timeToMinutes(slot.startTime), endMinute: timeToMinutes(slot.endTime), room: slot.room.trim(), capacity: Number(slot.capacity) })) }; try { await api("/api/catalogue/offerings", { token, method: "POST", body: payload }); onSaved(); } catch (e) { setError(e.message); } finally { setSaving(false); } };
-  return <Modal title="Create course offering" eyebrow="COURSE OFFERING" onClose={onClose}><form className="form-stack" onSubmit={submit}><div className="form-grid"><Field label="Course"><select name="course" required defaultValue=""><option value="" disabled>Choose a course</option>{courses.map((course) => <option key={course._id} value={course._id}>{course.code} · {course.name}</option>)}</select></Field><Field label="Academic term"><input value={term?.code || termId} readOnly /></Field><Field label="Academic year"><input name="academicYear" required defaultValue={term?.academicYear || "2026/2027"} /></Field><Field label="Publication status"><select value={isPublished ? "published" : "draft"} onChange={(event) => setIsPublished(event.target.value === "published")}><option value="draft">Draft</option><option value="published">Published</option></select></Field><Field label="Instructors · one per line: Name | email" className="span-two"><textarea name="instructors" rows={3} placeholder="Dr. Sara Hassan | sara.hassan@guc.edu.eg" /></Field><Field label="Eligible groups · one per line: Major | semester | group" className="span-two"><textarea name="eligibleGroups" rows={3} placeholder="Computer Science | 4 | G1" /></Field></div><div className="slot-editor-heading"><div><p className="eyebrow">MEETING TIMES</p><h3>Course groups</h3></div><button className="outline-button small-button" type="button" onClick={addSlot}>＋ Add group</button></div>{slots.map((slot, index) => <SlotFields key={index} index={index} slot={slot} onChange={setSlot} onRemove={() => setSlots((current) => current.filter((_, i) => i !== index))} canRemove={slots.length > 1} />)}{error && <div className="feedback error">{error}</div>}<FormFooter onCancel={onClose} busy={saving} submitText="Create offering" /></form></Modal>;
+  const submit = async (event) => { event.preventDefault(); setSaving(true); setError(""); const form = new FormData(event.currentTarget); const instructors = splitLines(form.get("instructors")).map((line) => { const [fullName, email] = line.split("|").map((part) => part.trim()); return { fullName, ...(email ? { email } : {}) }; }); const eligibleGroups = splitLines(form.get("eligibleGroups")).map((line) => { const [major, semester, studyGroup] = line.split("|").map((part) => part.trim()); return { major, ...(semester ? { semester: Number(semester) } : {}), ...(studyGroup ? { studyGroup } : {}) }; }); const payload = { course: form.get("course"), term: termId.trim(), instructors, eligibleGroups, isPublished, slots: slots.map((slot) => ({ componentType: slot.componentType, groupNumber: slot.groupNumber.trim(), day: slot.day, startMinute: timeToMinutes(slot.startTime), endMinute: timeToMinutes(slot.endTime), room: slot.room.trim(), capacity: Number(slot.capacity) })) }; try { await api("/api/catalogue/offerings", { token, method: "POST", body: payload }); onSaved(); } catch (e) { setError(e.message); } finally { setSaving(false); } };
+  return <Modal title="Create course offering" eyebrow="COURSE OFFERING" onClose={onClose}><form className="form-stack" onSubmit={submit}><div className="form-grid"><Field label="Course"><select name="course" required defaultValue=""><option value="" disabled>Choose a course</option>{courses.map((course) => <option key={course._id} value={course._id}>{course.code} · {course.name}</option>)}</select></Field><Field label="Academic term"><input value={[term?.code || termId, term?.season, term?.academicYear].filter(Boolean).join(" · ")} readOnly /></Field><Field label="Publication status"><select value={isPublished ? "published" : "draft"} onChange={(event) => setIsPublished(event.target.value === "published")}><option value="draft">Draft</option><option value="published">Published</option></select></Field><Field label="Instructors · one per line: Name | email" className="span-two"><textarea name="instructors" rows={3} placeholder="Dr. Sara Hassan | sara.hassan@guc.edu.eg" /></Field><Field label="Eligible groups · one per line: Major | semester | group" className="span-two"><textarea name="eligibleGroups" rows={3} placeholder="Computer Science | 4 | G1" /></Field></div><div className="slot-editor-heading"><div><p className="eyebrow">MEETING TIMES</p><h3>Course groups</h3></div><button className="outline-button small-button" type="button" onClick={addSlot}>＋ Add group</button></div>{slots.map((slot, index) => <SlotFields key={index} index={index} slot={slot} onChange={setSlot} onRemove={() => setSlots((current) => current.filter((_, i) => i !== index))} canRemove={slots.length > 1} />)}{error && <div className="feedback error">{error}</div>}<FormFooter onCancel={onClose} busy={saving} submitText="Create offering" /></form></Modal>;
 }
 
 function OfferingDetailsModal({ token, offering, onClose, onChanged }) {
@@ -629,7 +706,7 @@ function OfferingDetailsModal({ token, offering, onClose, onChanged }) {
   useEffect(() => { if (!offering?.loading && !offering?.error) { setInstructors((offering.instructors || []).map((item) => `${item.fullName}${item.email ? ` | ${item.email}` : ""}`).join("\n")); setGroups((offering.eligibleGroups || []).map((item) => `${item.major} | ${item.semester || ""} | ${item.studyGroup || ""}`).join("\n")); } }, [offering]);
   if (offering?.loading) return <Modal title="Offering details" eyebrow="COURSE OFFERING" onClose={onClose}><Loading /></Modal>;
   if (offering?.error) return <Modal title="Offering details" eyebrow="COURSE OFFERING" onClose={onClose}><div className="feedback error">{offering.error}</div></Modal>;
-  const saveMeta = async (event) => { event.preventDefault(); setSavingMeta(true); setError(""); const form = new FormData(event.currentTarget); const instructorsPayload = splitLines(form.get("instructors")).map((line) => { const [fullName, email] = line.split("|").map((part) => part.trim()); return { fullName, ...(email ? { email } : {}) }; }); const groupsPayload = splitLines(form.get("eligibleGroups")).map((line) => { const [major, semester, studyGroup] = line.split("|").map((part) => part.trim()); return { major, ...(semester ? { semester: Number(semester) } : {}), ...(studyGroup ? { studyGroup } : {}) }; }); try { await api(`/api/catalogue/offerings/${offering._id}`, { token, method: "PUT", body: { academicYear: String(form.get("academicYear") || "").trim(), instructors: instructorsPayload, eligibleGroups: groupsPayload } }); onChanged(); } catch (e) { setError(e.message); } finally { setSavingMeta(false); } };
+  const saveMeta = async (event) => { event.preventDefault(); setSavingMeta(true); setError(""); const form = new FormData(event.currentTarget); const instructorsPayload = splitLines(form.get("instructors")).map((line) => { const [fullName, email] = line.split("|").map((part) => part.trim()); return { fullName, ...(email ? { email } : {}) }; }); const groupsPayload = splitLines(form.get("eligibleGroups")).map((line) => { const [major, semester, studyGroup] = line.split("|").map((part) => part.trim()); return { major, ...(semester ? { semester: Number(semester) } : {}), ...(studyGroup ? { studyGroup } : {}) }; }); try { await api(`/api/catalogue/offerings/${offering._id}`, { token, method: "PUT", body: { instructors: instructorsPayload, eligibleGroups: groupsPayload } }); onChanged(); } catch (e) { setError(e.message); } finally { setSavingMeta(false); } };
   const addNewGroup = () => {
     setNewSlots((current) => [...current, emptySlot(nextGroupNumber([...(offering.slots || []), ...current], -1, "lecture"))]);
     setAddingGroups(true);
@@ -659,7 +736,7 @@ function OfferingDetailsModal({ token, offering, onClose, onChanged }) {
     } catch (e) { setRemoveSlotError(e.message); }
     finally { setRemovingSlot(false); }
   };
-  return <Modal title={`${offering.course?.code || "Offering"} · Manage`} eyebrow="COURSE OFFERING" onClose={onClose} wide><div className="offering-detail-head"><div><h3>{offering.course?.name}</h3><p>{offering.term?.code} · Academic year {offering.academicYear || offering.term?.academicYear} · {offering.course?.creditHours} credits</p></div><div className="offering-status"><span className="eyebrow">PUBLICATION STATUS</span><span className={`status-pill ${offering.isPublished ? "good" : "muted"}`}>{offering.isPublished ? "Published" : "Draft"}</span></div></div>{error && <div className="feedback error">{error}</div>}<form className="form-stack offering-meta-form" onSubmit={saveMeta}><p className="eyebrow">INSTRUCTORS AND ELIGIBLE GROUPS</p><div className="form-grid"><Field label="Academic year"><input name="academicYear" required defaultValue={offering.academicYear || offering.term?.academicYear || "2026/2027"} /></Field><Field label="Instructors · one per line: Name | email"><textarea name="instructors" rows={3} value={instructors} onChange={(e) => setInstructors(e.target.value)} /></Field><Field label="Eligible groups · one per line: Major | semester | group"><textarea name="eligibleGroups" rows={3} value={groups} onChange={(e) => setGroups(e.target.value)} /></Field></div><button className="outline-button" disabled={savingMeta}>{savingMeta ? "Saving…" : "Save offering details"}</button></form><div className="slot-editor-heading"><div><p className="eyebrow">MEETING TIMES</p><h3>Course groups</h3></div><button type="button" className="outline-button small-button" onClick={addNewGroup}>＋ Add group</button></div>{(offering.slots || []).map((slot) => <form className="slot-row slot-row-existing" key={slot._id} onSubmit={(event) => updateSlot(slot._id, event)}><div className="form-grid"><Field label="Component"><select name="componentType" defaultValue={slot.componentType}>{["lecture", "tutorial", "lab"].map((type) => <option value={type} key={type}>{pretty(type)}</option>)}</select></Field><Field label="Group"><input name="groupNumber" required defaultValue={slot.groupNumber} /></Field><Field label="Day"><select name="day" defaultValue={slot.day}>{week.map((day) => <option key={day}>{day}</option>)}</select></Field><Field label="Start"><input name="startTime" type="time" required defaultValue={minutesToTime(slot.startMinute)} /></Field><Field label="End"><input name="endTime" type="time" required defaultValue={minutesToTime(slot.endMinute)} /></Field><Field label="Room"><input name="room" required defaultValue={slot.room} /></Field><Field label="Capacity"><input name="capacity" type="number" min={slot.assignedStudentCount || 0} required defaultValue={slot.capacity} /></Field></div><div className="slot-capacity-summary"><div><span>Assigned student count</span><strong>{slot.assignedStudentCount || 0}</strong></div><div><span>Remaining capacity</span><strong>{slot.remainingCapacity ?? Math.max(0, slot.capacity - (slot.assignedStudentCount || 0))}</strong></div><div className="slot-actions"><button className="text-button danger-text" type="button" onClick={() => { setRemoveSlotError(""); setRemoveSlotTarget(slot); }}>Remove group</button><button className="outline-button small-button" disabled={busySlot === slot._id}>{busySlot === slot._id ? "Saving…" : "Update group"}</button></div></div></form>)}{addingGroups && <form className="form-stack new-groups-form" onSubmit={saveNewGroups}><div className="slot-editor-heading"><div><p className="eyebrow">NEW MEETING TIMES</p><h3>Add groups</h3></div><button type="button" className="text-button" onClick={() => { setAddingGroups(false); setNewSlots([]); }}>Cancel</button></div>{newSlots.map((slot, index) => <SlotFields key={index} index={index} slot={slot} onChange={changeNewSlot} onRemove={() => setNewSlots((current) => current.filter((_, position) => position !== index))} canRemove />)}<div className="form-footer"><button type="button" className="outline-button" onClick={addNewGroup}>＋ Add another group</button><button className="primary-button" disabled={savingGroups || !newSlots.length}>{savingGroups ? "Adding…" : "Save groups"}</button></div></form>}<div className="form-footer"><button className="outline-button" type="button" onClick={onClose}>Close</button></div>{removeSlotTarget && <Modal title="Remove this course group?" eyebrow="REMOVE MEETING GROUP" onClose={() => !removingSlot && setRemoveSlotTarget(null)}><div className="confirmation-content"><span className="confirmation-icon" aria-hidden="true">!</span><div><p>Remove <strong>{pretty(removeSlotTarget.componentType)} group {removeSlotTarget.groupNumber}</strong> on <strong>{removeSlotTarget.day}</strong> at <strong>{formatMinutes(removeSlotTarget.startMinute)}–{formatMinutes(removeSlotTarget.endMinute)}</strong>?</p><p className="helper-text">Groups used by students, schedules, or templates cannot be removed. The system will explain what needs to be updated first.</p></div></div>{removeSlotError && <div className="feedback error">{removeSlotError}</div>}<div className="form-footer"><button className="outline-button" type="button" disabled={removingSlot} onClick={() => setRemoveSlotTarget(null)}>Cancel</button><button className="primary-button danger-button" type="button" disabled={removingSlot} onClick={deleteSlot}>{removingSlot ? "Removing…" : "Remove group"}</button></div></Modal>}</Modal>;
+  return <Modal title={`${offering.course?.code || "Offering"} · Manage`} eyebrow="COURSE OFFERING" onClose={onClose} wide><div className="offering-detail-head"><div><h3>{offering.course?.name}</h3><p>{offering.term?.code} · Academic year {offering.term?.academicYear} · {offering.course?.creditHours} credits</p></div><div className="offering-status"><span className="eyebrow">PUBLICATION STATUS</span><span className={`status-pill ${offering.isPublished ? "good" : "muted"}`}>{offering.isPublished ? "Published" : "Draft"}</span></div></div>{error && <div className="feedback error">{error}</div>}<form className="form-stack offering-meta-form" onSubmit={saveMeta}><p className="eyebrow">INSTRUCTORS AND ELIGIBLE GROUPS</p><div className="form-grid"><Field label="Instructors · one per line: Name | email"><textarea name="instructors" rows={3} value={instructors} onChange={(e) => setInstructors(e.target.value)} /></Field><Field label="Eligible groups · one per line: Major | semester | group"><textarea name="eligibleGroups" rows={3} value={groups} onChange={(e) => setGroups(e.target.value)} /></Field></div><button className="outline-button" disabled={savingMeta}>{savingMeta ? "Saving…" : "Save offering details"}</button></form><div className="slot-editor-heading"><div><p className="eyebrow">MEETING TIMES</p><h3>Course groups</h3></div><button type="button" className="outline-button small-button" onClick={addNewGroup}>＋ Add group</button></div>{(offering.slots || []).map((slot) => <form className="slot-row slot-row-existing" key={slot._id} onSubmit={(event) => updateSlot(slot._id, event)}><div className="form-grid"><Field label="Component"><select name="componentType" defaultValue={slot.componentType}>{["lecture", "tutorial", "lab"].map((type) => <option value={type} key={type}>{pretty(type)}</option>)}</select></Field><Field label="Group"><input name="groupNumber" required defaultValue={slot.groupNumber} /></Field><Field label="Day"><select name="day" defaultValue={slot.day}>{week.map((day) => <option key={day}>{day}</option>)}</select></Field><Field label="Start"><input name="startTime" type="time" required defaultValue={minutesToTime(slot.startMinute)} /></Field><Field label="End"><input name="endTime" type="time" required defaultValue={minutesToTime(slot.endMinute)} /></Field><Field label="Room"><input name="room" required defaultValue={slot.room} /></Field><Field label="Capacity"><input name="capacity" type="number" min={slot.assignedStudentCount || 0} required defaultValue={slot.capacity} /></Field></div><div className="slot-capacity-summary"><div><span>Assigned student count</span><strong>{slot.assignedStudentCount || 0}</strong></div><div><span>Remaining capacity</span><strong>{slot.remainingCapacity ?? Math.max(0, slot.capacity - (slot.assignedStudentCount || 0))}</strong></div><div className="slot-actions"><button className="text-button danger-text" type="button" onClick={() => { setRemoveSlotError(""); setRemoveSlotTarget(slot); }}>Remove group</button><button className="outline-button small-button" disabled={busySlot === slot._id}>{busySlot === slot._id ? "Saving…" : "Update group"}</button></div></div></form>)}{addingGroups && <form className="form-stack new-groups-form" onSubmit={saveNewGroups}><div className="slot-editor-heading"><div><p className="eyebrow">NEW MEETING TIMES</p><h3>Add groups</h3></div><button type="button" className="text-button" onClick={() => { setAddingGroups(false); setNewSlots([]); }}>Cancel</button></div>{newSlots.map((slot, index) => <SlotFields key={index} index={index} slot={slot} onChange={changeNewSlot} onRemove={() => setNewSlots((current) => current.filter((_, position) => position !== index))} canRemove />)}<div className="form-footer"><button type="button" className="outline-button" onClick={addNewGroup}>＋ Add another group</button><button className="primary-button" disabled={savingGroups || !newSlots.length}>{savingGroups ? "Adding…" : "Save groups"}</button></div></form>}<div className="form-footer"><button className="outline-button" type="button" onClick={onClose}>Close</button></div>{removeSlotTarget && <Modal title="Remove this course group?" eyebrow="REMOVE MEETING GROUP" onClose={() => !removingSlot && setRemoveSlotTarget(null)}><div className="confirmation-content"><span className="confirmation-icon" aria-hidden="true">!</span><div><p>Remove <strong>{pretty(removeSlotTarget.componentType)} group {removeSlotTarget.groupNumber}</strong> on <strong>{removeSlotTarget.day}</strong> at <strong>{formatMinutes(removeSlotTarget.startMinute)}–{formatMinutes(removeSlotTarget.endMinute)}</strong>?</p><p className="helper-text">Groups used by students, schedules, or templates cannot be removed. The system will explain what needs to be updated first.</p></div></div>{removeSlotError && <div className="feedback error">{removeSlotError}</div>}<div className="form-footer"><button className="outline-button" type="button" disabled={removingSlot} onClick={() => setRemoveSlotTarget(null)}>Cancel</button><button className="primary-button danger-button" type="button" disabled={removingSlot} onClick={deleteSlot}>{removingSlot ? "Removing…" : "Remove group"}</button></div></Modal>}</Modal>;
 }
 
 function SlotFields({ index, slot, onChange, onRemove, canRemove }) {
@@ -721,7 +798,7 @@ function CourseDetailsModal({ course, allCourses = [], onClose, onEdit }) {
             {course.code}
           </span>
           <h2 style={{ fontSize: "1.35rem", fontWeight: "700", marginTop: "0.25rem" }}>{course.name}</h2>
-          <p style={{ color: "#64748b" }}>
+          <p style={{ color: "var(--muted)" }}>
             {course.creditHours} Credit Hours · {pretty(course.courseType)}
             {course.isBachelorProject ? " · Bachelor Project" : ""}
           </p>
@@ -732,7 +809,7 @@ function CourseDetailsModal({ course, allCourses = [], onClose, onEdit }) {
       </div>
 
       <div className="form-grid" style={{ gap: "1rem", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
-        <div className="panel" style={{ padding: "1rem", background: "var(--surface-sunken, #f8fafc)" }}>
+        <div className="panel" style={{ padding: "1rem", background: "var(--raised)" }}>
           <p className="eyebrow" style={{ fontSize: "0.75rem" }}>CURRICULUM HOURS</p>
           <p style={{ margin: "0.25rem 0", fontSize: "0.95rem" }}>
             <strong>Lecture:</strong> {course.lectureHours ?? "—"} hrs/week
@@ -745,7 +822,7 @@ function CourseDetailsModal({ course, allCourses = [], onClose, onEdit }) {
           </p>
         </div>
 
-        <div className="panel" style={{ padding: "1rem", background: "var(--surface-sunken, #f8fafc)" }}>
+        <div className="panel" style={{ padding: "1rem", background: "var(--raised)" }}>
           <p className="eyebrow" style={{ fontSize: "0.75rem" }}>SEMESTER & OFFERING</p>
           <p style={{ margin: "0.25rem 0", fontSize: "0.95rem" }}>
             <strong>Recommended Semester:</strong> {course.recommendedSemester ? `Semester ${course.recommendedSemester}` : "—"}
@@ -755,7 +832,7 @@ function CourseDetailsModal({ course, allCourses = [], onClose, onEdit }) {
           </p>
         </div>
 
-        <div className="panel span-two" style={{ padding: "1rem", background: "var(--surface-sunken, #f8fafc)" }}>
+        <div className="panel span-two" style={{ padding: "1rem", background: "var(--raised)" }}>
           <p className="eyebrow" style={{ fontSize: "0.75rem" }}>FACULTY / MAJORS (MET & DMET)</p>
           <p style={{ margin: "0.25rem 0", fontSize: "0.95rem" }}>
             {(course.facultyMajors || []).length > 0 ? (
@@ -770,7 +847,7 @@ function CourseDetailsModal({ course, allCourses = [], onClose, onEdit }) {
           </p>
         </div>
 
-        <div className="panel span-two" style={{ padding: "1rem", background: "var(--surface-sunken, #f8fafc)" }}>
+        <div className="panel span-two" style={{ padding: "1rem", background: "var(--raised)" }}>
           <p className="eyebrow" style={{ fontSize: "0.75rem" }}>PREREQUISITES</p>
           {prereqList.length > 0 ? (
             <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", marginTop: "0.5rem" }}>
@@ -778,20 +855,20 @@ function CourseDetailsModal({ course, allCourses = [], onClose, onEdit }) {
                 <div
                   key={index}
                   style={{
-                    border: "1px solid var(--border, #e2e8f0)",
+                    border: "1px solid var(--line)",
                     background: "var(--surface, #fff)",
                     padding: "0.5rem 0.75rem",
                     borderRadius: "6px",
                   }}
                 >
-                  <strong style={{ color: "#2563eb" }}>{prereq.code}</strong>
-                  {prereq.name ? <span style={{ marginLeft: "0.4rem", color: "#475569" }}>— {prereq.name}</span> : null}
-                  {prereq.creditHours ? <small style={{ display: "block", color: "#94a3b8" }}>{prereq.creditHours} credits</small> : null}
+                  <strong style={{ color: "var(--accent)" }}>{prereq.code}</strong>
+                  {prereq.name ? <span style={{ marginLeft: "0.4rem", color: "var(--muted)" }}>— {prereq.name}</span> : null}
+                  {prereq.creditHours ? <small style={{ display: "block", color: "var(--muted)" }}>{prereq.creditHours} credits</small> : null}
                 </div>
               ))}
             </div>
           ) : (
-            <p style={{ margin: "0.25rem 0", color: "#64748b" }}>No prerequisites required (direct entry).</p>
+            <p style={{ margin: "0.25rem 0", color: "var(--muted)" }}>No prerequisites required (direct entry).</p>
           )}
         </div>
       </div>

@@ -38,6 +38,18 @@ refactor: simplify auth middleware
 - Make sure all status checks pass before requesting review.
 - Resolve all review comments before merging.
 
+### Handoff to Youssef Hany
+
+When the user asks Youssef Hany to review or take a task, use GitHub login `YoussefHanyy`. On a pull request targeting `development`:
+
+1. Put the exact task, acceptance criteria, changed requirements, and checks under **Handoff to Youssef** in the pull request body.
+2. Add the `agent-handoff` label, request review from `YoussefHanyy`, and comment with `@YoussefHanyy` plus a short, actionable summary pointing to the pull request body.
+3. Give the user the pull request link and report whether Youssef has reviewed it. A GitHub notification starts his Codex agent only if he configures an event task in his account.
+
+If the user explicitly directs an immediate merge, follow that direction and make clear that Youssef's review is after the merge.
+
+When a configured automation or the user brings in a **Request changes** review or actionable comments from `YoussefHanyy` on a handoff pull request authored by `AdamMagued`, treat that feedback as the next task: read the complete review and latest diff, make the requested fixes on the same pull request branch, run relevant checks, reply with what changed, and request review from Youssef again. Keep the pull request open until the review is resolved, unless the user explicitly directs otherwise.
+
 ## Code style
 
 - Follow the existing formatting/linting rules in the repo.

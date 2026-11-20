@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import nodemailer from "nodemailer";
+import { isSmtpConfigured, sendEmail } from "../services/smtp-email.js";
 import { StudentSchedule } from "../models/academics.js";
 import { Notification, ScheduleActivity } from "../models/communications.js";
 import { AcademicTerm } from "../models/catalogue.js";
@@ -338,6 +338,57 @@ export async function getStudents(req, res) {
   }
 }
 
+// Dashboard data reuses the directory's derived workflow states so staff never edit statuses by hand.
+export async function getPendingWork(req, res) {
+  let directoryResponse;
+  const proxy = {
+    status(code) { this.code = code; return this; },
+    json(body) { directoryResponse = { code: this.code || 200, body }; return this; },
+  };
+  await getStudents({ ...req, query: {} }, proxy);
+  if (!directoryResponse || directoryResponse.code !== 200) {
+    return res.status(directoryResponse?.code || 500).json(directoryResponse?.body || { message: "Unable to load workflow dashboard" });
+  }
+  const students = directoryResponse.body.students;
+  const ids = students.map((student) => student.id);
+  const term = directoryResponse.body.term;
+  let termId = null;
+  if (term) termId = await AcademicTerm.findOne({ isActive: true }).sort({ termStart: -1 }).select("_id").lean().then((value) => value?._id);
+  const requests = termId && ids.length ? await Promise.all([
+    WholeScheduleSwapRequest.find({ term: termId, student: { $in: ids } }).select("student status expiresAt updatedAt").lean()
+      .then((rows) => rows.map((row) => ({ ...row, type: "wholeScheduleSwap" }))),
+    SlotChangeRequest.find({ term: termId, student: { $in: ids } }).select("student status updatedAt").lean()
+      .then((rows) => rows.map((row) => ({ ...row, type: "slotChange" }))),
+    MandatoryCourseRemovalRequest.find({ term: termId, student: { $in: ids } }).select("student status updatedAt").lean()
+      .then((rows) => rows.map((row) => ({ ...row, type: "mandatoryCourseRemoval" }))),
+    ExtraHoursRequest.find({ term: termId, student: { $in: ids } }).select("student decisionStatus settlementStatus updatedAt").lean()
+      .then((rows) => rows.map((row) => ({ ...row, type: "extraHours" }))),
+  ]).then((groups) => groups.flat()) : [];
+  const requestsByStudent = new Map();
+  for (const request of requests) {
+    const id = String(request.student);
+    const list = requestsByStudent.get(id) || [];
+    const status = request.type === "extraHours"
+      ? `${request.decisionStatus}${request.settlementStatus && request.settlementStatus !== "none" ? `:${request.settlementStatus}` : ""}`
+      : request.status;
+    list.push({ type: request.type, status, updatedAt: request.updatedAt });
+    requestsByStudent.set(id, list);
+  }
+  const rows = students.map((student) => ({ ...student, requests: requestsByStudent.get(student.id) || [] }));
+  const countBy = (key) => Object.fromEntries([...new Set(rows.map((row) => key(row) || "unassigned"))]
+    .sort().map((value) => [value, rows.filter((row) => (key(row) || "unassigned") === value).length]));
+  res.json({
+    term: directoryResponse.body.term,
+    students: rows,
+    groups: {
+      studentType: countBy((row) => row.studentType),
+      advisor: countBy((row) => row.assignedAdvisor?.fullName),
+      requestType: Object.fromEntries(["wholeScheduleSwap", "slotChange", "mandatoryCourseRemoval", "extraHours"]
+        .map((type) => [type, requests.filter((request) => request.type === type).length])),
+    },
+  });
+}
+
 export async function getStudentDetails(req, res) {
   if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ message: "Invalid student ID" });
   const student = await StudentProfile.findById(req.params.id)
@@ -381,23 +432,9 @@ export async function lookupAdvisor(req, res) {
 
 async function emailAdvisor(advisor, type, title, message) {
   const notification = await Notification.create({ recipient: advisor._id, type, title, message, channels: ["email"], deliveryStatus: "pending" });
-  if (!process.env.SMTP_HOST || !process.env.SMTP_FROM) return notification;
+  if (!isSmtpConfigured()) return notification;
   try {
-    const port = Number(process.env.SMTP_PORT || 587);
-    const secure = process.env.SMTP_SECURE === undefined ? port === 465 : process.env.SMTP_SECURE === "true";
-    const transport = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port,
-      secure,
-      requireTLS: !secure && process.env.SMTP_REQUIRE_TLS !== "false",
-      auth: process.env.SMTP_USER ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS } : undefined,
-      connectionTimeout: 10000,
-      greetingTimeout: 10000,
-      socketTimeout: 10000,
-      disableFileAccess: true,
-      disableUrlAccess: true,
-    });
-    await transport.sendMail({ from: process.env.SMTP_FROM, to: advisor.email, subject: title, text: message });
+    await sendEmail({ to: advisor.email, subject: title, text: message });
     notification.deliveryStatus = "sent";
     notification.sentAt = new Date();
   } catch {
