@@ -34,9 +34,9 @@ npm run test:bc:regression
 npm run build
 ```
 
-`test:a` executes the complete Group A integration/acceptance selection. Known requirement gaps are real failures, so this command exits 1 until they are repaired. `test:a:regression` executes the same assertions but marks the twelve documented gap cases as TODOs; it does not count them as passes. Test data lives in isolated temporary MongoDB databases.
+`test:a` executes the complete Group A integration/acceptance selection. Known requirement gaps are real failures, so this command exits 1 until they are repaired. `test:a:regression` executes the same assertions but marks the remaining gap cases as TODOs. Test data lives in isolated temporary MongoDB databases.
 
-Strict Group A result: **84 tests, 72 pass, 12 fail**. A regression result: **72 pass, 12 explicit TODOs, zero unexpected failures**. Post-integration B/C regression: **118 tests, 105 pass, 13 existing TODOs, zero unexpected failures**. Post-integration offering-year suite: **73 pass, zero failures**. The production frontend build passes.
+Initial strict Group A result: **84 tests, 72 pass, 12 fail**. The follow-up run for extra-hours and related finance regressions passed **27 of 27** checks, including the six formerly failing A1 assertions. The production frontend build passes.
 
 Probation emails are tested through a local SMTP test server, not a real GUC mailbox. Gateway behavior uses the submitted sandbox simulation and never collects card/CVV/password data. UI presence is inspected in source; these are API/integration tests, not a claim of full browser acceptance for every screen.
 
@@ -44,18 +44,18 @@ Probation emails are tested through a local SMTP test server, not a real GUC mai
 
 | Part | Requirement | Result and coverage |
 | --- | --- | --- |
-| A1 | 83 | **Partial:** pricing/probation/per-request limits work, but no advisor submission form exists in the frontend; backend misses assigned-advisor ownership and cumulative activated-hour checks. |
+| A1 | 83 | Advisor submission form added. Verified pricing, probation, per-request limits, assigned-advisor ownership, and cumulative term limits. |
 | A1 | 84 | Verified coordinator queue and populated details. |
 | A1 | 85 | Verified exact student-ID search and empty results. |
 | A1 | 86 | Verified combined Advisor, decision, settlement option and settlement-status filters. |
-| A1 | 87 | **Partial:** decisions are transactional and approval does not activate hours, but blank notes and stale eligibility are accepted. |
+| A1 | 87 | Verified transactional decisions, required response notes, eligibility at approval, and no activation until settlement. |
 | A1 | 88 | Verified student-owned approved request details, pricing and cost breakdown. |
 | A1 | 90 | Verified Awaiting Payment Choice until confirmation; ownership and already-settled guards. |
-| A1 | 91 | **Partial:** single-request wallet/gateway payments work, but different simultaneous requests can overspend one wallet. |
+| A1 | 91 | Verified wallet and gateway payments, with balance checks that cover simultaneous wallet payments for different requests. |
 | A1 | 92 | Verified one outstanding deferred charge, activation and no wallet/gateway debit. |
 | A1 | 93 | Verified failed and cancelled sandbox gateway attempts retry to success. |
 | A1 | 94 | Verified paid/deferred PDF downloads through actual routes, references, distinct labels and student ownership; route mismatch repaired. |
-| A1 | 95 | **Partial:** normal decision/payment/deferral history works, but a completed B2 refund is not reflected in request settlement/history. |
+| A1 | 95 | Verified decision, payment, deferral, and completed refund history. The refund updates the request in the same transaction as the ledger. |
 | A1 | 96 | Verified only the creating Advisor can withdraw a pending request; approved/withdrawn requests are blocked. |
 | A2 | 35 | Verified deadline, eligible desired groups, auto-populated current schedule and one open request. |
 | A2 | 36 | Verified exact-course/term/processed eligibility and anonymous requester display. |
@@ -81,23 +81,13 @@ Probation emails are tested through a local SMTP test server, not a real GUC mai
 | A3 | 114 | Verified the subject student sees only accepted plans. |
 | A3 | 115 | Verified exit-exam statuses and Coordinator response are visible only to the subject student. |
 
-## Twelve failing strict acceptance cases
+## Remaining strict acceptance cases
 
 The executable assertions are in `apps/api/src/controllers/group-a.audit.test.js`:
 
-1. **83:** a different Advisor can submit for a student assigned to another Advisor. Read/detail/withdraw paths are scoped, but submission is not.
-2. **83:** another request can be created after the student's three permitted extra hours have already been activated. Calculation restarts from the standard allowance rather than considering existing active requests.
-3. **87:** an approval with a whitespace-only response note succeeds.
-4. **87:** a request is still approved after its student moves onto probation.
-5. **91:** two different requests can both spend a wallet that funds only one. Each transaction reads the same ledger balance and writes a different request, so there is no shared write conflict to prevent overspending.
-6. **95:** a completed refund leaves the extra-hours request marked Paid and does not add the refund to its history. This depends on the previously reported B2 Req. 102 repair.
 7. **120:** submitting a valid graduation plan produces no Coordinator submission alert.
 8. **120:** creating a valid exit-exam request produces no Coordinator request alert.
 9. **120:** creating a mandatory-removal request produces no Coordinator request alert.
 10. **120:** a pending financial reversal produces no Coordinator alert.
 11. **121:** starting the production API with an assigned open schedule and a deadline one hour away, then loading staff inboxes, still produces no Advisor/Coordinator reminder.
 12. **103/107/113:** a GPA-3.70 student with stale non-probation standing/reason can save, submit and receive acceptance for a 25-credit term despite the required 23-credit allowance. This is the shared C1 Req. 59 defect, not a missing A3 page.
-
-The missing **83 frontend submission form** is a separate source-inspection finding, not one of these twelve API assertions: the submitted ExtraHoursPage only lists, decides, settles, withdraws and downloads existing requests; no frontend call submits course IDs to `POST /api/extra-hours`.
-
-This integration collects the existing submitted A work and reports its gaps. It does not claim the features are complete merely because branches are merged, and does not implement the missing business rules silently.

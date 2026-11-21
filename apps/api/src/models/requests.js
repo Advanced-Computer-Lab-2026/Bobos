@@ -110,7 +110,7 @@ const extraHoursCourseSchema = new Schema(
 );
 
 const extraHoursHistorySchema = new Schema({
-  action: { type: String, required: true, enum: ["submitted", "approved", "rejected", "withdrawn", "paymentChoice", "paymentAttempt", "paid", "deferred"] },
+  action: { type: String, required: true, enum: ["submitted", "approved", "rejected", "withdrawn", "paymentChoice", "paymentAttempt", "paid", "deferred", "refunded"] },
   actor: ref("User", { default: null }),
   note: { type: String, trim: true, maxlength: 1000 },
   settlementOption: { type: String, enum: ["wallet", "gateway", "deferred", null], default: null },
