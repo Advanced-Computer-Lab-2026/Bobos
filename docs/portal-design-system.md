@@ -10,7 +10,7 @@ The paths below refer to `apps/web/public/portal-studio/`. It is the runnable vi
 
 ## Surface, type and composition
 
-Normal and advising students use the illustrated teaching week. Below it, Coming up and the notification preview share a column beside the academic calendar. The preview shows unread notices or a large break message when the inbox is caught up. Coordinators see assignments and requests, advisors see advising work, and administrators see academic setup in the work queue.
+Normal and advising students use the illustrated teaching week. Below it, Coming up and the notification preview share a column beside the academic calendar. A bell ringer accompanies unread notices. The mallet strikes first, then the bell swings and settles. A chime plays only when the user presses Ring bell. When the inbox is caught up, gust lines sweep across a desert ridge and a tumbleweed rolls above the break message. The scene plays once when it enters view and can be replayed. Reduced motion uses a gentle roll without bounces and keeps the bell ringer still until pressed. Coordinators see assignments and requests, advisors see advising work, and administrators see academic setup in the work queue.
 
 The console palette uses charcoal canvas (#151515), a slightly deeper sidebar (#0f0f0f), warm white ink (#efeee9), muted copy (#bdbbb0) and quiet rules (#303030). Light mode uses a muted ground (#f0eee6), paper (#f8f6ef) and dark brown ink (#302d28). Read the applied tokens in `studio.js`, `base.css` and `studio.css`; theme-specific overrides matter. Use semantic tokens for controls and text. Save sky blue, clay, sage and warm cream for recognizable objects, course identities and useful distinctions. The Computer Graphics sheet is a good cream reference.
 

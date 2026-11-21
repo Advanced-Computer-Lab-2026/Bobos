@@ -34,6 +34,8 @@ const notificationKey = id => `${role}:${id}`;
 const isNotificationUnread = id => !readNotifications.has(notificationKey(id));
 let connected = true;
 let toastTimer;
+let inboxArtObserver;
+let bellAudio;
 let returnFocus;
 let preferencesState = {days: ['Thursday'], groups: Array(4).fill('Group 4'), notes: 'I would prefer to keep Thursday free.'};
 const app = document.querySelector('#app');
@@ -631,15 +633,68 @@ function notificationEntries(){
   ];
 }
 
+function inboxBellRinger(){
+  return button(`<svg class="student-inbox-bell" viewBox="0 0 180 126" aria-hidden="true" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path class="inbox-bell-frame" d="M87 23h79M102 23V12m48 11V12M11 115h154"/>
+    <path class="inbox-ringer-boot" d="M32 98h11l-1 13 5 4H29Zm18 0h10l1 13 5 4H49Z"/>
+    <path class="inbox-ringer-skin" d="M22 83l8 2-1 8-4 2-4-3Z"/>
+    <path class="inbox-ringer-back-sleeve" d="M32 52q-7 1-9 10l-5 16q-1 5 3 8l9 2 4-10 5-18Z"/>
+    <path class="inbox-ringer-coat" d="M31 54q7-6 17-5 11 0 14 12l-3 20 7 21q-20 9-40 0l6-20-4-17q-2-6 3-11Z"/>
+    <path class="inbox-ringer-collar" d="M32 53l6-4 10 2 5 5-9 5-5-4-4 2Z"/>
+    <path class="inbox-ringer-detail" d="m44 61-2 42m-5-28h1m-2 9h1m-2 9h1"/>
+    <path class="inbox-ringer-skin" d="M34 30q14-9 22 0v6l5 5-5 2v4q-7 7-17 1l-2 7-8-5 4-8Z"/>
+    <path class="inbox-ringer-hat" d="M25 32q3-6 7-7l2-14q9-4 19 0l5 13 7 4q-16 8-40 4Z"/>
+    <path class="inbox-ringer-detail" d="M33 24q13 1 24-2m-7 13h1m-5 12q4 1 6-1"/>
+    <g class="inbox-bell-swing">
+      <path class="inbox-bell-body" d="M99 72c8-9 10-18 10-29 0-11 8-17 18-17 11 0 18 6 18 17 0 11 2 21 10 29l3 5H96Z"/>
+      <path d="M125 26v-3m-24 48h52m-38-22c0-7 3-12 8-14m0 42v4m8-4v4"/>
+      <path class="inbox-bell-body" d="M123 81q4-4 8 0l2 4q-6 5-12 0Z"/>
+    </g>
+    <g class="inbox-ringer-arm">
+      <path class="inbox-mallet" d="m80 74 13-9m-3-7 8-4 7 12-8 5Z"/>
+      <path class="inbox-ringer-coat" d="M52 51q5-1 9 4l7 12 9-1 3 10-13 3q-4 1-7-3L48 62q-4-6 4-11Z"/>
+      <path class="inbox-ringer-sleeve-fold" d="m56 61 6 9q2 3 5 3l4-1"/>
+      <path class="inbox-ringer-collar" d="m73 66 6-1 3 11-7 1Z"/>
+      <path class="inbox-ringer-skin" d="M79 67q3-4 7-3l3 4-3 5-5 1Z"/>
+    </g>
+    <path class="inbox-bell-rays" d="m158 36 8-6m-4 15 11-2m-11 11 8 3"/>
+  </svg><span>Ring bell</span>`,'ring-student-bell','student-bell-control');
+}
+
 function studentNotificationPanel(){
   const unread = notificationEntries().filter(([id]) => isNotificationUnread(id));
   const content = unread.length
-    ? `<ul class="student-inbox-list" role="list">${unread.slice(0,3).map(([,title,description,time])=>`
-        <li><strong>${title}</strong><p>${description}</p><small>${time}</small></li>`).join('')}</ul>`
+    ? `<div class="student-inbox-unread">
+        ${inboxBellRinger()}
+        <ul class="student-inbox-list" role="list">${unread.slice(0,3).map(([,title,description,time])=>`
+          <li><strong>${title}</strong><p>${description}</p><small>${time}</small></li>`).join('')}</ul>
+      </div>`
     : `<div class="student-inbox-empty">
-        <span class="student-inbox-sun" aria-hidden="true">☀</span>
+        <div class="student-tumbleweed-scene" aria-hidden="true">
+          <svg class="student-desert-line" viewBox="0 0 260 32" preserveAspectRatio="none" fill="none" stroke="currentColor" stroke-linecap="round">
+            <path d="M0 26q64-6 125 0t135-3M0 19q19-3 38-14 16-9 43 7m99 9q14-10 27-12 13-3 31 9M22 30h19m45-2h9m114 2h15"/>
+          </svg>
+          <svg class="student-wind student-wind-near" viewBox="0 0 180 38" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M2 18h68c15 0 22-8 15-13-5-4-12-2-13 3M28 27h118c20 0 27-11 18-16-5-3-11-1-12 3M108 35h41"/>
+          </svg>
+          <svg class="student-wind student-wind-far" viewBox="0 0 180 38" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M3 13h111c15 0 20-9 13-11-4-2-10 0-10 4M21 25h139c15 0 23-8 15-14M81 35h55"/>
+          </svg>
+          <div class="student-tumbleweed-track">
+            <div class="student-tumbleweed-bounce">
+          <svg class="student-tumbleweed" viewBox="0 0 88 88" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <path class="tumbleweed-shape" d="M10 42c-2-10 4-21 14-23 5-10 18-15 27-9 10-3 23 4 25 14 8 7 10 19 4 27 2 11-6 22-18 24-6 8-20 11-29 5-11 0-22-7-23-17-6-5-6-14 0-21Z"/>
+            <path d="M13 52 28 48l14 7 15-7 19 6M24 20l4 14 14 21 5 22M51 11l-3 20 9 17 3 24M76 25 63 28l-15 3-20 3-16 9M75 43l-12-15-3-13M18 64l16 2 8-11M34 66l-2 12M60 72l8-10 8-8M30 22l12-5 6 14"/>
+            <path d="m22 45-8-9m16 5 12-5m-8 30-9-10m22 15 7-9m3-14 10-7 7 1m-21-7 5-12m9 38 7 4m-56-1 3 5m20-51 1-6"/>
+          </svg>
+            </div>
+          </div>
+        </div>
         <p class="student-inbox-message">The inbox is quiet.<br>Go touch grass.</p>
-        <p>No unread notifications.</p>
+        <div class="student-inbox-empty-footer">
+          <p>No unread notifications.</p>
+          ${button('Replay wind','replay-tumbleweed','btn text')}
+        </div>
       </div>`;
   return `<section class="student-inbox" aria-labelledby="student-inbox-heading">
     <div class="section-head">
@@ -1219,6 +1274,7 @@ function render(focus=false){
   document.body.classList.toggle('auth-screen',authPages.has(page));
   const body=authPages.has(page)?auth():`<div class="shell">${sidebar()}<div class="workspace"><header class="topbar">${link('overview',portalWordmark(),'mobile-nav wordmark')}<span class="term">${workspaces[lab.layout].name==='Claude Study'?'<small class="study-crumb">Academic workspace &nbsp; / &nbsp;</small>':''}${pages[page]}<span>Winter 2026 / 2027</span></span><div class="topactions">${button(icon('menu')+'<span class="sr-only">Menu</span>','mobile-menu','mobile-menu')}${accountControls()}</div></header><main class="content" data-screen="${page}" id="content" tabindex="-1">${renderers[page]()}</main></div></div>`;
   arrivalObserver?.disconnect();
+  inboxArtObserver?.disconnect();
   app.innerHTML=body;
   if (comparePageDesigns) attachPageDesign(page,role,render);
   const main = app.querySelector('main');
@@ -1228,6 +1284,15 @@ function render(focus=false){
   }
   syncControls(role, page);
   if(page==='overview' && workspaces[lab.layout].name==='Claude Study') stageOverview(app.querySelector('main'));
+  const inboxArt = app.querySelector('.student-tumbleweed-scene,.student-bell-control');
+  if (inboxArt) {
+    inboxArtObserver = new IntersectionObserver(([entry], observer) => {
+      if (!entry.isIntersecting) return;
+      inboxArt.classList.add('is-playing');
+      observer.disconnect();
+    }, { threshold: 0.5 });
+    inboxArtObserver.observe(inboxArt);
+  }
   const lamp = app.querySelector('.desk-lamp-scene');
   if (lamp) mountDeskLamp(lamp);
   binderMotion.mount(app.querySelector('[data-concertina=true] .folio-stack'));
@@ -1238,6 +1303,36 @@ function startPreview(destination){
   localStorage.setItem(previewSessionKey,'1');
   returnAfterSignIn = 'overview';
   navigate(destination);
+}
+function replayInboxArt(scene){
+  if (!scene) return;
+  inboxArtObserver?.disconnect();
+  scene.classList.remove('is-playing', 'is-replaying');
+  void scene.offsetWidth;
+  scene.classList.add('is-replaying');
+}
+
+async function chimeAtStrike(){
+  const Audio = window.AudioContext || window.webkitAudioContext;
+  if (!Audio) return;
+  try {
+    bellAudio ??= new Audio();
+    if (bellAudio.state === 'suspended') await bellAudio.resume();
+    const strike = bellAudio.currentTime + 0.48;
+    for (const [frequency, volume, decay] of [[440, .065, 1.45], [708, .032, 1.15], [1184, .018, .7], [1756, .009, .38]]) {
+      const tone = bellAudio.createOscillator();
+      const envelope = bellAudio.createGain();
+      tone.frequency.value = frequency;
+      envelope.gain.setValueAtTime(.0001, strike);
+      envelope.gain.exponentialRampToValueAtTime(volume, strike + .012);
+      envelope.gain.exponentialRampToValueAtTime(.0001, strike + decay);
+      tone.connect(envelope).connect(bellAudio.destination);
+      tone.start(strike);
+      tone.stop(strike + decay + .02);
+    }
+  } catch {
+    // The illustration still plays when audio is unavailable.
+  }
 }
 function toast(text){const el=document.querySelector('#toast');el.textContent=text;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),4000);}
 function modal(title,content,submit='Save changes',action='save-modal'){
@@ -1270,6 +1365,14 @@ function syncFilterChips(){
 }
 function action(name,el){
   switch(name){
+    case 'replay-tumbleweed': {
+      replayInboxArt(el.closest('.student-inbox')?.querySelector('.student-tumbleweed-scene'));
+      break;
+    }
+    case 'ring-student-bell':
+      replayInboxArt(el);
+      void chimeAtStrike();
+      break;
     case 'toggle-filters':{
       const panel=document.querySelector('#filter-panel');if(!panel)break;
       panel.hidden=!panel.hidden;el.setAttribute('aria-expanded',String(!panel.hidden));
