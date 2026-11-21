@@ -28,6 +28,8 @@ const roleNames = {
   administrator: "Administrator",
 };
 
+const notify = (tone, text) => document.querySelector("portal-action-feedback")?.show(tone, text);
+
 const navGroups = (role) => {
   const student = ["normalStudent", "advisingStudent"].includes(role);
   const staff = ["advisor", "coordinator", "administrator"].includes(role);
@@ -90,7 +92,6 @@ export default function App() {
   const [profileLoading, setProfileLoading] = useState(Boolean(token));
   const [activeScreen, setActiveScreen] = useState("overview");
   const [screenContext, setScreenContext] = useState(null);
-  const [notice, setNotice] = useState(null);
   const [navQuery, setNavQuery] = useState("");
   const navigation = useRef(null);
   const account = useRef(null);
@@ -112,17 +113,11 @@ export default function App() {
         window.localStorage.removeItem("bobos.token");
         setToken(null);
         setProfile(null);
-        if (error.status !== 401) setNotice({ type: "error", text: error.message });
+        if (error.status !== 401) notify("error", error.message);
       })
       .finally(() => alive && setProfileLoading(false));
     return () => { alive = false; };
   }, [token]);
-
-  useEffect(() => {
-    if (!notice) return undefined;
-    const timeout = window.setTimeout(() => setNotice(null), 5000);
-    return () => window.clearTimeout(timeout);
-  }, [notice]);
 
   const groups = useMemo(() => navGroups(profile?.role), [profile?.role]);
   const allNavItems = groups.flatMap((group) => group.items);
@@ -132,6 +127,7 @@ export default function App() {
   }, [activeScreen, profile?.role]);
 
   const acceptLogin = (newToken) => {
+    document.querySelector("portal-action-feedback")?.clear();
     window.localStorage.setItem("bobos.token", newToken);
     setToken(newToken);
     setActiveScreen("overview");
@@ -144,9 +140,9 @@ export default function App() {
     setToken(null);
     setProfile(null);
     setActiveScreen("overview");
+    document.querySelector("portal-action-feedback")?.clear();
   };
 
-  const notify = (type, text) => setNotice({ type, text });
   const openScreen = (screen, context = null) => {
     setActiveScreen(screen);
     setScreenContext(context);
@@ -164,9 +160,8 @@ export default function App() {
     const result = new URLSearchParams(window.location.search).get("calendar");
     if (!result) return;
     setActiveScreen("calendar-sync");
-    setNotice(result === "connected"
-      ? { type: "success", text: "Google Calendar connected." }
-      : { type: "error", text: "Google Calendar connection could not be completed." });
+    if (result === "connected") notify("success", "Google Calendar connected.");
+    else notify("error", "Google Calendar connection could not be completed.");
     window.history.replaceState({}, "", window.location.pathname);
   }, []);
 
@@ -246,7 +241,6 @@ export default function App() {
         </header>
 
         <div className="page-content" id="workspace-content" tabIndex={-1}>
-          {notice && <div className={`toast ${notice.type}`} role={notice.type === "error" ? "alert" : "status"}>{notice.text}<button type="button" aria-label="Dismiss" onClick={() => setNotice(null)}>×</button></div>}
           {activeScreen === "overview" && <OverviewPage token={token} profile={profile} onOpen={openScreen} />}
           {activeScreen === "profile" && <ProfilePage profile={profile} />}
           {activeScreen === "notifications" && <NotificationsPage token={token} notify={notify} />}
@@ -254,7 +248,7 @@ export default function App() {
           {activeScreen === "preferences" && <PreferencesPage token={token} profile={profile} profileId={screenContext?.id || screenContext?._id || profile.studentProfileId} studentTarget={screenContext?._id ? screenContext : undefined} notify={notify} onOpenDraftSchedule={(student, selectedTermId) => openScreen("student-schedules", { draftStudent: student, termId: selectedTermId })} />}
           {activeScreen === "directory" && <StudentDirectoryPage token={token} role={profile.role} notify={notify} />}
           {activeScreen === "financial-records" && <FinancialRecordsPage token={token} role={profile.role} notify={notify} />}
-          {activeScreen === "advising" && <AdvisingPage token={token} role={profile.role} onOpenPreferences={(student) => openScreen("preferences", student)} />}
+          {activeScreen === "advising" && <AdvisingPage token={token} role={profile.role} notify={notify} onOpenPreferences={(student) => openScreen("preferences", student)} />}
           {activeScreen === "graduation-review" && ["advisor", "coordinator"].includes(profile.role) && <GraduationReview token={token} role={profile.role} />}
           {activeScreen === "my-graduation" && profile.role === "advisingStudent" && <StudentGraduation token={token} />}
           {activeScreen === "my-advisor" && profile.role === "advisingStudent" && <MyAdvisorPage token={token} />}

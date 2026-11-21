@@ -155,14 +155,6 @@ h1, h2, h3 { font-family: inherit; letter-spacing: -.025em; }
 .form-footer > .helper-text { flex: 1; }
 .push-right { margin-left: auto; }
 .helper-text { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.55; }
-.feedback { padding: 11px 13px; border: 1px solid transparent; border-radius: 7px; font-size: 12px; line-height: 1.55; }
-.feedback.error { border-color: var(--line); color: var(--muted); background: var(--paper); }
-.feedback.success { border-color: var(--line); color: var(--success-ink); background: var(--success-bg); }
-.feedback.warning { border-color: var(--line); color: var(--draft-ink); background: var(--raised); }
-.feedback.info { border-color: var(--line); color: var(--ink); background: var(--raised); }
-.toast { position: fixed; z-index: 80; top: 76px; right: 27px; display: flex; max-width: 410px; align-items: center; gap: 12px; padding: 12px 15px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: var(--success-bg); box-shadow: none; font-size: 12px; }
-.toast.error { border-color: var(--line); color: var(--muted); background: var(--paper); }
-.toast button { padding: 0 2px; border: 0; color: inherit; background: none; cursor: pointer; font-size: 17px; }
 .table-scroll { width: 100%; overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: left; }
 th { padding: 10px 11px; border-bottom: 1px solid var(--line); color: var(--muted); background: var(--paper); font-size: 12px; font-weight: 700; white-space: nowrap; }
@@ -710,7 +702,7 @@ th { background: var(--raised); color: var(--ink); }
 td { color: var(--ink); }
 .status-pill, .role-pill, .new-pill { border-radius: 5px; }
 .status-pill.pending { background: var(--draft-bg); color: var(--draft-ink); }
-.status-pill.failed, .status-pill.danger, .feedback.error, .toast.error { background: var(--danger-bg); color: var(--danger-ink); }
+.status-pill.failed, .status-pill.danger { background: var(--danger-bg); color: var(--danger-ink); }
 .status-pill.ready { background: var(--ready-bg); color: var(--ready-ink); }
 .status-pill.draft { background: var(--draft-bg); color: var(--draft-ink); }
 .status-pill.muted { background: var(--raised); color: var(--muted); }

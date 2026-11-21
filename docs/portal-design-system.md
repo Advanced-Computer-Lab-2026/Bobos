@@ -38,6 +38,12 @@ The code uses alternate SVG paths, stepped CSS keyframes and timed JavaScript po
 | Calendar | Follow a paper corner around the rings. The binding anchors the rotation, successive turns can overlap, and the seasonal art belongs to its sheet. Deadline notes share the calendar’s perspective. | `binder-motion.js`, `concertina.js`, `concertina-turn.css`, `seasonal-calendar.js` |
 | Staff and student pages | Apply illustrations to the particular workflow while preserving the arrangement people use to complete it. Compare coordinator and student routes. | `staff-art.js`, `student-art.js`, corresponding CSS, `desk-details.css`, `academic-pages.css` |
 
+## Action feedback
+
+Use the shared feedback styles for success, error, warning and informational messages across all five roles. Show a short result for a completed action in the floating card. Keep form errors and detailed results beside the controls they relate to. Use the warning treatment when the next step needs attention, and use the error treatment when the requested operation fails.
+
+The card appears in the bottom corner with a status icon, message and dismiss button. Success and information clear after seven seconds when the card is idle. Warnings and errors stay visible until dismissed or replaced by the next result. The card announces updates without moving focus and respects reduced motion. Both entry points use `action-feedback.js` and `action-feedback.css` in Portal Studio.
+
 ## Sign-in and the lamp
 
 The form is on the left. The lamp and paper float on the right. Its foot starts on the email field, lands at 56% scale on Continue, and then jumps to the desk. On each control the full sole is flat. The right edge of Continue dips and rebounds under the foot. The curved underside becomes visible in flight. The grip is attached beneath the shade. During the two hops the cord follows a hand-authored exposure sheet and keeps the bead below its socket. The interactive drag uses a separate simulation so someone can catch the bead, pull sideways, and release it with momentum. Tapping the shade gives it a small nod and operates the same light. The sheet reveals Group 4’s teaching week.

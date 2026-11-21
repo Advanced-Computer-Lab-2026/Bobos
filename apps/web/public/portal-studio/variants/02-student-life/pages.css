@@ -27,8 +27,7 @@
 .sl2-page .sl2-status.pending::before { content: ''; width: 5px; height: 5px; border-radius: 100%; background: var(--signal-gold, #dcc08d); }
 .sl2-page .sl2-muted, .sl2-page .sl2-helper, .sl2-page .sl2-character-count { color: var(--muted); font-size: 12px; }
 .sl2-page .sl2-helper { margin: 12px 0 0; }
-.sl2-page .sl2-feedback { border-left: 2px solid var(--signal-mint, #a8c7b9); padding: 9px 12px; background: var(--sl2-soft); font-size: 13px; margin: 0 0 20px; }
-.sl2-page .sl2-feedback.is-error { border-left-color: var(--signal-rose, #dea58c); }
+.sl2-page .sl2-feedback { margin: 0 0 20px; }
 .sl2-page .sl2-preview-note { margin: 32px 0 0; padding-top: 12px; border-top: 1px solid var(--rule); font-size: 10px; color: var(--muted); }
 .sl2-page .sl2-empty { max-width: 620px; padding: 28px 0; }
 .sl2-page .sl2-empty .btn { margin-top: 12px; }
@@ -521,7 +520,6 @@
 .sl2-dialog .sl2-helper { font-size: 12px; color: var(--muted); }
 .sl2-dialog .form-footer { margin-top: 24px; padding-top: 17px; border-top: 1px solid var(--rule); gap: 10px; }
 .sl2-dialog .btn.primary { background: var(--ink); color: var(--canvas); border-color: var(--ink); }
-.sl2-dialog .sl2-dialog-error { border-left: 2px solid var(--signal-rose,#dea58c); padding: 10px; background: var(--raised); font-size: 13px; }
 .sl2-dialog .sl2-inspect-course { display: flex; align-items: center; gap: 15px; }
 .sl2-dialog .sl2-inspect-course h3 { margin: 0; font-size: 17px; }
 .sl2-dialog .sl2-inspect-course p { font-size: 12px; color: var(--muted); }
@@ -660,7 +658,7 @@
 .sl2-page .sl2-print-content { display: none; }
 @media print {
   html:has(.sl2-print-schedule), body:has(.sl2-print-schedule) { background: white !important; height: auto !important; min-height: 0 !important; overflow: visible !important; }
-  body:has(.sl2-print-schedule) :is(.sidebar,.topbar,#design-controls,#toast,.skip,#content > label) { display: none !important; }
+  body:has(.sl2-print-schedule) :is(.sidebar,.topbar,#design-controls,.skip,#content > label) { display: none !important; }
   body:has(.sl2-print-schedule) :is(.shell,main,.content,#content) { display: block !important; height: auto !important; min-height: 0 !important; max-height: none !important; overflow: visible !important; background: white !important; padding: 0 !important; margin: 0 !important; }
   .sl2-print-schedule { --ink: #171717; --muted: #555; --rule: #ddd; --raised: #f3f3f1; --sl2-edge: #ddd; color: #171717 !important; background: white !important; padding: 12mm !important; }
   .sl2-print-schedule > * { display: none !important; }

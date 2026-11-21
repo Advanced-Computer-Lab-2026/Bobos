@@ -32,12 +32,20 @@ export default function ExtraHoursPage({ token, role, advisorId, notify }) {
 
   const decision = async (row, value) => {
     setBusyId(row._id); setError("");
-    try { await api(`/api/extra-hours/${row._id}/decision`, { token, method: "POST", body: { decision: value, responseNote: notes[row._id] || "" } }); await load(); }
+    try {
+      await api(`/api/extra-hours/${row._id}/decision`, { token, method: "POST", body: { decision: value, responseNote: notes[row._id] || "" } });
+      notify("success", value === "approved" ? "Extra hours approved." : "Decision saved. The extra hours request was rejected.");
+      await load();
+    }
     catch (e) { setError(e.message); } finally { setBusyId(""); }
   };
   const withdraw = async (row) => {
     setBusyId(row._id); setError("");
-    try { await api(`/api/extra-hours/${row._id}/withdraw`, { token, method: "POST", body: {} }); await load(); }
+    try {
+      await api(`/api/extra-hours/${row._id}/withdraw`, { token, method: "POST", body: {} });
+      notify("success", "Extra hours request withdrawn.");
+      await load();
+    }
     catch (e) { setError(e.message); } finally { setBusyId(""); }
   };
   const settle = async (row, option, method) => {
@@ -46,6 +54,8 @@ export default function ExtraHoursPage({ token, role, advisorId, notify }) {
       const result = await api(`/api/extra-hours/${row._id}/settlement`, { token, method: "POST", body: option === "now" ? { option, method, ...(method === "gateway" ? { gatewayResult: gateway[row._id] || "succeeded" } : {}) } : { option } });
       if (result.confirmation?.type === "paidReceipt") notify("success", `Payment complete. Receipt reference ${result.confirmation.transactionReference}.`);
       if (result.confirmation?.type === "deferredPaymentConfirmation") notify("success", `Deferred charge confirmed for ${result.confirmation.installment}.`);
+      if (result.transaction?.status === "failed") notify("error", "The payment failed. You can retry from this request.");
+      if (result.transaction?.status === "cancelled") notify("warning", "Payment was cancelled. You can choose a payment option again.");
       await load();
     } catch (e) { setError(e.message); } finally { setBusyId(""); }
   };

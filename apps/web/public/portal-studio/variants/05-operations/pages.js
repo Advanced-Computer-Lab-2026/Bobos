@@ -71,7 +71,12 @@
     const type = page==='financial-records' ? nativeToolbar?.querySelector('select') : null;
     if(type){type.removeAttribute('data-filter');controls.append(label('Type',type));}
     const clear = button('Clear filters',()=>{search.value=kind.value=from.value=to.value='';if(type)type.value='';update();search.focus();});controls.append(clear);
-    const feedback=el('p','ops05-feedback');feedback.setAttribute('role','status');
+    const feedback=el('p','ops05-feedback feedback');feedback.setAttribute('role','status');
+    function showFeedback(text, tone = 'info') {
+      feedback.classList.remove('info', 'warning', 'error');
+      feedback.classList.add(tone);
+      feedback.textContent = text;
+    }
     const count=el('p','ops05-count');count.setAttribute('role','status');
     const main=el('div','ops05-body'); const results=el('section','ops05-results');results.setAttribute('aria-label','Matching records');
     main.append(controls,results);surface.append(main,count,feedback);
@@ -80,7 +85,7 @@
     const exportButton = surface.querySelector('[data-action=export-csv]');
     if(exportButton) { exportButton.removeAttribute('data-action'); exportButton.addEventListener('click',()=>downloadCSV(page,visible,headers)); }
     if(page==='schedule-activity') heading?.append(button('Export CSV',()=>downloadCSV(page,visible,headers),'btn'));
-    const refresh=surface.querySelector('[data-action=refresh]');if(refresh){refresh.removeAttribute('data-action');refresh.addEventListener('click',()=>{update();feedback.textContent='Preview refreshed. No live records were changed.';});}
+    const refresh=surface.querySelector('[data-action=refresh]');if(refresh){refresh.removeAttribute('data-action');refresh.addEventListener('click',()=>{update();showFeedback('Preview refreshed. No live records were changed.');});}
     function openRecord(record, trigger) {
       // Reuse the host's modal and focus restoration. This is explicitly preview-only.
       if(typeof modal==='function') {
@@ -131,7 +136,7 @@
       if(design===5){const trail=el('ol','ops05-trail');[...visible].sort((a,b)=>a.date.localeCompare(b.date)).forEach(r=>{const item=el('li');item.append(el('time','',r.date),card(r));trail.append(item);});results.append(trail);return;}
       if(design===6){
         const picker=el('fieldset','ops05-compare-pick');picker.append(el('legend','','Choose up to three records to compare'));
-        visible.forEach(r=>{const input=el('input');input.type='checkbox';input.checked=compared.has(r.id);input.addEventListener('change',()=>{if(input.checked&&compared.size===3){input.checked=false;feedback.textContent='Compare up to three records at a time.';return;}input.checked?compared.add(r.id):compared.delete(r.id);renderRecords();});picker.append(label(r.title+' · '+r.group,input));});
+        visible.forEach(r=>{const input=el('input');input.type='checkbox';input.checked=compared.has(r.id);input.addEventListener('change',()=>{if(input.checked&&compared.size===3){input.checked=false;showFeedback('Compare up to three records at a time.', 'warning');return;}input.checked?compared.add(r.id):compared.delete(r.id);renderRecords();});picker.append(label(r.title+' · '+r.group,input));});
         const columns=el('div','ops05-comparison');const chosen=visible.filter(r=>compared.has(r.id));chosen.forEach(r=>columns.append(card(r)));if(!chosen.length)columns.append(el('p','','Choose records above to compare.'));results.append(picker,columns);return;
       }
       if(design===7){
@@ -147,7 +152,7 @@
     function update() {
       filtersByPage.set(page,{query:search.value,kind:kind.value,from:from.value,to:to.value,type:type?.value});
       const invalid=from.value&&to.value&&from.value>to.value;to.setCustomValidity(invalid?'End date must not precede start date.':'');
-      feedback.textContent=invalid?'End date must not precede start date.':'';
+      showFeedback(invalid ? 'End date must not precede start date.' : '', invalid ? 'error' : 'info');
       const q=search.value.trim().toLowerCase();visible=invalid?[]:records.filter(r=>(!q||r.values.join(' ').toLowerCase().includes(q))&&(!kind.value||r.group===kind.value)&&(!type?.value||r.values[2]===type.value)&&(!from.value||r.date>=from.value)&&(!to.value||r.date<=to.value));active=0;
       count.textContent=`${visible.length} of ${records.length} sample records · Supplied Portal preview`;
       renderRecords();

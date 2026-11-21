@@ -19,7 +19,6 @@
 .ops05 .ops05-results{min-width:0}
 .ops05 .ops05-count{font-size:12px;color:var(--muted);margin:0}
 .ops05 .ops05-feedback:empty{display:none}
-.ops05 .ops05-feedback{font-size:13px;color:var(--pending-ink,var(--danger-ink))}
 .ops05 .ops05-table{max-width:100%;overflow:auto;overscroll-behavior-inline:contain;border-block:1px solid var(--ops-rule)}
 .ops05 .ops05-table table{width:100%;border-collapse:collapse;min-width:650px;margin:0}
 .ops05 .ops05-table th{background:transparent;text-align:left;color:var(--muted);font-size:11px;font-weight:500;padding:12px;border-bottom:1px solid var(--ops-rule);white-space:nowrap}

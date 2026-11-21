@@ -97,16 +97,18 @@
   function miniWeek(group) {
     return `<div class="sl2-mini-week">${DAYS.map((d, i) => `<section><h3>${d.slice(0, 3)}</h3>${meetings(group).filter(m => m.day === i).map(m => `<p data-tone="${m.tone}"><time>${time(m.start)}</time><strong>${m.code}</strong><span>${m.type} · ${m.room}</span></p>`).join('') || '<p class="sl2-off">Day off</p>'}</section>`).join('')}</div>`;
   }
-  function message(ctx, text, error = false) {
+  function message(ctx, text, tone = 'info') {
     let target = $('.sl2-feedback', ctx.wrap);
-    if (!target) { target = html('p', 'sl2-feedback'); ctx.head.after(target); }
-    target.setAttribute('role', error ? 'alert' : 'status'); target.classList.toggle('is-error', error);
+    if (!target) { target = html('p', 'sl2-feedback feedback'); ctx.head.after(target); }
+    target.classList.remove('info', 'success', 'warning', 'error');
+    target.classList.add(tone);
+    target.setAttribute('role', tone === 'error' || tone === 'warning' ? 'alert' : 'status');
     target.textContent = text; target.hidden = !text;
   }
   function dialogFor(ctx, title, content, onSubmit, submitText = 'Confirm', drawer = false) {
     const returnTarget = document.activeElement;
     const existing = $('dialog[open]',ctx.wrap);if(existing){existing.close();existing.remove();}
-    const d = node(`<dialog class="sl2-dialog ${drawer ? 'sl2-drawer' : ''}" aria-labelledby="sl2-dialog-title"><form method="dialog"><header class="sl2-dialog-head"><h2 id="sl2-dialog-title">${esc(title)}</h2><button type="button" class="btn row-control" data-close aria-label="Close dialog">Close</button></header><div class="sl2-dialog-body">${content}</div><p class="sl2-dialog-error" role="alert" hidden></p><footer class="form-footer"><button type="button" class="btn" data-close>${onSubmit ? 'Cancel' : 'Close'}</button>${onSubmit ? `<button class="btn primary" type="submit">${submitText}</button>` : ''}</footer></form></dialog>`);
+    const d = node(`<dialog class="sl2-dialog ${drawer ? 'sl2-drawer' : ''}" aria-labelledby="sl2-dialog-title"><form method="dialog"><header class="sl2-dialog-head"><h2 id="sl2-dialog-title">${esc(title)}</h2><button type="button" class="btn row-control" data-close aria-label="Close dialog">Close</button></header><div class="sl2-dialog-body">${content}</div><p class="sl2-dialog-error feedback error" role="alert" hidden></p><footer class="form-footer"><button type="button" class="btn" data-close>${onSubmit ? 'Cancel' : 'Close'}</button>${onSubmit ? `<button class="btn primary" type="submit">${submitText}</button>` : ''}</footer></form></dialog>`);
     ctx.wrap.append(d);
     d.addEventListener('click', e => { if (e.target.closest('[data-close]')) d.close(); });
     $('form', d).addEventListener('submit', e => {
@@ -162,7 +164,7 @@
     return lines.map(line => line.match(/.{1,73}/g)?.join('\r\n ') || '').join('\r\n') + '\r\n';
   }
   function downloadSchedule(ctx) {
-    if (ctx.state.status !== 'processed' || !STUDENTS.includes(ctx.role)) { message(ctx, 'Only your processed schedule can be exported.', true); return; }
+    if (ctx.state.status !== 'processed' || !STUDENTS.includes(ctx.role)) { message(ctx, 'Only your processed schedule can be exported.', 'error'); return; }
     const rows = meetings(ctx.state.group);
     const lines = ['Omar Hassan / 70-71577', `Winter 2026/2027 | Group ${ctx.state.group} | ${courses().reduce((n, c) => n + c.credits, 0)} credit hours`, 'Processed schedule | Africa/Cairo', 'Teaching period: 22 November 2026 - 18 February 2027 (preview)', '', ...rows.flatMap(m => [`${DAYS[m.day]} ${time(m.start)}-${time(m.end)} | ${m.code} | ${m.type}`, `${m.title} | ${m.room} | ${m.instructor}`, '']), `Days off: ${DAYS.filter((_, i) => !rows.some(m => m.day === i)).join(', ')}`];
     saveFile('portal-preview-processed-schedule.pdf', pdfBytes('Processed weekly schedule', lines), 'application/pdf');
@@ -293,7 +295,7 @@
     return labelled('Slot-change requests', content, 'sl2-request-rail');
   }
   function requestSlot(ctx, selected = '') {
-    if (ctx.role !== 'advisingStudent' || ctx.state.status !== 'readyForStudentReview' || !openDeadline(ctx)) { message(ctx, 'Slot changes are available only before the advising deadline while your completed schedule is Ready for Student Review.', true); return; }
+    if (ctx.role !== 'advisingStudent' || ctx.state.status !== 'readyForStudentReview' || !openDeadline(ctx)) { message(ctx, 'Slot changes are available only before the advising deadline while your completed schedule is Ready for Student Review.', 'error'); return; }
     const rows = meetings(ctx.state.group);
     dialogFor(ctx, 'Request one slot change', `<p>This asks your advisor to review a meeting. It does not change your timetable.</p><label class="sl2-field">Assigned course and component<select name="meeting" required>${rows.map(m => `<option value="${m.id}" ${m.id === selected ? 'selected' : ''}>${m.code} · ${m.type} · ${DAYS[m.day]} ${time(m.start)} · ${m.room}</option>`).join('')}</select></label><label class="sl2-field">Preference note <span class="sl2-muted">optional</span><textarea name="note" rows="4" maxlength="1000" placeholder="A preferred day or group, or a timing constraint."></textarea></label><p class="sl2-helper">Your current assignment is recorded with the request. Only a pending request can be withdrawn.</p>`, data => {
       if (!openDeadline(ctx) || ctx.state.status !== 'readyForStudentReview') throw new Error('The review window has closed. Reload your schedule.');
@@ -638,7 +640,7 @@
       case 'meeting':inspectMeeting(ctx,target.dataset.meeting);break;
       case 'request-slot':{const existing=$('dialog[open]',ctx.wrap);if(existing)existing.close();requestSlot(ctx,target.dataset.meeting);break;}
       case 'withdraw-slot':{
-        const req=ctx.state.requests.find(r=>r.id===target.dataset.id);if(!req||req.status!=='Pending'){message(ctx,'This request is no longer pending.',true);break;}
+        const req=ctx.state.requests.find(r=>r.id===target.dataset.id);if(!req||req.status!=='Pending'){message(ctx,'This request is no longer pending.', 'error');break;}
         dialogFor(ctx,'Withdraw slot-change request?',`<p>The assigned slot will stay unchanged. Your request will be kept in history as Withdrawn.</p>`,()=>{if(req.status!=='Pending')throw new Error('This request has already been resolved.');req.status='Withdrawn';putState(ctx);rerender();notify('Request withdrawn in this preview.');},'Withdraw request');break;
       }
       case 'schedule-pdf':downloadSchedule(ctx);break;
@@ -648,7 +650,7 @@
         ctx.wrap.append(html('section','sl2-print-content',`<header><span>Portal · design preview</span><h1>Processed weekly schedule</h1><p>Omar Hassan · 70-71577 · Winter 2026/2027<br>Group ${ctx.state.group} · 19 credit hours · Africa/Cairo<br>Teaching period: 22 Nov 2026–18 Feb 2027</p></header>${meetingTable(rows,'Complete lecture, tutorial and lab assignments')}<p>Days off: ${DAYS.filter((_,i)=>!rows.some(m=>m.day===i)).join(', ')}</p><footer>Preview fixture — not an official university record.</footer>`));
         ctx.wrap.classList.add('sl2-print-schedule');window.print();
       }break;
-      case 'export-calendar':if(ctx.state.status!=='processed'||!STUDENTS.includes(ctx.role)){message(ctx,'A processed schedule is required before calendar export.',true);break;}saveFile('portal-preview-schedule.ics',calendarFile(ctx),'text/calendar;charset=utf-8');break;
+      case 'export-calendar':if(ctx.state.status!=='processed'||!STUDENTS.includes(ctx.role)){message(ctx,'A processed schedule is required before calendar export.', 'error');break;}saveFile('portal-preview-schedule.ics',calendarFile(ctx),'text/calendar;charset=utf-8');break;
       case 'day':$$('.sl2-day',ctx.wrap).forEach(day=>day.hidden=day.dataset.day!==target.dataset.day);$$('[data-sl2-action="day"]',ctx.wrap).forEach(b=>b.setAttribute('aria-pressed',String(b===target)));break;
       case 'filter-course':$$('.sl2-meeting',ctx.wrap).forEach(el=>el.hidden=target.dataset.course!=='all'&&el.dataset.course!==target.dataset.course);$$('[data-sl2-action="filter-course"]',ctx.wrap).forEach(b=>b.setAttribute('aria-pressed',String(b===target)));break;
       case 'sections':{
@@ -663,17 +665,17 @@
       case 'group-schedule':dialogFor(ctx,`Group ${target.dataset.group} · complete schedule`,meetingTable(meetings(Number(target.dataset.group)),`Group ${target.dataset.group} complete schedule`),null,'',[2,9].includes(ctx.index));break;
       case 'select-group':{const check=$(`[data-sl2-destination="${target.dataset.group}"]`,ctx.wrap);if(check&&!check.disabled){check.checked=!check.checked;check.dispatchEvent(new Event('change',{bubbles:true}));}break;}
       case 'submit-swap':{
-        if(ctx.role!=='normalStudent'||ctx.state.status!=='processed'){message(ctx,'A processed normal-student schedule is required.',true);break;}
+        if(ctx.role!=='normalStudent'||ctx.state.status!=='processed'){message(ctx,'A processed normal-student schedule is required.', 'error');break;}
         const selected=$$('[data-sl2-destination]:checked',ctx.wrap).map(el=>Number(el.dataset.sl2Destination));
-        if(!selected.length){message(ctx,'Select at least one eligible destination group.',true);break;}
-        if(ctx.state.swaps.some(r=>r.status==='Open')||!openDeadline(ctx)){message(ctx,'A request is already open or the deadline has passed.',true);break;}
+        if(!selected.length){message(ctx,'Select at least one eligible destination group.', 'error');break;}
+        if(ctx.state.swaps.some(r=>r.status==='Open')||!openDeadline(ctx)){message(ctx,'A request is already open or the deadline has passed.', 'error');break;}
         dialogFor(ctx,'Review whole-schedule swap',`<dl class="sl2-summary"><div><dt>Current group</dt><dd>Group ${ctx.state.group} · from your processed record</dd></div><div><dt>Desired groups</dt><dd>${selected.map(g=>'Group '+g).join(', ')}</dd></div><div><dt>Subjects</dt><dd>${courses().map(c=>c.code).join(', ')} · unchanged</dd></div></dl><p>All lecture, tutorial and lab assignments move together when an eligible student completes the exchange.</p>`,()=>{
           if(!openDeadline(ctx)||ctx.state.swaps.some(r=>r.status==='Open'))throw new Error('This request is no longer eligible. Refresh the page.');
           ctx.state.swaps.push({id:'swap-'+Date.now(),from:ctx.state.group,desired:selected,status:'Open',created:'14 Nov 2026, 10:00'});putState(ctx);tab='mine';rerender();notify('Whole-schedule swap request submitted in this preview.');
         },'Submit request');break;
       }
       case 'withdraw-swap':{
-        const r=ctx.state.swaps.find(r=>r.id===target.dataset.id);if(!r||r.status!=='Open'){message(ctx,'Only your open request can be withdrawn.',true);break;}
+        const r=ctx.state.swaps.find(r=>r.id===target.dataset.id);if(!r||r.status!=='Open'){message(ctx,'Only your open request can be withdrawn.', 'error');break;}
         dialogFor(ctx,'Withdraw your swap request?','<p>Your current group and every meeting stay unchanged.</p>',()=>{if(r.status!=='Open')throw new Error('The request is no longer open.');r.status='Withdrawn';putState(ctx);rerender();notify('Swap request withdrawn.');},'Withdraw request');break;
       }
       case 'complete-swap':{
@@ -685,12 +687,12 @@
       case 'add-time':$('.sl2-time-rows',ctx.wrap).insertAdjacentHTML('beforeend',timePreferenceRow({},$$('[data-sl2-time-row]',ctx.wrap).length));refreshPreferenceSummary(ctx);break;
       case 'remove-time':target.closest('[data-sl2-time-row]').remove();refreshPreferenceSummary(ctx);break;
       case 'save-preferences':{
-        if(ctx.role!=='advisingStudent'||!openDeadline(ctx)){message(ctx,'These preferences are read-only.',true);break;}
-        const p=readPreferences(ctx),error=validatePreferences(p);if(error){message(ctx,error,true);break;}
+        if(ctx.role!=='advisingStudent'||!openDeadline(ctx)){message(ctx,'These preferences are read-only.', 'error');break;}
+        const p=readPreferences(ctx),error=validatePreferences(p);if(error){message(ctx,error, 'error');break;}
         p.saved='14 Nov 2026, 10:00';ctx.state.prefs=p;
         if(ctx.scenario==='empty'){ctx.scenario='default';safeWrite(`scenario:${ctx.role}:${ctx.page}`,'default');}
         if(typeof preferencesState!=='undefined')preferencesState={days:p.days,groups:p.groups,notes:p.notes};
-        const persisted=putState(ctx);$('.sl2-saved',ctx.wrap).textContent='Last saved '+p.saved;message(ctx,persisted?'Preferences saved in this preview. Your assigned schedule has not changed.':'Preferences are updated for this view, but browser storage is unavailable.',!persisted);break;
+        const persisted=putState(ctx);$('.sl2-saved',ctx.wrap).textContent='Last saved '+p.saved;message(ctx,persisted?'Preferences saved in this preview. Your assigned schedule has not changed.':'Preferences are updated for this view, but browser storage is unavailable.',persisted ? 'success' : 'warning');break;
       }
       case 'move-preference':{const block=target.closest('[data-sl2-block]'),parent=block.parentElement,items=$$('[data-sl2-block]',parent),i=items.indexOf(block),j=i+Number(target.dataset.direction);if(j>=0&&j<items.length){if(j<i)items[j].before(block);else items[j].after(block);$$('.sl2-rank > span',parent).forEach((el,n)=>el.textContent='Priority '+(n+1));target.focus();}break;}
       case 'preference-step':showPreferenceStep(ctx,Number(target.dataset.step));break;
@@ -700,7 +702,7 @@
       case 'transcript':case 'transcript-pdf':downloadTranscript(ctx);break;
       case 'copy-email':{
         const email=ctx.advisorEmail;
-        if(navigator.clipboard?.writeText)navigator.clipboard.writeText(email).then(()=>message(ctx,'Advisor email copied.')).catch(()=>dialogFor(ctx,'Copy advisor email',`<label class="sl2-field">Email<input readonly value="${esc(email)}" onfocus="this.select()"></label>`,null));
+        if(navigator.clipboard?.writeText)navigator.clipboard.writeText(email).then(()=>message(ctx,'Advisor email copied.', 'success')).catch(()=>dialogFor(ctx,'Copy advisor email',`<label class="sl2-field">Email<input readonly value="${esc(email)}" onfocus="this.select()"></label>`,null));
         else dialogFor(ctx,'Copy advisor email',`<label class="sl2-field">Email<input readonly value="${esc(email)}"></label>`,null);break;
       }
       case 'draft-email':{
@@ -712,11 +714,11 @@
         else dialogFor(ctx,'Calendar connection · preview','<p>In the real application, this action redirects to Google’s OAuth consent screen. Portal never collects your calendar password.</p><p>This local preview does not contact Google.</p>',()=>{ctx.state.connected=true;if(typeof connected!=='undefined')connected=true;putState(ctx);rerender();notify('Sample calendar connection restored.');},'Simulate connection');break;
       }
       case 'sync-now':{
-        if(!ctx.state.connected||ctx.state.status!=='processed'){message(ctx,'Connect a calendar and use a processed schedule before syncing.',true);break;}
+        if(!ctx.state.connected||ctx.state.status!=='processed'){message(ctx,'Connect a calendar and use a processed schedule before syncing.', 'error');break;}
         target.disabled=true;target.textContent='Synchronizing…';message(ctx,'Synchronizing preview events…');
         setTimeout(()=>{
           if(!ctx.wrap.isConnected)return;
-          if(ctx.scenario==='conflict'){target.disabled=false;target.textContent='Retry sync';message(ctx,'The sample calendar provider did not respond. Nothing changed. Retry sync to recover.',true);ctx.scenario='default';safeWrite(`scenario:${ctx.role}:${ctx.page}`,'default');return;}
+          if(ctx.scenario==='conflict'){target.disabled=false;target.textContent='Retry sync';message(ctx,'The sample calendar provider did not respond. Nothing changed. Retry sync to recover.', 'error');ctx.scenario='default';safeWrite(`scenario:${ctx.role}:${ctx.page}`,'default');return;}
           const unchanged=ctx.state.syncedVersion===ctx.state.version;ctx.state.syncedVersion=ctx.state.version;ctx.state.lastSync='14 Nov 2026, 10:00';ctx.state.syncHistory.unshift({title:'Schedule synchronized',time:ctx.state.lastSync,detail:unchanged?'No schedule changes; 12 recurring events checked.':'12 recurring events created or updated. No duplicate identifiers.'});putState(ctx);rerender();notify(unchanged?'Preview sync checked 12 recurring events; no changes.':'12 recurring component events synchronized in this preview.');
         },350);break;
       }
@@ -739,7 +741,7 @@
   function handleChange(ctx,event) {
     const el=event.target;
     if(ctx.page==='preferences'){
-      if(el.matches('.dayoff') && $$('.dayoff:checked',ctx.wrap).length>2){el.checked=false;message(ctx,'Choose no more than two desired days off.',true);}
+      if(el.matches('.dayoff') && $$('.dayoff:checked',ctx.wrap).length>2){el.checked=false;message(ctx,'Choose no more than two desired days off.', 'error');}
       const dayCount=$('#preferred-day-count',ctx.wrap);if(dayCount)dayCount.textContent=`${$$('.dayoff:checked',ctx.wrap).length} of 2 selected`;
       refreshPreferenceSummary(ctx);
     }
@@ -753,7 +755,7 @@
     if(el.matches('[data-sl2-year]')){safeWrite('record-year:'+ctx.role,el.value);rerender();}
     if(el.matches('[data-sl2-compare-year]'))$('#sl2-comparison-transcript',ctx.wrap).innerHTML=transcript(ctx,el.value);
     if(el.matches('[data-sl2-compare]')){
-      const selected=$$('[data-sl2-compare]:checked',ctx.wrap);if(selected.length>2){el.checked=false;message(ctx,'Choose up to two courses to compare.',true);return;}
+      const selected=$$('[data-sl2-compare]:checked',ctx.wrap);if(selected.length>2){el.checked=false;message(ctx,'Choose up to two courses to compare.', 'error');return;}
       $('#sl2-course-compare',ctx.wrap).innerHTML=selected.length?selected.map(x=>`<section>${sectionDetails(ctx,Number(x.dataset.sl2Compare))}</section>`).join(''):'<p>Select up to two courses to compare assigned components.</p>';
     }
     if(el.matches('[data-sl2-check]')){ctx.state.checks[Number(el.dataset.sl2Check)]=el.checked;putState(ctx);$('.sl2-check-progress',ctx.wrap).textContent=`${ctx.state.checks.filter(Boolean).length} of 3 prepared`;}

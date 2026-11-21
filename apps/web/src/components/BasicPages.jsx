@@ -152,6 +152,7 @@ export function NotificationsPage({ token, notify }) {
     try {
       await api(`/api/notifications/${item._id}/read`, { token, method: "PATCH", body: {} });
       setItems((current) => current.map((entry) => entry._id === item._id ? { ...entry, isRead: true, readAt: new Date().toISOString() } : entry));
+      notify("success", "Notification marked as read.");
     } catch (requestError) { notify("error", requestError.message); }
   };
 

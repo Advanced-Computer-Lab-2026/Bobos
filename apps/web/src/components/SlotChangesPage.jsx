@@ -33,7 +33,6 @@ export default function SlotChangesPage({ token, role, onOpenSchedule }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const [messageTone, setMessageTone] = useState("info");
   const heading = useRef(null);
   const studentRequestHeading = useRef(null);
   const load = useCallback((signal) => api(mine ? `${path}/me` : path, { token, signal }), [mine, token]);
@@ -57,8 +56,7 @@ export default function SlotChangesPage({ token, role, onOpenSchedule }) {
     setError(""); setMessage(""); setBusy(true);
     try {
       const result = await api(endpoint, { token, method: "POST", body });
-      setMessageTone(body?.decision === "rejected" ? "error" : "info");
-      setMessage(result.message || (endpoint === path ? "Request submitted." : "Request withdrawn."));
+      setMessage(result.message || (body?.decision ? "Decision saved." : endpoint === path ? "Request submitted." : "Request withdrawn."));
       if (endpoint === path) { setSlotId(""); setNote(""); }
       setData(await load());
       if (detail) {
@@ -99,7 +97,7 @@ export default function SlotChangesPage({ token, role, onOpenSchedule }) {
       {mine && <button type="button" className="outline-button" onClick={onOpenSchedule}>My schedule</button>}
     </div>
     {error && <div className="feedback error" role="alert">{error}</div>}
-    {message && <div className={`feedback ${messageTone}`} role="status">{message}</div>}
+    {message && <div className="feedback success" role="status">{message}</div>}
     {!data && !error && <p role="status">Loading requests…</p>}
     {mine && data && <section className="panel form-stack">
       <h2>Request a slot change</h2>

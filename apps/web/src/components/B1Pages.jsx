@@ -15,7 +15,7 @@ export function PendingWorkPage({ token }) {
     api("/api/admin/pending-work", { token, signal: controller.signal }).then(setData).catch((err) => !controller.signal.aborted && setError(err.message));
     return () => controller.abort();
   }, [token]);
-  if (error) return <section className="panel"><p role="alert">{error}</p></section>;
+  if (error) return <section className="panel"><p className="feedback error" role="alert">{error}</p></section>;
   if (!data) return <div className="app-loading"><span className="loader" />Loading pending work…</div>;
   return <div className="workspace-page">
     <WorkspaceHeader title="Pending work" description="See where students are in the advising process and which requests need attention." meta={<span className="workspace-meta">{data.term?.code || "No active term"}</span>} />

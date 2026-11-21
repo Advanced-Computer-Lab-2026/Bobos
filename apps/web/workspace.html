@@ -11,12 +11,15 @@
       } catch { /* Use the default theme if storage is unavailable. */ }
     </script>
     <link rel="stylesheet" href="/portal-studio/login-art.css" />
+    <link rel="stylesheet" href="/portal-studio/action-feedback.css" />
     <script defer src="/portal-studio/lamp-cord.js"></script>
     <script defer src="/portal-studio/desk-lamp.js"></script>
     <title>Portal · Academic workspace</title>
   </head>
   <body>
     <div id="root"></div>
+    <portal-action-feedback></portal-action-feedback>
+    <script src="/portal-studio/action-feedback.js"></script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

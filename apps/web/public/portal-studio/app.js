@@ -33,7 +33,6 @@ const readNotifications = new Set();
 const notificationKey = id => `${role}:${id}`;
 const isNotificationUnread = id => !readNotifications.has(notificationKey(id));
 let connected = true;
-let toastTimer;
 let inboxArtObserver;
 let bellAudio;
 let returnFocus;
@@ -1334,7 +1333,9 @@ async function chimeAtStrike(){
     // The illustration still plays when audio is unavailable.
   }
 }
-function toast(text){const el=document.querySelector('#toast');el.textContent=text;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),4000);}
+function toast(text, tone = 'success') {
+  document.querySelector('portal-action-feedback').show(tone, text);
+}
 function modal(title,content,submit='Save changes',action='save-modal'){
   returnFocus=document.activeElement;
   dialog.innerHTML=`<div class="modal-head"><h2>${title}</h2>${button('Close','close-dialog','')}</div>${content}<form id="modal-form" data-submit-action="${action}"><div id="modal-fields"></div><div class="form-footer">${button('Cancel','close-dialog')}<button class="btn primary" type="submit">${submit}</button></div></form>`;
@@ -1390,6 +1391,7 @@ function action(name,el){
       startPreview('overview');
       break;
     case 'sign-out':
+      document.querySelector('portal-action-feedback').clear();
       localStorage.removeItem(previewSessionKey);
       returnAfterSignIn = 'overview';
       navigate('login');
@@ -1398,14 +1400,14 @@ function action(name,el){
     case 'quick-find':modal('Find a page',fields('<label>Search pages<input id="page-finder" type="search" placeholder="Schedule, students, courses…" autofocus></label>')+`<nav class="page-results">${groups().flatMap(([,ids])=>ids).map(id=>link(id,pages[id],'navlink')).join('')}</nav>`,'Close','close');break;
     case 'mobile-menu':modal('Navigation',`<nav aria-label="Mobile navigation">${groups().map(([name,items])=>`<div class="navgroup"><p class="navlabel">${name}</p>${items.map(id=>link(id,pages[id],`navlink ${id===page?'active':''}`)).join('')}</div>`).join('')}${link('profile','My profile','navlink')}</nav>`,'Close','close');break;
     case 'test-notification':testCount++;render();toast('Test notification created in this preview.');break;
-    case 'refresh':toast('Preview refreshed.');break;
+    case 'refresh':toast('Preview refreshed.', 'info');break;
     case 'read-all':notificationEntries().forEach(([id]) => readNotifications.add(notificationKey(id)));render();document.querySelector('[aria-selected=true]')?.focus();toast('All notifications marked as read.');break;
-    case 'read-one':readNotifications.add(notificationKey(el.dataset.notification));render();document.querySelector('[aria-selected=true]')?.focus();break;
+    case 'read-one':readNotifications.add(notificationKey(el.dataset.notification));render();document.querySelector('[aria-selected=true]')?.focus();toast('Notification marked as read.');break;
     case 'close-dialog':closeDialog();break;
     case 'save-draft':toast('Draft saved in this preview.');break;
-    case 'save-preferences':if(document.querySelectorAll('.dayoff:checked').length>2)toast('Choose up to two preferred days.');else {preferencesState={days:Array.from(document.querySelectorAll('.dayoff:checked')).map(el=>el.value),groups:Array.from(document.querySelectorAll('[data-course-group]')).map(el=>el.value),notes:document.querySelector('#preference-notes').value};toast('Preferences saved in this preview.');}break;
+    case 'save-preferences':if(document.querySelectorAll('.dayoff:checked').length>2)toast('Choose up to two preferred days.', 'warning');else {preferencesState={days:Array.from(document.querySelectorAll('.dayoff:checked')).map(el=>el.value),groups:Array.from(document.querySelectorAll('[data-course-group]')).map(el=>el.value),notes:document.querySelector('#preference-notes').value};toast('Preferences saved in this preview.');}break;
     case 'toggle-calendar':connected=!connected;render();toast(connected?'Sample calendar connected.':'Sample calendar disconnected.');break;
-    case 'sync-now':toast(connected?'Sample schedule synced.':'Connect your calendar first.');break;
+    case 'sync-now':toast(connected?'Sample schedule synced.':'Connect your calendar first.', connected ? 'success' : 'warning');break;
     case 'export-csv':download('sample-financial-records.csv','Transaction,Student,Type,Amount,Status\n'+names.slice(0,6).map((name,i)=>`TXN-${1042+i},${name},${i===4?'Refund':'Payment'},${i===4?2500:7500},${[1,5].includes(i)?'Pending':'Completed'}`).join('\n'),'text/csv');break;
     case 'export-calendar':download('sample-schedule.ics','BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Portal//Design Preview//EN\r\nBEGIN:VEVENT\r\nUID:sample-csen701@bobos\r\nDTSTAMP:20261114T080000Z\r\nDTSTART:20261115T063000Z\r\nDTEND:20261115T080000Z\r\nSUMMARY:CSEN 701 - Embedded Systems (sample)\r\nLOCATION:C2.301\r\nEND:VEVENT\r\nEND:VCALENDAR','text/calendar');break;
     case 'transcript':download('sample-transcript.txt','DESIGN PREVIEW - SAMPLE TRANSCRIPT\nOmar Hassan, 70-71577\nCumulative GPA: 1.70\nCompleted credits: 116\nNot an official academic record.');break;
@@ -1422,7 +1424,7 @@ function action(name,el){
     case 'create-term':case 'manage-term':modal(name==='create-term'?'Create academic term':'Manage Winter 2026',fields('<label>Term name<input required value="Winter 2026"></label><div class="formgrid"><label>Registration opens<input type="date" value="2026-11-22" required></label><label>Registration closes<input type="date" value="2026-12-06" required></label><label>Swap deadline<input type="date" value="2026-12-13" required></label><label>Status<select><option>Active</option><option>Upcoming</option><option>Archived</option></select></label></div>'));break;
     case 'add-offering':modal('Add course offering',fields('<label>Course<select><option>CSEN 701 · Embedded Systems</option><option>CSEN 703 · Algorithms</option></select></label><div class="formgrid"><label>Term<select><option>Winter 2026</option></select></label><label>Number of groups<input type="number" min="1" value="4" required></label></div>'),'Add offering');break;
     case 'manage-sections':modal('CSEN 701 sections',table(['Section','Time','Room'],[['Lecture 1','Sun 08:30','C2.301'],['Tutorial 4','Tue 10:00','C2.204'],['Lab 4','Wed 12:00','C7.102']],false),'Save sections');break;
-    case 'copy-confirm':{const count=document.querySelectorAll('table input:checked').length;if(!count){toast('Select at least one offering.');break;}modal('Copy selected offerings?',`<p>${count} offerings will be copied from Winter 2025 to Winter 2026 in this preview. Existing offerings will be kept.</p>`,'Copy offerings');break;}
+    case 'copy-confirm':{const count=document.querySelectorAll('table input:checked').length;if(!count){toast('Select at least one offering.', 'warning');break;}modal('Copy selected offerings?',`<p>${count} offerings will be copied from Winter 2025 to Winter 2026 in this preview. Existing offerings will be kept.</p>`,'Copy offerings');break;}
     case 'publish':modal('Publish this template?','<p>Group 4 will become available for student assignments in this preview.</p>','Publish template');break;
     case 'process':modal(`Process ${names[selectedStudent].split(' ')[0]}’s schedule?`,'<p>The draft has 19 credit hours and no time conflicts. Processing sends it to the student for review.</p>','Process schedule');break;
     case 'reopen':modal('Reopen this schedule?',fields('<label>Reason<textarea required rows="3" placeholder="Explain why the schedule needs another review."></textarea></label>'),'Reopen schedule');break;
@@ -1656,7 +1658,7 @@ document.addEventListener('change',event=>{
     const count = document.querySelectorAll('.dayoff:checked').length;
     if (count > 2) {
       event.target.checked = false;
-      toast('Choose up to two preferred days.');
+      toast('Choose up to two preferred days.', 'warning');
     } else {
       document.querySelector('#preferred-day-count').textContent = `${count} of 2 selected`;
     }
@@ -1669,7 +1671,7 @@ document.addEventListener('submit',event=>{
     if(page==='login'){
       startPreview(returnAfterSignIn);
     }
-    else if(page==='forgot'){navigate('reset');toast('Sample reset code: 123456.');}
+    else if(page==='forgot'){navigate('reset');toast('Sample reset code: 123456.', 'info');}
     else{navigate('login');toast('Reset preview complete.');}
   }else if(event.target.id==='modal-form'){
     const label=event.submitter?.textContent||'Saved';const close=event.target.dataset.submitAction==='close';closeDialog();if(!close)toast(`${label} — completed in this preview.`);
