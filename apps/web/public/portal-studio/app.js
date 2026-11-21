@@ -637,7 +637,7 @@ function studentNotificationPanel(){
         <li><strong>${title}</strong><p>${description}</p><small>${time}</small></li>`).join('')}</ul>`
     : `<div class="student-inbox-empty">
         <span class="student-inbox-sun" aria-hidden="true">☀</span>
-        <p class="student-inbox-message">The inbox is quiet.<br>Go enjoy the break.</p>
+        <p class="student-inbox-message">The inbox is quiet.<br>Go touch grass.</p>
         <p>No unread notifications.</p>
       </div>`;
   return `<section class="student-inbox" aria-labelledby="student-inbox-heading">
