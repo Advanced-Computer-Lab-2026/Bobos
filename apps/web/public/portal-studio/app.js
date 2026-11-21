@@ -616,6 +616,7 @@ function profile(detail=false){
 }
 function notificationEntries(){
   const testEntries = Array.from({length:testCount}, (_, i) => [`test-${i}`, 'Test notification', 'This is a test notification for your account.', 'Just now']);
+  if (role==='normalStudent') return testEntries;
   const registration = ['term', 'Winter 2026 dates updated', 'The registration window opens on 22 November.', 'Yesterday'];
   if (student()) return [
     ...testEntries,
