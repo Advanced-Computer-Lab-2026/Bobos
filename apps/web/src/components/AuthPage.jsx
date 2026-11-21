@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "../api.js";
 
-import { ThemeControl, Wordmark } from "./PortalChrome.jsx";
+import { ThemeControl } from "./PortalChrome.jsx";
 
 export default function AuthPage({ onLogin }) {
   const [mode, setMode] = useState("login");
@@ -12,6 +12,20 @@ export default function AuthPage({ onLogin }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+
+  const lampHost = useRef(null);
+  useEffect(() => {
+    if (mode !== "login") return;
+    const scene = document.createElement("div");
+    scene.className = "desk-lamp-scene";
+    const image = document.createElement("img");
+    image.src = "/portal-studio/images/borrowed-light.svg";
+    image.alt = "Reading lamp overlooking the teaching week";
+    scene.append(image);
+    lampHost.current.append(scene);
+    window.mountDeskLamp(scene);
+    return () => scene.remove();
+  }, [mode]);
 
   const submitLogin = async (event) => {
     event.preventDefault();
@@ -49,32 +63,33 @@ export default function AuthPage({ onLogin }) {
   };
 
   return (
-    <main className="auth-layout">
-      <header className="portal-auth-tools"><ThemeControl /></header>
-      <section className="auth-main">
+    <div className="portal-studio live-preview portal-signin"><main className="auth">
+      
+      <section className="signin-copy">
+        <header><span className="wordmark"><img className="portal-brand-mark" src="/portal-studio/portal-card-index.svg" alt="" />Portal</span></header>
         <div className="auth-card">
-          <Wordmark />
-          <h1>{mode === "login" ? "Sign in to your account" : mode === "forgot" ? "Reset your password" : "Enter your reset code"}</h1>
-          <p className="auth-subtitle">{mode === "login" ? "Use your GUC account to continue." : mode === "forgot" ? "We’ll email a one-time code to your GUC address." : "Enter the six-digit code from your email and choose a new password."}</p>
+
+          <h1>{mode === "login" ? "Sign in" : mode === "forgot" ? "Reset your password" : "Enter your reset code"}</h1>
+          {mode !== "login" && <p className="auth-subtitle">{mode === "forgot" ? "We’ll email a one-time code to your GUC address." : "Enter the six-digit code from your email and choose a new password."}</p>}
 
           {error && <div className="feedback error" role="alert">{error}</div>}
           {message && <div className="feedback success" role="status">{message}</div>}
 
-          {mode === "login" && <form className="form-stack" onSubmit={submitLogin}>
-            <label className="field"><span>GUC email</span><input type="email" autoComplete="username" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="name@student.guc.edu.eg" /></label>
+          {mode === "login" && <form id="auth-form" className="form-stack" onSubmit={submitLogin}>
+            <label className="field"><span>University email</span><input type="email" autoComplete="username" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="name@student.guc.edu.eg" /></label>
             <label className="field"><span>Password</span><input type="password" autoComplete="current-password" required value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Enter your password" /></label>
-            <button className="primary-button full-button" disabled={busy}>{busy ? "Signing in…" : "Sign in"}<span>→</span></button>
-            <button className="text-button centered" type="button" onClick={() => { setMode("forgot"); setError(""); setMessage(""); }}>Forgot password?</button>
+            <div className="signin-actions"><button type="submit" className="signin-continue" disabled={busy}>{busy ? "Signing in…" : "Continue"}<span>→</span></button>
+            <button className="text-button centered" type="button" onClick={() => { setMode("forgot"); setError(""); setMessage(""); }}>Forgot password?</button></div>
           </form>}
 
           {mode === "forgot" && <form className="form-stack" onSubmit={requestOtp}>
-            <label className="field"><span>GUC email</span><input type="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="name@student.guc.edu.eg" /></label>
+            <label className="field"><span>University email</span><input type="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="name@student.guc.edu.eg" /></label>
             <button className="primary-button full-button" disabled={busy}>{busy ? "Sending…" : "Send reset code"}<span>→</span></button>
             <button className="text-button centered" type="button" onClick={() => { setMode("login"); setError(""); setMessage(""); }}>Back to sign in</button>
           </form>}
 
           {mode === "reset" && <form className="form-stack" onSubmit={resetPassword}>
-            <label className="field"><span>GUC email</span><input type="email" required value={email} onChange={(event) => setEmail(event.target.value)} /></label>
+            <label className="field"><span>University email</span><input type="email" required value={email} onChange={(event) => setEmail(event.target.value)} /></label>
             <label className="field"><span>Six-digit code</span><input inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} required value={otp} onChange={(event) => setOtp(event.target.value.replace(/\D/g, ""))} placeholder="000000" /></label>
             <label className="field"><span>New password</span><input type="password" autoComplete="new-password" minLength={8} maxLength={72} required value={newPassword} onChange={(event) => setNewPassword(event.target.value)} placeholder="At least 8 characters" /></label>
             <button className="primary-button full-button" disabled={busy}>{busy ? "Updating…" : "Update password"}<span>→</span></button>
@@ -102,6 +117,8 @@ export default function AuthPage({ onLogin }) {
           )}
         </div>
       </section>
-    </main>
+      <figure className="signin-print" ref={lampHost} />
+      <aside className="portal-auth-tools"><ThemeControl /></aside>
+    </main></div>
   );
 }
