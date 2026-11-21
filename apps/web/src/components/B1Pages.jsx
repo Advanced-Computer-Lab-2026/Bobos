@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import FilterDisclosure from "./FilterDisclosure.jsx";
 import { api } from "../api.js";
 import { ChromeIcon } from "./PortalChrome.jsx";
 import { WorkspaceHeader, WorkspaceEmpty, displayLabel } from "./WorkspaceUI.jsx";
@@ -59,14 +60,22 @@ export function ScheduleActivityPage({ token, studentId }) {
     } catch (err) { setError(err.message); } finally { setBusy(false); }
   };
   const hasFilters = Object.values(filters).some(Boolean);
+  const filterChips = [
+    filters.action && { key: "action", label: `Action: ${filters.action}`, onRemove: () => update("action", "") },
+    filters.from && { key: "from", label: `From: ${filters.from}`, onRemove: () => update("from", "") },
+    filters.to && { key: "to", label: `Through: ${filters.to}`, onRemove: () => update("to", "") },
+  ].filter(Boolean);
   return <div className="workspace-page">
     <WorkspaceHeader title="Schedule activity" description="A record of schedule processing and reopening, including who made each change." action={<button className="outline-button" type="button" onClick={exportCsv} disabled={busy}>{busy ? "Exporting…" : "Export CSV"}</button>} />
-    <section className="panel"><div className="filter-grid">
-      <label className="field"><span>Student or staff</span><input type="search" name="activity-search" autoComplete="off" value={filters.search} maxLength={100} onChange={(event) => update("search", event.target.value)} placeholder="Student ID, name or email…" /></label>
+    <section className="panel"><FilterDisclosure
+      search={<label className="field filter-search"><span>Student or staff</span><input type="search" name="activity-search" autoComplete="off" value={filters.search} maxLength={100} onChange={(event) => update("search", event.target.value)} placeholder="Student ID, name or email…" /></label>}
+      chips={filterChips}
+      onClear={hasFilters ? () => { setPage(1); setFilters({ action: "", from: "", to: "", search: "" }); } : undefined}
+    ><div className="filter-grid">
       <label className="field"><span>Action</span><select value={filters.action} onChange={(event) => update("action", event.target.value)}><option value="">All actions</option><option value="processed">Processed</option><option value="reopened">Reopened</option></select></label>
       <label className="field"><span>From date</span><input type="date" value={filters.from} max={filters.to || undefined} onChange={(event) => update("from", event.target.value)} /></label>
       <label className="field"><span>Through date</span><input type="date" value={filters.to} min={filters.from || undefined} onChange={(event) => update("to", event.target.value)} /></label>
-    </div><div className="filter-actions"><p className="filter-hint">Results update as you filter.</p><button type="button" className="text-button" disabled={!hasFilters} onClick={() => { setPage(1); setFilters({ action: "", from: "", to: "", search: "" }); }}>Clear filters</button></div></section>
+    </div><p className="filter-hint">Results update as you filter.</p></FilterDisclosure></section>
     {error && <div className="feedback error" role="alert">{error}</div>}
     <section className="panel"><div className="results-heading"><h2>Activity log</h2><span className="result-count" aria-live="polite">{data ? `${data.total} records` : "Loading…"}</span></div>
     {!data ? <p role="status">Loading schedule activity…</p> : !data.activities.length ? <WorkspaceEmpty icon="history" title={hasFilters ? "No matching activity" : "No schedule activity yet"} description={hasFilters ? "Try a different date range or clear your filters to see all activity." : "Processed and reopened schedules will appear here with the staff member, time and reason."} /> : <div className="table-wrap" role="region" aria-label="Schedule activity" tabIndex={0}><table><thead><tr><th>Student ID</th><th>Action</th><th>Version</th><th>Staff</th><th>Role</th><th>Date and time</th><th>Reason</th></tr></thead><tbody>

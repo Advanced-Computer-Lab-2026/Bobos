@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, explainApiError } from "../api.js";
 import { ScheduleActivityPage } from "./B1Pages.jsx";
+import FilterDisclosure from "./FilterDisclosure.jsx";
 
 const emptyFilters = { search: "", studentType: "", advisor: "", major: "", currentSemester: "", academicStanding: "", workflowStatus: "", blockingStep: "", accountStatus: "" };
 const pretty = (value = "") => String(value || "—").replace(/([a-z])([A-Z])/g, "$1 $2").replace(/^./, (letter) => letter.toUpperCase());
@@ -32,6 +33,12 @@ export default function StudentDirectoryPage({ token, role, notify }) {
     return () => controller.abort();
   }, [loadStudents]);
 
+  const chipLabels = { studentType: "Type", advisor: "Advisor", major: "Major", currentSemester: "Semester", academicStanding: "Standing", workflowStatus: "Status", blockingStep: "Blocking step", accountStatus: "Account" };
+  const chipValue = (key, value) => key === "advisor" ? ((directory.filters?.advisors || []).find((item) => item.id === value)?.fullName || value) : pretty(value);
+  const filterChips = Object.keys(chipLabels).filter((key) => applied[key]).map((key) => ({
+    key, label: `${chipLabels[key]}: ${chipValue(key, applied[key])}`,
+    onRemove: () => { setFilters((current) => ({ ...current, [key]: "" })); setApplied((current) => ({ ...current, [key]: "" })); },
+  }));
   const updateFilter = (key, value) => setFilters((current) => ({ ...current, [key]: value, ...(key === "studentType" && value === "normal" ? { advisor: "" } : {}) }));
   const openDetails = async (studentId) => {
     setDetails({ loading: true });
@@ -74,8 +81,12 @@ export default function StudentDirectoryPage({ token, role, notify }) {
     <section className="panel directory-filters">
       <div className="panel-heading"><div><p className="eyebrow">FIND A STUDENT</p><h2>Search and filters</h2></div><span className="panel-count">01</span></div>
       <form onSubmit={(event) => { event.preventDefault(); setApplied({ ...filters }); }}>
-        <div className="filter-grid">
-          <label className="field span-two"><span>Search students</span><input type="search" maxLength={100} value={filters.search} onChange={(event) => updateFilter("search", event.target.value)} placeholder="Student ID, name, or email" /></label>
+        <FilterDisclosure
+          search={<label className="field filter-search"><span>Search students</span><input type="search" maxLength={100} value={filters.search} onChange={(event) => updateFilter("search", event.target.value)} placeholder="Student ID, name, or email" /></label>}
+          chips={filterChips}
+          onClear={filterChips.length ? () => { setFilters(emptyFilters); setApplied(emptyFilters); } : undefined}
+        >{({ close }) => <>
+          <div className="filter-grid">
           <Select label="Student type" value={filters.studentType} onChange={(value) => updateFilter("studentType", value)} options={options.studentTypes || []} />
           <Select label="Advisor" value={filters.advisor} onChange={(value) => updateFilter("advisor", value)} options={(options.advisors || []).map((item) => ({ value: item.id, label: item.fullName }))} disabled={filters.studentType === "normal"} />
           <Select label="Major" value={filters.major} onChange={(value) => updateFilter("major", value)} options={options.majors || []} />
@@ -84,8 +95,10 @@ export default function StudentDirectoryPage({ token, role, notify }) {
           <Select label="Workflow status" value={filters.workflowStatus} onChange={(value) => updateFilter("workflowStatus", value)} options={options.workflowStatuses || []} />
           <Select label="Blocking step" value={filters.blockingStep} onChange={(value) => updateFilter("blockingStep", value)} options={options.blockingSteps || []} />
           <Select label="Account status" value={filters.accountStatus} onChange={(value) => updateFilter("accountStatus", value)} options={[{ value: "active", label: "Active" }, { value: "inactive", label: "Inactive" }]} />
-        </div>
-        <div className="form-actions"><button className="primary-button" type="submit">Apply filters <span>→</span></button><button className="text-button" type="button" onClick={() => { setFilters(emptyFilters); setApplied(emptyFilters); }}>Clear filters</button><button className="text-button push-right" type="button" onClick={() => loadStudents()}>↻ Refresh</button></div>
+          </div>
+          <div className="filter-panel-actions"><button className="primary-button" type="submit" onClick={() => setTimeout(close, 0)}>Apply filters</button><button className="text-button" type="button" onClick={() => { setFilters(emptyFilters); setApplied(emptyFilters); close(); }}>Clear filters</button></div>
+        </>}</FilterDisclosure>
+        <div className="form-actions"><button className="text-button push-right" type="button" onClick={() => loadStudents()}>↻ Refresh</button></div>
       </form>
     </section>
 

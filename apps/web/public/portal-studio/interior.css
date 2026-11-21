@@ -45,3 +45,14 @@
   [data-workspace=claude-study] .content:not([data-screen=overview]) .filters input{width:100%}
   [data-workspace=claude-study] .content:not([data-screen=overview]) .filters select{min-width:0;max-width:100%}
 }
+
+/* Filters button, chips and panel */
+.filters .filter-toggle{gap:7px}
+.filter-count{display:inline-grid;min-width:20px;height:20px;padding:0 6px;place-items:center;border-radius:10px;background:var(--accent);color:var(--paper);font-size:11px;font-weight:700}
+.filters .filter-chips{flex:1 0 100%;display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0;padding:0;list-style:none}
+.filter-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 4px 3px 10px;border-radius:20px;background:var(--draft-bg);color:var(--draft-ink);font-size:12px;font-weight:600}
+.filter-chip button{display:grid;width:20px;height:20px;place-items:center;border:0;border-radius:50%;background:transparent;color:inherit;cursor:pointer;font-size:15px;line-height:1;padding:0}
+.filter-chip button:hover{background:color-mix(in srgb,var(--draft-ink) 18%,transparent)}
+.filters .filter-panel{flex:1 0 100%;display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:14px;border:1px solid var(--feature);border-radius:10px;background:var(--paper);box-shadow:0 10px 28px rgba(0,0,0,.12)}
+.filters .filter-panel[hidden],.filters .filter-chips[hidden]{display:none}
+@media(max-width:600px){.filters .filter-panel select{flex:1 1 100%}}
