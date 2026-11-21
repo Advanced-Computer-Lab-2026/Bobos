@@ -1,6 +1,7 @@
 'use strict';
 // Review-only prototypes. All records and state stay in this page; no API calls.
 const params = new URLSearchParams(location.search);
+const comparePageDesigns = params.get('designs') === 'compare';
 const pages = {
   overview:'Overview', notifications:'Notifications', profile:'My profile',
   directory:'Student directory', 'student-detail':'Student details', advising:'Advising students',
@@ -42,7 +43,7 @@ const href = (target,index=selectedStudent,course=selectedCourse) => {
   const destination = authPages.has(target) ? returnAfterSignIn : target;
   const preserveStudent = ['draft-schedule','student-detail'].includes(destination);
   const look = productionPreview ? '&preview=live' : `&layout=${lab.layout+1}&palette=${lab.palette+1}&mode=${lab.dark?'dark':'light'}`;
-  return `?page=${target}&role=${role}${look}${target==='login'?`&image=${signinImage.id}`:''}${authPages.has(target)&&destination!=='overview'?`&next=${destination}`:''}${preserveStudent?`&student=${index}`:''}${destination==='course-detail'?`&course=${encodeURIComponent(course[0])}`:''}`;
+  return `?page=${target}&role=${role}${look}${comparePageDesigns?'&designs=compare':''}${target==='login' && comparePageDesigns && params.has('image')?`&image=${signinImage.id}`:''}${authPages.has(target)&&destination!=='overview'?`&next=${destination}`:''}${preserveStudent?`&student=${index}`:''}${destination==='course-detail'?`&course=${encodeURIComponent(course[0])}`:''}`;
 };
 
 const link = (target, text, cls='', index) => `<a class="${cls}" href="${href(target,index)}" data-page="${target}"${index===undefined?'':` data-student="${index}"`}>${text}</a>`;
@@ -123,27 +124,7 @@ function removalLetter() {
   return `<g class="letter-strip">${frames}</g>`;
 }
 function portalWordmark() {
-  if (workspaces[lab.layout].name!=='Claude Study') return 'Portal';
-  // Both hinge points stay fixed. The lower outside corner follows the top
-  // corner a few poses later so the leaf bends as it crosses the binding.
-  const poses = [
-    [7,8,9,31], [8,7,9,31], [11,5,10,30], [15,4,12,29],
-    [20,3,16,28], [25,3,21,27], [30,3,27,27], [34,4,32,28],
-    [37,5,36,29], [39,5,39,30], [40,5,41,31], [40,5,42,31]
-  ];
-  const frames = Array.from({length:20},(_,frame)=>{
-    const sheets = [0,3,6].map((lag,index)=>{
-      const pose = frame-lag;
-      if (pose<=0 || pose>=poses.length) return '';
-      const [x,y,bottomX,bottomY] = poses[pose];
-      const curl = Math.sin(Math.PI*pose/(poses.length-1));
-      return `<path fill="${['#e6e5d8','#dce3dd','#edf0e6'][index]}" d="M23 14 Q${(23+x)/2} ${(14+y)/2-2*curl} ${x} ${y} Q${(x+bottomX)/2-2*curl} ${(y+bottomY)/2} ${bottomX} ${bottomY} Q${(26+bottomX)/2} ${(38+bottomY)/2-2*curl} 26 38Z"/>`;
-    }).join('');
-    return sheets ? `<g transform="translate(${frame*48} 0)">${sheets}</g>` : '';
-  }).join('');
-  return `<svg class="study-book" viewBox="0 0 48 48" aria-hidden="true"><use href="study-mark.svg#binding"/><use href="study-mark.svg#leaf"/>
-    <g class="book-riffle">${frames}</g></svg>Portal`;
-
+  return '<img class="portal-brand-mark" src="portal-card-index.svg" width="34" height="34" alt="">Portal';
 }
 function queueSketch(name) {
   const subjects = {
@@ -232,7 +213,7 @@ function calendarPage(ink=false) {
     if (!dayEvents.length) return `<span class="folio-date"${current}><b>${ink?inkNumber(day):day}</b></span>`;
     const when=formatCalendarDay(dayEvents[0].iso,{weekday:'long',day:'numeric',month:'long'});
     const entries=dayEvents.map(event=>`<span class="deadline-entry"><strong>${event.label}</strong><small>${event.term}</small></span>`).join('');
-    return `<button type="button" class="folio-date marked" ${current} data-deadline aria-label="${when}, ${dayEvents.map(event=>event.label+', '+event.term).join(', ')}" aria-pressed="false"><b>${ink?inkNumber(day):day}</b>${deadlineRing}<span popover="manual" class="deadline-note" aria-hidden="true"><span class="deadline-slip"><time datetime="${dayEvents[0].iso}">${when}</time>${entries}</span></span></button>`;
+    return `<button type="button" class="folio-date marked" ${current} data-deadline aria-label="${when}, ${dayEvents.map(event=>event.label+', '+event.term).join(', ')}" aria-pressed="false"><b>${ink?inkNumber(day):day}</b>${deadlineRing}<span popover="manual" class="deadline-note" aria-hidden="true"><span class="deadline-slip" data-milestone="${dayEvents[0].short}"><span class="deadline-tape"></span><time datetime="${dayEvents[0].iso}"><em>${day}<svg aria-hidden="true" viewBox="0 0 51 43"><path d="M35 5C21 1 6 8 5 22c-2 10 8 16 23 15 12-1 19-8 18-18C45 10 39 7 29 6"/></svg></em><span>${formatCalendarDay(dayEvents[0].iso,{weekday:'short'})}<br>${monthName}</span></time>${entries}</span></span></button>`;
 
   }).join('');
   return `<div class="folio-inner"><div class="folio-month"><strong>${illustrated || (ink && isConcertina(calendarStyle))?`<span class="sr-only">${monthName}</span>${inkMonth(monthName)}`:monthName}</strong><small>${month.getFullYear()}</small>${illustrated?inkScene(calendarStyle,month.getMonth()):ink && isConcertina(calendarStyle)?seasonDrawing(month.getMonth()):''}</div><div class="folio-days">${['Su','Mo','Tu','We','Th','Fr','Sa'].map(d=>`<small>${d}</small>`).join('')}${cells}</div></div>`;
@@ -495,16 +476,18 @@ const recentScheduleEvents = [
 ];
 
 function teachingActivity(canManage){
-  function entry(event){
-    const date=formatCalendarDay(event.date,{day:'numeric',month:'short'});
-    const target=event.stamp==='press' && !canManage?'student-schedules':event.target;
-    const when=`<time datetime="${event.date}T${event.time}">${date} · ${event.time}</time>`;
-    const text=`<span class="impression-copy">${when}<strong>${event.action}</strong><span class="impression-byline">${event.caption}</span></span>`;
-    return `<li>${link(target,activityStamp(event.stamp,'specimens')+text,'activity-impression',event.index)}</li>`;
-  }
-  return `<div class="activity-edition" data-activity-style="specimens"><div class="section-head activity-heading"><h2 id="recent-activity">Recent activity</h2>
-    ${link(canManage?'schedule-activity':'notifications',canManage?'View log':'Notifications','quiet-link')}</div>
-    <ol class="activity-impressions" role="list">${recentScheduleEvents.map(entry).join('')}</ol></div>`;
+  const days = [...new Set(recentScheduleEvents.map(event => event.date))];
+  const groups = days.map(date => {
+    const rows = recentScheduleEvents.filter(event => event.date === date).map(event => {
+      const target = event.stamp === 'press' && !canManage ? 'student-schedules' : event.target;
+      const label = `<span class="impression-copy"><strong>${event.action}</strong><span class="impression-byline">${event.caption}</span></span>`;
+      const time = `<time datetime="${date}T${event.time}">${event.time}</time>`;
+      return `<li>${link(target,activityStamp(event.stamp,'margin') + label + time,'activity-impression',event.index)}</li>`;
+    }).join('');
+    return `<section class="activity-leaf"><h3><time datetime="${date}" aria-label="${formatCalendarDay(date,{day:'numeric',month:'long'})}"><span>${formatCalendarDay(date,{day:'numeric'})}</span> ${formatCalendarDay(date,{month:'short'})}</time></h3><ol class="activity-impressions" role="list">${rows}</ol></section>`;
+  }).join('');
+  return `<div class="activity-edition activity-margins"><div class="section-head activity-heading"><h2 id="recent-activity">Recent activity</h2>
+    ${link(canManage?'schedule-activity':'notifications',canManage?'View log':'Notifications','quiet-link')}</div>${groups}</div>`;
 }
 
 const dashboardViews = {
@@ -734,6 +717,9 @@ function courseDrawing(code) {
   if (symbol) return `<img class="course-drawing course-symbol" src="images/symbols/${symbol}.svg" alt="">`;
   const paths = {
     'CSEN 701':'m9 6 11-.5.6 10.5-11 1z M12 9l5-.4.4 4.4-5 .4z M11 3v3m4-3v3m4-3v2m-8 12v3m4-3v3m4-4v3M6 9h3m-3 4h3m12-5h3m-3 5h3',
+    'ELCT 701':'M10 20l5-10 5 10m-8-3 5-1M14 9q-2-2 0-4m3 0q2 1 1 4M10 3Q5 8 10 12m11-9q5 4 0 9',
+    'MATH 701':'M5 3l.3 16.8L26 20M8 16q3.8-.2 6.5-5.2T23 5m-14 11 6-2 7-7',
+
 
   };
   return paths[code] ? `<svg class="course-drawing" aria-hidden="true" viewBox="0 0 30 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="${paths[code]}"/></svg>` : '';
@@ -804,7 +790,7 @@ function draft(){return head(`${names[selectedStudent].split(' ')[0]}’s advisi
   `<div class="split academic-plan"><section class="panel"><h2>Selected courses</h2><div class="smallstats"><div><strong>19</strong><span>Credit hours</span></div><div><strong>4</strong><span>Courses selected</span></div><div><strong>0</strong><span>Time conflicts</span></div></div>${courseData.slice(0,4).map(c=>`<div class="task">${academicCourse(c,`<div><h3>${c[0]}</h3><p>${c[1]}</p></div>`)}<label><span class="sr-only">${c[0]} group</span><select aria-label="${c[0]} group"><option>Group 4</option><option>Group 2</option></select></label></div>`).join('')}</section><aside><section class="note"><div class="kicker">Student preferences</div><h2>Thursday off.</h2><p>Preferred group: 4<br>Earliest class: 08:30<br>Preferences updated 12 November.</p>${link('preferences','View preferences','btn text')}</section><section class="panel" style="margin-top:24px"><h2>Validation</h2><p>No time conflicts. Credit load is within the allowed range.</p></section></aside></div>`+(academicStudy() ? '<h2 class="academic-week-title">Proposed timetable</h2>' : '')+weekly()+`<section class="panel draft-workflow" style="margin-top:24px"><h2>Workflow</h2>${workflow()}${button('Reopen schedule','reopen','btn text')}</section>`;}
 function registeredTable(){return table(['Course','Type','Credits','Group',''],courseData.slice(0,4).map(c=>[`<strong>${c[1]}</strong><small>${c[0]}</small>`,'Mandatory',c[3],'4',courseLink(c[0],'View sections','btn row-control')]));}
 function courseEmblem(code) {
-  const courseTone = {'CSEN 701':'blue','CSEN 703':'coral','CSEN 704':'sage','DMET 701':'ivory'};
+  const courseTone = {'CSEN 701':'blue','CSEN 703':'coral','CSEN 704':'sage','DMET 701':'ivory','ELCT 701':'sage','MATH 701':'ivory'};
   return `<span class="student-course-emblem" data-course-tone="${courseTone[code]}">${courseDrawing(code)}</span>`;
 }
 function registered(){
@@ -941,24 +927,26 @@ function swap(){
   (tab==='mine'?table(['From','Requested groups','Submitted','Status',''],[['Group 4','Group 1, Group 2','13 Nov 2026',badge('Open','pending'),button('Withdraw','withdraw','btn text')]]):`<div class="course-options">${[1,2].map((n)=>`<section class="course-option"><div class="kicker">Computer Engineering</div><h2>Group ${n}</h2><p>Same 4 registered courses · 19 credits</p>${study?swapWeek(n===1?'Tuesday':'Sunday'):''}<dl class="details"><div><dt>Days off</dt><dd>${n===1?'Tuesday':'Sunday'}</dd></div><div><dt>Earliest class</dt><dd>${n===1?'10:00':'08:30'}</dd></div></dl><div class="form-footer">${button('View schedule','group-schedule')}${button(tab==='open'?'Exchange schedules':'Request swap',tab==='open'?'exchange':'request-swap','btn primary')}</div></section>`).join('')}</div>`);
 }
 function auth(){
-  const title=page==='login'?'Make the semester work.':page==='forgot'?'Reset your password':'Choose a new password';
+  const title=page==='login'?'Sign in':page==='forgot'?'Reset your password':'Choose a new password';
   return `<main class="auth" id="content" tabindex="-1">
     <div class="signin-copy">
-      <header><span class="wordmark">${portalWordmark()}</span><span class="signin-university">German University in Cairo</span></header>
+      <header><span class="wordmark">${portalWordmark()}</span></header>
       <section class="auth-card">
         <h1>${title}</h1>
-        <p>${page==='login'?'Plan schedules and keep student advising on track.':page==='forgot'?'We’ll send a reset code to your university email.':'Enter the six-digit code from your email.'}</p>
+        ${page==='login'?'':`<p>${page==='forgot'?'We’ll send a reset code to your university email.':'Enter the six-digit code from your email.'}</p>`}
         <form id="auth-form">
-          ${page==='login' ? '<button type="submit" class="btn primary">Sign in</button>' : `
+          ${page==='login' ? `<label>University email<input name="email" type="email" autocomplete="username" required value="${previewEmail}"></label>
+            <label>Password<input name="password" type="password" autocomplete="current-password" required value="portal-demo"></label>
+            <div class="signin-actions"><button type="submit" class="signin-continue">Continue <span aria-hidden="true">→</span></button>${link('forgot','Forgot password?','auth-recovery')}</div>` : `
             <label>University email<input name="email" type="email" autocomplete="username" placeholder="${previewEmail}" required value="${page==='reset'?previewEmail:''}"></label>
             ${page==='reset'?'<label>Reset code<input inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="000000" required></label><label>New password<input name="password" type="password" autocomplete="new-password" minlength="8" required></label>':''}
             <button type="submit" class="btn primary">${page==='forgot'?'Send reset code':'Update password'}</button>
             ${link('login','Back to sign in','auth-recovery')}`}
         </form>
       </section>
-      <footer><span>Design preview</span></footer>
+      ${productionPreview?'':'<footer><span>Design preview</span></footer>'}
     </div>
-    ${signinGallery()}
+    ${comparePageDesigns && params.has('image') ? signinGallery() : '<figure class="signin-print"><div class="desk-lamp-scene"><img src="images/borrowed-light.svg" alt="Desk lamp lighting a sheet of paper" fetchpriority="high"></div></figure>'}
   </main>`;
 }
 const renderers = {overview,notifications,profile, directory, 'student-detail':()=>profile(true),advising:()=>directory(true),'pending-work':pending,'schedule-activity':activity,'financial-records':financial,'mandatory-removals':removals,'student-schedules':()=>schedule(true),'draft-schedule':draft,courses,'course-detail':courseDetail,terms,offerings,'copy-offerings':copyOfferings,templates,'template-detail':templateDetail,'group-assignments':assignments,'my-schedule':schedule,'my-courses':registered,'schedule-swap':swap,preferences,records,'my-advisor':advisor,'calendar-sync':calendarSync};
@@ -1209,8 +1197,16 @@ function render(focus=false){
   const body=authPages.has(page)?auth():`<div class="shell">${sidebar()}<div class="workspace"><header class="topbar">${link('overview',portalWordmark(),'mobile-nav wordmark')}<span class="term">${workspaces[lab.layout].name==='Claude Study'?'<small class="study-crumb">Academic workspace &nbsp; / &nbsp;</small>':''}${pages[page]}<span>Winter 2026 / 2027</span></span><div class="topactions">${button(icon('menu')+'<span class="sr-only">Menu</span>','mobile-menu','mobile-menu')}${accountControls()}</div></header><main class="content" data-screen="${page}" id="content" tabindex="-1">${renderers[page]()}</main></div></div>`;
   arrivalObserver?.disconnect();
   app.innerHTML=body;
+  if (comparePageDesigns) attachPageDesign(page,role,render);
+  const main = app.querySelector('main');
+  if (main && !authPages.has(page) && (!comparePageDesigns || !Number(localStorage.getItem('portal-page-design:'+page)))) {
+    window.addStudentArt?.(page,main,role);
+    window.addStaffArt?.(page,main,role);
+  }
   syncControls(role, page);
   if(page==='overview' && workspaces[lab.layout].name==='Claude Study') stageOverview(app.querySelector('main'));
+  const lamp = app.querySelector('.desk-lamp-scene');
+  if (lamp) mountDeskLamp(lamp);
   binderMotion.mount(app.querySelector('[data-concertina=true] .folio-stack'));
   if(focus)document.querySelector('#content')?.focus({preventScroll:true});
 }

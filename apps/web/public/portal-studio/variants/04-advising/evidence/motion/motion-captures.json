@@ -1,0 +1,86 @@
+[
+  {
+    "kind": "folder",
+    "frame": 0,
+    "observedPose": "0",
+    "observedMilliseconds": 9,
+    "trigger": "Next record in the actual preview"
+  },
+  {
+    "kind": "folder",
+    "frame": 1,
+    "observedPose": "1",
+    "observedMilliseconds": 166,
+    "trigger": "Next record in the actual preview"
+  },
+  {
+    "kind": "folder",
+    "frame": 2,
+    "observedPose": "2",
+    "observedMilliseconds": 252,
+    "trigger": "Next record in the actual preview"
+  },
+  {
+    "kind": "folder",
+    "frame": 3,
+    "observedPose": "3",
+    "observedMilliseconds": 393,
+    "trigger": "Next record in the actual preview"
+  },
+  {
+    "kind": "folder",
+    "frame": 4,
+    "observedPose": "4",
+    "observedMilliseconds": 659,
+    "trigger": "Next record in the actual preview"
+  },
+  {
+    "kind": "folder",
+    "frame": 5,
+    "observedPose": "5",
+    "observedMilliseconds": 1159,
+    "trigger": "Next record in the actual preview"
+  },
+  {
+    "kind": "letter",
+    "frame": 0,
+    "observedPose": "0",
+    "observedMilliseconds": 13,
+    "trigger": "Next record in the actual preview"
+  },
+  {
+    "kind": "letter",
+    "frame": 1,
+    "observedPose": "1",
+    "observedMilliseconds": 131,
+    "trigger": "Next record in the actual preview"
+  },
+  {
+    "kind": "letter",
+    "frame": 2,
+    "observedPose": "3",
+    "observedMilliseconds": 246,
+    "trigger": "Next record in the actual preview"
+  },
+  {
+    "kind": "letter",
+    "frame": 3,
+    "observedPose": "5",
+    "observedMilliseconds": 392,
+    "trigger": "Next record in the actual preview"
+  },
+  {
+    "kind": "letter",
+    "frame": 4,
+    "observedPose": "9",
+    "observedMilliseconds": 662,
+    "trigger": "Next record in the actual preview"
+  },
+  {
+    "kind": "letter",
+    "frame": 5,
+    "observedPose": "9",
+    "observedMilliseconds": 1158,
+    "trigger": "Next record in the actual preview"
+  }
+]

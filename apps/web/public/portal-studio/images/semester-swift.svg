@@ -1,0 +1,155 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 530" fill="none">
+  <title>The semester swift</title>
+  <desc>A swift holds a sharpened pencil above three clothbound notebooks in Cairo.</desc>
+  <defs>
+    <pattern id="hatch" width="6" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(22)">
+      <path d="m1.6-1-.5 9" stroke="#393a31" opacity=".38" stroke-width="1"/>
+    </pattern>
+    <pattern id="cloth" width="8" height="7" patternUnits="userSpaceOnUse">
+      <path d="m1 0-.4 2m4.6 2.4-.2 1.4" stroke="#f7efdd" stroke-width="1.45" opacity=".5"/>
+    </pattern>
+    <pattern id="speckle" width="13" height="11" patternUnits="userSpaceOnUse">
+      <path d="m1 3 .8-.5m7.7 5.6 .9.3m2.1-8 .4.5" stroke="#663b30" stroke-width="1" opacity=".28"/>
+    </pattern>
+    <filter id="ink" x="-2%" y="-2%" width="104%" height="104%">
+      <feTurbulence type="fractalNoise" baseFrequency=".067" numOctaves="2" seed="12" result="grain"/>
+      <feDisplacementMap in="SourceGraphic" in2="grain" scale="1.05"/>
+    </filter>
+    <filter id="second-pass" x="-2%" y="-2%" width="104%" height="104%">
+      <feTurbulence type="fractalNoise" baseFrequency=".072" numOctaves="2" seed="17" result="grain"/>
+      <feDisplacementMap in="SourceGraphic" in2="grain" scale="1.3"/>
+    </filter>
+    <style>
+      .head {transform-origin:307px 239px}
+      .tail {transform-origin:225px 265px}
+      .eye {transform-origin:332px 207px}
+      @media(prefers-reduced-motion:no-preference){
+        .head {animation:look 7s steps(1,end) infinite}
+        .tail {animation:sway 7s steps(1,end) infinite}
+        .eye {animation:blink 7s steps(1,end) infinite}
+        .print-pass {animation:ink-pass 7s steps(1,end) infinite}
+        @keyframes look {
+          0%,26%,53%,100% {transform:rotate(0)}
+          29%,48% {transform:rotate(2deg)}
+          31%,45% {transform:rotate(5deg)}
+          34% {transform:rotate(8deg)}
+          59%,77% {transform:rotate(-2deg)}
+          63% {transform:rotate(-4deg)}
+          80% {transform:rotate(0)}
+        }
+        @keyframes sway {
+          0%,31%,51%,100% {transform:rotate(0)}
+          34%,45% {transform:rotate(-1deg)}
+          38% {transform:rotate(-3deg)}
+          61%,76% {transform:rotate(1deg)}
+          66% {transform:rotate(2deg)}
+          79% {transform:rotate(0)}
+        }
+        @keyframes blink {
+          0%,29%,33%,72%,76%,100% {transform:scaleY(1)}
+          30%,73% {transform:scaleY(.44)}
+          31%,74% {transform:scaleY(.1)}
+        }
+        @keyframes ink-pass {
+          0%,29%,33%,39%,48%,63%,77%,100% {filter:url(#ink)}
+          31%,35%,45%,59%,74% {filter:url(#second-pass)}
+        }
+      }
+    </style>
+  </defs>
+  <g class="print-pass" filter="url(#ink)" stroke-linecap="round" stroke-linejoin="round">
+    <!-- A low afternoon sun, with an uneven second pass of ink. -->
+    <path d="M333 66c52 1 97 44 97 98 0 51-44 95-98 96-54 1-98-41-98-95 0-55 43-99 99-99Z" fill="#da976e"/>
+    <path d="M333 66c52 1 97 44 97 98 0 51-44 95-98 96-54 1-98-41-98-95 0-55 43-99 99-99Z" fill="url(#speckle)"/>
+    <g stroke="#6e6b5b" opacity=".67" stroke-width="1.15">
+      <path d="m72 281 64-1 1-12 25-1 .3-17 20-1 .4 20 15 .1m152-17 11-1v-12l7-1 .3-16 2-5 1.8 5 .4 16 9-.2v13h13l1-12 3-5 2-13 .3-13 2-5 2 5v14l1 12 4 4v15l17-.4 1-7h14l.7 7 20-.4"/>
+      <path d="m361 259 13-.4m-29 8 72-1m-12 6 46-.8m-373 13 45 1.3m10-15 12-.4m255-35h7"/>
+    </g>
+    <g fill="#4a4a40">
+      <path d="M106 150q12 1 16 7 4-8 15-9-10 4-15 13-7-8-16-11Zm38-14q7-1 11 4 3-6 10-7-7 3-10 10-5-5-11-7Z"/>
+      <path d="M377 108q7 0 11 4 4-6 11-6-7 2-11 9-5-5-11-7Z"/>
+    </g>
+    <!-- Thin, broken lines on the desk keep the shelf grounded. -->
+    <g stroke="#6a6656" opacity=".64">
+      <path d="M46 458q65 4 144 3m-117 12 92 1m6 3q88 3 170-1m13-2 60-1m-292 9 64 .4m132-17 121-1m-60-6 79-3"/>
+      <path d="m77 467 28 .5m250 10 29-.4m-144 7 44 .2m136-18 24-.6"/>
+    </g>
+    <!-- Bottom book: green linen case with an exposed cream fore edge. -->
+    <g stroke="#36382f" stroke-width="2.2">
+      <path d="M95 404q5-7 16-8l190-24 113 26-1 44-184 30-131-26q-8-3-7-12l1-23Z" fill="#758b73"/>
+      <path d="M97 402l132 27 183-30-111-24Z" fill="#a8b4a1"/>
+      <path d="m228 430 183-30q-6 18-1 37l-181 31q-6-17-1-38Z" fill="#e2d9bd"/>
+      <path d="M97 404q-10 12-2 36l134 29q-6-18-1-39Z" fill="#82997e"/>
+      <path d="M97 404q-10 12-2 36l134 29q-6-18-1-39Z" fill="url(#cloth)" stroke="none"/>
+      <path d="M94 440q1 5 6 6l129 27 185-31-.5-6-185 32Z" fill="#576f5f"/>
+      <g stroke="#6f705c" stroke-width="1.1">
+        <path d="m235 435 155-26m-136 29 148-26m-165 34 107-18m-84 19 141-24m-166 34 150-26m-131 27 143-24"/>
+        <path d="m102 407-2 8m6 14 3 10m6-26-1 24m91-7 3 29m3-27 3 26"/>
+      </g>
+      <path d="m129 419 43 9 1 14-44-10Z" fill="#d0c9aa" stroke-width="1.3"/>
+      <path d="m135 425 29 6m-26-2 17 4" stroke="#6c6959" stroke-width="1.1"/>
+    </g>
+    <!-- A slender red volume, turned the other way. -->
+    <g stroke="#39382e" stroke-width="2.1">
+      <path d="m103 371 200-21 91 22q7 14-1 27l-190 27-102-26Z" fill="#b76647"/>
+      <path d="m104 371 197-21 94 21-193 29Z" fill="#ce8b66"/>
+      <path d="m104 375 96 25q-2 10 .3 21l-97-23q4-12 .5-23Z" fill="#e9dec2"/>
+      <path d="m204 402 188-29q5 12-1 21l-188 28q-3-9 1-20Z" fill="url(#cloth)" stroke="none"/>
+      <path d="m101 395 101 26 192-27-.5 5-191 28-103-26Z" fill="#b56a4b"/>
+      <path d="m111 380 77 19m-80-13 83 20m-67-11 70 18m130-31 2 17m4-18 2 17m-103-1 2 17" stroke="#80654d" stroke-width="1.1"/>
+      <path d="m139 388 14 3-2 34-6-6-9 2Z" fill="#a18c55" stroke-width="1.4"/>
+    </g>
+    <!-- An open notebook; ruled pages dip where the binding gathers them. -->
+    <g stroke="#39392f" stroke-width="2">
+      <path d="M83 341q45-7 122 4 18 2 38 10 54-27 132-25l40 43q-88-1-165 25-13 4-21-3-73-18-145-30Z" fill="#656d63"/>
+      <path d="M90 338q66-12 147 13 57-29 137-26l37 43c-62 0-113 12-169 30-46-18-102-26-151-35Z" fill="#d2c9b1"/>
+      <g stroke-width="1" stroke="#726c59">
+        <path d="M96 344q73-4 143 20 70-26 148-27m-288 20q75 8 140 29m12 4q77-24 145-28m-291-10 47 5m11 2q48 9 77 20m21-1q75-22 131-23"/>
+      </g>
+      <path d="M94 335c44-12 94-9 142 12 24-20 76-36 130-35l38 47c-62-.5-118 14-163 34-47-22-94-32-144-35Z" fill="#e8dfc7"/>
+      <path d="M100 321q64-8 131 18 59-37 125-39l42 51q-84 3-157 38-62-29-140-38Z" fill="#eee6d2"/>
+      <path d="M231 340q5 23 10 49m-131-62q56-4 106 16m-104-10q47-3 92 12m-92-6q53 2 101 19m-92-11q43 3 89 19m38-12q51-25 109-31m-100 36q58-25 107-29m-97 34q51-21 95-26m-64 21 41-10" stroke-width="1.16" stroke="#8f8974"/>
+      <path d="m312 315 17-4 7 7-17 5Z" fill="#c98768" stroke-width="1"/>
+    </g>
+    <!-- Tail, legs and breast share the same perch through all the head poses. -->
+    <g class="tail">
+      <path fill="#323c35" stroke="#2e342d" stroke-width="2.6" d="M227 253q-18 35-40 61-29 32-91 64 42-39 65-73-28 22-72 39 53-50 91-91Z"/>
+      <g stroke="#bbc1a6" stroke-width="1.35">
+        <path d="M191 272q-29 32-75 57m77-46q-22 36-63 69m58-59q-11 19-34 42"/>
+      </g>
+    </g>
+    <g stroke="#413c2e" stroke-width="3">
+      <path d="m261 285-5 20 10 27m12-44-2 19 12 20m-23 4q-9-1-18 4m18-4q3-3 10-4m12-1q-1-4 9-6m-9 7q-6 0-13 4"/>
+      <path d="m254 310 3 2m1 4 3 1m16-6 4 .5" stroke="#a08b6b" stroke-width="1.2"/>
+    </g>
+    <path d="M174 281c24-28 50-51 83-66 24-13 51-23 67-16 21 10 21 41 8 63-13 22-40 37-67 39-35 3-62-9-91-20Z" fill="#414941" stroke="#30362e" stroke-width="2.7"/>
+    <path d="M194 286q50 13 84-12 16-12 30-37 9-14 25-13 8 20-7 42-34 50-95 32Z" fill="#e9ddbd" stroke="#30362e" stroke-width="1.6"/>
+    <path d="M208 293q48 9 75-14-15 22-42 22Z" fill="url(#hatch)"/>
+    <g class="head">
+      <!-- Pencil slides with the bill; the exposed wood stays visible beyond it. -->
+      <g transform="rotate(-13 352 214)" stroke="#3d3b30" stroke-width="1.3">
+        <path d="m303 212 101-.3 15 3.5-15 3.2-101-.5Z" fill="#cb955d"/>
+        <path d="m404 212 15 3.2-15 3.3 1-2.2-2.2-1.5Z" fill="#dfc9a0"/>
+        <path d="m414 214 5.8 1.2-5.5 1Z" fill="#343930"/>
+        <path d="m311 214.4 87-.1" stroke="#f5deb2"/>
+      </g>
+      <path d="M287 217c5-15 11-29 27-34 17-6 33 5 34 23l15 4-16 6c-2 15-8 27-20 36-12 10-26 10-34 3 13-13 10-28-6-38Z" fill="#3c443c"/>
+      <path d="M317 225q14-3 25-14 3 14-9 27-10 12-22 12 7-11 6-25Z" fill="#bd7859"/>
+      <path d="M325 229q10-7 13-12m-12 18q6-4 9-8" stroke="#e4af83" stroke-width="1.6"/>
+      <path d="m345 205 18 5-17 5 3-6Z" fill="#454535" stroke="#30352e" stroke-width="1.5"/>
+      <g class="eye">
+        <path d="M324 207q5-8 13-6 3 9-6 11-5 0-7-5Z" fill="#ede6cf"/>
+        <circle cx="332.3" cy="205.7" r="3.5" fill="#202820"/>
+        <circle cx="333.2" cy="204.6" r="1" fill="#efe7d0"/>
+      </g>
+      <path d="M303 198q8-13 21-12m-18 10q8-7 15-7m-24 16 6-7m15 23 5-3" stroke="#a3ab94" stroke-width="1.25"/>
+    </g>
+    <!-- Long folded primaries are individually cut into the dark wing. -->
+    <path d="M296 208c-36-5-76 14-98 32-24 19-43 37-65 56 27-3 56-10 78-20l-23 17c43-9 80-28 100-49 13-13 19-27 8-36Z" fill="#525c4f" stroke="#2e362f" stroke-width="2.2"/>
+    <g stroke="#c8cbb0" stroke-width="1.7">
+      <path d="M276 217c-32-3-68 22-106 54m105-49q-42 12-93 52m83-43q-25 11-49 32m34-15-41 27m67-31q-19 16-44 26m-26-6-43 20m45-31-39 23"/>
+      <path d="m279 214 6-1m-2 5 6-1m-5 6 5-1m-13 7 4-1m-14-12 5-.7m-14 3 4-1m-9 10 4-2"/>
+    </g>
+    <path d="M282 277q-13 12-25 14m35-17-12 10m16-9-5 5" stroke="#907e63" stroke-width="1.25"/>
+  </g>
+</svg>

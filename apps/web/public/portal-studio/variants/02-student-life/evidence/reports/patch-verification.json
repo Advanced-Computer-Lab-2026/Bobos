@@ -1,0 +1,8 @@
+{
+  "scope": "Optional App.jsx integration patch",
+  "baseline": "supplied round-two project/apps/web/src/App.jsx",
+  "command": "patch --dry-run -p1 < integration/app-integration.patch (from project root, with correct patch path)",
+  "exitCode": 0,
+  "output": "checking file apps/web/src/App.jsx",
+  "productionBuildRun": false
+}

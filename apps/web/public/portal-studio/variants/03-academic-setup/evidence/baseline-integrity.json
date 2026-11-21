@@ -1,0 +1,14 @@
+{
+  "suite": "fresh-baseline-integrity",
+  "sourceArchive": "03-academic-setup-round-2.zip",
+  "baselineFileCount": 287,
+  "ownedPlaceholderFiles": [
+    "project/apps/web/public/portal-studio/variants/03-academic-setup/pages.js"
+  ],
+  "outsideContributionChecked": 286,
+  "unchanged": 286,
+  "changed": [],
+  "missing": [],
+  "passed": true,
+  "sourceArchiveSha256": "cf72f000db8888e8732d5c692cbd00093f91c7c7c739e93cc0a6b95c7eb9d2e3"
+}

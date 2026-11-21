@@ -1,0 +1,182 @@
+{
+  "suite": "browser-journeys",
+  "base": "http://127.0.0.1:8001",
+  "passed": 43,
+  "failed": 0,
+  "cases": [
+    {
+      "name": "Existing preview sign-in opens Overview",
+      "passed": true
+    },
+    {
+      "name": "Course form shows validation without partial creation",
+      "passed": true
+    },
+    {
+      "name": "Course creation persists",
+      "passed": true
+    },
+    {
+      "name": "Course editing updates the same record",
+      "passed": true
+    },
+    {
+      "name": "CSV errors are row-addressed and atomic",
+      "passed": true
+    },
+    {
+      "name": "CSV preview does not commit before confirmation",
+      "passed": true
+    },
+    {
+      "name": "Valid CSV batch commits once",
+      "passed": true
+    },
+    {
+      "name": "CSV upsert avoids duplicate codes",
+      "passed": true
+    },
+    {
+      "name": "Referenced course deletion is blocked",
+      "passed": true
+    },
+    {
+      "name": "Unused course deletion works",
+      "passed": true
+    },
+    {
+      "name": "Term edits update preview milestones",
+      "passed": true
+    },
+    {
+      "name": "Term dates reject teaching beyond term end",
+      "passed": true
+    },
+    {
+      "name": "Assigned capacity cannot be reduced below occupancy",
+      "passed": true
+    },
+    {
+      "name": "Referenced offering cannot be unpublished",
+      "passed": true
+    },
+    {
+      "name": "New offering starts as draft",
+      "passed": true
+    },
+    {
+      "name": "Publication requires teaching groups",
+      "passed": true
+    },
+    {
+      "name": "Teaching group saves and returns to offering",
+      "passed": true
+    },
+    {
+      "name": "Ready offering publishes",
+      "passed": true
+    },
+    {
+      "name": "Unused offering can return to draft",
+      "passed": true
+    },
+    {
+      "name": "Unused offering deletion removes its groups",
+      "passed": true
+    },
+    {
+      "name": "Copy review separates new and existing offerings",
+      "passed": true
+    },
+    {
+      "name": "Copy resets publication and occupancy",
+      "passed": true
+    },
+    {
+      "name": "Repeated copy is duplicate-safe",
+      "passed": true
+    },
+    {
+      "name": "Template refuses missing component selection",
+      "passed": true
+    },
+    {
+      "name": "Template saves validated component selection",
+      "passed": true
+    },
+    {
+      "name": "Assignment review shows before and after",
+      "passed": true
+    },
+    {
+      "name": "Assignment generates processed schedule",
+      "passed": true
+    },
+    {
+      "name": "Reassignment retains history and updates destination",
+      "passed": true
+    },
+    {
+      "name": "Unassignment releases seats and preserves history",
+      "passed": true
+    },
+    {
+      "name": "Coordinator catalogue is read-only",
+      "passed": true
+    },
+    {
+      "name": "Administrator can inspect but not mutate assignments",
+      "passed": true
+    },
+    {
+      "name": "Unauthorized template route is denied",
+      "passed": true
+    },
+    {
+      "name": "Each page remembers its own variant",
+      "passed": true
+    },
+    {
+      "name": "Second page keeps independent choice",
+      "passed": true
+    },
+    {
+      "name": "Existing sign-out reaches login",
+      "passed": true
+    },
+    {
+      "name": "Sign-in returns to Overview",
+      "passed": true
+    },
+    {
+      "name": "Variant survives sign-out and sign-in",
+      "passed": true
+    },
+    {
+      "name": "Original renderer remains available",
+      "passed": true
+    },
+    {
+      "name": "Original action still opens original form",
+      "passed": true
+    },
+    {
+      "name": "Storage failure leaves data uncommitted",
+      "passed": true
+    },
+    {
+      "name": "Stale-tab write is rejected",
+      "passed": true
+    },
+    {
+      "name": "Preview never calls production APIs",
+      "passed": true
+    },
+    {
+      "name": "Browser has no unhandled JavaScript errors",
+      "passed": true
+    }
+  ],
+  "javascriptErrors": [],
+  "apiRequests": []
+}

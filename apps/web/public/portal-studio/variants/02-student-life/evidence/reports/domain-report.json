@@ -1,0 +1,252 @@
+{
+  "scope": "Pure local preview logic; not backend acceptance",
+  "checks": 61,
+  "passed": 61,
+  "failed": 0,
+  "results": [
+    {
+      "name": "registry:only-seven-owned-keys",
+      "passed": true
+    },
+    {
+      "name": "registry:my-schedule:ten-unique",
+      "passed": true
+    },
+    {
+      "name": "registry:my-schedule:callable",
+      "passed": true
+    },
+    {
+      "name": "registry:my-courses:ten-unique",
+      "passed": true
+    },
+    {
+      "name": "registry:my-courses:callable",
+      "passed": true
+    },
+    {
+      "name": "registry:schedule-swap:ten-unique",
+      "passed": true
+    },
+    {
+      "name": "registry:schedule-swap:callable",
+      "passed": true
+    },
+    {
+      "name": "registry:preferences:ten-unique",
+      "passed": true
+    },
+    {
+      "name": "registry:preferences:callable",
+      "passed": true
+    },
+    {
+      "name": "registry:records:ten-unique",
+      "passed": true
+    },
+    {
+      "name": "registry:records:callable",
+      "passed": true
+    },
+    {
+      "name": "registry:my-advisor:ten-unique",
+      "passed": true
+    },
+    {
+      "name": "registry:my-advisor:callable",
+      "passed": true
+    },
+    {
+      "name": "registry:calendar-sync:ten-unique",
+      "passed": true
+    },
+    {
+      "name": "registry:calendar-sync:callable",
+      "passed": true
+    },
+    {
+      "name": "registry:other-contributor-intact",
+      "passed": true
+    },
+    {
+      "name": "meetings:1:12",
+      "passed": true
+    },
+    {
+      "name": "meetings:1:unique-components",
+      "passed": true
+    },
+    {
+      "name": "meetings:1:exact-course-set",
+      "passed": true
+    },
+    {
+      "name": "meetings:1:full-assignment",
+      "passed": true
+    },
+    {
+      "name": "meetings:1:no-clashes",
+      "passed": true
+    },
+    {
+      "name": "meetings:1:all-components",
+      "passed": true
+    },
+    {
+      "name": "meetings:2:12",
+      "passed": true
+    },
+    {
+      "name": "meetings:2:unique-components",
+      "passed": true
+    },
+    {
+      "name": "meetings:2:exact-course-set",
+      "passed": true
+    },
+    {
+      "name": "meetings:2:full-assignment",
+      "passed": true
+    },
+    {
+      "name": "meetings:2:no-clashes",
+      "passed": true
+    },
+    {
+      "name": "meetings:2:all-components",
+      "passed": true
+    },
+    {
+      "name": "meetings:4:12",
+      "passed": true
+    },
+    {
+      "name": "meetings:4:unique-components",
+      "passed": true
+    },
+    {
+      "name": "meetings:4:exact-course-set",
+      "passed": true
+    },
+    {
+      "name": "meetings:4:full-assignment",
+      "passed": true
+    },
+    {
+      "name": "meetings:4:no-clashes",
+      "passed": true
+    },
+    {
+      "name": "meetings:4:all-components",
+      "passed": true
+    },
+    {
+      "name": "preferences:valid",
+      "passed": true
+    },
+    {
+      "name": "preferences:days-off-cap",
+      "passed": true
+    },
+    {
+      "name": "preferences:preferred-and-off",
+      "passed": true
+    },
+    {
+      "name": "preferences:preferred-and-avoided",
+      "passed": true
+    },
+    {
+      "name": "preferences:long-note",
+      "passed": true
+    },
+    {
+      "name": "preferences:invalid-priority:0",
+      "passed": true
+    },
+    {
+      "name": "preferences:invalid-priority:-1",
+      "passed": true
+    },
+    {
+      "name": "preferences:invalid-priority:1.5",
+      "passed": true
+    },
+    {
+      "name": "preferences:invalid-priority:21",
+      "passed": true
+    },
+    {
+      "name": "preferences:invalid-priority:NaN",
+      "passed": true
+    },
+    {
+      "name": "preferences:invalid-time:12:00-10:00",
+      "passed": true
+    },
+    {
+      "name": "preferences:invalid-time:12:00-12:00",
+      "passed": true
+    },
+    {
+      "name": "preferences:invalid-time:-12:00",
+      "passed": true
+    },
+    {
+      "name": "preferences:valid-range",
+      "passed": true
+    },
+    {
+      "name": "preferences:duplicate-range",
+      "passed": true
+    },
+    {
+      "name": "preferences:contradictory-range",
+      "passed": true
+    },
+    {
+      "name": "permissions:normal-only-swaps",
+      "passed": true
+    },
+    {
+      "name": "permissions:records-exclude-admin-normal",
+      "passed": true
+    },
+    {
+      "name": "permissions:calendar-students-only",
+      "passed": true
+    },
+    {
+      "name": "state:malformed-storage-safe",
+      "passed": true
+    },
+    {
+      "name": "scenario:reject-unknown-page",
+      "passed": true
+    },
+    {
+      "name": "scenario:reject-unknown-state",
+      "passed": true
+    },
+    {
+      "name": "pdf:structural:0",
+      "passed": true
+    },
+    {
+      "name": "pdf:structural:1",
+      "passed": true
+    },
+    {
+      "name": "pdf:structural:43",
+      "passed": true
+    },
+    {
+      "name": "pdf:structural:44",
+      "passed": true
+    },
+    {
+      "name": "pdf:structural:100",
+      "passed": true
+    }
+  ]
+}
