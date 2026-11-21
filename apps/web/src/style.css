@@ -861,3 +861,17 @@ td { color: var(--ink); }
   .slot-request-detail-grid { grid-template-columns: minmax(0,1fr); }
   .slot-request-dialog-footer { align-items: stretch; flex-direction: column; }
 }
+
+/* One Filters button with a count, an inline panel, and removable chips. */
+.filter-disclosure { display: grid; gap: 10px; min-width: 0; }
+.filter-bar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; }
+.filter-bar .filter-search { flex: 1 1 240px; min-width: 0; }
+.filter-toggle { flex: 0 0 auto; }
+.filter-count { display: inline-grid; min-width: 20px; height: 20px; padding: 0 6px; place-items: center; border-radius: 10px; background: var(--accent); color: var(--paper); font-size: 11px; font-weight: 700; }
+.filter-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.filter-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 4px 3px 10px; border-radius: 20px; background: var(--draft-bg); color: var(--draft-ink); font-size: 12px; font-weight: 600; }
+.filter-chip button { display: grid; width: 20px; height: 20px; place-items: center; border: 0; border-radius: 50%; background: transparent; color: inherit; cursor: pointer; font-size: 15px; line-height: 1; }
+.filter-chip button:hover { background: color-mix(in srgb, var(--draft-ink) 18%, transparent); }
+.filter-panel { display: grid; gap: 14px; padding: 16px; border: 1px solid var(--feature); border-radius: 10px; background: var(--paper); box-shadow: 0 10px 28px rgba(0,0,0,.12); }
+.filter-panel .filter-grid, .filter-panel .slot-request-filters { grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr)); }
+.filter-panel-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px; }

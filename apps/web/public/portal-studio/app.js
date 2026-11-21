@@ -415,7 +415,10 @@ function table(headers,rows,search=true){
 }
 
 function filterbar(placeholder,options=[],action=''){
-  return `<div class="toolbar"><div class="filters"><input aria-label="${placeholder}" placeholder="${placeholder}" id="search" type="search">${options.map(([label,values])=>`<select aria-label="${label}" data-filter><option value="">${label}</option>${values.map(value=>`<option>${value}</option>`).join('')}</select>`).join('')}</div>${action?`<div class="actions">${action}</div>`:''}</div>`;
+  const selects=options.map(([label,values])=>`<select aria-label="${label}" data-filter><option value="">${label}</option>${values.map(value=>`<option>${value}</option>`).join('')}</select>`).join('');
+  const toggle=options.length?`<button class="btn filter-toggle" type="button" data-action="toggle-filters" aria-expanded="false" aria-controls="filter-panel"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false"><path d="M2 3.5h12M4.5 8h7M7 12.5h2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Filters<span class="filter-count" hidden>0</span></button>`:'';
+  const extras=options.length?`<ul class="filter-chips" id="filter-chips" aria-label="Active filters" hidden></ul><div class="filter-panel" id="filter-panel" hidden>${selects}<button class="btn text" type="button" data-action="clear-filters">Clear all</button></div>`:'';
+  return `<div class="toolbar"><div class="filters"><input aria-label="${placeholder}" placeholder="${placeholder}" id="search" type="search">${toggle}${extras}</div>${action?`<div class="actions">${action}</div>`:''}</div>`;
 }
 function tabs(items,defaultTab){
   if(!items.some(([id])=>id===tab)) tab=defaultTab||items[0][0];
@@ -1230,9 +1233,29 @@ function filterRows(){
   const filters=Array.from(document.querySelectorAll('[data-filter]')).map(el=>el.value.toLowerCase()).filter(Boolean);
   let count=0;document.querySelectorAll('[data-search-row]').forEach(row=>{const text=row.textContent.toLowerCase();const match=text.includes(query)&&filters.every(f=>text.includes(f));row.hidden=!match;if(match)count++;});
   const result=document.querySelector('#result-count');if(result)result.textContent=`${count} ${count===1?'record':'records'}`;const empty=document.querySelector('.search-empty');if(empty)empty.hidden=count>0;
+  syncFilterChips();
+}
+function syncFilterChips(){
+  const chips=document.querySelector('#filter-chips');if(!chips)return;
+  const selects=Array.from(document.querySelectorAll('[data-filter]'));
+  const active=selects.map((el,index)=>({el,index})).filter(({el})=>el.value);
+  chips.innerHTML=active.map(({el,index})=>`<li class="filter-chip">${el.value}<button type="button" data-action="remove-filter" data-filter-index="${index}" aria-label="Remove filter ${el.value}">\u00d7</button></li>`).join('')+(active.length?'<li><button class="btn text" type="button" data-action="clear-filters">Clear all</button></li>':'');
+  chips.hidden=!active.length;
+  const count=document.querySelector('.filter-toggle .filter-count');if(count){count.textContent=active.length;count.hidden=!active.length;}
 }
 function action(name,el){
   switch(name){
+    case 'toggle-filters':{
+      const panel=document.querySelector('#filter-panel');if(!panel)break;
+      panel.hidden=!panel.hidden;el.setAttribute('aria-expanded',String(!panel.hidden));
+      if(!panel.hidden)panel.querySelector('select')?.focus();
+      break;}
+    case 'clear-filters':
+      document.querySelectorAll('[data-filter]').forEach(select=>{select.value='';});filterRows();break;
+    case 'remove-filter':{
+      const select=document.querySelectorAll('[data-filter]')[Number(el.dataset.filterIndex)];
+      if(select){select.value='';filterRows();}
+      break;}
     case 'sign-out':
       localStorage.removeItem(previewSessionKey);
       returnAfterSignIn = 'overview';
