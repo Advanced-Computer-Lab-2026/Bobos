@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 96" fill="none" stroke="#39443c" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round">
+  <!-- A debugging beetle, drawn at a slight turn. -->
+  <g transform="rotate(-14 60 49)">
+    <g fill="none" stroke="#39443c" stroke-width="4.5" stroke-linecap="round">
+      <path id="tripod-left" d="m39 41-13-5m53 17 17 2M41 64 29 75"/>
+      <path id="tripod-right" d="m38 54-16 1m56-15 14-5m-16 29 12 11"/>
+    </g>
+    <g id="shell" stroke="#39443c" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round">
+    <path fill="none" d="m49 23-7-9m26 9 7-10"/>
+    <path fill="#dfdfc8" d="M45 30q0-12 14-13c9-.6 15 5 16 12l-6 8-21 1z"/>
+    <path fill="#a4b7a7" d="M39 34q17-8 39-3c8 22 4 43-13 48-16 4-32-12-29-32z"/>
+    <path fill="none" d="M58 37q-1 17 5 34" stroke="#586954" stroke-width="3.6"/>
+    </g>
+  </g>
+</svg>
