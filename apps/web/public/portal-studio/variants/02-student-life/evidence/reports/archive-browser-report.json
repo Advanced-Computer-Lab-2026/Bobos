@@ -1,0 +1,6168 @@
+{
+  "scope": "Supplied static Portal preview; not live APIs or Google OAuth",
+  "base": "http://localhost:8002",
+  "elapsedSeconds": 56.31,
+  "checks": 979,
+  "passed": 979,
+  "failed": 0,
+  "browserErrors": [],
+  "results": [
+    {
+      "name": "host:sign-in-overview",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:1:submit",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:1:duplicate-validation",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:1:withdraw",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:1:assignments-unchanged",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:1:draft-export-disabled",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:1:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:1:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:1:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:1:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:1:unavailable-no-mutations",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:2:submit",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:2:duplicate-validation",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:2:withdraw",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:2:assignments-unchanged",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:2:draft-export-disabled",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:2:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:2:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:2:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:2:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:2:unavailable-no-mutations",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:3:submit",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:3:duplicate-validation",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:3:withdraw",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:3:assignments-unchanged",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:3:draft-export-disabled",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:3:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:3:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:3:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:3:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:3:unavailable-no-mutations",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:4:submit",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:4:duplicate-validation",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:4:withdraw",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:4:assignments-unchanged",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:4:draft-export-disabled",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:4:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:4:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:4:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:4:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:4:unavailable-no-mutations",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:5:submit",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:5:duplicate-validation",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:5:withdraw",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:5:assignments-unchanged",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:5:draft-export-disabled",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:5:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:5:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:5:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:5:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:5:unavailable-no-mutations",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:6:submit",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:6:duplicate-validation",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:6:withdraw",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:6:assignments-unchanged",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:6:draft-export-disabled",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:6:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:6:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:6:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:6:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:6:unavailable-no-mutations",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:7:submit",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:7:duplicate-validation",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:7:withdraw",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:7:assignments-unchanged",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:7:draft-export-disabled",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:7:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:7:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:7:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:7:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:7:unavailable-no-mutations",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:8:submit",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:8:duplicate-validation",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:8:withdraw",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:8:assignments-unchanged",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:8:draft-export-disabled",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:8:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:8:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:8:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:8:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:8:unavailable-no-mutations",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:9:submit",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:9:duplicate-validation",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:9:withdraw",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:9:assignments-unchanged",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:9:draft-export-disabled",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:9:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:9:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:9:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:9:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:9:unavailable-no-mutations",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:10:submit",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:10:duplicate-validation",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:10:withdraw",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:10:assignments-unchanged",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:10:draft-export-disabled",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:10:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:10:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:10:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:10:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-schedule:10:unavailable-no-mutations",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:1:credits",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:1:component-details",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:1:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:1:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:1:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:1:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:1:unavailable-no-mutations",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:2:credits",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:2:component-details",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:2:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:2:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:2:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:2:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:2:unavailable-no-mutations",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:3:credits",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:3:component-details",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:3:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:3:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:3:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:3:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:3:unavailable-no-mutations",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:4:credits",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:4:component-details",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:4:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:4:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:4:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:4:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:4:unavailable-no-mutations",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:5:credits",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:5:component-details",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:5:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:5:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:5:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:5:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:5:unavailable-no-mutations",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:6:credits",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:6:component-details",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:6:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:6:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:6:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:6:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:6:unavailable-no-mutations",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:7:credits",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:7:component-details",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:7:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:7:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:7:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:7:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:7:unavailable-no-mutations",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:8:credits",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:8:component-details",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:8:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:8:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:8:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:8:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:8:unavailable-no-mutations",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:9:credits",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:9:component-details",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:9:comparison-limit",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:9:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:9:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:9:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:9:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:9:unavailable-no-mutations",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:10:credits",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:10:component-details",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:10:no-match",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:10:search",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:10:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:10:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:10:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:10:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-courses:10:unavailable-no-mutations",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:1:empty-selection",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:1:multiple-destinations",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:1:one-open",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:1:withdraw",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:1:whole-exchange",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:1:all-components-move",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:1:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:1:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:1:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:1:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:1:unavailable-no-mutations",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:2:empty-selection",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:2:multiple-destinations",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:2:one-open",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:2:withdraw",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:2:whole-exchange",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:2:all-components-move",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:2:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:2:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:2:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:2:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:2:unavailable-no-mutations",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:3:empty-selection",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:3:multiple-destinations",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:3:one-open",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:3:withdraw",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:3:whole-exchange",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:3:all-components-move",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:3:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:3:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:3:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:3:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:3:unavailable-no-mutations",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:4:empty-selection",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:4:multiple-destinations",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:4:one-open",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:4:withdraw",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:4:whole-exchange",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:4:all-components-move",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:4:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:4:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:4:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:4:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:4:unavailable-no-mutations",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:5:empty-selection",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:5:multiple-destinations",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:5:one-open",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:5:withdraw",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:5:whole-exchange",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:5:all-components-move",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:5:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:5:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:5:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:5:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:5:unavailable-no-mutations",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:6:empty-selection",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:6:multiple-destinations",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:6:one-open",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:6:withdraw",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:6:whole-exchange",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:6:all-components-move",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:6:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:6:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:6:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:6:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:6:unavailable-no-mutations",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:7:empty-selection",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:7:multiple-destinations",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:7:one-open",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:7:withdraw",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:7:whole-exchange",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:7:all-components-move",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:7:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:7:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:7:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:7:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:7:unavailable-no-mutations",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:8:empty-selection",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:8:multiple-destinations",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:8:one-open",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:8:withdraw",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:8:whole-exchange",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:8:all-components-move",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:8:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:8:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:8:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:8:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:8:unavailable-no-mutations",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:9:empty-selection",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:9:multiple-destinations",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:9:one-open",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:9:withdraw",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:9:whole-exchange",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:9:all-components-move",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:9:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:9:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:9:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:9:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:9:unavailable-no-mutations",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:10:empty-selection",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:10:multiple-destinations",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:10:one-open",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:10:withdraw",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:10:whole-exchange",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:10:all-components-move",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:10:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:10:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:10:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:10:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:schedule-swap:10:unavailable-no-mutations",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:1:save",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:1:invalid-time",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:1:valid-time",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:1:does-not-process",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:1:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:1:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:1:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:1:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:1:unavailable-readonly",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:2:save",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:2:invalid-time",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:2:valid-time",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:2:does-not-process",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:2:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:2:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:2:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:2:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:2:unavailable-readonly",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:3:save",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:3:invalid-time",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:3:valid-time",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:3:does-not-process",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:3:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:3:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:3:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:3:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:3:unavailable-readonly",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:4:save",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:4:invalid-time",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:4:valid-time",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:4:does-not-process",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:4:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:4:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:4:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:4:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:4:unavailable-readonly",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:5:save",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:5:invalid-time",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:5:valid-time",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:5:does-not-process",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:5:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:5:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:5:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:5:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:5:unavailable-readonly",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:6:save",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:6:invalid-time",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:6:valid-time",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:6:does-not-process",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:6:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:6:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:6:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:6:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:6:unavailable-readonly",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:7:save",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:7:invalid-time",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:7:valid-time",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:7:does-not-process",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:7:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:7:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:7:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:7:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:7:unavailable-readonly",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:8:save",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:8:invalid-time",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:8:valid-time",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:8:does-not-process",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:8:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:8:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:8:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:8:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:8:unavailable-readonly",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:9:save",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:9:invalid-time",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:9:valid-time",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:9:does-not-process",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:9:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:9:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:9:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:9:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:9:unavailable-readonly",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:10:save",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:10:invalid-time",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:10:valid-time",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:10:does-not-process",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:10:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:10:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:10:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:10:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:preferences:10:unavailable-readonly",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:1:pdf",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:1:year-persisted",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:1:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:1:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:1:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:1:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:1:unavailable-no-mutations",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:2:pdf",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:2:year-persisted",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:2:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:2:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:2:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:2:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:2:unavailable-no-mutations",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:3:pdf",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:3:year-persisted",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:3:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:3:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:3:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:3:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:3:unavailable-no-mutations",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:4:pdf",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:4:year-persisted",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:4:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:4:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:4:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:4:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:4:unavailable-no-mutations",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:5:pdf",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:5:year-persisted",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:5:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:5:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:5:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:5:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:5:unavailable-no-mutations",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:6:pdf",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:6:year-persisted",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:6:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:6:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:6:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:6:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:6:unavailable-no-mutations",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:7:pdf",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:7:year-persisted",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:7:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:7:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:7:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:7:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:7:unavailable-no-mutations",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:8:pdf",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:8:year-persisted",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:8:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:8:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:8:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:8:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:8:unavailable-no-mutations",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:9:pdf",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:9:year-persisted",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:9:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:9:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:9:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:9:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:9:unavailable-no-mutations",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:10:pdf",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:10:year-persisted",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:10:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:10:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:10:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:10:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:records:10:unavailable-no-mutations",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:1:contact",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:1:private-note",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:1:checklist",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:1:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:1:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:1:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:1:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:1:unavailable-no-mutations",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:2:contact",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:2:private-note",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:2:checklist",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:2:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:2:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:2:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:2:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:2:unavailable-no-mutations",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:3:contact",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:3:private-note",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:3:checklist",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:3:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:3:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:3:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:3:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:3:unavailable-no-mutations",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:4:contact",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:4:private-note",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:4:checklist",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:4:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:4:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:4:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:4:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:4:unavailable-no-mutations",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:5:contact",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:5:private-note",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:5:checklist",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:5:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:5:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:5:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:5:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:5:unavailable-no-mutations",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:6:contact",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:6:private-note",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:6:mail-draft",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:6:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:6:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:6:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:6:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:6:unavailable-no-mutations",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:7:contact",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:7:private-note",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:7:checklist",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:7:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:7:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:7:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:7:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:7:unavailable-no-mutations",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:8:contact",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:8:private-note",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:8:checklist",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:8:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:8:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:8:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:8:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:8:unavailable-no-mutations",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:9:contact",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:9:private-note",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:9:checklist",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:9:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:9:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:9:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:9:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:9:unavailable-no-mutations",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:10:contact",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:10:private-note",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:10:checklist",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:10:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:10:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:10:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:10:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:my-advisor:10:unavailable-no-mutations",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:1:idempotent-preview-sync",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:1:disconnect",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:1:reconnect",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:1:calendar-file",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:1:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:1:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:1:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:1:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:1:unavailable-sync-disabled",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:2:idempotent-preview-sync",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:2:disconnect",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:2:reconnect",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:2:calendar-file",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:2:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:2:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:2:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:2:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:2:unavailable-sync-disabled",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:3:idempotent-preview-sync",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:3:disconnect",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:3:reconnect",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:3:calendar-file",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:3:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:3:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:3:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:3:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:3:unavailable-sync-disabled",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:4:idempotent-preview-sync",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:4:disconnect",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:4:reconnect",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:4:calendar-file",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:4:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:4:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:4:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:4:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:4:unavailable-sync-disabled",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:5:idempotent-preview-sync",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:5:disconnect",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:5:reconnect",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:5:calendar-file",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:5:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:5:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:5:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:5:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:5:unavailable-sync-disabled",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:6:idempotent-preview-sync",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:6:disconnect",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:6:reconnect",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:6:calendar-file",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:6:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:6:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:6:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:6:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:6:unavailable-sync-disabled",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:7:idempotent-preview-sync",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:7:disconnect",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:7:reconnect",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:7:calendar-file",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:7:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:7:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:7:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:7:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:7:unavailable-sync-disabled",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:8:idempotent-preview-sync",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:8:disconnect",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:8:reconnect",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:8:calendar-file",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:8:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:8:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:8:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:8:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:8:unavailable-sync-disabled",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:9:idempotent-preview-sync",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:9:disconnect",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:9:reconnect",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:9:calendar-file",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:9:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:9:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:9:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:9:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:9:unavailable-sync-disabled",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:10:idempotent-preview-sync",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:10:disconnect",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:10:reconnect",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:10:calendar-file",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:10:load-error",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:10:retry",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:10:empty",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:10:unavailable",
+      "passed": true
+    },
+    {
+      "name": "workflow:calendar-sync:10:unavailable-sync-disabled",
+      "passed": true
+    },
+    {
+      "name": "host:selection-return",
+      "passed": true
+    },
+    {
+      "name": "host:selection-independent",
+      "passed": true
+    },
+    {
+      "name": "host:original",
+      "passed": true
+    },
+    {
+      "name": "host:sign-out",
+      "passed": true
+    },
+    {
+      "name": "host:sign-in-again",
+      "passed": true
+    },
+    {
+      "name": "host:selection-after-sign-in",
+      "passed": true
+    },
+    {
+      "name": "host:calendar-original-to-variant",
+      "passed": true
+    },
+    {
+      "name": "host:calendar-variant-to-original",
+      "passed": true
+    },
+    {
+      "name": "host:preferences-original-to-variant",
+      "passed": true
+    },
+    {
+      "name": "host:preferences-variant-to-original",
+      "passed": true
+    },
+    {
+      "name": "keyboard:day-navigation",
+      "passed": true
+    },
+    {
+      "name": "keyboard:dialog-escape",
+      "passed": true
+    },
+    {
+      "name": "keyboard:dialog-focus-return",
+      "passed": true
+    },
+    {
+      "name": "accessibility:reduced-motion",
+      "passed": true
+    },
+    {
+      "name": "permissions:my-schedule:normalStudent",
+      "passed": true
+    },
+    {
+      "name": "permissions:my-schedule:advisingStudent",
+      "passed": true
+    },
+    {
+      "name": "permissions:my-schedule:advisor",
+      "passed": true
+    },
+    {
+      "name": "permissions:my-schedule:coordinator",
+      "passed": true
+    },
+    {
+      "name": "permissions:my-schedule:administrator",
+      "passed": true
+    },
+    {
+      "name": "permissions:my-courses:normalStudent",
+      "passed": true
+    },
+    {
+      "name": "permissions:my-courses:advisingStudent",
+      "passed": true
+    },
+    {
+      "name": "permissions:my-courses:advisor",
+      "passed": true
+    },
+    {
+      "name": "permissions:my-courses:advisor:no-actions",
+      "passed": true
+    },
+    {
+      "name": "permissions:my-courses:coordinator",
+      "passed": true
+    },
+    {
+      "name": "permissions:my-courses:coordinator:no-actions",
+      "passed": true
+    },
+    {
+      "name": "permissions:my-courses:administrator",
+      "passed": true
+    },
+    {
+      "name": "permissions:my-courses:administrator:no-actions",
+      "passed": true
+    },
+    {
+      "name": "permissions:schedule-swap:normalStudent",
+      "passed": true
+    },
+    {
+      "name": "permissions:schedule-swap:advisingStudent",
+      "passed": true
+    },
+    {
+      "name": "permissions:schedule-swap:advisingStudent:no-actions",
+      "passed": true
+    },
+    {
+      "name": "permissions:schedule-swap:advisor",
+      "passed": true
+    },
+    {
+      "name": "permissions:schedule-swap:advisor:no-actions",
+      "passed": true
+    },
+    {
+      "name": "permissions:schedule-swap:coordinator",
+      "passed": true
+    },
+    {
+      "name": "permissions:schedule-swap:coordinator:no-actions",
+      "passed": true
+    },
+    {
+      "name": "permissions:schedule-swap:administrator",
+      "passed": true
+    },
+    {
+      "name": "permissions:schedule-swap:administrator:no-actions",
+      "passed": true
+    },
+    {
+      "name": "permissions:preferences:normalStudent",
+      "passed": true
+    },
+    {
+      "name": "permissions:preferences:normalStudent:no-actions",
+      "passed": true
+    },
+    {
+      "name": "permissions:preferences:advisingStudent",
+      "passed": true
+    },
+    {
+      "name": "permissions:preferences:advisor",
+      "passed": true
+    },
+    {
+      "name": "permissions:preferences:coordinator",
+      "passed": true
+    },
+    {
+      "name": "permissions:preferences:administrator",
+      "passed": true
+    },
+    {
+      "name": "permissions:preferences:administrator:no-actions",
+      "passed": true
+    },
+    {
+      "name": "permissions:records:normalStudent",
+      "passed": true
+    },
+    {
+      "name": "permissions:records:normalStudent:no-actions",
+      "passed": true
+    },
+    {
+      "name": "permissions:records:advisingStudent",
+      "passed": true
+    },
+    {
+      "name": "permissions:records:advisor",
+      "passed": true
+    },
+    {
+      "name": "permissions:records:coordinator",
+      "passed": true
+    },
+    {
+      "name": "permissions:records:administrator",
+      "passed": true
+    },
+    {
+      "name": "permissions:records:administrator:no-actions",
+      "passed": true
+    },
+    {
+      "name": "permissions:my-advisor:normalStudent",
+      "passed": true
+    },
+    {
+      "name": "permissions:my-advisor:normalStudent:no-actions",
+      "passed": true
+    },
+    {
+      "name": "permissions:my-advisor:advisingStudent",
+      "passed": true
+    },
+    {
+      "name": "permissions:my-advisor:advisor",
+      "passed": true
+    },
+    {
+      "name": "permissions:my-advisor:advisor:no-actions",
+      "passed": true
+    },
+    {
+      "name": "permissions:my-advisor:coordinator",
+      "passed": true
+    },
+    {
+      "name": "permissions:my-advisor:coordinator:no-actions",
+      "passed": true
+    },
+    {
+      "name": "permissions:my-advisor:administrator",
+      "passed": true
+    },
+    {
+      "name": "permissions:my-advisor:administrator:no-actions",
+      "passed": true
+    },
+    {
+      "name": "permissions:calendar-sync:normalStudent",
+      "passed": true
+    },
+    {
+      "name": "permissions:calendar-sync:advisingStudent",
+      "passed": true
+    },
+    {
+      "name": "permissions:calendar-sync:advisor",
+      "passed": true
+    },
+    {
+      "name": "permissions:calendar-sync:advisor:no-actions",
+      "passed": true
+    },
+    {
+      "name": "permissions:calendar-sync:coordinator",
+      "passed": true
+    },
+    {
+      "name": "permissions:calendar-sync:coordinator:no-actions",
+      "passed": true
+    },
+    {
+      "name": "permissions:calendar-sync:administrator",
+      "passed": true
+    },
+    {
+      "name": "permissions:calendar-sync:administrator:no-actions",
+      "passed": true
+    },
+    {
+      "name": "permissions:incomplete-draft:normalStudent",
+      "passed": true
+    },
+    {
+      "name": "permissions:incomplete-draft:advisingStudent",
+      "passed": true
+    },
+    {
+      "name": "permissions:incomplete-draft:advisor",
+      "passed": true
+    },
+    {
+      "name": "permissions:incomplete-draft:coordinator",
+      "passed": true
+    },
+    {
+      "name": "permissions:incomplete-draft:administrator",
+      "passed": true
+    },
+    {
+      "name": "permissions:unreleased-course-sections:normalStudent",
+      "passed": true
+    },
+    {
+      "name": "permissions:unreleased-course-sections:advisingStudent",
+      "passed": true
+    },
+    {
+      "name": "permissions:staff-preferences-readonly",
+      "passed": true
+    },
+    {
+      "name": "permissions:staff-records-no-wallet",
+      "passed": true
+    },
+    {
+      "name": "permissions:normal-cannot-see-draft",
+      "passed": true
+    },
+    {
+      "name": "schedule:processed-export-available",
+      "passed": true
+    },
+    {
+      "name": "schedule:print",
+      "passed": true
+    },
+    {
+      "name": "schedule:deadline",
+      "passed": true
+    },
+    {
+      "name": "schedule:decisions",
+      "passed": true
+    },
+    {
+      "name": "calendar:provider-retry-feedback",
+      "passed": true
+    },
+    {
+      "name": "calendar:provider-retry-success",
+      "passed": true
+    },
+    {
+      "name": "integration:registry-coexistence",
+      "passed": true
+    },
+    {
+      "name": "layout:dark:1440:my-schedule:1",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:my-schedule:2",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:my-schedule:3",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:my-schedule:4",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:my-schedule:5",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:my-schedule:6",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:my-schedule:7",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:my-schedule:8",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:my-schedule:9",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:my-schedule:10",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:my-courses:1",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:my-courses:2",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:my-courses:3",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:my-courses:4",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:my-courses:5",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:my-courses:6",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:my-courses:7",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:my-courses:8",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:my-courses:9",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:my-courses:10",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:schedule-swap:1",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:schedule-swap:2",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:schedule-swap:3",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:schedule-swap:4",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:schedule-swap:5",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:schedule-swap:6",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:schedule-swap:7",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:schedule-swap:8",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:schedule-swap:9",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:schedule-swap:10",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:preferences:1",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:preferences:2",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:preferences:3",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:preferences:4",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:preferences:5",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:preferences:6",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:preferences:7",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:preferences:8",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:preferences:9",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:preferences:10",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:records:1",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:records:2",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:records:3",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:records:4",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:records:5",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:records:6",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:records:7",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:records:8",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:records:9",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:records:10",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:my-advisor:1",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:my-advisor:2",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:my-advisor:3",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:my-advisor:4",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:my-advisor:5",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:my-advisor:6",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:my-advisor:7",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:my-advisor:8",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:my-advisor:9",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:my-advisor:10",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:calendar-sync:1",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:calendar-sync:2",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:calendar-sync:3",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:calendar-sync:4",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:calendar-sync:5",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:calendar-sync:6",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:calendar-sync:7",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:calendar-sync:8",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:calendar-sync:9",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:1440:calendar-sync:10",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:dark:390:my-schedule:1",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:my-schedule:2",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:my-schedule:3",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:my-schedule:4",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:my-schedule:5",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:my-schedule:6",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:my-schedule:7",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:my-schedule:8",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:my-schedule:9",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:my-schedule:10",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:my-courses:1",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:my-courses:2",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:my-courses:3",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:my-courses:4",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:my-courses:5",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:my-courses:6",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:my-courses:7",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:my-courses:8",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:my-courses:9",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:my-courses:10",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:schedule-swap:1",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:schedule-swap:2",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:schedule-swap:3",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:schedule-swap:4",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:schedule-swap:5",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:schedule-swap:6",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:schedule-swap:7",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:schedule-swap:8",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:schedule-swap:9",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:schedule-swap:10",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:preferences:1",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:preferences:2",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:preferences:3",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:preferences:4",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:preferences:5",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:preferences:6",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:preferences:7",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:preferences:8",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:preferences:9",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:preferences:10",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:records:1",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:records:2",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:records:3",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:records:4",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:records:5",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:records:6",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:records:7",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:records:8",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:records:9",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:records:10",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:my-advisor:1",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:my-advisor:2",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:my-advisor:3",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:my-advisor:4",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:my-advisor:5",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:my-advisor:6",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:my-advisor:7",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:my-advisor:8",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:my-advisor:9",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:my-advisor:10",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:calendar-sync:1",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:calendar-sync:2",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:calendar-sync:3",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:calendar-sync:4",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:calendar-sync:5",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:calendar-sync:6",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:calendar-sync:7",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:calendar-sync:8",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:calendar-sync:9",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:dark:390:calendar-sync:10",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:1440:my-schedule:1",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:my-schedule:2",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:my-schedule:3",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:my-schedule:4",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:my-schedule:5",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:my-schedule:6",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:my-schedule:7",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:my-schedule:8",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:my-schedule:9",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:my-schedule:10",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:my-courses:1",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:my-courses:2",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:my-courses:3",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:my-courses:4",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:my-courses:5",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:my-courses:6",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:my-courses:7",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:my-courses:8",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:my-courses:9",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:my-courses:10",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:schedule-swap:1",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:schedule-swap:2",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:schedule-swap:3",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:schedule-swap:4",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:schedule-swap:5",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:schedule-swap:6",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:schedule-swap:7",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:schedule-swap:8",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:schedule-swap:9",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:schedule-swap:10",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:preferences:1",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:preferences:2",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:preferences:3",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:preferences:4",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:preferences:5",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:preferences:6",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:preferences:7",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:preferences:8",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:preferences:9",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:preferences:10",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:records:1",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:records:2",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:records:3",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:records:4",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:records:5",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:records:6",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:records:7",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:records:8",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:records:9",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:records:10",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:my-advisor:1",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:my-advisor:2",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:my-advisor:3",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:my-advisor:4",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:my-advisor:5",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:my-advisor:6",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:my-advisor:7",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:my-advisor:8",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:my-advisor:9",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:my-advisor:10",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:calendar-sync:1",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:calendar-sync:2",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:calendar-sync:3",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:calendar-sync:4",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:calendar-sync:5",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:calendar-sync:6",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:calendar-sync:7",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:calendar-sync:8",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:calendar-sync:9",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:1440:calendar-sync:10",
+      "passed": true,
+      "detail": {
+        "width": 1440,
+        "viewport": 1440,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 224
+      }
+    },
+    {
+      "name": "layout:light:390:my-schedule:1",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:my-schedule:2",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:my-schedule:3",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:my-schedule:4",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:my-schedule:5",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:my-schedule:6",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:my-schedule:7",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:my-schedule:8",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:my-schedule:9",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:my-schedule:10",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:my-courses:1",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:my-courses:2",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:my-courses:3",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:my-courses:4",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:my-courses:5",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:my-courses:6",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:my-courses:7",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:my-courses:8",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:my-courses:9",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:my-courses:10",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:schedule-swap:1",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:schedule-swap:2",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:schedule-swap:3",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:schedule-swap:4",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:schedule-swap:5",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:schedule-swap:6",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:schedule-swap:7",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:schedule-swap:8",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:schedule-swap:9",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:schedule-swap:10",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:preferences:1",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:preferences:2",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:preferences:3",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:preferences:4",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:preferences:5",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:preferences:6",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:preferences:7",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:preferences:8",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:preferences:9",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:preferences:10",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:records:1",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:records:2",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:records:3",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:records:4",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:records:5",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:records:6",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:records:7",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:records:8",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:records:9",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:records:10",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:my-advisor:1",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:my-advisor:2",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:my-advisor:3",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:my-advisor:4",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:my-advisor:5",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:my-advisor:6",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:my-advisor:7",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:my-advisor:8",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:my-advisor:9",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:my-advisor:10",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:calendar-sync:1",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:calendar-sync:2",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:calendar-sync:3",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:calendar-sync:4",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:calendar-sync:5",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:calendar-sync:6",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:calendar-sync:7",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:calendar-sync:8",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:calendar-sync:9",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "layout:light:390:calendar-sync:10",
+      "passed": true,
+      "detail": {
+        "width": 390,
+        "viewport": 390,
+        "h1": 1,
+        "selected": 1,
+        "invalidText": false,
+        "sidebar": 0
+      }
+    },
+    {
+      "name": "runtime:no-page-errors",
+      "passed": true,
+      "detail": []
+    }
+  ]
+}

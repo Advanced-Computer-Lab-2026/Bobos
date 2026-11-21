@@ -1,0 +1,79 @@
+{
+  "checks": [
+    {
+      "name": "Opening has an initial hold",
+      "passed": true
+    },
+    {
+      "name": "Authored intermediate pose holds",
+      "passed": true
+    },
+    {
+      "name": "Four distinct opening poses",
+      "passed": true
+    },
+    {
+      "name": "Quiet final hold",
+      "passed": true
+    },
+    {
+      "name": "Finite non-looping animation",
+      "passed": true
+    },
+    {
+      "name": "Replay restarts a finite animation",
+      "passed": true
+    },
+    {
+      "name": "Task drawing remains small",
+      "passed": true
+    },
+    {
+      "name": "Reduced motion cancels movement",
+      "passed": true
+    },
+    {
+      "name": "Reduced motion retains final pose",
+      "passed": true
+    }
+  ],
+  "poses": [
+    [
+      0,
+      "matrix(1, 0, 0, 1, 0, 0)"
+    ],
+    [
+      120,
+      "matrix(1, 0, 0, 1, 0, 0)"
+    ],
+    [
+      200,
+      "matrix(1, 0, 0, 1, 0, 0)"
+    ],
+    [
+      400,
+      "matrix(0.999391, -0.0348995, 0.0348995, 0.999391, 0, -3)"
+    ],
+    [
+      450,
+      "matrix(0.999391, -0.0348995, 0.0348995, 0.999391, 0, -3)"
+    ],
+    [
+      520,
+      "matrix(0.99863, -0.052336, 0.052336, 0.99863, 0, -10)"
+    ],
+    [
+      740,
+      "matrix(0.999848, -0.0174524, 0.0174524, 0.999848, 0, -17)"
+    ],
+    [
+      1000,
+      "matrix(0.999848, -0.0174524, 0.0174524, 0.999848, 0, -13)"
+    ],
+    [
+      1150,
+      "matrix(0.999848, -0.0174524, 0.0174524, 0.999848, 0, -13)"
+    ]
+  ],
+  "note": "Sampled authored animation times; not an artistic quality score."
+}

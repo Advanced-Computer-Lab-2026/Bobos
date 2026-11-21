@@ -76,7 +76,7 @@ function applyLook() {
   document.body.classList.toggle('claude-family',!chat);
   document.body.dataset.palette = palettes[lab.palette][0].toLowerCase().replaceAll(' ','-');
   document.body.dataset.workspace = workspaces[lab.layout].name.toLowerCase().replaceAll(' ','-');
-  document.querySelector('link[rel=icon]').href = workspaces[lab.layout].name==='Claude Study' ? 'study-mark.svg' : 'folded-page.svg';
+  document.querySelector('link[rel=icon]').href = 'portal-card-index.svg';
   for (const [key,value] of Object.entries({ground,surface,ink,muted,accent})) {
     document.body.style.setProperty('--studio-' + key,value);
   }

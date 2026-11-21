@@ -1,0 +1,1443 @@
+{
+  "scope": "Every uploaded file outside the owned contributor folder, including START-HERE.md",
+  "checked": 287,
+  "unchanged": 287,
+  "changed": [],
+  "files": [
+    {
+      "path": "project/.env.example",
+      "sha256": "a4588430e9a329d1561fdbbe3025148eb9ce17763beb5e3f39278e19320e48c7",
+      "unchanged": true
+    },
+    {
+      "path": "project/.github/PULL_REQUEST_TEMPLATE.md",
+      "sha256": "29df4b1bdd5d79f6b38920b38b3717d5c703d8717aaf1247f505cd6be2c1d882",
+      "unchanged": true
+    },
+    {
+      "path": "project/.gitignore",
+      "sha256": "e8576f061a024f60f0a4cc76aff5fd843ae1479eef174dd4e7e094c32e7aa856",
+      "unchanged": true
+    },
+    {
+      "path": "project/.postman/resources.yaml",
+      "sha256": "1942d6509ee8e02663074df608687d83b31f14ae71a1e0de690fd2e3f25cf42b",
+      "unchanged": true
+    },
+    {
+      "path": "project/AGENTS.md",
+      "sha256": "171f732de32383706bd9decb105596eb03caf0f67ab837d85da509f1d095ecc6",
+      "unchanged": true
+    },
+    {
+      "path": "project/README.md",
+      "sha256": "124beb6dd0b46dc8d8536a2c4ec44afefc59bfd4bb94c010b4a0e07dcdabd65e",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/package.json",
+      "sha256": "ac5a56be9174f4cd7479d66c250df0b1fa15e9b348628365b84a55c961447eb8",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/seed-b2.js",
+      "sha256": "4a59f736d3a5df4742899b54487931ecd452d1537e135624512f23dce76b73b6",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/seed.js",
+      "sha256": "866fa9bcd8ebe261f754596b68d743288a9ed446323ed4f0a65f6b2d1183d799",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/app.js",
+      "sha256": "f63db8b070bd900d76240c026aaba38afdde15cee793d3073c8896ce9c1af41a",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/controllers/academicTerm.controller.js",
+      "sha256": "e30e7d88acb3420c832751b6fa716eb122da2652f80e8a6f894c92797eb26e2e",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/controllers/academics.controller.js",
+      "sha256": "9131c3b5843910b3c4a7c9a2d9f7ffa2034f0a1fe8c38932ec4ba13f53c535a9",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/controllers/admin.controller.js",
+      "sha256": "389c32d21b2adcf76023c41733bc25bee8739ec5bbf6d6cb3d1e70b20edb1469",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/controllers/admin.controller.test.js",
+      "sha256": "d73aaa742df94958d1fa2a3643175c77821f463c8b1e9c8261e271bbc95117dd",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/controllers/advisor.controller.js",
+      "sha256": "e908dd1d044807454681ebe6de8538c929d4a469c7f51bf4a3ad9c7653897ccc",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/controllers/auth.integration.test.js",
+      "sha256": "d3e82810f2c6c7d6a125181e1bbbf8def9b9892259af48ca6ed3f02674a8d022",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/controllers/b3.edge-cases.test.js",
+      "sha256": "aea158f95a843d1f1756a257a0a148aab4d872ab04f2e48db0d90309e7121d7b",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/controllers/bc-requirements.audit.test.js",
+      "sha256": "3f6434027a456fda43658e727bd6169c355b1a7687392bf4816fd629cbb36760",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/controllers/calendar.controller.js",
+      "sha256": "2ccbff42b3639ea28003ad68a2c2cf556a13f98ba8fd761d7d43a5a861229df0",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/controllers/catalogue.controller.js",
+      "sha256": "546c1452b7a874f48ee9c6afeff0bb3b33ac10c5cad7fd623a1d94d783035c88",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/controllers/course-import.controller.js",
+      "sha256": "a5e2ec51e491b64f865b9799a10db66e49f9ceca3b17f887e17c64c8e4796358",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/controllers/extra-hours.controller.js",
+      "sha256": "1f7876a2bd8c96d94ce397fb7b18d0edc78b5b8a841cff316522ad0410678fe4",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/controllers/extra-hours.integration.test.js",
+      "sha256": "036d6652c1c2f69fc49a4f1416c72641bf56df984486869f147464a5358e2470",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/controllers/finance.controller.js",
+      "sha256": "72180a37b53945601a91f4417d72c0562ab5b1801f4ee0aa024c448b8eae6487",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/controllers/finance.integration.test.js",
+      "sha256": "a41bd7ca808b9428acafffd644e9bd6ecbfd7ce4757c8ab2dec639beb20d8cf8",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/controllers/graduation-plans.controller.js",
+      "sha256": "037f8182e93632a377f1eb15758fd007acc62766756c7f1f42779d5b21200941",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/controllers/graduation-plans.integration.test.js",
+      "sha256": "4b76bce98f1fdc86c61f9b921b44cefea945315f0ec86c8292f1115d019aab9f",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/controllers/graduation-review.controller.js",
+      "sha256": "111a763a02baec3e9b662f2da5a4fe54d3ebe0ef31ff8a4490c99783194a3bc9",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/controllers/group-a.audit.test.js",
+      "sha256": "51a5cc8742a2ac83b8e9ce87022632d206a40945b271145c1c068f54f986ad13",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/controllers/group-b.integration.test.js",
+      "sha256": "ae53d64a8683f17c1e945e4a1917f9885b41f52fadffb4441d05aeae80004a24",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/controllers/identity.controller.js",
+      "sha256": "e3fe80c4d710d9febbfb7e914d82ee5bf538d941043dfdd16333885012c0f447",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/controllers/identity.test.js",
+      "sha256": "a36d8f2feba6ce08f3e992cfb6c0d1ee1e5aad596dfff30eccb254dc82791f3a",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/controllers/login.test.js",
+      "sha256": "3f6eff5ca5986cb2c297364ea3363db65553e2b091577cd80fb9bb2ef4106fb8",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/controllers/logout.controller.js",
+      "sha256": "960ec8a184f2a48b681485b9dd9b6fdba25abf77aff0b0922981a3e1aa54f0f7",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/controllers/mandatoryRemoval.controller.js",
+      "sha256": "621e7021b33917f77d7778a2d2b050fa39e76d97cccc51e86c42673f62974552",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/controllers/notifications.controller.js",
+      "sha256": "18d46dcb1ab3c1df8ee4c9bd7a3c8dbec8cf3e94a09a3e82c86db1b9645f32e1",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/controllers/notifications.test.js",
+      "sha256": "e2e1ea75453d681f95cf9dc96702f5d0c74381ff2ab0e2b8e61265392ea2d64e",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/controllers/offering-year.integration.test.js",
+      "sha256": "f3022b335ecfa78e900f38a04da0d3f84e6c56f6512c619994a074bf66d096bb",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/controllers/password-reset.controller.js",
+      "sha256": "ec8bc25cfc57d8d5dee6bb60d5b50ed2877bbedd23a8f41c197a4e77588a319e",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/controllers/preferences.controller.js",
+      "sha256": "fdb59dc500e6385990279213a7303249c5cea9aa2e648b320859518380f1b95a",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/controllers/preferences.integration.test.js",
+      "sha256": "a2edc70b65ff304a3e9881ad590a07f3646ba0aeb849406b891c8ebd33566b8c",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/controllers/records.integration.test.js",
+      "sha256": "fafaedd4e246ca057903902aac38dbe2833b793ebcddf8ae3687d4b6dfb95bfe",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/controllers/schedule-activity.controller.js",
+      "sha256": "11d9c538fe69dfa84759e73fd9a1cc68b7b20b8c3da1204515140dfe8c4416f6",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/controllers/scheduling.controller.js",
+      "sha256": "f2b0d472edb7e34d440e475a8206641a6bf8d6c075e45f867db457c82fced263",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/controllers/scheduling.integration.test.js",
+      "sha256": "754ecba73dae4cc0777b132d59888e17dcfe8e94d55ed002de205b48b997441b",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/controllers/slot-changes.controller.js",
+      "sha256": "bcf7b29280d02c1e42411ab850ad5f78da4445bb7439d711ee053d75da67d14c",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/index.js",
+      "sha256": "36793ef776c170b911b3298259b51a880a7efea0cbd2f3035b3ff7f4c551be02",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/middleware/auth.middleware.js",
+      "sha256": "b6569cf4a9664f78d7a0e3dd5201fbb003295a1aff8aeaa800323692c6463f38",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/middleware/error.middleware.js",
+      "sha256": "0cc558abe572931ce8bea503b97cc40c9b789cde6b3dddadbbb9e9fabff6b26e",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/middleware/require-role.js",
+      "sha256": "547e62cbf6916ea33a6a997f3aa70eeadbf7011b57b600f55b556881ad68317e",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/middleware/student-records.middleware.js",
+      "sha256": "ac4517a96e3772d8643ed772110c5bfd81a50ad8682ce542eeb3cf6588b7c748",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/migrations/remove-offering-academic-year.js",
+      "sha256": "5ce703eb5c9d2bc023f83e56f4bc2d3e06924bf13a63dd172adbccc850269095",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/models/academics.js",
+      "sha256": "0f1feb7783d2676b04791eb8111692cb9d269028cc45645454517a0b72a53443",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/models/catalogue.js",
+      "sha256": "99f92597b2a3ec7ba45985735e43d439dd6c8bc3e859be99d392af68f50e06d6",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/models/communications.js",
+      "sha256": "a3ae9c66fa8b37e2e38c4512d0ce6b5965dbe06d591c8ab5d8bcfa12b27b631f",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/models/finance.js",
+      "sha256": "20d78cfe41561c35fc887c01e46b685962515fe4e57fca6212e61f7f306dae8e",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/models/identity.js",
+      "sha256": "a7d0c41138a360a5e9e1b86055c52e74f84db16e57032feef7b9202aeddf4a60",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/models/index.js",
+      "sha256": "40c9367d860e724e932aada592be79106a706be5ad744746056924c62e7242c3",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/models/models.test.js",
+      "sha256": "c6729e2c18370f283fd8d629dfdf1aed19c38bd806bb0baf8e0ad58409c1b126",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/models/requests.js",
+      "sha256": "6aaf4c70fe4ab8ac76722749bf4ae39f95f594e239ca0d99a6cc5dc8a449760a",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/models/shared.js",
+      "sha256": "a039bbdb147036a034696ece1fa719fdae227c98c97d6b5e0d4edd170b77f290",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/routes/academicTerm.routes.js",
+      "sha256": "cc599133572ba19e89914367d625ae00d99889e6ee32d92647755b614074767a",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/routes/academics.routes.js",
+      "sha256": "c131096dd7690bd8645346674b03313eef62f19f2eacf7f468650cb05861d003",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/routes/admin.routes.js",
+      "sha256": "9ffbbe0aaac869d4b661c5494e5fab4d54c063121918990308439123fedc67b9",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/routes/admin.routes.test.js",
+      "sha256": "6d16f192ad27d028e29009f30e54f11f4d7f67f5bd757d2bdb8477bd57d22773",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/routes/advisor.routes.js",
+      "sha256": "87dfece3c60d6c7850196e9423b7f772754741d2831f9051db50d5dc5e514118",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/routes/calendar.routes.js",
+      "sha256": "665a89bc4622ac910672b84e5816d1f86b4456e2052d7e2a1683a5a096fd8ce2",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/routes/catalogue.routes.js",
+      "sha256": "2443b33be63dda4ba5ce10f9d4f8c8f50b83bbb937dadc7c2db06602fddc1b8f",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/routes/extra-hours.routes.js",
+      "sha256": "41ceb10b16a2cb59973ca2d34d35e12cd41dee50dcf8aaf2c8ea32ba1c5ca3c3",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/routes/finance.routes.js",
+      "sha256": "bf37dae351da91a0ef82235418afd6e051b459ecd9a82c2bb34266fbe6895ba0",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/routes/graduation-plans.routes.js",
+      "sha256": "c300d023a8a6de12a43a3f03c61272333bb6b7c29c2d8b8e949a3774ca868f06",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/routes/graduation-review.routes.js",
+      "sha256": "e727dac132a44d82458dcb4edc27fd25cf72090c485c029dacf6f9f47dc4f708",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/routes/group-assignments.routes.js",
+      "sha256": "500eb58a98140f49039f159eb142d8aa761d5fa99f643d3dd427a727a1ef6b8b",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/routes/identity.routes.js",
+      "sha256": "5605d387f6a4801162f151b0067a9f3eed22acd2d767488152f7268a0f036ed3",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/routes/mandatoryRemoval.routes.js",
+      "sha256": "669fce43739a5f08a13cb24fd1d0828d25b2a65b9ffe54ff93881690c18160ca",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/routes/notifications.routes.js",
+      "sha256": "a7c0b173e2db0a9c905508290a5c86dcdbfd9f9ce018f4327dacc39dfb5d4230",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/routes/schedules.routes.js",
+      "sha256": "b0ff734e043a990d6318bcc5b79e83445a57df22d34e460d11661c3a960bdca3",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/routes/slot-changes.routes.js",
+      "sha256": "41b713d0107006ec8d15edfbfa72051382b33666fa668d2e78f735d16ceaf18a",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/routes/swaps.routes.js",
+      "sha256": "cd45eaec536c534fc360dd208bd98f0d88eaf8bfa7313f50d044cc5ec247aaa1",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/scripts/courses.csv",
+      "sha256": "554970488b1be3ec7cec2eae137f727e0089627dd72ce0d5c7f4155b62c55f42",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/scripts/importCourses.js",
+      "sha256": "6806db132d76397e53ef0c32215bc0e599be7355972ed197d9b604570af48481",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/scripts/syncCurriculumCredits.js",
+      "sha256": "b9516b15cbe94c31e7b830402b45f52d1070dee989c4cbf0a3862eb9643dd71f",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/seed/academic-history.js",
+      "sha256": "8a49fbbcd00a915f86dc95565b08a2010a689971eaab1a4678885280f47970ba",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/seed/c2.js",
+      "sha256": "2b1b731760ebb47534ec1634faac00a37660acb7cd411e4f0620ddb0b0fd8eec",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/seed/evaluation.js",
+      "sha256": "9476888a5ff8f4eed3afcacb0b4aa3d619946e5c059b86dd2aefde6699a7b7a8",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/seed/index.js",
+      "sha256": "741a84f7498892fd859fba3f2fec14219e305c969fb8cfc4db1b122b228f7cf6",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/seed/pending-requests.js",
+      "sha256": "65b17bf248a55129ad1286f4806c3e765a1a977400cb936e86f69fb787fb7a6e",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/seed/preference-clash.js",
+      "sha256": "6b2391b03554e64a72e1f4a8333159d311b5d2b0e9d421955891fe57f160fb85",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/seed/replace-eval-courses.js",
+      "sha256": "64c35242449ac05cc1ee914979741569eb5a8c73cf11d196b5c0b1e0c96f2529",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/seed/seed-b3-demo.js",
+      "sha256": "a089f6540879b73596764fe493026edc06762a62d68cd7ddef5f0955bd0e6caa",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/seed/unpublish-review.js",
+      "sha256": "8609f438c5e0cdfe5fe3aa6c4a27211c966448ab393f3858ce642da66cf7b83a",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/seed/wallet-history.js",
+      "sha256": "c5544d5ea4f987e561f68083c5b45cc1ccb1522499912e38b81ba43d5f9935d5",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/services/advisor-notifications.js",
+      "sha256": "ed3a4c31f576df3255c2e706a2f7f20bc5a21823d5287f7a8cf96e0b8435129d",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/services/graduation-planning.js",
+      "sha256": "cb9a83f345a282edee6dd73587b48bc7590cd72cfea49cae6ab8e79e081b706f",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/services/in-app-notifications.js",
+      "sha256": "534ec3a33fc01c1220d3df74fb58ad79e49715a9d56c0457cfd899c36ad10bc0",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/services/password-reset-email.js",
+      "sha256": "454141d8e1e6f8ce40db9df5843885f22cb91b57308f705e64a19021502ae5de",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/services/probation-warnings.integration.test.js",
+      "sha256": "c1f3515a3cec587fae4f6f5d25eec8baf1eb1a9a148a8d98a346d5b44c878aa2",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/services/probation-warnings.js",
+      "sha256": "70906407c1b3490bd5cb294a35dd75bb508982aabcb12bcb81b9e534d3d81f39",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/services/smtp-email.js",
+      "sha256": "6da899b299eac3e140de847431a2d84bf653a658c12a0bf5fbd7751e724321e5",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/services/student-notifications.js",
+      "sha256": "bfad0d3c5e1e47f8a44a079f40c8f5a788e01486e90a8402990fa673948bbba9",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/utils/credit-allowance.js",
+      "sha256": "eb7bf08269c958a3f1ec20ecfbe210972e71b64403cdaf623c10297253017869",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/utils/credit-allowance.test.js",
+      "sha256": "a0bc331884b672b7884ca76c8bfcf76d8fb7774f577ed1720269bad183d179fc",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/utils/major.js",
+      "sha256": "f8b24cd0a9881fbecb2f605526b588f383c334065eb6536d5e1d9dfc8e170aca",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/src/utils/major.test.js",
+      "sha256": "82044b01c76a21f6450f4f4bd185698e80211fd9342c352c7ac8427bbb70df8b",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/api/test-c2.js",
+      "sha256": "28c94bf7213de260f63000d7ba1cbfcbbf3f222d5341215d545a6593ab6ba164",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/index.html",
+      "sha256": "1cb22f323f1bbd21c3e387cce626c854d5fb222ed8b42fb1d64c190b1b2b2896",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/package.json",
+      "sha256": "31ba17540ae12f3862056bbe1a2b755531abb806e962ce5fd3147e739efca585",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/public/folded-page.svg",
+      "sha256": "1c70e7b56322e48de80b785046e04d828fe9927bd41ecafa5e06f0e85bd84570",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/public/portal-studio/academic-pages.css",
+      "sha256": "a3e4b467e6fad0e35d51e3d6e6d2a40a486bf10c09dbd73790bc5f54d1bcd81d",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/public/portal-studio/activity-art.js",
+      "sha256": "da7a14142b1b05d3d4b368b1d6a2f26954224d6403058363902590b2226676d0",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/public/portal-studio/activity.css",
+      "sha256": "47b0761b24acc22e823a96240fbfc28cd27ad029cd066c4de6221f3dc3e68c33",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/public/portal-studio/app.js",
+      "sha256": "f0e95b575fe41853848afd1f60b41de8317c7faabd1afc015a80ede03c94aa0a",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/public/portal-studio/base.css",
+      "sha256": "99bd8544494524807ec8dbb4a85cb2705fe50f2e0b8752657e2e3712f6e12e98",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/public/portal-studio/binder-motion.js",
+      "sha256": "784a8f9252334c359b28a0dbf436f2b6af871c9245ebb4bae6530004b2165001",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/public/portal-studio/calendar-bindings.js",
+      "sha256": "d89016ebb3e85e7b5661319e083089e1afd992ed5de98319c5985f18bd5c82f3",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/public/portal-studio/calendar-motion.js",
+      "sha256": "8a829bfaf44ad5f4fca4412864512376add28f302300232297935f0af7c9f9a7",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/public/portal-studio/calendar-sketchbook.js",
+      "sha256": "41b53ef4151c70233d8593b4f4c2486d36febb70648389baa3a57f4c1915ef6b",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/public/portal-studio/concertina-turn.css",
+      "sha256": "5e28c81e04e70655b4fdf62105a74b8993eb0635dbd2fd0ab7bc8a2cbe6c187e",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/public/portal-studio/concertina.js",
+      "sha256": "945a6739f8853696d0ea4dcbe285d5800f2e9c6922226ab077a47ef654af9809",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/public/portal-studio/folded-page.svg",
+      "sha256": "de2ea0d963d697042612c76bc0d6235b2b9620a500f3bb16fdc5904145d49e20",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/public/portal-studio/images/lecture-hall.webp",
+      "sha256": "a8d3c7111d5bc60591fef80553cb704fc1723eb7ab3b01a915e6630b9191ce50",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/public/portal-studio/images/office-door-refined.webp",
+      "sha256": "7d6542d2b677de378dea39007c8ffbcee0e129ec56527f768de9804e18573e9a",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/public/portal-studio/images/office-door.webp",
+      "sha256": "4603c923fab4d3406b8a3a0ac16febb98f92aa0ce8a1ff187d79eef8fde77c3e",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/public/portal-studio/images/paperwork-refined.webp",
+      "sha256": "abc2a080b2315abbcad1593f53520aaae3278b004e7178488d2bbdea8a7aa2ae",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/public/portal-studio/images/paperwork.webp",
+      "sha256": "b0ed610810ee48f85f4a0330fcf7bdcd9f482de3d55fe26ed2000bfa4e1e8afa",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/public/portal-studio/images/reading-room-hd.webp",
+      "sha256": "c40f28f7497186df91298872f2e5e4c8f69b65e8dae698c6cf91ad651f88d0cb",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/public/portal-studio/images/reading-room.webp",
+      "sha256": "b902325add7cd74a1c7e6c59281e9181d42c5c64a2ecdb8aacf3d37edb09c2b3",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/public/portal-studio/images/stacks-hd.webp",
+      "sha256": "bcfae0f5606fd599d6c5aa3f83f692e87f04083aa9973850ce91249da532d628",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/public/portal-studio/images/stacks.webp",
+      "sha256": "02f5dc81304e0ba51aec56db09028ffe72df964a850cf2ef8fa8622457c5db57",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/public/portal-studio/images/symbols/advanced-lab.svg",
+      "sha256": "e8f0787c46ae8eccd9f9cefffd69e59368c4299c3445a2b47bc6ed2db1f672d1",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/public/portal-studio/images/symbols/algorithms.svg",
+      "sha256": "ee5bbd691274d7f3cfa55a1012ca12819ec111ba0e6d9357e609c2fef76a4096",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/public/portal-studio/images/symbols/graphics.svg",
+      "sha256": "ce698bae62bd2d36819cf7c42ce0dc056f6f8b48f8341f060221a10b56ee8c0a",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/public/portal-studio/images/thumbs/lecture-hall.webp",
+      "sha256": "2300d7fb026b9c29a958fd595076d040b768c3f724ddc36cd596b348d080b493",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/public/portal-studio/images/thumbs/office-door.webp",
+      "sha256": "db54ce8e5517efdd3e108248091d5fe494e2491e838eee8c2182855b9c6c9d35",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/public/portal-studio/images/thumbs/paperwork.webp",
+      "sha256": "a9260a89a1c0c2c1489b2b57ad5278e91a93f2eb6d913bf3d7b8489fea3d0c20",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/public/portal-studio/images/thumbs/reading-room.webp",
+      "sha256": "4f9b03d42789d3bc7d5ca3b43c6e4596a480d06cb6c9797beed7518579a02727",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/public/portal-studio/images/thumbs/stacks.webp",
+      "sha256": "0edb6001b23cf193f9789544f6eccbff70d430df6c4740e6934a77c4376f2564",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/public/portal-studio/images/thumbs/window-desk.webp",
+      "sha256": "2b150661471585d90673c326cf8d8716cc7649099e39dc81e93c0b37aeef4627",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/public/portal-studio/images/window-desk-hd.webp",
+      "sha256": "4e7b688a1a28dcf7369a482599b0cab459311c637b6377bb07e2b7323ba8dcbe",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/public/portal-studio/images/window-desk.webp",
+      "sha256": "f782118abbd4f16e23dde3af8d2ef44b480768f771849cad0b5b458c8f8e6e13",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/public/portal-studio/index.html",
+      "sha256": "ede98cdd7291493ab0767ff44b941015358a610ce88993fa17b39d73d698ef56",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/public/portal-studio/interior.css",
+      "sha256": "45d068f900aea2ff62b3bd8c53718cd93008a166d667b3a6b9c3690356a96914",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/public/portal-studio/logo-study.html",
+      "sha256": "b3ea61ed96acfe9cec362c047dfe190f733b55d944a6e2c1a4944b14260f0e06",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/public/portal-studio/seasonal-calendar.js",
+      "sha256": "7d3346b1a20b60c76ed8d6db758c95a98d8d8b99be385a73a5d3ae3dd98c3021",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/public/portal-studio/signin.js",
+      "sha256": "690cf9348f9ed4c4171925998c4b48cf0bbc39554de6615011d67c8370eeadd5",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/public/portal-studio/staff-pages.css",
+      "sha256": "f8c36d9603cbd6bf14d085fa4fa282fb3f47ac49b83081274e44cb7f43c4b385",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/public/portal-studio/student-pages.css",
+      "sha256": "0d4efe26d1d6cfbb032b794ea92c7ea542e54e218c8038db4bee72de8a73f169",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/public/portal-studio/studio.css",
+      "sha256": "5d1ad09ebc9458f1da10db9471cac8958f9397df5e32e1a2106860172eca6e79",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/public/portal-studio/studio.js",
+      "sha256": "1ae9b092b8ecfcb0858c504b1eac7182d1e46e7644e4d049546666f388dbee27",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/public/portal-studio/study-mark.svg",
+      "sha256": "be289da5a38d5458b7235cbc0475900f0f2331750fdfcbee6712473ff16c6464",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/src/App.jsx",
+      "sha256": "897395c71bf91c7825f9f204ba4c1bc3412151a49c42b75dcd61f4ddc2e13258",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/src/api.js",
+      "sha256": "6d3a3dd40ab91c16380654c377f309de24d5025b4ebe38f21801acea6ff8752f",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/src/components/AcademicWorkspace.jsx",
+      "sha256": "7d3d3851730d9b9a5b0a720ddcb3f140386db724f6cf112226fd4704c307752c",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/src/components/AdvisingDashboard.jsx",
+      "sha256": "a9108f591ac466c7eda8b1c8ccc2dc84fc4bfce85465f1b552f586c88e49ebcb",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/src/components/AdvisingPage.jsx",
+      "sha256": "18b4dbd7bd432e26b810f1ed9e58f8f8830c211bdc0b4c76540aa82db380963e",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/src/components/AssignAdvisorModal.jsx",
+      "sha256": "c02f3b073138611b5e045d29ecfcf8a1451508a72a701f6db9a9fa6deadd9eb6",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/src/components/AuthPage.jsx",
+      "sha256": "135965fe1e6a9af8c2c0984ae22b75fb867c4b4f3455f9a9ba42eea76531a893",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/src/components/B1Pages.jsx",
+      "sha256": "c735ad95314804a9273ef6c13d18f913ab71e5b0cba05163102f3d0ea30a2328",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/src/components/BasicPages.jsx",
+      "sha256": "8cf0481fb97af52ab3fa067c7b97e03a15c0b1e7da63c0852ad9901df42e9dc9",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/src/components/ExtraHoursPage.jsx",
+      "sha256": "709baeef78231c0e4987a432e1cd85fca82fbbe6cfe29da238f77f41855f50b2",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/src/components/FinancialRecordsPage.jsx",
+      "sha256": "242cab84c4669b09ae87a7f4c86caeacd20c2eae7dfcffe685eb6dca91c0b674",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/src/components/GraduationPlans.jsx",
+      "sha256": "1532808dbbcaf9918c2cf0ce8d498250d27dea819aafcae6d26f71085149d2df",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/src/components/GraduationReview.jsx",
+      "sha256": "8202d5f8489e11940d0a82200daf5b9dd7d6e0e848f26ead6d6c528b5f35c96e",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/src/components/MandatoryRemovalDashboard.jsx",
+      "sha256": "16c5223d37df5e975d478d107937934d1d040119fc43ba7d958c18521140fd28",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/src/components/MyAdvisor.jsx",
+      "sha256": "8839973f1b018850d00aac3e23fd4fedb6743fa885ce952cfb0c846fef635d24",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/src/components/PortalChrome.jsx",
+      "sha256": "0b172fe379ac345212c7d52a2e54ec389bc4c7101677aed8b7511ea94b736d6b",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/src/components/RequestRemovalModal.jsx",
+      "sha256": "bd385d563c0c4c1d610811638f5e4f4deb08e63a6ffab991234908831ce0c3e7",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/src/components/SchedulingPages.jsx",
+      "sha256": "148f4ad37456b60916ecf45be379438d09278aaa0725ad214698d35de10824e9",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/src/components/SlotChangesPage.jsx",
+      "sha256": "3948e50a1a8141d5793ed6cb4719e6fc9a46eb63e2da814e100b435f50d255e8",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/src/components/StudentDetails.jsx",
+      "sha256": "b803a4f006fa474856106f4e12c944288b8662792dcf1e15eb8f6d9e7321d626",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/src/components/StudentDirectoryPage.jsx",
+      "sha256": "3953f28c5df6de8b8b3302aa30a3b2ebbaeac212c7d3b109b21730832c802178",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/src/components/WorkspaceUI.jsx",
+      "sha256": "3793779be313655e52b1b17305e53dbbb05128edab55710616f17b30c51f0477",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/src/form-controls.css",
+      "sha256": "6c13ee3075f0a307caec84936ab2124a6df8c02d9bc023fa09afb97b452c9e4c",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/src/greeting.js",
+      "sha256": "61d19479e23f9a59c21342e7435c62f0c8bcdcc595febe1a4afc093c6ec36381",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/src/greeting.test.js",
+      "sha256": "fc3686a134a636a9e617ec6a4f1615d98982a06ba6005a619ac1961fe091f5ed",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/src/main.jsx",
+      "sha256": "015dd5d03d7d228be98d35c5a6fe6eac67c2ecefc8701622ef1db43307318a45",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/src/preference-groups.js",
+      "sha256": "24cfdb562ed4209f3914a60b23a890e68ab732001380a2bc98a6b025c481ed05",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/src/preference-groups.test.js",
+      "sha256": "8f6f06a005e1814a694ce73891aafe58998a6123dddac6a67530550e309f1b5f",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/src/slot-change-filters.js",
+      "sha256": "24333dd91ac3d99b55357080a43d351bd0d5c859d20d2bd7626515892d405d56",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/src/slot-change-filters.test.js",
+      "sha256": "3ca1582c3a1cac7cafc1fa5737089d1f3122b8e7dfae0dae302a868db97d4d74",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/src/style.css",
+      "sha256": "1d27a7a1a9a387ccce5cf7f29ce55f60e28663130466c07764e6a114d6cbb37f",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/src/theme-reveal.js",
+      "sha256": "ea737afa4456a52b95df17e741a6205d347b6d71ecaefe75bed263d7b775ddad",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/src/workspace-polish.css",
+      "sha256": "03dc743c76f163b01f42f78ae47f421ba543836a2623c0c1af5a0b016664b2c2",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/vite.config.js",
+      "sha256": "7e3e44f1a35112aee25e0b404fd59cec41fe98770dd223245aec8d724b537cb4",
+      "unchanged": true
+    },
+    {
+      "path": "project/client/index.html",
+      "sha256": "be79db0ace12a2f3884cd1c7fdeab157d30febae7189d22cccbb691c1a5d7732",
+      "unchanged": true
+    },
+    {
+      "path": "project/client/package-lock.json",
+      "sha256": "aa1217659aa037432fdf26defae8707d9028354d54aca64286068b429a7b8b78",
+      "unchanged": true
+    },
+    {
+      "path": "project/client/package.json",
+      "sha256": "6c0df74f7d9e8ebccd0003eed73f10655318c6a4375401d6bda58e6060dd2e9a",
+      "unchanged": true
+    },
+    {
+      "path": "project/client/src/App.jsx",
+      "sha256": "a847203acd208d0b5d79be827ae7153434c368bfd2494acb71a1542c92112246",
+      "unchanged": true
+    },
+    {
+      "path": "project/client/src/api/client.js",
+      "sha256": "5e84659c2fb32b8c8c2dfbcf1971cd5c675c5c321ad3ac5b14df2d2a87e8e1ff",
+      "unchanged": true
+    },
+    {
+      "path": "project/client/src/components/Alert.jsx",
+      "sha256": "610350a01f47f8e36b03b0757444afd4f63dd3f884c4b24831640aa8d64cafc4",
+      "unchanged": true
+    },
+    {
+      "path": "project/client/src/components/Button.jsx",
+      "sha256": "3d6b1db3c4e8e4575f9c0b34f073e8153092b21a19f91d844aab7160e45aa17b",
+      "unchanged": true
+    },
+    {
+      "path": "project/client/src/components/Card.jsx",
+      "sha256": "1cd45ab13f532d93d8d26132c5f6ce8202da030228dae5973921c1ad62c30277",
+      "unchanged": true
+    },
+    {
+      "path": "project/client/src/components/EmptyState.jsx",
+      "sha256": "57cdb8d08101cd4b9b47cd6b4d181d2e937b1c0e3733e0500cc76062186bf5c7",
+      "unchanged": true
+    },
+    {
+      "path": "project/client/src/components/Layout.jsx",
+      "sha256": "40a92b9454fc8862246b0ebde6cbb0b1e0a7aa4b11c86c11417daaab44848ed8",
+      "unchanged": true
+    },
+    {
+      "path": "project/client/src/components/Modal.jsx",
+      "sha256": "af878c4fb4e66902ea16e3b8be34d6db1694c381b87b7de05d41f1be0e6ea94d",
+      "unchanged": true
+    },
+    {
+      "path": "project/client/src/components/ProtectedRoute.jsx",
+      "sha256": "f0487507ea1e4e53b215f373386ad49e6c181fdc7bf39555bc52126dc69e3932",
+      "unchanged": true
+    },
+    {
+      "path": "project/client/src/components/ScheduleView.jsx",
+      "sha256": "c6c096edccb24e9e149841a13a8c98e43e4f931324e606e0cae86cb9cc4d70e3",
+      "unchanged": true
+    },
+    {
+      "path": "project/client/src/components/Spinner.jsx",
+      "sha256": "c51d3fdd80fd425a8683be50d2d4e8c5c5167725d8a61f88d9f151a63b1607e1",
+      "unchanged": true
+    },
+    {
+      "path": "project/client/src/components/Table.jsx",
+      "sha256": "0ec10990deea39438775f0f7dc1e4b0491dc5bfdd576accbdf15e31f469fd11d",
+      "unchanged": true
+    },
+    {
+      "path": "project/client/src/components/Toast.jsx",
+      "sha256": "7e3f98ebe4aa16b5b5765dce682dc7d7c427d5754a4241e5160af79158142db6",
+      "unchanged": true
+    },
+    {
+      "path": "project/client/src/components/WeeklyCalendar.jsx",
+      "sha256": "d84643d120bb623d8d941035d9bcee91fe9904d93f18084ad28f8031b2401afc",
+      "unchanged": true
+    },
+    {
+      "path": "project/client/src/components/WeeklyPreview.jsx",
+      "sha256": "ca09701b2b5a1e5ef9f64813a571c1b3e58b218581ab3e149a4dd773a0d2e52e",
+      "unchanged": true
+    },
+    {
+      "path": "project/client/src/context/AuthContext.jsx",
+      "sha256": "b701fea7b5413aac73fb37ef964114b74946d9978f8540786df6bd4968ee7e34",
+      "unchanged": true
+    },
+    {
+      "path": "project/client/src/index.css",
+      "sha256": "d8ddefa27ed0df1e1e816f94b82c343ac0e62c0067e3d3358b8434e32f6f65fc",
+      "unchanged": true
+    },
+    {
+      "path": "project/client/src/main.jsx",
+      "sha256": "b087f87ede42d82c5197a3bf5d096680a016078e88f96ec04267bd145dc0cbb1",
+      "unchanged": true
+    },
+    {
+      "path": "project/client/src/pages/DevLogin.jsx",
+      "sha256": "1cb9cbf1a4939b53be485a008203536a320d4146faee4e3a32a73a15a1328f6a",
+      "unchanged": true
+    },
+    {
+      "path": "project/client/src/pages/Home.jsx",
+      "sha256": "439d6864c0f1762e34e738d338d02840f387596871780ed10781a4dada6d78a6",
+      "unchanged": true
+    },
+    {
+      "path": "project/client/src/pages/coordinator/AssignScheduleGroups.jsx",
+      "sha256": "45e720428a5787be51bc543bb9073cd263ccff2f630ce581e6a548d42a2f3de7",
+      "unchanged": true
+    },
+    {
+      "path": "project/client/src/pages/staff/StudentSchedule.jsx",
+      "sha256": "e9a93fd7a744f9c44345dc2f25848a29c4126791f2655bac9f2dc137e387a88c",
+      "unchanged": true
+    },
+    {
+      "path": "project/client/src/pages/staff/StudentSchedules.jsx",
+      "sha256": "c417839cfadd764425784af8c4dd3695f70eecd5b8c6dee8780493fb1de88a82",
+      "unchanged": true
+    },
+    {
+      "path": "project/client/src/pages/student/CourseDetails.jsx",
+      "sha256": "0ef8e59c3947d60cffd4ab15a01738f82bb333dcec89f462d5f948ba73e37527",
+      "unchanged": true
+    },
+    {
+      "path": "project/client/src/pages/student/MyCourses.jsx",
+      "sha256": "4107f963676a498d92f9fa16ce8323017211a20607fbe1e04bf164c0145ef2c4",
+      "unchanged": true
+    },
+    {
+      "path": "project/client/src/pages/student/MySchedule.jsx",
+      "sha256": "e6ebde2c5bc62b4439e5c7a4b49e597005056c1801a29368f507003a07361148",
+      "unchanged": true
+    },
+    {
+      "path": "project/client/src/pages/student/SwapGroups.jsx",
+      "sha256": "859123f8d44e2481fa2a1755fa1cf46a8ab4098c96cd5d14c8364e1f80fe0042",
+      "unchanged": true
+    },
+    {
+      "path": "project/client/vite.config.js",
+      "sha256": "80705f36e1cb0563b5235b05d18af5aebbbe89b3e30a63eee696b6f18efca1a6",
+      "unchanged": true
+    },
+    {
+      "path": "project/convert_curriculum.js",
+      "sha256": "3035e87869c253207ec8aa0e808b2b4dcc0a3e8f302843ec11de20d33e344141",
+      "unchanged": true
+    },
+    {
+      "path": "project/courses_ready_to_import.csv",
+      "sha256": "4dab624fc4d7e422502a2753d52d275e6afe0751f6a952867072eaa6809ac5c9",
+      "unchanged": true
+    },
+    {
+      "path": "project/docs/C3-notes.md",
+      "sha256": "45103cfa1311ce2b1e443041aafbafd1f425a200ecea21496c5aaa50eef978ff",
+      "unchanged": true
+    },
+    {
+      "path": "project/docs/authentication.md",
+      "sha256": "79a30920ae373d7304ba402ae94a51b746dbe6864b68ea81cbf4a5ed520d62ad",
+      "unchanged": true
+    },
+    {
+      "path": "project/docs/data-model.md",
+      "sha256": "0638ccdadbcb7dff6283d2155c8edf5c7ece5557f24753004f382704ca9187a9",
+      "unchanged": true
+    },
+    {
+      "path": "project/docs/group-a-sprint2-audit.md",
+      "sha256": "40296db3c5a912ead67ddb0ec6f5b75e94cc77c496015d12e1f531e074116427",
+      "unchanged": true
+    },
+    {
+      "path": "project/docs/group-a-verification.md",
+      "sha256": "5aab9d4d9a5e98744f9d723cce32395dbca672d14b649120bbd0e5d9e69dcc16",
+      "unchanged": true
+    },
+    {
+      "path": "project/docs/group-b-c-requirements-audit.md",
+      "sha256": "fa7337934b5ad437a500acf3f2b7bc7f979889a9db9af7057fbc7b04799541a5",
+      "unchanged": true
+    },
+    {
+      "path": "project/docs/group-b-verification.md",
+      "sha256": "ca6e0c4a84c8a28edb1955d18a31a60c1261752eff9fe1419b42ef1d9d2efcad",
+      "unchanged": true
+    },
+    {
+      "path": "project/docs/offering-academic-year.md",
+      "sha256": "faf4dfd7783a32421a8f2cb1f197963478c9ffc43d9fa2ab58d4776385da8594",
+      "unchanged": true
+    },
+    {
+      "path": "project/docs/scheduling-preferences.md",
+      "sha256": "32d40f11c2b65668548b209422068cac4dd552c2177df34e842b0b4a74720caf",
+      "unchanged": true
+    },
+    {
+      "path": "project/docs/slot-change-requests.md",
+      "sha256": "168cd8a3c68c9d1710dfed0bc315a4fa85c8325c08596aabfa85d8783b268716",
+      "unchanged": true
+    },
+    {
+      "path": "project/docs/ui-ux-local-review.md",
+      "sha256": "c2b03204f5cdd05392d2c96e70c9de10764acf3657c9efbfa75584237cc5b995",
+      "unchanged": true
+    },
+    {
+      "path": "project/package-lock.json",
+      "sha256": "0b415af11a52ecd70f21f43c0f247ed52d927fad3be70f087fdda084ba534916",
+      "unchanged": true
+    },
+    {
+      "path": "project/package.json",
+      "sha256": "88d1e3cda0622ae815409c48a0a455b385feed7a354880efdc9b99e8823eee38",
+      "unchanged": true
+    },
+    {
+      "path": "project/postman/globals/workspace.globals.yaml",
+      "sha256": "076fce60d017960ae9e3f59416783c958d152801cab4352d18b7498c3c81bb05",
+      "unchanged": true
+    },
+    {
+      "path": "project/sample_courses_invalid.csv",
+      "sha256": "d5fa3ddd068b5461c9f895682a2ac14d377ecde4c191c11b30bf87b1a87b0cdc",
+      "unchanged": true
+    },
+    {
+      "path": "project/sample_courses_valid.csv",
+      "sha256": "da80dafe275ed968c6c52d247daf40f83c3d64c459ee8bdb9384cecf25db308d",
+      "unchanged": true
+    },
+    {
+      "path": "project/scripts/test-bc.mjs",
+      "sha256": "66f891c6bc931851f20a00f554220c96792620f737bf5fc01d1c9fccde258073",
+      "unchanged": true
+    },
+    {
+      "path": "project/scripts/test-group-a.mjs",
+      "sha256": "d4be151338fbb92c3e895121fe4dbc94f3539c4a1cbf127f496e72a27ec258d4",
+      "unchanged": true
+    },
+    {
+      "path": "project/server/.env.example",
+      "sha256": "c0e93dc5250491702a803ce0028b25e7d5348ca287b5a3c4ebaee05b2d0f1691",
+      "unchanged": true
+    },
+    {
+      "path": "project/server/package-lock.json",
+      "sha256": "f1e9df583790772c0d0d5d7394fcfe012e14d4e14069336f803ccb35fe10f219",
+      "unchanged": true
+    },
+    {
+      "path": "project/server/package.json",
+      "sha256": "49bfa6f0de4e448bd7ec2dc24e34b1aa583e0698652ef64373e5eee46de8a702",
+      "unchanged": true
+    },
+    {
+      "path": "project/server/src/app.js",
+      "sha256": "f5019c890567be89e72725a45e21dc863d1facaf58b83861d0dc587f3c164e91",
+      "unchanged": true
+    },
+    {
+      "path": "project/server/src/config/db.js",
+      "sha256": "f095fc144aab9dffc389db635658d2d4a49b3f468961f26ee4e49676958311f8",
+      "unchanged": true
+    },
+    {
+      "path": "project/server/src/controllers/devController.js",
+      "sha256": "fc926b7d81496c0e871026a6221821499665ad8a8e6d0da9e077bb84216c1b5f",
+      "unchanged": true
+    },
+    {
+      "path": "project/server/src/controllers/groupAssignmentController.js",
+      "sha256": "600ed52fd66f14199bd5d93f529140318b45c9519652a146c3869a797ab1af96",
+      "unchanged": true
+    },
+    {
+      "path": "project/server/src/controllers/scheduleController.js",
+      "sha256": "bfd19549076a479a31164a6262e2a06416dd0c5c7c5ef35e6b0486d583b1fb3f",
+      "unchanged": true
+    },
+    {
+      "path": "project/server/src/controllers/swapController.js",
+      "sha256": "39146c78de0ec0e1c65491af98161533ce1776d36490ca2bb301732e703d9130",
+      "unchanged": true
+    },
+    {
+      "path": "project/server/src/index.js",
+      "sha256": "82340c81e56dc08b8a4b4a88518e941aa3b3df60510bb27e622b7a235cad9e0c",
+      "unchanged": true
+    },
+    {
+      "path": "project/server/src/middleware/auth.js",
+      "sha256": "c4ceb3e7d62c4d04d57f7abf23ab7cc0b27e28d29de29471dcae7abedca8eea7",
+      "unchanged": true
+    },
+    {
+      "path": "project/server/src/models/AcademicTerm.js",
+      "sha256": "300311dcb999ac2c9d4783fe3f3e51e55fbfc86a9ff1ad520b5822b6293a88e4",
+      "unchanged": true
+    },
+    {
+      "path": "project/server/src/models/Course.js",
+      "sha256": "d801f0e657c0ac89c30cc12e2b1a6d9c043fe179db3e9e17d549e71f68fb2ad5",
+      "unchanged": true
+    },
+    {
+      "path": "project/server/src/models/CourseOffering.js",
+      "sha256": "9c1e42beb7a111769e91e5468acabb5d9f4b70399f377c3cf907f185397955a0",
+      "unchanged": true
+    },
+    {
+      "path": "project/server/src/models/ScheduleTemplate.js",
+      "sha256": "7238bc31f25ce6db690a992b12a9bec8fa72db44795f3e816a70624353eddb0a",
+      "unchanged": true
+    },
+    {
+      "path": "project/server/src/models/Student.js",
+      "sha256": "bfebdf6924a9df69627d538e79c3737c68dfbcd9f0dc789390e769158ddb9a88",
+      "unchanged": true
+    },
+    {
+      "path": "project/server/src/models/StudentSchedule.js",
+      "sha256": "13c4b871aad02097ed7c30aa0e54056b9095606f319f9013be1e28db6bfb4d61",
+      "unchanged": true
+    },
+    {
+      "path": "project/server/src/models/User.js",
+      "sha256": "3bb690bf4a0e298551a690ea3a74c60737ab166ba7fe334c129adfb13528bd21",
+      "unchanged": true
+    },
+    {
+      "path": "project/server/src/routes/dev.js",
+      "sha256": "41e25f58f0aa55ae5624e3e6369a378836eb30bd42c94b0dd7d7d9679ba1c50a",
+      "unchanged": true
+    },
+    {
+      "path": "project/server/src/routes/groupAssignments.js",
+      "sha256": "6f26c4d718798e1797e2d0c892968aaaf62f514916075610a9fbb5db35dca146",
+      "unchanged": true
+    },
+    {
+      "path": "project/server/src/routes/schedules.js",
+      "sha256": "b76afcda4806fe3bea7f9996bdd6b3ac7539fef143d57bd69f1a0e5dca20f3e8",
+      "unchanged": true
+    },
+    {
+      "path": "project/server/src/routes/swaps.js",
+      "sha256": "b4242fee29606fc54021baad98f4901f95e743ac8af00fc037c4cf765b507d62",
+      "unchanged": true
+    },
+    {
+      "path": "project/server/src/seed/curriculumData.js",
+      "sha256": "ec76091c5996faba689b8663f34ea04fc3a595e9f4fd9dedc031f051c20a9eff",
+      "unchanged": true
+    },
+    {
+      "path": "project/server/src/seed/seed.js",
+      "sha256": "bdc88ee9755901c6cbdecdb28a6cc46cd533f31497832cde16a2b1da13173247",
+      "unchanged": true
+    },
+    {
+      "path": "project/server/src/utils/courseDetails.js",
+      "sha256": "0138faab74b43c49508a656aa793442e37df5e00c886f817f5ac7f37c92673dd",
+      "unchanged": true
+    },
+    {
+      "path": "project/server/src/utils/registeredCourses.js",
+      "sha256": "06b0b26c4e421f917fbf5814112a130bfe3dcd799fc2382eb24f78a1a4147473",
+      "unchanged": true
+    },
+    {
+      "path": "project/server/src/utils/scheduleAccess.js",
+      "sha256": "6b98b1c62652c6dfae1125e2611271b71d01a12c885a4a84d073dfa39d4a6be9",
+      "unchanged": true
+    },
+    {
+      "path": "project/server/src/utils/schedulePdf.js",
+      "sha256": "774b59d85e95ed8590605e9f207ce42e79199958aa8392f210ef244b957f6196",
+      "unchanged": true
+    },
+    {
+      "path": "project/server/src/utils/swapEligibility.js",
+      "sha256": "77092776fad892fe46c268ec52e3c8a50aed39bb4f5af71df51c624814eeeb27",
+      "unchanged": true
+    },
+    {
+      "path": "project/server/src/utils/timetable.js",
+      "sha256": "235406919e9129f26229243556a3aac2b3b99f246692fb7928bdee1c9ae116a5",
+      "unchanged": true
+    },
+    {
+      "path": "project/server/src/utils/weeklyCalendar.js",
+      "sha256": "1fdcf6583c0148452d679996f47e28443ffbe7e0bf4c328552d857a7a04296e1",
+      "unchanged": true
+    },
+    {
+      "path": "project/server/tests/courseDetails.test.js",
+      "sha256": "c40da07c260548f048b6d64276978db1c5dab05a9e5ec832ef156c7fdc28e90f",
+      "unchanged": true
+    },
+    {
+      "path": "project/server/tests/groupAssignments.test.js",
+      "sha256": "47f38c9d3da9c6b2d10604206cb3b0bda51737e8b70356508a1f60396f08c724",
+      "unchanged": true
+    },
+    {
+      "path": "project/server/tests/helpers.js",
+      "sha256": "2bfcd20983c5cf290067c1ee0bd2d132b7816970a239b84d1558f51cf2038c42",
+      "unchanged": true
+    },
+    {
+      "path": "project/server/tests/registeredCourses.test.js",
+      "sha256": "e114204142ba4b05dff2d91f27330d4104ae2dc210ac5f4515563f55224b087b",
+      "unchanged": true
+    },
+    {
+      "path": "project/server/tests/scheduleDownload.test.js",
+      "sha256": "5f5dae42169ec56bb3650b07bc5067e79d111c442f6e8f083e6e9b21f621095c",
+      "unchanged": true
+    },
+    {
+      "path": "project/server/tests/scheduleUtils.test.js",
+      "sha256": "0427f7180bd682525fbd9deecc282efce949d43fa204d401e9e0bfc6d7df52b9",
+      "unchanged": true
+    },
+    {
+      "path": "project/server/tests/schedules.test.js",
+      "sha256": "3e2f04a8f2483909c66fed15bd03bfd52bb33f212dad11704ebb99bf562c4444",
+      "unchanged": true
+    },
+    {
+      "path": "project/server/tests/swapEligibleGroups.test.js",
+      "sha256": "135c1c7760fed29d0196c8dc9fcdbe134056b69130c6c42864ee621f23c8a6ba",
+      "unchanged": true
+    },
+    {
+      "path": "project/server/tests/timetable.test.js",
+      "sha256": "6604a6995a567b2606ec97ee9c8ad61e82e45a102c41716bfa66fa36cb39f62b",
+      "unchanged": true
+    },
+    {
+      "path": "project/requirements/PAGE-BRIEFS.md",
+      "sha256": "0c09fa3ab0ca331fbb099bbd0496e6e517afce79c090bc5ffc83dbc3a7928aec",
+      "unchanged": true
+    },
+    {
+      "path": "project/requirements/GUC_316_70_71577_2026-09-24T14_16_07.pdf",
+      "sha256": "bd3715ddddb8bbf16523970db4d71093edb4723dafa52a05af7693a5f75e9c78",
+      "unchanged": true
+    },
+    {
+      "path": "project/requirements/GUC_316_70_71577_2026-09-27T06_59_26.xlsx",
+      "sha256": "fa0e2193bb64ab4c94850849d3edae9292e57cd72cdb4f04ae9040dab59045d3",
+      "unchanged": true
+    },
+    {
+      "path": "project/requirements/Functional Requirements.txt",
+      "sha256": "b5ac58a1630ae7865eca4f759fd59fe06474fcc3693889c45eb924bb18927783",
+      "unchanged": true
+    },
+    {
+      "path": "project/requirements/Non-functional Requirements.txt",
+      "sha256": "a59ec5ada9c1edf63b86440f5b6530c3a225aa7295d529aaec9b7fc2fbdec4a2",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/public/portal-studio/images/extra-hours-folder.svg",
+      "sha256": "bced13e73d5337ab01e2a3195325d3cf2d9e55b13f84884e055d081e3df9daa8",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/public/portal-studio/variants/host.js",
+      "sha256": "216e0501943df2c679712c90b9fc2d158539dace62c5891c86d3dde3c3d42fcc",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/public/portal-studio/variants/01-front-desk/pages.js",
+      "sha256": "2f3e869331179dffa3c28a292191bb8b828e629da82935780615eeceacecb87d",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/public/portal-studio/variants/03-academic-setup/pages.js",
+      "sha256": "2f3e869331179dffa3c28a292191bb8b828e629da82935780615eeceacecb87d",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/public/portal-studio/variants/04-advising/pages.js",
+      "sha256": "2f3e869331179dffa3c28a292191bb8b828e629da82935780615eeceacecb87d",
+      "unchanged": true
+    },
+    {
+      "path": "project/apps/web/public/portal-studio/variants/05-operations/pages.js",
+      "sha256": "2f3e869331179dffa3c28a292191bb8b828e629da82935780615eeceacecb87d",
+      "unchanged": true
+    },
+    {
+      "path": "START-HERE.md",
+      "sha256": "0f245404fc12d4d8b0e0718a5b27436579d7713762ac7b10d8b919c2c9ce41dd",
+      "unchanged": true
+    }
+  ]
+}

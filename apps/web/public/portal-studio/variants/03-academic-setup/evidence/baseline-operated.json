@@ -1,0 +1,14 @@
+{
+  "url": "/portal-studio/index.html?preview=live",
+  "sign_in": "existing preview form",
+  "calendar_next_previous": true,
+  "profile_return": true,
+  "signout_signin_overview": true,
+  "themes": [
+    "dark",
+    "light"
+  ],
+  "shell_width": 224,
+  "topbar_height": 48,
+  "font": "inherited Styrene/system-ui"
+}

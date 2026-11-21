@@ -1,0 +1,114 @@
+.staff-heading {
+  display:flex; align-items:center; gap:clamp(10px,1.3vw,21px); min-width:0; max-width:100%;
+}
+.staff-heading > div {min-width:0}
+.staff-desk-art {
+  display:block; width:clamp(72px,6.5vw,99px); height:auto; flex:none; overflow:visible;
+}
+.staff-desk-art.desk-small {width:43px; height:35px}
+[data-workspace=claude-study] .notice-symbol:has(.staff-desk-art) {background:transparent}
+.notice-symbol .staff-desk-art.desk-small {width:36px; height:29px}
+.academic-emblem .staff-desk-art.desk-small {width:42px; height:35px}
+.semester-identity:has(.desk-season) {
+  display:grid; grid-template-columns:49px minmax(0,1fr); column-gap:10px; align-items:center;
+}
+.desk-season {
+  grid-row:span 2; display:grid; place-items:center; width:49px; height:42px;
+  border-radius:42% 55% 47% 51%; background:#c3cdbd;
+}
+.semester-line:nth-child(2) .desk-season {background:#d3c5d7}
+.semester-line:nth-child(3) .desk-season {background:#d4c8b5}
+.desk-season > .season-drawing {position:static;width:45px;height:36px;overflow:visible}
+.desk-part {transform-box:view-box}
+.desk-sound {opacity:0}
+@media (prefers-reduced-motion:no-preference) {
+  .staff-heading .desk-part {
+    animation:var(--desk-motion) 2.15s steps(1,end) .12s 2;
+  }
+  :is(.staff-heading:hover,.page-head:focus-within,.inbox-item:hover,.inbox-item:focus-within,
+      .staff-queue-link:hover,.staff-queue-link:focus-visible,tr:hover,tr:focus-within) .desk-part {
+    animation:var(--desk-motion) 2.15s steps(1,end) infinite;
+  }
+  .desk-file {--desk-motion:desk-filing; transform-origin:43px 36px}
+  .desk-index {--desk-motion:desk-browse; transform-origin:44px 35px}
+  .desk-slide {--desk-motion:desk-align}
+  .desk-write {--desk-motion:desk-pencil; transform-origin:47px 37px}
+  .desk-curl {--desk-motion:desk-turn-corner; transform-origin:58px 45px}
+  .desk-rub {--desk-motion:desk-erase; transform-origin:57px 30px}
+  .desk-pin {--desk-motion:desk-pinned; transform-origin:43px 16px}
+  .desk-peel {--desk-motion:desk-peel-sheet; transform-origin:25px 39px}
+  .desk-ring {--desk-motion:desk-bell; transform-origin:43px 42px}
+  .desk-sound {--desk-motion:desk-ringing}
+  .desk-swing {--desk-motion:desk-swing; transform-origin:46px 21px}
+  .desk-feed {--desk-motion:desk-feed; transform-origin:43px 35px}
+  .desk-hand {--desk-motion:desk-hand; transform-origin:42px 21px}
+  .desk-point {--desk-motion:desk-register; transform-origin:45px 29px}
+}
+@keyframes desk-filing {
+  0%,78%,100% {transform:none} 18% {transform:translate(0,-3px) rotate(-3deg)}
+  33% {transform:translate(1px,-8px) rotate(-6deg)} 52% {transform:translate(1px,-5px) rotate(-3deg)}
+  64% {transform:translateY(1px)}
+}
+@keyframes desk-browse {
+  0%,80%,100% {transform:none} 20% {transform:translateY(-3px) skewX(-3deg)}
+  37% {transform:translateY(-5px) skewX(-8deg)} 52% {transform:translateY(-3px) skewX(3deg)}
+  69% {transform:translateY(-1px)}
+}
+@keyframes desk-align {
+  0%,76%,100% {transform:none} 18% {transform:translate(1px,-2px)} 36% {transform:translate(3px,-6px)}
+  50% {transform:translate(1px,-6px)} 64% {transform:translateY(-3px)}
+}
+@keyframes desk-pencil {
+  0%,86%,100% {transform:none} 19% {transform:translate(2px,-1px) rotate(3deg)}
+  30% {transform:translate(4px,1px) rotate(-2deg)} 42% {transform:translate(6px,-1px) rotate(2deg)}
+  52% {transform:translate(9px,-2px)} 63% {transform:translate(8px,-5px) rotate(-5deg)} 75% {transform:translate(3px,-3px)}
+}
+@keyframes desk-turn-corner {
+  0%,85%,100% {transform:none} 24% {transform:scale(1.1,1.08)} 40% {transform:scale(1.42,1.45)}
+  57% {transform:scale(1.29,1.27)} 72% {transform:scale(1.1,1.08)}
+}
+@keyframes desk-erase {
+  0%,80%,100% {transform:none} 16%,39% {transform:translate(-3px,2px) rotate(-3deg)}
+  28%,50% {transform:translate(2px,-1px) rotate(2deg)} 64% {transform:translate(0,-3px) rotate(4deg)}
+}
+@keyframes desk-pinned {
+  0%,76%,100% {transform:none} 19% {transform:rotate(-7deg)} 36% {transform:rotate(5deg)}
+  52% {transform:rotate(-3deg)} 65% {transform:rotate(1deg)}
+}
+@keyframes desk-peel-sheet {
+  0%,80%,100% {transform:none} 17% {transform:rotate(-3deg) translateY(-1px)}
+  34% {transform:rotate(-8deg) skewX(-5deg) translateY(-3px)}
+  47% {transform:rotate(-9deg) skewX(-7deg) translateY(-4px)}
+  61% {transform:rotate(-4deg) translateY(-2px)} 72% {transform:rotate(1deg)}
+}
+@keyframes desk-bell {
+  0%,69%,100% {transform:none} 18% {transform:translateY(2px) scaleY(.91)}
+  29% {transform:rotate(-5deg)} 38% {transform:rotate(4deg)} 48% {transform:rotate(-3deg)} 59% {transform:rotate(1deg)}
+}
+@keyframes desk-ringing {0%,56%,100% {opacity:0} 29%,48% {opacity:1} 38% {opacity:.4}}
+@keyframes desk-swing {
+  0%,85%,100% {transform:none} 19% {transform:rotate(8deg)} 37% {transform:rotate(-6deg)}
+  55% {transform:rotate(3deg)} 70% {transform:rotate(-1deg)}
+}
+@keyframes desk-feed {
+  0%,85%,100% {transform:none} 16% {transform:scaleY(.45)} 32% {transform:scaleY(.7)}
+  45% {transform:scaleY(.95)} 57% {transform:scaleY(1.22)} 71% {transform:scaleY(1.12)}
+}
+@keyframes desk-hand {
+  0%,86%,100% {transform:none} 20% {transform:rotate(18deg)} 36% {transform:rotate(36deg)}
+  53% {transform:rotate(54deg)} 70% {transform:rotate(72deg)}
+}
+@keyframes desk-register {
+  0%,77%,100% {transform:none} 22% {transform:translateY(-1px) rotate(-3deg)}
+  37% {transform:translateY(-3px) rotate(-5deg)} 55% {transform:translateY(-1px) rotate(2deg)}
+}
+@media (max-width:620px) {
+  .staff-heading {gap:9px}
+  .staff-heading > .staff-desk-art {width:62px}
+  .semester-identity:has(.desk-season) {grid-template-columns:37px auto; gap:0 7px}
+  .desk-season {width:37px;height:33px}
+  .desk-season > .season-drawing {width:35px; height:29px}
+}
+@media (max-width:720px) {
+  .content:has(.staff-heading) .week-columns.compact-week > .week-day {min-width:0}
+}

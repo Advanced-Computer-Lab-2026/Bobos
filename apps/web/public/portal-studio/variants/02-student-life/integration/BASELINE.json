@@ -1,0 +1,5 @@
+{
+  "target": "apps/web/src/App.jsx",
+  "sha256": "897395c71bf91c7825f9f204ba4c1bc3412151a49c42b75dcd61f4ddc2e13258",
+  "scope": "Owned route rendering and import cleanup only; no navigation, auth, state, or API changes."
+}

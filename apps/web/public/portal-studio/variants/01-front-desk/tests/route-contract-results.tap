@@ -1,0 +1,142 @@
+TAP version 13
+# Subtest: six exact owned route keys
+ok 1 - six exact owned route keys
+  ---
+  duration_ms: 1.563091
+  type: 'test'
+  ...
+# Subtest: five actual role identifiers
+ok 2 - five actual role identifiers
+  ---
+  duration_ms: 0.213363
+  type: 'test'
+  ...
+# Subtest: email-only is not unread inbox work
+ok 3 - email-only is not unread inbox work
+  ---
+  duration_ms: 0.555148
+  type: 'test'
+  ...
+# Subtest: dual-channel event is inbox work, not an email-only record
+ok 4 - dual-channel event is inbox work, not an email-only record
+  ---
+  duration_ms: 0.111007
+  type: 'test'
+  ...
+# Subtest: missing channel metadata is not guessed to be an unread action
+ok 5 - missing channel metadata is not guessed to be an unread action
+  ---
+  duration_ms: 0.160282
+  type: 'test'
+  ...
+# Subtest: read timestamp counts even when boolean was not serialized
+ok 6 - read timestamp counts even when boolean was not serialized
+  ---
+  duration_ms: 0.130958
+  type: 'test'
+  ...
+# Subtest: minimum password length
+ok 7 - minimum password length
+  ---
+  duration_ms: 0.123296
+  type: 'test'
+  ...
+# Subtest: password maximum is UTF-8 bytes, not characters
+ok 8 - password maximum is UTF-8 bytes, not characters
+  ---
+  duration_ms: 0.343329
+  type: 'test'
+  ...
+# Subtest: normal-student swap uses actual WholeScheduleSwapRequest model
+ok 9 - normal-student swap uses actual WholeScheduleSwapRequest model
+  ---
+  duration_ms: 0.620958
+  type: 'test'
+  ...
+# Subtest: swap is not exposed to advising students
+ok 10 - swap is not exposed to advising students
+  ---
+  duration_ms: 0.28454
+  type: 'test'
+  ...
+# Subtest: student slot decision opens own collection, not staff endpoint
+ok 11 - student slot decision opens own collection, not staff endpoint
+  ---
+  duration_ms: 0.314465
+  type: 'test'
+  ...
+# Subtest: advisor slot event opens protected details endpoint
+ok 12 - advisor slot event opens protected details endpoint
+  ---
+  duration_ms: 0.091369
+  type: 'test'
+  ...
+# Subtest: administrator cannot inherit coordinator action links
+ok 13 - administrator cannot inherit coordinator action links
+  ---
+  duration_ms: 0.062174
+  type: 'test'
+  ...
+# Subtest: coordinator extra-hours decision point uses actual GET
+ok 14 - coordinator extra-hours decision point uses actual GET
+  ---
+  duration_ms: 0.063946
+  type: 'test'
+  ...
+# Subtest: unknown event never manufactures a destination
+ok 15 - unknown event never manufactures a destination
+  ---
+  duration_ms: 0.052389
+  type: 'test'
+  ...
+# Subtest: wrong model cannot be turned into record access
+ok 16 - wrong model cannot be turned into record access
+  ---
+  duration_ms: 0.051719
+  type: 'test'
+  ...
+# Subtest: invalid record ID is never interpolated into an API URL
+ok 17 - invalid record ID is never interpolated into an API URL
+  ---
+  duration_ms: 0.144929
+  type: 'test'
+  ...
+# Subtest: older serializer still permits safe workspace navigation
+ok 18 - older serializer still permits safe workspace navigation
+  ---
+  duration_ms: 0.193152
+  type: 'test'
+  ...
+# Subtest: unimplemented direct plan endpoint is not invented
+ok 19 - unimplemented direct plan endpoint is not invented
+  ---
+  duration_ms: 0.886329
+  type: 'test'
+  ...
+# Subtest: student graduation reads own actual route
+ok 20 - student graduation reads own actual route
+  ---
+  duration_ms: 0.164238
+  type: 'test'
+  ...
+# Subtest: email probation message has no workflow mutation destination
+ok 21 - email probation message has no workflow mutation destination
+  ---
+  duration_ms: 0.124397
+  type: 'test'
+  ...
+# Subtest: record field projection does not leak arbitrary model fields
+ok 22 - record field projection does not leak arbitrary model fields
+  ---
+  duration_ms: 0.278691
+  type: 'test'
+  ...
+1..22
+# tests 22
+# suites 0
+# pass 22
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 95.914821

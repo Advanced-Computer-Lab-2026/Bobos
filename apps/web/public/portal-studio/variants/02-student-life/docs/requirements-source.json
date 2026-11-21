@@ -1,0 +1,365 @@
+{
+  "source": "project/requirements/GUC_316_70_71577_2026-09-27T06_59_26.xlsx",
+  "functionalHeader": [
+    "Req. No.",
+    "Depends on",
+    "As a\n [stakeholder]",
+    "I should be able to\n [action]",
+    "Extra comments / Advising rules you MUST follow",
+    "Sprint",
+    "Marks"
+  ],
+  "functionalRows": [
+    [
+      15,
+      14,
+      "Advising Student",
+      "view the name and GUC email of my assigned advisor",
+      null,
+      1,
+      2
+    ],
+    [
+      31,
+      1,
+      "Normal Student / Advising Student / Advisor / Coordinator / Administrator",
+      "view a student's current weekly schedule including course code, course name, lecture, tutorial and lab times and locations",
+      "A Normal Student may view only their own processed standard schedule. An Advising Student may view their own completed draft after an Advisor or Coordinator marks it Ready for Student Review, and may continue to view the final processed schedule. A completed draft has every required course and lecture, tutorial and lab slot assigned, has no blocking validation issue, and is not yet final. Incomplete drafts remain hidden from the student. Advisors and Coordinators may view an advising student's draft, review-ready or processed schedule, and Administrators have read-only access. The schedule is displayed as a weekly calendar and shows days off.",
+      1,
+      5
+    ],
+    [
+      32,
+      30,
+      "Normal Student / Advising Student",
+      "view my registered courses, the credit hours of each course and my total registered credit hours",
+      null,
+      1,
+      2
+    ],
+    [
+      33,
+      30,
+      "Normal Student / Advising Student",
+      "select a registered course and view its assigned lecture, tutorial and lab details",
+      null,
+      1,
+      2
+    ],
+    [
+      34,
+      "30, 31",
+      "Normal Student",
+      "view eligible destination group numbers and their complete weekly schedules for a whole-schedule swap",
+      "Show only standard schedule groups for the same term whose registered course-code set exactly matches the student's subjects, with no additional or missing subject. Display each group number and its complete lecture, tutorial and lab schedule.",
+      1,
+      2
+    ],
+    [
+      35,
+      "31,34",
+      "Normal Student",
+      "submit a whole-schedule swap request by selecting one or more desired group numbers before the deadline",
+      "The system auto-populates the student's current group number and complete current schedule from the processed record; the student cannot edit them. The student selects one or more eligible desired groups and may have only one active swap request.",
+      2,
+      2
+    ],
+    [
+      36,
+      "30, 31",
+      "Normal Student",
+      "view open whole-schedule swap requests that I am eligible to complete",
+      "A request is visible only when the viewer's current group is one of the requester's desired groups, both students have the exact same registered course-code set and term, and both schedules are processed. Show the requester's current group, complete schedule and desired group options, but do not reveal the requester's identity.",
+      2,
+      2
+    ],
+    [
+      37,
+      35,
+      "Normal Student",
+      "complete an eligible open whole-schedule swap request and move into the requester's current group",
+      "Immediately before completion, revalidate the deadline, request status, desired-group membership, exact subject match, term and both processed schedules. Then atomically exchange the two students' group assignments and every lecture, tutorial and lab slot. Do not apply a partial swap or change either student's registered subjects. Only the first valid completion may succeed.",
+      2,
+      2
+    ],
+    [
+      38,
+      34,
+      "Normal Student",
+      "view my submitted or completed whole-schedule swap requests, their group details and statuses",
+      "Statuses are Open, Completed, Withdrawn and Expired.",
+      2,
+      2
+    ],
+    [
+      39,
+      "16, 32, 79",
+      "Normal Student",
+      "withdraw my own open whole-schedule swap request",
+      "A completed, withdrawn or expired request cannot be withdrawn.",
+      2,
+      2
+    ],
+    [
+      40,
+      "30, 32",
+      "Advising Student",
+      "request a change to one assigned lecture, tutorial or lab slot in my completed schedule before it is processed and include an optional preference note",
+      "This action is available only while the completed schedule is Ready for Student Review and before the advising deadline. The request identifies the course, component type and current slot. The preference note may mention a preferred group or day. The student cannot directly change the slot.",
+      2,
+      2
+    ],
+    [
+      41,
+      39,
+      "Advising Student",
+      "view my slot-change requests, their statuses and the Advisor or Coordinator response",
+      "Statuses are Pending, Approved, Rejected and Withdrawn. The response identifies any approved replacement slot.",
+      2,
+      2
+    ],
+    [
+      42,
+      39,
+      "Advising Student",
+      "withdraw my pending slot-change request",
+      "Only a Pending request may be withdrawn. A request that has already been approved, rejected or withdrawn cannot be withdrawn again.",
+      2,
+      2
+    ],
+    [
+      49,
+      30,
+      "Normal Student / Advising Student",
+      "download or print my processed schedule",
+      null,
+      1,
+      2
+    ],
+    [
+      54,
+      1,
+      "Advising Student / Advisor / Coordinator",
+      "view a student's academic history organized into completed courses with grades, current courses and remaining courses",
+      "Show the student's Advisor, major, GPA, completed hours and current semester. Every remaining course shows its credit hours, prerequisites and offering season. An Advising Student may view only their own academic history. Advisors and Coordinators may view any advising student.",
+      1,
+      3
+    ],
+    [
+      55,
+      53,
+      "Advising Student / Advisor / Coordinator",
+      "select an attended academic year and view the corresponding transcript",
+      "The transcript includes Winter, Spring, Summer, first-makeup and second-makeup results where applicable. An Advising Student may view only their own transcript.",
+      1,
+      3
+    ],
+    [
+      56,
+      54,
+      "Advising Student / Advisor / Coordinator",
+      "download the displayed transcript as a PDF",
+      "An Advising Student may download only their own transcript.",
+      1,
+      3
+    ],
+    [
+      57,
+      31,
+      "Advising Student",
+      "submit or update my scheduling preferences before the advising deadline",
+      "Preferences may include preferred or avoided days, preferred or avoided time ranges, preferred groups, desired days off and an optional note. The student may rank preferences by priority. Preferences are not guaranteed and cannot override mandatory courses, prerequisites, published offerings, capacity, timetable-clash rules, credit-hour limits or approved extra-hour rules.",
+      1,
+      2
+    ],
+    [
+      58,
+      "52, 56",
+      "Advisor / Coordinator",
+      "view an advising student's submitted scheduling preferences while creating or updating the draft schedule",
+      "Show the latest submitted preferences, their priority order and last update time. The Advisor or Coordinator may satisfy them when feasible but must preserve all academic and scheduling rules. A student who submitted no preferences may still receive a schedule.",
+      1,
+      2
+    ],
+    [
+      116,
+      1,
+      "Normal Student / Advising Student",
+      "connect my account to a supported third-party calendar using OAuth and synchronize my processed schedule",
+      "Support at least one provider, such as Google Calendar or Microsoft Outlook Calendar. The platform must not request or store the calendar password. Create recurring events for the teaching period using the university timezone. Each event includes course code and name, slot type, time, room and instructor when available.",
+      2,
+      4
+    ]
+  ],
+  "nonfunctional": [
+    [
+      null,
+      "NOTE: UI AND UX GRADING WILL BE SUBJECTIVE (BASED ON OPINION OF ASSIGNED PRODUCT MANAGER)",
+      null,
+      null,
+      null
+    ],
+    [
+      null,
+      "UX",
+      "Sprint #",
+      "Out of",
+      "Comments"
+    ],
+    [
+      1,
+      "Information Architecture",
+      3,
+      20,
+      "Information layout on pages are divided properly, not a lot of whitepaces, no random buttons, menus are created correctly"
+    ],
+    [
+      2,
+      "Feedback and Responsiveness",
+      3,
+      5,
+      null
+    ],
+    [
+      3,
+      "Navigation is Reversible",
+      3,
+      5,
+      "DO NOT rely on the back button of the browser! 1 mark pre non-revisrsible page"
+    ],
+    [
+      4,
+      "Learnability",
+      3,
+      5,
+      null
+    ],
+    [
+      5,
+      "Visibility",
+      3,
+      5,
+      null
+    ],
+    [
+      6,
+      "Efficiency",
+      3,
+      5,
+      null
+    ],
+    [
+      7,
+      "Design for errors",
+      3,
+      10,
+      null
+    ],
+    [
+      8,
+      "Satisfaction",
+      3,
+      5,
+      null
+    ],
+    [
+      null,
+      null,
+      null,
+      60,
+      null
+    ],
+    [
+      null,
+      null,
+      null,
+      null,
+      null
+    ],
+    [
+      null,
+      "UI",
+      "Sprint #",
+      "Out of",
+      "Comments"
+    ],
+    [
+      1,
+      "UI elements",
+      3,
+      10,
+      "Menus, buttons, tables, etc.. are symmetric and consistent"
+    ],
+    [
+      2,
+      "UI looks professional",
+      3,
+      10,
+      null
+    ],
+    [
+      null,
+      null,
+      null,
+      20,
+      null
+    ],
+    [
+      null,
+      null,
+      null,
+      null,
+      null
+    ],
+    [
+      null,
+      null,
+      null,
+      null,
+      null
+    ],
+    [
+      null,
+      null,
+      null,
+      null,
+      null
+    ],
+    [
+      null,
+      "Smooth app flow (all past requirements are working)",
+      3,
+      20,
+      "A max of 20 marks can be lost if any requirements completed in previous sprint but are no longer working. 1 mark per not working requirement."
+    ],
+    [
+      null,
+      null,
+      null,
+      null,
+      null
+    ],
+    [
+      null,
+      null,
+      null,
+      null,
+      null
+    ],
+    [
+      null,
+      null,
+      null,
+      null,
+      null
+    ],
+    [
+      null,
+      "Total",
+      null,
+      100,
+      null
+    ]
+  ],
+  "note": "Verbatim cell values extracted from the supplied workbook, not external research or a claim that each server rule was re-verified."
+}

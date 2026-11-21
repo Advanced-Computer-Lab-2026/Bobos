@@ -1,0 +1,184 @@
+/* The card index uses the same silhouette at every size, including the browser tab. */
+.portal-studio .wordmark:has(.portal-brand-mark)::before { content: none; }
+.portal-brand-mark {
+  display: inline-block;
+  flex: none;
+  width: 1.05em;
+  height: 1.05em;
+}
+.portal-studio .wordmark:has(.portal-brand-mark) {
+  align-items: center;
+  gap: .24em;
+}
+.portal-studio .auth:has(> .signin-print) {
+  --login-paper: #e6dfcd;
+  display: grid;
+  grid-template-columns: minmax(0, .86fr) minmax(0, 1.14fr);
+  align-items: stretch;
+  max-width: 1720px;
+  margin: 0 auto;
+  min-height: calc(100svh - 56px);
+  padding: clamp(20px, 2.35vw, 38px);
+  gap: clamp(16px, 3.1vw, 54px);
+}
+.portal-studio.live-preview .auth:has(> .signin-print) { min-height: 100svh; }
+.auth:has(> .signin-print) > label { grid-column: 1 / -1; }
+.auth:has(> .signin-print) .signin-copy {
+  padding: clamp(8px, 1.1vw, 20px) 0 clamp(8px, 1.1vw, 20px) clamp(10px, 2.6vw, 44px);
+  grid-template-rows: auto 1fr auto;
+}
+.portal-studio .auth:has(> .signin-print) header > .wordmark {
+  display: inline-flex;
+  font: 400 clamp(28px, 2.5vw, 36px)/1 Tiempos, Georgia, serif;
+  color: var(--ink);
+  letter-spacing: -.06em;
+}
+.auth:has(> .signin-print) header > .signin-university {
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+.portal-studio .auth:has(> .signin-print) .auth-card {
+  width: min(100%, 28rem);
+  padding: 48px 0 60px;
+  justify-self: start;
+}
+.portal-studio .auth:has(> .signin-print) .auth-card h1 {
+  margin: 0;
+  max-width: 13ch;
+  font: 400 clamp(43px, 5vw, 74px)/1.02 Tiempos, Georgia, serif;
+  letter-spacing: -.055em;
+  color: var(--ink);
+}
+.portal-studio .auth:has(> .signin-print) .auth-card > p {
+  max-width: 34ch;
+  margin: 17px 0 0;
+  font-size: clamp(15px, 1.1vw, 17px);
+  line-height: 1.6;
+}
+.portal-studio .auth:has(> .signin-print) .auth-card form {
+  width: min(100%, 22rem);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  margin: 30px 0 0;
+  gap: 15px;
+}
+.portal-studio .auth:has(> .signin-print) #auth-form .btn.primary {
+  justify-self: start;
+  min-height: 44px;
+  padding: 10px 27px;
+  color: var(--canvas);
+  background: var(--ink);
+  border: 1px solid var(--ink);
+  border-radius: 7px;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: none;
+}
+.portal-studio .auth:has(> .signin-print) #auth-form .btn.primary:hover {
+  background: color-mix(in srgb, var(--ink) 84%, var(--canvas));
+}
+.signin-print {
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  min-width: 0;
+  margin: 0;
+  background: var(--login-paper);
+  border-radius: 6px;
+}
+.signin-print img {
+  display: block;
+  width: min(100%, 82vh, 760px);
+  height: auto;
+}
+@media (max-width: 760px) {
+  .portal-studio .auth:has(> .signin-print) {
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+    padding: 20px;
+    gap: 0;
+  }
+  .auth:has(> .signin-print) .signin-copy { padding: 6px 2px 0; }
+  .portal-studio .auth:has(> .signin-print) .auth-card {
+    padding: clamp(42px, 8vh, 85px) 0 38px;
+  }
+  .portal-studio .auth:has(> .signin-print) .auth-card form { margin-top: 22px; }
+  .auth:has(> .signin-print) .signin-copy footer { padding-bottom: 14px; }
+  .signin-print img { width: min(100%, 46vh, 410px); }
+}
+@media (max-width: 365px) {
+  .auth:has(> .signin-print) header > .signin-university { font-size: 11px; }
+}
+.auth:has(> .signin-print) .signin-print {background:transparent; border-radius:0; overflow:visible}
+.auth:has(> .signin-print) .signin-print img {width:min(100%,68vh,650px)}
+.portal-studio .auth:has(> .signin-print) .auth-card h1 {font-size:clamp(40px,4.3vw,66px);max-width:15ch}
+.auth:has(> .signin-print) #auth-form label {display:grid;gap:7px;font-size:14px;color:var(--muted)}
+.auth:has(> .signin-print) #auth-form input {width:100%;height:47px;font-size:16px;background:transparent;color:var(--ink);border:1px solid var(--control);border-radius:6px;padding-inline:12px}
+.signin-actions {display:grid;gap:13px}
+.signin-actions .signin-continue {width:100%;display:flex;align-items:center;justify-content:center;gap:10px;min-height:46px;margin-top:4px;padding:10px 18px;border:1px solid transparent;border-radius:7px;background:var(--ink);color:var(--canvas);font:500 15px/1.3 Styrene,system-ui,sans-serif;cursor:pointer}
+.signin-actions .signin-continue:hover {background:color-mix(in srgb,var(--ink) 90%,var(--canvas))}
+.signin-actions .signin-continue:active {transform:translateY(1px)}
+.signin-actions .auth-recovery {justify-self:center;font-size:13px;color:var(--muted)}
+@media(max-width:760px){.auth:has(> .signin-print) .signin-print img{width:min(100%,38vh,400px)}}
+
+.portal-studio .auth:has(> .signin-print) .signin-copy {
+  display:flex; flex-direction:column; align-items:stretch; justify-content:center;
+  width:min(100%, 388px); margin-inline:auto; padding:0;
+}
+.portal-studio .auth:has(> .signin-print) .signin-copy header {padding:0; margin:0 0 34px}
+.portal-studio .auth:has(> .signin-print) header > .wordmark {font-size:clamp(34px,3.1vw,45px)}
+.portal-studio .auth:has(> .signin-print) .auth-card {width:100%;padding:0;margin:0;text-align:left}
+.portal-studio .auth:has(> .signin-print) .auth-card h1 {font:500 clamp(24px,2vw,29px)/1.3 Styrene,system-ui,sans-serif;letter-spacing:-.035em}
+.portal-studio .auth:has(> .signin-print) .auth-card form {width:100%;margin:18px 0 0}
+@media(max-width:760px){
+  .portal-studio .auth:has(> .signin-print) .signin-copy{margin-block:22px 34px}
+}
+
+.desk-lamp-scene {width:min(100%,68vh,650px);position:relative;pointer-events:none}
+.desk-lamp-scene > svg,.auth .signin-print .desk-lamp-scene > img {display:block;width:100%;height:auto;overflow:visible}
+.desk-lamp-scene > img {visibility:hidden}
+.desk-lamp-scene .lamp-chain {pointer-events:all;cursor:grab;touch-action:none;outline:none}
+.desk-lamp-scene .lamp-chain:active {cursor:grabbing}
+.desk-lamp-scene[data-lamp-arriving] .lamp-chain {pointer-events:none}
+.weight-ink path {opacity:0}
+.desk-lamp-scene .lamp-chain:is(:hover,:focus-visible) .chain-weight {fill:#efd093;stroke:#544536;stroke-width:2}
+.desk-lamp-scene .lamp-chain:is(:hover,:focus-visible) .weight-ink path:first-child {opacity:1}
+.desk-lamp-scene .lamp-chain:focus-visible .weight-ink {stroke:#fff4cd;stroke-width:2.4}
+.ink-field,.signin-actions .signin-continue {transform-origin:top left}
+.desk-lamp-scene[data-lit=false] :is(.lamp-beam,.lamp-paper-light,.lamp-map) {opacity:0}
+.desk-lamp-scene[data-lit=false] .lamp-bulb {fill:#938775}
+.desk-lamp-scene[data-lit=true] .lamp-bulb {fill:#ffe7a3}
+.desk-lamp-scene[data-lit=true] .lamp-map {opacity:1}
+@media(prefers-reduced-motion:no-preference){
+ .desk-lamp-scene[data-lit=true] .lamp-beam {animation:lamp-warm .36s steps(4,end) both}
+ .desk-lamp-scene[data-lit=true] .lamp-paper-light {animation:paper-warm .45s steps(5,end) both}
+ .desk-lamp-scene[data-lit=true] .map-edge {stroke-dasharray:1;animation:lamp-write .7s .15s steps(10,end) both}
+ .desk-lamp-scene[data-lit=true] .map-node {animation:lamp-warm .14s var(--node-delay) steps(2,end) both}
+ @keyframes lamp-warm {from{opacity:0}to{opacity:1}}
+ @keyframes paper-warm {from{opacity:0}to{opacity:.82}}
+ @keyframes lamp-write {from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+}
+.ink-field {display:block;position:relative;min-width:0}
+.ink-field > svg {position:absolute;inset:0;width:100%;height:100%;fill:none;stroke:var(--control);stroke-width:1.15;pointer-events:none}
+.ink-field > svg path:not(:first-child){opacity:0}
+.auth:has(.desk-lamp-scene) #auth-form .ink-field input {border:0;outline:none;box-shadow:none}
+.ink-field:is(:hover,:focus-within) > svg {stroke:var(--muted);stroke-width:1.6}
+.ink-field:focus-within > svg {stroke:var(--ink);stroke-width:1.8}
+@media(prefers-reduced-motion:no-preference){
+ .ink-field > svg path {transform-box:view-box;transform-origin:50% 50%}
+ .ink-field:is(:hover,:focus-within) > svg path:nth-child(2) {transform:rotate(.20deg)}
+ .ink-field:is(:hover,:focus-within) > svg path:nth-child(3) {transform:rotate(.10deg)}
+ :is(.ink-field:is(:hover,:focus-within) > svg,.lamp-chain:is(:hover,:focus-visible) .weight-ink) path {animation:ink-field-exposure .51s steps(1,end) infinite}
+ :is(.ink-field:is(:hover,:focus-within) > svg,.lamp-chain:is(:hover,:focus-visible) .weight-ink) path:nth-child(2){animation-delay:-.17s}
+ :is(.ink-field:is(:hover,:focus-within) > svg,.lamp-chain:is(:hover,:focus-visible) .weight-ink) path:nth-child(3){animation-delay:-.34s}
+ @keyframes ink-field-exposure {0%{opacity:1}33.333%,100%{opacity:0}}
+}
+@media(max-width:760px){.desk-lamp-scene{width:min(100%,38vh,400px)}}
+@media(forced-colors:active){.ink-field > svg{stroke:ButtonText}.ink-field:focus-within > svg{stroke:Highlight}}
+
+.desk-lamp-scene .shade-switch {pointer-events:visiblePainted;cursor:pointer;touch-action:manipulation;outline:none}
+.desk-lamp-scene .shade-switch:hover {fill:#d38a6a}
+.desk-lamp-scene .shade-switch:focus-visible {stroke:#ffdfa8;stroke-width:4}
+.desk-lamp-scene[data-lamp-arriving] .shade-switch {pointer-events:none}

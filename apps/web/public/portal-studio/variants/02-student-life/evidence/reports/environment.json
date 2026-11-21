@@ -1,0 +1,18 @@
+{
+  "browser": "Chromium 144.0.7559.96 (Debian system browser)",
+  "node": "22.16.0",
+  "python": "3.13.5",
+  "desktopViewport": {
+    "width": 1440,
+    "height": 1000
+  },
+  "mobileViewport": {
+    "width": 390,
+    "height": 844
+  },
+  "deviceScaleFactor": 1,
+  "browserScope": "headless local Chromium",
+  "date": "2026-11-20",
+  "mainCaptureReducedMotion": true,
+  "supplementalCaptureReducedMotion": false
+}

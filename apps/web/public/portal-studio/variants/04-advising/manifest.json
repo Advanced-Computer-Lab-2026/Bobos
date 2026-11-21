@@ -1,0 +1,1347 @@
+{
+  "name": "Portal / 04-advising — round two",
+  "version": "2.0.0",
+  "deliveryRoot": "variants/04-advising",
+  "baselineArchive": "04-advising-round-2.zip",
+  "counts": {
+    "studioPages": 6,
+    "studioChoices": 60,
+    "connectedReactWorkflows": 2,
+    "connectedReactChoices": 20,
+    "totalChoices": 80,
+    "originalPerPage": true
+  },
+  "studioEntrypoint": "pages.js",
+  "styles": "styles.css",
+  "build": "node build.mjs",
+  "sources": [
+    {
+      "path": "project/requirements/PAGE-BRIEFS.md",
+      "sha256": "0c09fa3ab0ca331fbb099bbd0496e6e517afce79c090bc5ffc83dbc3a7928aec"
+    },
+    {
+      "path": "project/requirements/GUC_316_70_71577_2026-09-27T06_59_26.xlsx",
+      "sha256": "fa0e2193bb64ab4c94850849d3edae9292e57cd72cdb4f04ae9040dab59045d3"
+    },
+    {
+      "path": "project/requirements/Functional Requirements.txt",
+      "sha256": "b5ac58a1630ae7865eca4f759fd59fe06474fcc3693889c45eb924bb18927783"
+    },
+    {
+      "path": "project/requirements/Non-functional Requirements.txt",
+      "sha256": "a59ec5ada9c1edf63b86440f5b6530c3a225aa7295d529aaec9b7fc2fbdec4a2"
+    },
+    {
+      "path": "project/requirements/GUC_316_70_71577_2026-09-24T14_16_07.pdf",
+      "sha256": "bd3715ddddb8bbf16523970db4d71093edb4723dafa52a05af7693a5f75e9c78"
+    },
+    {
+      "path": "project/docs/group-b-c-requirements-audit.md",
+      "sha256": "fa7337934b5ad437a500acf3f2b7bc7f979889a9db9af7057fbc7b04799541a5"
+    },
+    {
+      "path": "project/docs/group-b-verification.md",
+      "sha256": "ca6e0c4a84c8a28edb1955d18a31a60c1261752eff9fe1419b42ef1d9d2efcad"
+    },
+    {
+      "path": "project/docs/group-a-verification.md",
+      "sha256": "5aab9d4d9a5e98744f9d723cce32395dbca672d14b649120bbd0e5d9e69dcc16"
+    },
+    {
+      "path": "project/docs/slot-change-requests.md",
+      "sha256": "168cd8a3c68c9d1710dfed0bc315a4fa85c8325c08596aabfa85d8783b268716"
+    },
+    {
+      "path": "project/docs/ui-ux-local-review.md",
+      "sha256": "c2b03204f5cdd05392d2c96e70c9de10764acf3657c9efbfa75584237cc5b995"
+    }
+  ],
+  "pages": [
+    {
+      "key": "directory",
+      "integration": "studio registry",
+      "roles": [
+        "coordinator",
+        "administrator"
+      ],
+      "requirements": [
+        6,
+        7,
+        8,
+        9
+      ],
+      "choiceStorage": "portal-page-design:directory",
+      "variants": [
+        {
+          "value": 1,
+          "name": "Student register",
+          "arrangement": "Full register with query and contextual facets above the results.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 2,
+          "name": "Filter rail",
+          "arrangement": "Persistent filter rail beside results; all filters directly exposed.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 3,
+          "name": "Student review desk",
+          "arrangement": "Selectable compact results with a persistent selected-record review pane.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 4,
+          "name": "Workflow lanes",
+          "arrangement": "Group the same actionable records into workflow/status lanes.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 5,
+          "name": "Student files",
+          "arrangement": "Reflow the same original rows into student files or request letters.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 6,
+          "name": "Blocking-step queue",
+          "arrangement": "Prioritized next-work queue with a larger reader and next-record action.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 7,
+          "name": "Advisor groups",
+          "arrangement": "Group by advisor; slot review groups by course.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 8,
+          "name": "Compact ledger",
+          "arrangement": "Dense ledger emphasizing reasons/readiness; slot review compares current and exact replacement.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 9,
+          "name": "Compare students",
+          "arrangement": "Two-record comparison; slot review uses three explicit review steps.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 10,
+          "name": "Alphabetical index",
+          "arrangement": "Alphabetical or dated index/timeline instead of an undifferentiated register.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        }
+      ]
+    },
+    {
+      "key": "advising",
+      "integration": "studio registry",
+      "roles": [
+        "advisor",
+        "coordinator"
+      ],
+      "requirements": [
+        50,
+        51,
+        52,
+        53,
+        54
+      ],
+      "choiceStorage": "portal-page-design:advising",
+      "variants": [
+        {
+          "value": 1,
+          "name": "Advising register",
+          "arrangement": "Full register with query and contextual facets above the results.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 2,
+          "name": "Assigned-student rail",
+          "arrangement": "Persistent filter rail beside results; all filters directly exposed.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 3,
+          "name": "Review desk",
+          "arrangement": "Selectable compact results with a persistent selected-record review pane.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 4,
+          "name": "Workflow lanes",
+          "arrangement": "Group the same actionable records into workflow/status lanes.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 5,
+          "name": "Advising files",
+          "arrangement": "Reflow the same original rows into student files or request letters.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 6,
+          "name": "Next review",
+          "arrangement": "Prioritized next-work queue with a larger reader and next-record action.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 7,
+          "name": "By advisor",
+          "arrangement": "Group by advisor; slot review groups by course.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 8,
+          "name": "Reason ledger",
+          "arrangement": "Dense ledger emphasizing reasons/readiness; slot review compares current and exact replacement.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 9,
+          "name": "Compare workloads",
+          "arrangement": "Two-record comparison; slot review uses three explicit review steps.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 10,
+          "name": "Student index",
+          "arrangement": "Alphabetical or dated index/timeline instead of an undifferentiated register.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        }
+      ]
+    },
+    {
+      "key": "student-schedules",
+      "integration": "studio registry",
+      "roles": [
+        "advisor",
+        "coordinator",
+        "administrator (read-only)"
+      ],
+      "requirements": [
+        31,
+        80,
+        81,
+        82
+      ],
+      "choiceStorage": "portal-page-design:student-schedules",
+      "variants": [
+        {
+          "value": 1,
+          "name": "Schedule register",
+          "arrangement": "Full register with query and contextual facets above the results.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 2,
+          "name": "Status rail",
+          "arrangement": "Persistent filter rail beside results; all filters directly exposed.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 3,
+          "name": "Schedule review desk",
+          "arrangement": "Selectable compact results with a persistent selected-record review pane.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 4,
+          "name": "Workflow lanes",
+          "arrangement": "Group the same actionable records into workflow/status lanes.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 5,
+          "name": "Schedule files",
+          "arrangement": "Reflow the same original rows into student files or request letters.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 6,
+          "name": "Processing queue",
+          "arrangement": "Prioritized next-work queue with a larger reader and next-record action.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 7,
+          "name": "By advisor",
+          "arrangement": "Group by advisor; slot review groups by course.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 8,
+          "name": "Readiness ledger",
+          "arrangement": "Dense ledger emphasizing reasons/readiness; slot review compares current and exact replacement.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 9,
+          "name": "Compare schedules",
+          "arrangement": "Two-record comparison; slot review uses three explicit review steps.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 10,
+          "name": "Recent updates",
+          "arrangement": "Alphabetical or dated index/timeline instead of an undifferentiated register.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        }
+      ]
+    },
+    {
+      "key": "mandatory-removals",
+      "integration": "studio registry",
+      "roles": [
+        "coordinator (decision)",
+        "advisor (own preview requests, read-only)",
+        "administrator (preview read-only)"
+      ],
+      "requirements": [
+        64,
+        65,
+        66,
+        67,
+        68,
+        69
+      ],
+      "choiceStorage": "portal-page-design:mandatory-removals",
+      "variants": [
+        {
+          "value": 1,
+          "name": "Request register",
+          "arrangement": "Full register with query and contextual facets above the results.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 2,
+          "name": "Decision filters",
+          "arrangement": "Persistent filter rail beside results; all filters directly exposed.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 3,
+          "name": "Decision desk",
+          "arrangement": "Selectable compact results with a persistent selected-record review pane.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 4,
+          "name": "Status lanes",
+          "arrangement": "Group the same actionable records into workflow/status lanes.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 5,
+          "name": "Request letters",
+          "arrangement": "Reflow the same original rows into student files or request letters.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 6,
+          "name": "Oldest pending first",
+          "arrangement": "Prioritized next-work queue with a larger reader and next-record action.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 7,
+          "name": "By advisor",
+          "arrangement": "Group by advisor; slot review groups by course.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 8,
+          "name": "Course ledger",
+          "arrangement": "Dense ledger emphasizing reasons/readiness; slot review compares current and exact replacement.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 9,
+          "name": "Compare requests",
+          "arrangement": "Two-record comparison; slot review uses three explicit review steps.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 10,
+          "name": "Submission timeline",
+          "arrangement": "Alphabetical or dated index/timeline instead of an undifferentiated register.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        }
+      ]
+    },
+    {
+      "key": "student-detail",
+      "integration": "studio registry",
+      "roles": [
+        "advisor",
+        "coordinator",
+        "administrator"
+      ],
+      "requirements": [
+        9,
+        10,
+        14,
+        31,
+        54
+      ],
+      "choiceStorage": "portal-page-design:student-detail",
+      "variants": [
+        {
+          "value": 1,
+          "name": "Student dossier",
+          "arrangement": "Identity and native tabs first; workflow alongside.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 2,
+          "name": "Workflow first",
+          "arrangement": "Put workflow and blockers before biographical context.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 3,
+          "name": "Two-page record",
+          "arrangement": "Two-page record: native details beside academic history.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 4,
+          "name": "Academic history first",
+          "arrangement": "Academic history leads the record.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 5,
+          "name": "Schedule first",
+          "arrangement": "Weekly timetable leads; workflow and identity remain reachable.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 6,
+          "name": "Advisor handover",
+          "arrangement": "Advisor handover and retained history lead the record.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 7,
+          "name": "Compact record",
+          "arrangement": "Compact multi-column identity and history ledger.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 8,
+          "name": "Open sections",
+          "arrangement": "Openable record sections reduce initial density without removing actions.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 9,
+          "name": "Review checklist",
+          "arrangement": "Read-only checklist of conditions preceding review/processing.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 10,
+          "name": "Record with context",
+          "arrangement": "Native record with a persistent contextual workflow side.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        }
+      ]
+    },
+    {
+      "key": "draft-schedule",
+      "integration": "studio registry",
+      "roles": [
+        "advisor",
+        "coordinator",
+        "administrator (read-only)"
+      ],
+      "requirements": [
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82
+      ],
+      "choiceStorage": "portal-page-design:draft-schedule",
+      "variants": [
+        {
+          "value": 1,
+          "name": "Course desk",
+          "arrangement": "Course desk with preferences and validation alongside.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 2,
+          "name": "Timetable first",
+          "arrangement": "Weekly timetable leads, with course selection beneath.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 3,
+          "name": "Validation rail",
+          "arrangement": "Validation rail beside course controls and selections.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 4,
+          "name": "Mandatory first",
+          "arrangement": "Mandatory candidates first; other eligible courses in an explicit disclosure.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 5,
+          "name": "Course inspector",
+          "arrangement": "Course inspector exposes exact assigned components for the selected course.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 6,
+          "name": "Three-step review",
+          "arrangement": "Courses → Timetable → Review, retaining the same draft and native controls.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 7,
+          "name": "Preferences beside plan",
+          "arrangement": "Preferences beside the plan; constraints remain visible and authoritative.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 8,
+          "name": "Weekly ledger",
+          "arrangement": "Chronological weekly meeting ledger, not only timetable cards.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 9,
+          "name": "Open binder",
+          "arrangement": "Open-binder arrangement using native course drawings and pages.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 10,
+          "name": "Processing desk",
+          "arrangement": "Processing desk leads with validation, blockers and finalization conditions.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        }
+      ]
+    },
+    {
+      "key": "account-administration",
+      "integration": "React route adapter",
+      "roles": [
+        "coordinator (membership / assignment)",
+        "administrator (account access)"
+      ],
+      "requirements": [
+        10,
+        11,
+        12,
+        13,
+        14
+      ],
+      "choiceStorage": "portal-page-design:account-administration",
+      "variants": [
+        {
+          "value": 1,
+          "name": "Access register",
+          "arrangement": "Student access register followed by selected-record actions.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 2,
+          "name": "Filter rail",
+          "arrangement": "Filter rail beside the student register.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 3,
+          "name": "Account review desk",
+          "arrangement": "Student register beside an account review pane.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 4,
+          "name": "Access-status groups",
+          "arrangement": "Group by active/inactive account status.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 5,
+          "name": "Student record files",
+          "arrangement": "Individual student record files with the same open-record controls.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 6,
+          "name": "Action first",
+          "arrangement": "Selected account actions lead before the register.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 7,
+          "name": "Advisor groups",
+          "arrangement": "Group by assigned advisor.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 8,
+          "name": "Compact ledger",
+          "arrangement": "Compact account and assignment ledger.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 9,
+          "name": "Compare records",
+          "arrangement": "Compare two records, then open one before a consequential change.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 10,
+          "name": "Handover workflow",
+          "arrangement": "Find a record → Review and act → Advisor access, role-appropriate stages.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        }
+      ]
+    },
+    {
+      "key": "slot-changes-staff",
+      "integration": "React route adapter",
+      "roles": [
+        "advisor (assigned students only, server scoped)",
+        "coordinator (all requests)"
+      ],
+      "requirements": [
+        43,
+        44,
+        45,
+        46,
+        47,
+        48
+      ],
+      "choiceStorage": "portal-page-design:slot-changes-staff",
+      "variants": [
+        {
+          "value": 1,
+          "name": "Request register",
+          "arrangement": "Full register with query and contextual facets above the results.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 2,
+          "name": "Filter rail",
+          "arrangement": "Persistent filter rail beside results; all filters directly exposed.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 3,
+          "name": "Decision desk",
+          "arrangement": "Selectable compact results with a persistent selected-record review pane.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 4,
+          "name": "Status lanes",
+          "arrangement": "Group the same actionable records into workflow/status lanes.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 5,
+          "name": "Request letters",
+          "arrangement": "Reflow the same original rows into student files or request letters.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 6,
+          "name": "Oldest pending first",
+          "arrangement": "Prioritized next-work queue with a larger reader and next-record action.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 7,
+          "name": "Course groups",
+          "arrangement": "Group by advisor; slot review groups by course.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 8,
+          "name": "Slot comparison",
+          "arrangement": "Dense ledger emphasizing reasons/readiness; slot review compares current and exact replacement.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 9,
+          "name": "Three-step review",
+          "arrangement": "Two-record comparison; slot review uses three explicit review steps.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        },
+        {
+          "value": 10,
+          "name": "Submission timeline",
+          "arrangement": "Alphabetical or dated index/timeline instead of an undifferentiated register.",
+          "workflowImplementation": "shared across all ten choices; not a screenshot"
+        }
+      ]
+    }
+  ],
+  "functionalCoverage": [
+    {
+      "id": 6,
+      "sourceSheet": "Functional Requirements",
+      "sourceRow": 7,
+      "stakeholders": "Coordinator / Administrator",
+      "action": "view a list of all GUC students and their current scheduling workflow status",
+      "sourceRules": "The list includes Normal Students and Advising Students and shows full name, GUC email, student ID, student type, major, current semester, assigned Advisor when applicable, workflow status, blocking step and last update time. The status is calculated from completed workflow actions; Advisors do not manually overwrite it. Normal-student statuses include Schedule Assigned, Swap Request Open, Swap Completed, Swap Withdrawn and Swap Expired. Advising-student statuses include Not Started, Draft, Ready for Student Review, Change Request Pending, Pending Approval, Awaiting Payment Choice, Deferred to Next Installment, Ready to Process, Processed and Reopened.",
+      "pages": [
+        "directory"
+      ],
+      "implementationLevel": "Local preview; baseline production route retained",
+      "details": "docs/REQUIREMENTS.md"
+    },
+    {
+      "id": 7,
+      "sourceSheet": "Functional Requirements",
+      "sourceRow": 8,
+      "stakeholders": "Coordinator / Administrator",
+      "action": "search for a GUC student using the student ID, full name or GUC email",
+      "sourceRules": null,
+      "pages": [
+        "directory"
+      ],
+      "implementationLevel": "Local preview; baseline production route retained",
+      "details": "docs/REQUIREMENTS.md"
+    },
+    {
+      "id": 8,
+      "sourceSheet": "Functional Requirements",
+      "sourceRow": 9,
+      "stakeholders": "Coordinator / Administrator",
+      "action": "filter GUC students by student type, assigned Advisor, major, current semester, academic standing, workflow status, blocking step and account status",
+      "sourceRules": null,
+      "pages": [
+        "directory"
+      ],
+      "implementationLevel": "Local preview; baseline production route retained",
+      "details": "docs/REQUIREMENTS.md"
+    },
+    {
+      "id": 9,
+      "sourceSheet": "Functional Requirements",
+      "sourceRow": 10,
+      "stakeholders": "Coordinator / Administrator",
+      "action": "view and select a GUC student from the displayed search or filter results to open the student's details",
+      "sourceRules": null,
+      "pages": [
+        "directory",
+        "student-detail"
+      ],
+      "implementationLevel": "Local preview; baseline production route retained",
+      "details": "docs/REQUIREMENTS.md"
+    },
+    {
+      "id": 10,
+      "sourceSheet": "Functional Requirements",
+      "sourceRow": 11,
+      "stakeholders": "Administrator",
+      "action": "activate or deactivate a user account",
+      "sourceRules": "Deactivation prevents login without deleting the user's academic, scheduling or audit history.",
+      "pages": [
+        "student-detail",
+        "account-administration"
+      ],
+      "implementationLevel": "API consumer plus preview representation",
+      "details": "docs/REQUIREMENTS.md"
+    },
+    {
+      "id": 11,
+      "sourceSheet": "Functional Requirements",
+      "sourceRow": 12,
+      "stakeholders": "Coordinator",
+      "action": "add an advisor using the advisor's GUC email",
+      "sourceRules": "When a valid email is entered, the advisor's full name is displayed.",
+      "pages": [
+        "account-administration"
+      ],
+      "implementationLevel": "API consumer plus preview representation",
+      "details": "docs/REQUIREMENTS.md"
+    },
+    {
+      "id": 12,
+      "sourceSheet": "Functional Requirements",
+      "sourceRow": 13,
+      "stakeholders": "Coordinator",
+      "action": "remove an advisor from the advising system using the advisor's GUC email",
+      "sourceRules": "Removing an advisor does not delete the advisor's previous actions from the schedule activity history.",
+      "pages": [
+        "account-administration"
+      ],
+      "implementationLevel": "API consumer plus preview representation",
+      "details": "docs/REQUIREMENTS.md"
+    },
+    {
+      "id": 13,
+      "sourceSheet": "Functional Requirements",
+      "sourceRow": 14,
+      "stakeholders": "Advisor",
+      "action": "receive an email when I am added to or removed from the advising system",
+      "sourceRules": null,
+      "pages": [
+        "account-administration"
+      ],
+      "implementationLevel": "API email-status display; delivery remains backend/SMTP responsibility",
+      "details": "docs/REQUIREMENTS.md"
+    },
+    {
+      "id": 14,
+      "sourceSheet": "Functional Requirements",
+      "sourceRow": 15,
+      "stakeholders": "Coordinator",
+      "action": "assign or reassign an advisor to an advising student",
+      "sourceRules": "Reassignment preserves the student's schedule, requests, plans and advisor history.",
+      "pages": [
+        "student-detail",
+        "account-administration"
+      ],
+      "implementationLevel": "API consumer plus preview representation",
+      "details": "docs/REQUIREMENTS.md"
+    },
+    {
+      "id": 31,
+      "sourceSheet": "Functional Requirements",
+      "sourceRow": 32,
+      "stakeholders": "Normal Student / Advising Student / Advisor / Coordinator / Administrator",
+      "action": "view a student's current weekly schedule including course code, course name, lecture, tutorial and lab times and locations",
+      "sourceRules": "A Normal Student may view only their own processed standard schedule. An Advising Student may view their own completed draft after an Advisor or Coordinator marks it Ready for Student Review, and may continue to view the final processed schedule. A completed draft has every required course and lecture, tutorial and lab slot assigned, has no blocking validation issue, and is not yet final. Incomplete drafts remain hidden from the student. Advisors and Coordinators may view an advising student's draft, review-ready or processed schedule, and Administrators have read-only access. The schedule is displayed as a weekly calendar and shows days off.",
+      "pages": [
+        "student-detail",
+        "student-schedules"
+      ],
+      "implementationLevel": "Local preview; baseline production route retained",
+      "details": "docs/REQUIREMENTS.md"
+    },
+    {
+      "id": 43,
+      "sourceSheet": "Functional Requirements",
+      "sourceRow": 44,
+      "stakeholders": "Advisor / Coordinator",
+      "action": "view a list of advising-student slot-change requests",
+      "sourceRules": "An Advisor sees requests from assigned advising students. A Coordinator may see all advising-student requests.",
+      "pages": [
+        "slot-changes-staff"
+      ],
+      "implementationLevel": "API consumer",
+      "details": "docs/REQUIREMENTS.md"
+    },
+    {
+      "id": 44,
+      "sourceSheet": "Functional Requirements",
+      "sourceRow": 45,
+      "stakeholders": "Advisor / Coordinator",
+      "action": "search advising-student slot-change requests using a student ID, student name or course code",
+      "sourceRules": null,
+      "pages": [
+        "slot-changes-staff"
+      ],
+      "implementationLevel": "API consumer",
+      "details": "docs/REQUIREMENTS.md"
+    },
+    {
+      "id": 45,
+      "sourceSheet": "Functional Requirements",
+      "sourceRow": 46,
+      "stakeholders": "Advisor / Coordinator",
+      "action": "filter advising-student slot-change requests by request status, Advisor, course and submission date",
+      "sourceRules": null,
+      "pages": [
+        "slot-changes-staff"
+      ],
+      "implementationLevel": "API consumer",
+      "details": "docs/REQUIREMENTS.md"
+    },
+    {
+      "id": 46,
+      "sourceSheet": "Functional Requirements",
+      "sourceRow": 47,
+      "stakeholders": "Advisor / Coordinator",
+      "action": "view and select an advising-student slot-change request from the displayed search or filter results to open its details",
+      "sourceRules": null,
+      "pages": [
+        "slot-changes-staff"
+      ],
+      "implementationLevel": "API consumer",
+      "details": "docs/REQUIREMENTS.md"
+    },
+    {
+      "id": 47,
+      "sourceSheet": "Functional Requirements",
+      "sourceRow": 48,
+      "stakeholders": "Advisor / Coordinator",
+      "action": "compare the student's current slot with available alternatives, remaining seats and timetable clashes",
+      "sourceRules": null,
+      "pages": [
+        "slot-changes-staff"
+      ],
+      "implementationLevel": "API consumer",
+      "details": "docs/REQUIREMENTS.md"
+    },
+    {
+      "id": 48,
+      "sourceSheet": "Functional Requirements",
+      "sourceRow": 49,
+      "stakeholders": "Advisor / Coordinator",
+      "action": "approve or reject an advising-student slot-change request and provide an optional response note",
+      "sourceRules": "Approval selects the exact replacement slot. Revalidate capacity and timetable clashes, then update the completed schedule and both slot capacities atomically so the same final seat cannot be assigned twice. The schedule remains Ready for Student Review until all pending requests are resolved and it is processed.",
+      "pages": [
+        "slot-changes-staff"
+      ],
+      "implementationLevel": "API consumer",
+      "details": "docs/REQUIREMENTS.md"
+    },
+    {
+      "id": 50,
+      "sourceSheet": "Functional Requirements",
+      "sourceRow": 51,
+      "stakeholders": "Advisor",
+      "action": "view a list of advising students",
+      "sourceRules": "Advisors can view all advising students, including students assigned to other Advisors. Show each student's assigned Advisor, workflow status, blocking step and last update time. Student IDs use the XX-XXXX format, for example 64-12345.",
+      "pages": [
+        "advising"
+      ],
+      "implementationLevel": "Local preview; baseline production route retained",
+      "details": "docs/REQUIREMENTS.md"
+    },
+    {
+      "id": 51,
+      "sourceSheet": "Functional Requirements",
+      "sourceRow": 52,
+      "stakeholders": "Advisor",
+      "action": "search for an advising student using the student ID, full name or GUC email",
+      "sourceRules": "Search covers all advising students. Student IDs use the XX-XXXX format, for example 64-12345.",
+      "pages": [
+        "advising"
+      ],
+      "implementationLevel": "Local preview; baseline production route retained",
+      "details": "docs/REQUIREMENTS.md"
+    },
+    {
+      "id": 52,
+      "sourceSheet": "Functional Requirements",
+      "sourceRow": 53,
+      "stakeholders": "Advisor",
+      "action": "filter advising students by Advisor, major, advising reason, schedule status and pending-request type",
+      "sourceRules": "Filters may be combined and cleared. An Advisor can choose themselves in the Advisor filter to display 'My assigned students', but may also view students assigned to other Advisors.",
+      "pages": [
+        "advising"
+      ],
+      "implementationLevel": "Local preview; baseline production route retained",
+      "details": "docs/REQUIREMENTS.md"
+    },
+    {
+      "id": 53,
+      "sourceSheet": "Functional Requirements",
+      "sourceRow": 54,
+      "stakeholders": "Advisor",
+      "action": "view and select an advising student from the displayed search or filter results to open the student's advising details",
+      "sourceRules": "Any Advisor may open a student from the displayed results to view the academic and advising information permitted by the remaining requirements.",
+      "pages": [
+        "advising"
+      ],
+      "implementationLevel": "Local preview; baseline production route retained",
+      "details": "docs/REQUIREMENTS.md"
+    },
+    {
+      "id": 54,
+      "sourceSheet": "Functional Requirements",
+      "sourceRow": 55,
+      "stakeholders": "Advising Student / Advisor / Coordinator",
+      "action": "view a student's academic history organized into completed courses with grades, current courses and remaining courses",
+      "sourceRules": "Show the student's Advisor, major, GPA, completed hours and current semester. Every remaining course shows its credit hours, prerequisites and offering season. An Advising Student may view only their own academic history. Advisors and Coordinators may view any advising student.",
+      "pages": [
+        "student-detail",
+        "advising"
+      ],
+      "implementationLevel": "Local preview; baseline production route retained",
+      "details": "docs/REQUIREMENTS.md"
+    },
+    {
+      "id": 58,
+      "sourceSheet": "Functional Requirements",
+      "sourceRow": 59,
+      "stakeholders": "Advisor / Coordinator",
+      "action": "view an advising student's submitted scheduling preferences while creating or updating the draft schedule",
+      "sourceRules": "Show the latest submitted preferences, their priority order and last update time. The Advisor or Coordinator may satisfy them when feasible but must preserve all academic and scheduling rules. A student who submitted no preferences may still receive a schedule.",
+      "pages": [
+        "draft-schedule"
+      ],
+      "implementationLevel": "Local preview; baseline production route retained",
+      "details": "docs/REQUIREMENTS.md"
+    },
+    {
+      "id": 59,
+      "sourceSheet": "Functional Requirements",
+      "sourceRow": 60,
+      "stakeholders": "Advisor / Coordinator / Administrator",
+      "action": "view an advising student's advising reason, system-calculated credit-hour allowance, schedule status and bachelor-project eligibility",
+      "sourceRules": "Advising reasons are probation, more than two failed courses in a season, unattended courses, undeclared CS or DMET major, or transfer from another major/university. Standard allowances are 34 hours for semesters 3-4, 30 for semesters 5-6, 28 for semester 7, and 24 from semester 8 onward. On the GUC scale, probation is GPA 3.70 or above; probation students receive 25% less hours than normal student (any decimal points to be rounded up) hours and cannot receive an increase. Workflow status is calculated automatically from the student's draft, pending approvals, settlement decision and processing actions; it is not manually selected by an Advisor. Bachelor-project eligibility requires completion of all courses from semesters 1-6 and all English courses including RPW. A student with only one or two failed courses from semesters 1-6 remains eligible if all English courses including RPW are complete.",
+      "pages": [
+        "draft-schedule"
+      ],
+      "implementationLevel": "Local preview; baseline production route retained",
+      "details": "docs/REQUIREMENTS.md"
+    },
+    {
+      "id": 60,
+      "sourceSheet": "Functional Requirements",
+      "sourceRow": 61,
+      "stakeholders": "Advisor / Coordinator",
+      "action": "add the bachelor project to an eligible student's schedule and select whether it will be taken in Winter or Spring",
+      "sourceRules": "A bachelor student may take up to four courses with the project: at most two core courses and two humanities. Humanities are German courses, Seminar, Introduction to Management and Project Management. These courses are treated as extra hours and follow the extra-hours approval and payment flow.",
+      "pages": [
+        "draft-schedule"
+      ],
+      "implementationLevel": "Local preview; baseline production route retained",
+      "details": "docs/REQUIREMENTS.md"
+    },
+    {
+      "id": 61,
+      "sourceSheet": "Functional Requirements",
+      "sourceRow": 62,
+      "stakeholders": "Advisor / Coordinator",
+      "action": "view an advising student's failed and unattended courses as mandatory-course candidates",
+      "sourceRules": "Failed and unattended courses are mandatory unless an approved removal applies.",
+      "pages": [
+        "draft-schedule"
+      ],
+      "implementationLevel": "Local preview; baseline production route retained",
+      "details": "docs/REQUIREMENTS.md"
+    },
+    {
+      "id": 62,
+      "sourceSheet": "Functional Requirements",
+      "sourceRow": 63,
+      "stakeholders": "Advisor / Coordinator",
+      "action": "create an open draft schedule for an advising student",
+      "sourceRules": "Display any submitted scheduling preferences while the draft is created. Preferences are optional and their absence does not block schedule creation.",
+      "pages": [
+        "draft-schedule"
+      ],
+      "implementationLevel": "Local preview; baseline production route retained",
+      "details": "docs/REQUIREMENTS.md"
+    },
+    {
+      "id": 63,
+      "sourceSheet": "Functional Requirements",
+      "sourceRow": 64,
+      "stakeholders": "Advisor / Coordinator",
+      "action": "select the mandatory courses to include in an advising student's schedule",
+      "sourceRules": "Mandatory courses are selected before other courses and consume the student's available credit hours. If mandatory courses consume all allowed hours, no other course may be added without approved extra hours.",
+      "pages": [
+        "draft-schedule"
+      ],
+      "implementationLevel": "Local preview; baseline production route retained",
+      "details": "docs/REQUIREMENTS.md"
+    },
+    {
+      "id": 64,
+      "sourceSheet": "Functional Requirements",
+      "sourceRow": 65,
+      "stakeholders": "Advisor",
+      "action": "request the removal of a mandatory course and provide the reason",
+      "sourceRules": "Valid cases include an incorrect mandatory designation due to first- or second-makeup eligibility, or deferral when the student completed more than 157 hours or would otherwise take restricted pairs of CS, Math or Physics courses in the same term. Students always receive a first makeup. A second makeup is available only when the student has one or two failed courses.",
+      "pages": [
+        "draft-schedule",
+        "mandatory-removals"
+      ],
+      "implementationLevel": "Local preview; baseline production route retained",
+      "details": "docs/REQUIREMENTS.md"
+    },
+    {
+      "id": 65,
+      "sourceSheet": "Functional Requirements",
+      "sourceRow": 66,
+      "stakeholders": "Coordinator",
+      "action": "view a list of mandatory-course removal requests",
+      "sourceRules": null,
+      "pages": [
+        "mandatory-removals"
+      ],
+      "implementationLevel": "Local preview; baseline production route retained",
+      "details": "docs/REQUIREMENTS.md"
+    },
+    {
+      "id": 66,
+      "sourceSheet": "Functional Requirements",
+      "sourceRow": 67,
+      "stakeholders": "Coordinator",
+      "action": "search mandatory-course removal requests using a student ID, course code or Advisor's name or GUC email",
+      "sourceRules": null,
+      "pages": [
+        "mandatory-removals"
+      ],
+      "implementationLevel": "Local preview; baseline production route retained",
+      "details": "docs/REQUIREMENTS.md"
+    },
+    {
+      "id": 67,
+      "sourceSheet": "Functional Requirements",
+      "sourceRow": 68,
+      "stakeholders": "Coordinator",
+      "action": "filter mandatory-course removal requests by Advisor, request status and submission date",
+      "sourceRules": null,
+      "pages": [
+        "mandatory-removals"
+      ],
+      "implementationLevel": "Local preview; baseline production route retained",
+      "details": "docs/REQUIREMENTS.md"
+    },
+    {
+      "id": 68,
+      "sourceSheet": "Functional Requirements",
+      "sourceRow": 69,
+      "stakeholders": "Coordinator",
+      "action": "view and select a mandatory-course removal request from the displayed search or filter results to open its details",
+      "sourceRules": null,
+      "pages": [
+        "mandatory-removals"
+      ],
+      "implementationLevel": "Local preview; baseline production route retained",
+      "details": "docs/REQUIREMENTS.md"
+    },
+    {
+      "id": 69,
+      "sourceSheet": "Functional Requirements",
+      "sourceRow": 70,
+      "stakeholders": "Coordinator",
+      "action": "approve or reject a mandatory-course removal request and provide a response note",
+      "sourceRules": "Approval removes the course from the mandatory list and any unprocessed draft schedule. Rejection leaves it mandatory.",
+      "pages": [
+        "mandatory-removals"
+      ],
+      "implementationLevel": "Local preview; baseline production route retained",
+      "details": "docs/REQUIREMENTS.md"
+    },
+    {
+      "id": 70,
+      "sourceSheet": "Functional Requirements",
+      "sourceRow": 71,
+      "stakeholders": "Advisor / Coordinator",
+      "action": "view the other courses an advising student is eligible to take in the selected term",
+      "sourceRules": "Exclude completed courses, courses with unmet prerequisites and courses not offered in the selected season. Eligibility follows the student's semester progression and published course offerings.",
+      "pages": [
+        "draft-schedule"
+      ],
+      "implementationLevel": "Local preview; baseline production route retained",
+      "details": "docs/REQUIREMENTS.md"
+    },
+    {
+      "id": 71,
+      "sourceSheet": "Functional Requirements",
+      "sourceRow": 72,
+      "stakeholders": "Advisor / Coordinator",
+      "action": "add an eligible non-mandatory course to an advising student's draft schedule",
+      "sourceRules": null,
+      "pages": [
+        "draft-schedule"
+      ],
+      "implementationLevel": "Local preview; baseline production route retained",
+      "details": "docs/REQUIREMENTS.md"
+    },
+    {
+      "id": 72,
+      "sourceSheet": "Functional Requirements",
+      "sourceRow": 73,
+      "stakeholders": "Advisor / Coordinator",
+      "action": "remove a non-mandatory course from an advising student's draft schedule",
+      "sourceRules": null,
+      "pages": [
+        "draft-schedule"
+      ],
+      "implementationLevel": "Local preview; baseline production route retained",
+      "details": "docs/REQUIREMENTS.md"
+    },
+    {
+      "id": 73,
+      "sourceSheet": "Functional Requirements",
+      "sourceRow": 74,
+      "stakeholders": "Advisor / Coordinator",
+      "action": "view the selected, allowed, extra and remaining credit hours while building an advising student's schedule",
+      "sourceRules": null,
+      "pages": [
+        "draft-schedule"
+      ],
+      "implementationLevel": "Local preview; baseline production route retained",
+      "details": "docs/REQUIREMENTS.md"
+    },
+    {
+      "id": 74,
+      "sourceSheet": "Functional Requirements",
+      "sourceRow": 75,
+      "stakeholders": "Advisor / Coordinator",
+      "action": "save an advising student's incomplete schedule as a draft and continue editing it later",
+      "sourceRules": null,
+      "pages": [
+        "draft-schedule"
+      ],
+      "implementationLevel": "Local preview; baseline production route retained",
+      "details": "docs/REQUIREMENTS.md"
+    },
+    {
+      "id": 75,
+      "sourceSheet": "Functional Requirements",
+      "sourceRow": 76,
+      "stakeholders": "Advisor / Coordinator",
+      "action": "select a chosen course and view its available lecture, tutorial and lab slots with remaining capacities",
+      "sourceRules": null,
+      "pages": [
+        "draft-schedule"
+      ],
+      "implementationLevel": "Local preview; baseline production route retained",
+      "details": "docs/REQUIREMENTS.md"
+    },
+    {
+      "id": 76,
+      "sourceSheet": "Functional Requirements",
+      "sourceRow": 77,
+      "stakeholders": "Advisor / Coordinator",
+      "action": "assign a student's lecture, tutorial and lab slots for a selected course",
+      "sourceRules": "The action must prevent overlapping slots and must update remaining capacity atomically so two users cannot take the same final seat.",
+      "pages": [
+        "draft-schedule"
+      ],
+      "implementationLevel": "Local preview; baseline production route retained",
+      "details": "docs/REQUIREMENTS.md"
+    },
+    {
+      "id": 77,
+      "sourceSheet": "Functional Requirements",
+      "sourceRow": 78,
+      "stakeholders": "Advisor / Coordinator",
+      "action": "change a student's assigned lecture, tutorial or lab slot",
+      "sourceRules": "The action must prevent overlapping slots and must update remaining capacity atomically so two users cannot take the same final seat.",
+      "pages": [
+        "draft-schedule"
+      ],
+      "implementationLevel": "Local preview; baseline production route retained",
+      "details": "docs/REQUIREMENTS.md"
+    },
+    {
+      "id": 78,
+      "sourceSheet": "Functional Requirements",
+      "sourceRow": 79,
+      "stakeholders": "Advisor / Coordinator",
+      "action": "remove a student's assigned lecture, tutorial or lab slot",
+      "sourceRules": "The action must prevent overlapping slots and must update remaining capacity atomically so two users cannot take the same final seat.",
+      "pages": [
+        "draft-schedule"
+      ],
+      "implementationLevel": "Local preview; baseline production route retained",
+      "details": "docs/REQUIREMENTS.md"
+    },
+    {
+      "id": 79,
+      "sourceSheet": "Functional Requirements",
+      "sourceRow": 80,
+      "stakeholders": "Advisor / Coordinator",
+      "action": "view all validation issues in a draft schedule before processing it",
+      "sourceRules": "Validation covers missing mandatory courses, missing required slots, prerequisites, unpublished offerings, timetable clashes, capacity and allowed or approved credit hours.",
+      "pages": [
+        "draft-schedule"
+      ],
+      "implementationLevel": "Local preview; baseline production route retained",
+      "details": "docs/REQUIREMENTS.md"
+    },
+    {
+      "id": 80,
+      "sourceSheet": "Functional Requirements",
+      "sourceRow": 81,
+      "stakeholders": "Advisor / Coordinator",
+      "action": "mark a completed and valid advising schedule as Ready for Student Review",
+      "sourceRules": "The action is allowed only when every required course and lecture, tutorial and lab slot is assigned and no blocking validation issue remains. It gives the Advising Student read-only access to the completed schedule and enables pre-processing slot-change requests.",
+      "pages": [
+        "student-schedules",
+        "draft-schedule"
+      ],
+      "implementationLevel": "Local preview; baseline production route retained",
+      "details": "docs/REQUIREMENTS.md"
+    },
+    {
+      "id": 81,
+      "sourceSheet": "Functional Requirements",
+      "sourceRow": 82,
+      "stakeholders": "Advisor / Coordinator",
+      "action": "process a valid advising schedule",
+      "sourceRules": "Processing finalizes the schedule. It is blocked while any slot-change request is Pending or while a required approval or payment choice remains unresolved. After processing, the student may view and download the final schedule but cannot submit a new pre-processing slot-change request.",
+      "pages": [
+        "student-schedules",
+        "draft-schedule"
+      ],
+      "implementationLevel": "Local preview; baseline production route retained",
+      "details": "docs/REQUIREMENTS.md"
+    },
+    {
+      "id": 82,
+      "sourceSheet": "Functional Requirements",
+      "sourceRow": 83,
+      "stakeholders": "Advisor / Coordinator",
+      "action": "reopen a processed advising schedule and provide a reason",
+      "sourceRules": "Reopening returns the schedule to Draft status and hides it from the student until it is completed, validated and marked Ready for Student Review again. A reason is required.",
+      "pages": [
+        "student-schedules",
+        "draft-schedule"
+      ],
+      "implementationLevel": "Local preview; baseline production route retained",
+      "details": "docs/REQUIREMENTS.md"
+    }
+  ],
+  "scope": "Studio local preview plus actual-API React adapters. Not a backend implementation or full requirement certification.",
+  "nonfunctionalCoverage": {
+    "sourceSheet": "Non-functional Requirements",
+    "criteria": [
+      "Information Architecture",
+      "Feedback and Responsiveness",
+      "Navigation is Reversible",
+      "Learnability",
+      "Visibility",
+      "Efficiency",
+      "Design for errors",
+      "Satisfaction",
+      "UI elements",
+      "UI looks professional",
+      "Smooth app flow (all past requirements are working)"
+    ],
+    "details": "docs/REQUIREMENTS.md",
+    "qualification": "Subjective grading and full past-feature regression are not certified by these automated tests."
+  },
+  "verification": {
+    "previewRuleAssertions": 69,
+    "studioRenderConfigurations": 360,
+    "reactQueueRenderConfigurations": 160,
+    "reactOpenDetailRenderConfigurations": 80,
+    "totalRenderConfigurations": 600,
+    "studioInteractionAndIntegrationChecks": 50,
+    "reactContractChecks": 21,
+    "reactRecoveryAndDetailChecks": 17,
+    "totalBrowserChecks": 88,
+    "javascriptPageErrors": [],
+    "documentHorizontalOverflowFailures": 0,
+    "testedOnFreshBaseline": true,
+    "scope": "UI and HTTP-fixture contract tests; no database, mail provider, live security/concurrency or production build certification"
+  }
+}

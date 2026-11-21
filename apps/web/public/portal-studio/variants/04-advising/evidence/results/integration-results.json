@@ -1,0 +1,12 @@
+{
+  "baselineArchive": "04-advising-round-2.zip",
+  "originalFileCount": 288,
+  "byteIdenticalOriginalFiles": 286,
+  "changedOriginalFiles": [
+    "project/apps/web/src/App.jsx",
+    "project/apps/web/public/portal-studio/variants/04-advising/pages.js"
+  ],
+  "otherFourVariantStubsAndHostUnchanged": true,
+  "reactPatchIdempotent": true,
+  "newRuntimeFiles": "Only owned studio folder and four React adapters; test harness is not included in delivery."
+}

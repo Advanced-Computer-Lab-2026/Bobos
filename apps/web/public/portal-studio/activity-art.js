@@ -90,6 +90,7 @@ function publishingStamp(){
     <g class="stamp-descent"><g class="stamp-grip"><g transform="translate(30 32.9) rotate(-9)">${tool}</g></g></g>`;
 }
 const activitySurrounds={
+  margin:'',
   postage:'<path d="m8 13 43-9 11 8 4 37-49 7-3-7-4 1Z" fill="var(--stamp-shade)"/><path d="M5 10q11-.9 23-3l24-4 2 5 4-1 4 30-2 4 3 3.5q-20 2.5-48 9l-2-3-5 1Z" fill="var(--stamp-paper)" stroke="var(--stamp-ink)" stroke-width=".8"/><path d="m16 45 16-3m3 0 7-2m8-32 2 10 7-2m-41 32 10-2" fill="none" stroke="var(--stamp-ink)" stroke-width="1" opacity=".67"/>',
   copies:'<path d="m11 9 48-2 2 44-49 3Z" fill="var(--stamp-shade)"/><path d="m7 6 48 1-1 43-49-1Z" fill="var(--stamp-paper)" stroke="var(--stamp-ink)"/><path d="M10 13h40" stroke="var(--stamp-stock)" stroke-width="1.7"/>',
   ledger:{

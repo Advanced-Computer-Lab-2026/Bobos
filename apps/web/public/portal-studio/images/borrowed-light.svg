@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="76 174 578 515" width="578" height="515" role="img" aria-labelledby="a06-title a06-desc" data-artwork="borrowed-light">
+  <defs>
+    <linearGradient id="lamplight" x1="0" x2=".12" y1="0" y2="1">
+      <stop offset="0" stop-color="#e7c086" stop-opacity=".58" />
+      <stop offset=".68" stop-color="#e7c086" stop-opacity=".16" />
+      <stop offset="1" stop-color="#e7c086" stop-opacity=".015" />
+    </linearGradient>
+  </defs>
+  <title id="a06-title">Borrowed light</title>
+  <desc id="a06-desc">The weighted pull swings from a brass socket. A warm light falls on the sheet and reveals Group 4’s teaching week, with Thursday free.</desc>
+  <style>.lamp-paper-light{opacity:.82}.lamp-map{opacity:0}</style>
+  <g transform="translate(-36 -43) scale(1.1)">
+    <path d="M141 613q47 11 86 9m45-8 23-1m57-1q28 1 56-6m82-11 49-9" fill="none" stroke="#969885" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" opacity=".53" />
+    <path d="M171 626q32 5 66 1m142-11 48-9" fill="none" stroke="#aaa995" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" opacity=".34" />
+    <g class="lamp-actor">
+      <path class="lamp-base" d="M164 589 Q217 569 269 588 L281 611 Q224 634 151 610 Z" fill="#a4b39b" stroke="#383b32" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+      <ellipse cx="216" cy="592" rx="47" ry="13" fill="#626e5d" stroke="#383b32" stroke-width="2.4" />
+      <path d="M158 614l12-3m7 6 10-4m10 5 9-4" fill="none" stroke="#777d68" stroke-width="1.15" stroke-linecap="round"/>
+      <g class="lamp-lower">
+      <path d="M209 585 L211 414 L227 413 L229 587 Z" fill="#a4b39b" stroke="#383b32" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <g class="lamp-upper">
+      <path d="M210 414 L267 286 L278 292 L229 421 Z" fill="#a4b39b" stroke="#383b32" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+      <ellipse cx="220" cy="417" rx="11" ry="12" fill="#c98163" stroke="#383b32" stroke-width="3" />
+      <ellipse cx="220" cy="417" rx="3" ry="3" fill="#f7efd9" stroke="#383b32" stroke-width="0" />
+      <g class="arm">
+        <path d="M265 283 L276 273 L390 279 L388 294 Z" fill="#626e5d" stroke="#383b32" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+        <g class="shade">
+          <path d="M356 348 Q411 364 469 348 L592 596 Q428 632 285 601Z" fill="url(#lamplight)" stroke="#383b32" stroke-width="0" stroke-linecap="round" stroke-linejoin="round" opacity="1" class="lamp-beam" />
+          <path class="shade-switch" d="M386 279 C397 246 429 254.0 441 281 L472 348 Q421 378 353 347 Z" fill="#c98163" stroke="#383b32" stroke-width="3.7" stroke-linecap="round" stroke-linejoin="round" />
+          <ellipse cx="412" cy="348" rx="59" ry="14" fill="#dad3bc" stroke="#383b32" stroke-width="3" />
+          <path d="M391 347c1-5 12-9 25-9 12 0 19 3 23 5l6 1q4 .7 4 4.5c0 2.5-2.4 4.4-6.3 4.5l-9 .3c-7 3-19 4-29 2-9-1.5-15-4-13.7-8.3Z" fill="#c9bd9f" stroke="#655f4e" stroke-width="1.25" />
+          <ellipse cx="416" cy="348" rx="21" ry="8" fill="#caaa65" stroke="#383b32" stroke-width="1.8" class="lamp-bulb" />
+          <path d="M389 287 Q386 308 375 328" fill="none" stroke="#f0c5a6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+          <g transform="translate(443 352)">
+            <path d="M-4.3-5.1q3.8-1.8 8.2.1l-1 4.1C2 .9-1.7 1.3-3 .1Z" fill="#aa926a" stroke="#514a3b" stroke-width="1.15" />
+            <ellipse class="chain-outlet" cx="0" cy="0" rx="2.5" ry="1.3" fill="#3d392e" />
+            <g class="lamp-chain">
+              <g fill="none" stroke-linecap="round" pointer-events="none">
+                <path class="cord-shadow" d="M0 0L0 55" stroke="#a99c80" stroke-width="1.8"/>
+                <path class="cord-beads" d="M0 0L0 55" stroke="#f6dba0" stroke-width="1.9" stroke-dasharray=".5 4"/>
+              </g>
+              <g class="cord-grip">
+                  <path class="chain-weight" d="M.4 55q3.5 1.2 4.3 6.6c.6 4-1.4 6.6-4 6.8-3.2.2-5-2-4.4-6.2.4-3.4 1.7-6 4.1-7.2Z" fill="#bd9762" stroke="#524936" stroke-width="1.7" />
+                  <g class="weight-ink" fill="none" stroke="#ffe2a0" stroke-width="1.4" stroke-linecap="round" pointer-events="none">
+                    <path d="M-.6 55.8q-3.6 4.1-3 8.5m3.7 3.4q4.3-.7 3.9-6.2"/>
+                    <path d="M.4 55.6q-4.1 4.2-3.6 9.1m4 2.5q4.1-1.4 3.2-6.4"/>
+                    <path d="M-.2 56.5q-3.8 2.9-3.5 7.2m3.4 4.1q4.9-.6 4.1-6.1"/>
+                  </g>
+                <rect class="lamp-grab" x="-23" y="38" width="46" height="48" rx="16" fill="transparent" stroke="none"/>
+              </g>
+            </g>
+          </g>
+        </g>
+      </g>
+      <ellipse cx="273" cy="287" rx="10" ry="10" fill="#c98163" stroke="#383b32" stroke-width="2.7" />
+      </g>
+      </g>
+    </g>
+    <g stroke-linejoin="round" stroke-linecap="round">
+      <path d="M307 558 Q394 545 506 527 L544 563 Q535 577 513 585 L357 610 Q334 589 307 558Z" transform="translate(1.6 2.6)" fill="#403f35" opacity=".65" />
+      <path d="M307 558 Q394 545 506 527 L544 563 Q535 577 513 585 L357 610 Q334 589 307 558Z" fill="#d3cbb8" stroke="#59584c" stroke-width="1.8" />
+      <path d="M307 558 Q394 545 506 527 L544 563 Q535 577 513 585 L357 610 Q334 589 307 558Z" fill="#fff2ce" class="lamp-paper-light" />
+      <path d="M544 563 Q537 572 513 585 Q526 574 526 566 Q534 567 544 563Z" fill="#c9bfa8" stroke="#747061" stroke-width="1.15" />
+      <path d="m474 532 16-3 7 7-7-.9-3.3 4z" fill="#c88973" stroke="#756553" stroke-width=".9" />
+      <g transform="matrix(1 -.155 .82 .88 322 559)">
+        <text x="0" y="7" font-family="Georgia,serif" font-size="10" fill="#544d3e">Group 4</text>
+        <path d="M36 6q33-.7 61-.3m7 .1 51-.7" stroke="#9d9683" stroke-width=".8" fill="none"/>
+        <g font-family="system-ui,sans-serif" font-size="6.4" fill="#504f44">
+          <text x="1" y="17">Sun</text><text x="33" y="17">Mon</text><text x="65" y="17">Tue</text><text x="97" y="17">Wed</text><text x="129" y="17">Thu</text>
+        </g>
+        <path d="M0 20q69-.5 157 .1M29 19.5l.4 27m31.6-27 .3 27m31.8-27 .4 27m31.8-27 .1 27" fill="none" stroke="#a39a82" stroke-width=".8"/>
+        <g class="lamp-map" stroke="#5a5a4c" stroke-width=".65">
+          <g class="map-node" style="--node-delay:0ms"><path d="M1 22l24-.3 .2 4-24 .5z" fill="#96b6cf"/><path d="M1 35l24 .1-.1 3.8-24 .2z" fill="#d59878"/></g>
+          <path class="map-node" style="--node-delay:70ms" d="M33 29l24-.3 .4 4-24 .1z" fill="#a3b9a8"/>
+          <g class="map-node" style="--node-delay:130ms"><path d="M65 22l24-.2-.1 4-24 .2z" fill="#d59878"/><path d="M65 29l24 .1-.2 4-24-.2z" fill="#96b6cf"/><path d="M65 42l24-.2.1 4-24 .2z" fill="#a3b9a8"/></g>
+          <path class="map-node" style="--node-delay:195ms" d="M97 35l24-.2 .1 4-24 .4z" fill="#ece8da"/>
+          <path class="map-edge" pathLength="1" d="M130 33q5 0 10-.4" fill="none" stroke="#8a856f" stroke-width="1.2"/>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>

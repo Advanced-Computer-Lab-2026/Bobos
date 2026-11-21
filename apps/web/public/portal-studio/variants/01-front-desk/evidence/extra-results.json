@@ -1,0 +1,156 @@
+{
+  "checks": [
+    {
+      "name": "event fixture scheduleSwapOpened/normalStudent",
+      "passed": true
+    },
+    {
+      "name": "event fixture scheduleSwapCompleted/normalStudent",
+      "passed": true
+    },
+    {
+      "name": "event fixture scheduleReadyForReview/advisingStudent",
+      "passed": true
+    },
+    {
+      "name": "event fixture slotChangeDecision/advisingStudent",
+      "passed": true
+    },
+    {
+      "name": "event fixture scheduleProcessed/normalStudent",
+      "passed": true
+    },
+    {
+      "name": "event fixture scheduleProcessed/advisingStudent",
+      "passed": true
+    },
+    {
+      "name": "event fixture scheduleReopened/advisingStudent",
+      "passed": true
+    },
+    {
+      "name": "event fixture extraHoursDecision/advisingStudent",
+      "passed": true
+    },
+    {
+      "name": "event fixture paymentUpdated/advisingStudent",
+      "passed": true
+    },
+    {
+      "name": "event fixture deferredChargeUpdated/advisingStudent",
+      "passed": true
+    },
+    {
+      "name": "event fixture refundIssued/advisingStudent",
+      "passed": true
+    },
+    {
+      "name": "event fixture graduationPlanDecision/advisingStudent",
+      "passed": true
+    },
+    {
+      "name": "event fixture exitExamDecision/advisingStudent",
+      "passed": true
+    },
+    {
+      "name": "event fixture advisorAssigned/advisor",
+      "passed": true
+    },
+    {
+      "name": "event fixture slotChangeSubmitted/advisor",
+      "passed": true
+    },
+    {
+      "name": "event fixture slotChangeWithdrawn/advisor",
+      "passed": true
+    },
+    {
+      "name": "event fixture extraHoursRequested/coordinator",
+      "passed": true
+    },
+    {
+      "name": "event fixture graduationPlanSubmitted/coordinator",
+      "passed": true
+    },
+    {
+      "name": "event fixture exitExamRequested/coordinator",
+      "passed": true
+    },
+    {
+      "name": "event fixture mandatoryCourseRemovalRequested/coordinator",
+      "passed": true
+    },
+    {
+      "name": "event fixture financialReversalRequested/coordinator",
+      "passed": true
+    },
+    {
+      "name": "event fixture advisingDeadlineReminder/advisor",
+      "passed": true
+    },
+    {
+      "name": "event fixture advisingDeadlineReminder/coordinator",
+      "passed": true
+    },
+    {
+      "name": "event fixture termUpdated/administrator",
+      "passed": true
+    },
+    {
+      "name": "event fixture offeringsPublished/administrator",
+      "passed": true
+    },
+    {
+      "name": "event fixture scheduleAudit/administrator",
+      "passed": true
+    },
+    {
+      "name": "email-only sent",
+      "passed": true
+    },
+    {
+      "name": "email-only pending",
+      "passed": true
+    },
+    {
+      "name": "email-only failed",
+      "passed": true
+    },
+    {
+      "name": "Opening/selecting does not mark read in all ten arrangements",
+      "passed": true
+    },
+    {
+      "name": "Disallowed event query cannot expose Coordinator handoff",
+      "passed": true
+    },
+    {
+      "name": "Invalid GUC domain preserves entries and blocks preview submit",
+      "passed": true
+    },
+    {
+      "name": "Reset enforces 72 bytes, not 72 Unicode characters",
+      "passed": true
+    },
+    {
+      "name": "Short OTP rejected by native input validity",
+      "passed": true
+    },
+    {
+      "name": "Native conversation artwork visible, locally animated and reduced-motion safe",
+      "passed": true
+    },
+    {
+      "name": "Registry merge preserves other-team keys and installs CSS only once",
+      "passed": true
+    }
+  ],
+  "errors": [],
+  "failures": [],
+  "passed": true,
+  "summary": {
+    "checks": 36,
+    "errors": 0,
+    "failures": 0
+  }
+}

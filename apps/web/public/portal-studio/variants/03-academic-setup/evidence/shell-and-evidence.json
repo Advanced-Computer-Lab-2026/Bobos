@@ -1,0 +1,282 @@
+{
+  "suite": "shell-and-evidence",
+  "base": "http://127.0.0.1:8001",
+  "browser": "144.0.7559.96",
+  "passed": 68,
+  "failed": 0,
+  "javascriptErrors": [],
+  "cases": [
+    {
+      "name": "Calendar position survives an academic page round-trip",
+      "passed": true
+    },
+    {
+      "name": "Existing calendar previous control still works",
+      "passed": true
+    },
+    {
+      "name": "Existing profile opens",
+      "passed": true
+    },
+    {
+      "name": "Existing brand returns to Overview",
+      "passed": true
+    },
+    {
+      "name": "dark shell dimensions and inherited fonts stay unchanged",
+      "passed": true
+    },
+    {
+      "name": "light shell dimensions and inherited fonts stay unchanged",
+      "passed": true
+    },
+    {
+      "name": "administrator / terms read boundary",
+      "passed": true
+    },
+    {
+      "name": "administrator / courses read boundary",
+      "passed": true
+    },
+    {
+      "name": "administrator / course-detail read boundary",
+      "passed": true
+    },
+    {
+      "name": "administrator / offerings read boundary",
+      "passed": true
+    },
+    {
+      "name": "administrator / copy-offerings read boundary",
+      "passed": true
+    },
+    {
+      "name": "administrator / templates read boundary",
+      "passed": true
+    },
+    {
+      "name": "administrator / template-detail read boundary",
+      "passed": true
+    },
+    {
+      "name": "administrator / group-assignments read boundary",
+      "passed": true
+    },
+    {
+      "name": "administrator / group-assignments write controls absent",
+      "passed": true
+    },
+    {
+      "name": "coordinator / terms read boundary",
+      "passed": true
+    },
+    {
+      "name": "coordinator / terms write controls absent",
+      "passed": true
+    },
+    {
+      "name": "coordinator / courses read boundary",
+      "passed": true
+    },
+    {
+      "name": "coordinator / courses write controls absent",
+      "passed": true
+    },
+    {
+      "name": "coordinator / course-detail read boundary",
+      "passed": true
+    },
+    {
+      "name": "coordinator / course-detail write controls absent",
+      "passed": true
+    },
+    {
+      "name": "coordinator / offerings read boundary",
+      "passed": true
+    },
+    {
+      "name": "coordinator / offerings write controls absent",
+      "passed": true
+    },
+    {
+      "name": "coordinator / copy-offerings read boundary",
+      "passed": true
+    },
+    {
+      "name": "coordinator / templates read boundary",
+      "passed": true
+    },
+    {
+      "name": "coordinator / template-detail read boundary",
+      "passed": true
+    },
+    {
+      "name": "coordinator / group-assignments read boundary",
+      "passed": true
+    },
+    {
+      "name": "advisor / terms read boundary",
+      "passed": true
+    },
+    {
+      "name": "advisor / terms write controls absent",
+      "passed": true
+    },
+    {
+      "name": "advisor / courses read boundary",
+      "passed": true
+    },
+    {
+      "name": "advisor / courses write controls absent",
+      "passed": true
+    },
+    {
+      "name": "advisor / course-detail read boundary",
+      "passed": true
+    },
+    {
+      "name": "advisor / course-detail write controls absent",
+      "passed": true
+    },
+    {
+      "name": "advisor / offerings read boundary",
+      "passed": true
+    },
+    {
+      "name": "advisor / copy-offerings read boundary",
+      "passed": true
+    },
+    {
+      "name": "advisor / templates read boundary",
+      "passed": true
+    },
+    {
+      "name": "advisor / template-detail read boundary",
+      "passed": true
+    },
+    {
+      "name": "advisor / group-assignments read boundary",
+      "passed": true
+    },
+    {
+      "name": "normalStudent / terms read boundary",
+      "passed": true
+    },
+    {
+      "name": "normalStudent / terms write controls absent",
+      "passed": true
+    },
+    {
+      "name": "normalStudent / courses read boundary",
+      "passed": true
+    },
+    {
+      "name": "normalStudent / courses write controls absent",
+      "passed": true
+    },
+    {
+      "name": "normalStudent / course-detail read boundary",
+      "passed": true
+    },
+    {
+      "name": "normalStudent / course-detail write controls absent",
+      "passed": true
+    },
+    {
+      "name": "normalStudent / offerings read boundary",
+      "passed": true
+    },
+    {
+      "name": "normalStudent / copy-offerings read boundary",
+      "passed": true
+    },
+    {
+      "name": "normalStudent / templates read boundary",
+      "passed": true
+    },
+    {
+      "name": "normalStudent / template-detail read boundary",
+      "passed": true
+    },
+    {
+      "name": "normalStudent / group-assignments read boundary",
+      "passed": true
+    },
+    {
+      "name": "advisingStudent / terms read boundary",
+      "passed": true
+    },
+    {
+      "name": "advisingStudent / terms write controls absent",
+      "passed": true
+    },
+    {
+      "name": "advisingStudent / courses read boundary",
+      "passed": true
+    },
+    {
+      "name": "advisingStudent / courses write controls absent",
+      "passed": true
+    },
+    {
+      "name": "advisingStudent / course-detail read boundary",
+      "passed": true
+    },
+    {
+      "name": "advisingStudent / course-detail write controls absent",
+      "passed": true
+    },
+    {
+      "name": "advisingStudent / offerings read boundary",
+      "passed": true
+    },
+    {
+      "name": "advisingStudent / copy-offerings read boundary",
+      "passed": true
+    },
+    {
+      "name": "advisingStudent / templates read boundary",
+      "passed": true
+    },
+    {
+      "name": "advisingStudent / template-detail read boundary",
+      "passed": true
+    },
+    {
+      "name": "advisingStudent / group-assignments read boundary",
+      "passed": true
+    },
+    {
+      "name": "Native modal receives initial field focus",
+      "passed": true
+    },
+    {
+      "name": "Slash inside academic modal does not open host quick-find",
+      "passed": true
+    },
+    {
+      "name": "Escape closes modal and restores original opener",
+      "passed": true
+    },
+    {
+      "name": "Mobile validation stays visible without body overflow",
+      "passed": true
+    },
+    {
+      "name": "Mobile before/after review remains a contained native modal",
+      "passed": true
+    },
+    {
+      "name": "Reduced motion uses a static final pose",
+      "passed": true
+    },
+    {
+      "name": "Task artwork plays finite held poses and rests",
+      "passed": true
+    },
+    {
+      "name": "No unhandled shell or permission JavaScript errors",
+      "passed": true
+    }
+  ]
+}
