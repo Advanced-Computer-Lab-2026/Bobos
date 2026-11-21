@@ -2,6 +2,8 @@
 
 Rules for contributing to this repository.
 
+Read [the Portal design system](docs/portal-design-system.md) at the start of every task. For UI, illustration or animation work, inspect the linked live example and source for the component you are changing. Keep the guide current when the approved design changes.
+
 ## Branching
 
 - `main` — production-ready code only. Never push directly.
