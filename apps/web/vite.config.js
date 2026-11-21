@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
+  build: { rollupOptions: { input: ["index.html", "workspace.html"] } },
   envDir: "../..",
   server: {
     proxy: {

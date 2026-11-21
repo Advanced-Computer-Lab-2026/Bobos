@@ -1,22 +1,20 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#faf8f4" />
-    <meta name="description" content="Portal for university scheduling and academic services portal" />
-    <script>
-      try {
-        if (localStorage.getItem("portal.theme") === "dark") document.documentElement.dataset.theme = "dark";
-      } catch { /* Use the default theme if storage is unavailable. */ }
-    </script>
-    <link rel="stylesheet" href="/portal-studio/login-art.css" />
-    <script defer src="/portal-studio/lamp-cord.js"></script>
-    <script defer src="/portal-studio/desk-lamp.js"></script>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Portal · Academic workspace</title>
+    <script>
+      const destination = new URL("portal-studio/index.html", location.href);
+      destination.search = location.search;
+      destination.hash = location.hash;
+      if (destination.searchParams.has("calendar")) {
+        destination.pathname = new URL("workspace.html", location.href).pathname;
+      } else if (!destination.searchParams.has("page")) {
+        destination.searchParams.set("page", localStorage.getItem("portal-studio-preview-session") === "1" ? "overview" : "login");
+      }
+      location.replace(destination);
+    </script>
   </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+  <body><a href="./portal-studio/index.html?page=login">Open Portal</a></body>
 </html>
