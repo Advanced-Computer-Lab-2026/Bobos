@@ -729,6 +729,7 @@ td { color: var(--ink); }
 
 .folio-greeting p { margin: 8px 0 0; color: var(--muted); font-size: 14px; }
 .folio-desk { display: grid; grid-template-columns: minmax(0, 2fr) minmax(255px, 1fr); gap: 28px; }
+.folio-desk-staff .folio-queue { grid-column: 1 / -1; }
 .folio-desk h2 { margin: 0 0 14px; font-size: 20px; }
 .folio-feature {
   display: flex;

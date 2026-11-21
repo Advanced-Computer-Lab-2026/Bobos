@@ -1,6 +1,6 @@
 # Portal design system
 
-The visual reference is Portal Studio’s **Claude Study** workspace, coordinator **Teaching week** view, **Concertina** calendar and **File tags** activity. Use the original page layouts when extending the design to another role. Keep the information, navigation, actions and permissions appropriate to that role. The design editions under `variants/` are explorations. Their presence in the repository does not make every treatment a house convention.
+The visual reference is Portal Studio’s **Claude Study** workspace and **Concertina** calendar. The staff overview opens with a full-width work queue, followed by schedule review and the academic calendar. On narrow screens the sections stack in the same reading order. Students see their teaching week. Staff can open student schedules from Schedule review, and the activity log remains a separate page. Keep the information, navigation, actions and permissions appropriate to each role. The design editions under `variants/` are explorations. Their presence in the repository does not make every treatment a house convention.
 
 ## See it in motion
 
@@ -9,6 +9,8 @@ From the repository root run `python3 -m http.server 8080 --bind 127.0.0.1 --dir
 The paths below refer to `apps/web/public/portal-studio/`. It is the runnable visual reference. The React application lives under `apps/web/src/`. When bringing artwork to a real workflow, keep its existing data, access controls, loading states and submission behavior.
 
 ## Surface, type and composition
+
+Normal and advising students use the illustrated teaching week. Below it, Coming up and the notification preview share a column beside the academic calendar. The preview shows unread notices or a large break message when the inbox is caught up. Coordinators see assignments and requests, advisors see advising work, and administrators see academic setup in the work queue.
 
 The console palette uses charcoal canvas (#151515), a slightly deeper sidebar (#0f0f0f), warm white ink (#efeee9), muted copy (#bdbbb0) and quiet rules (#303030). Light mode uses a muted ground (#f0eee6), paper (#f8f6ef) and dark brown ink (#302d28). Read the applied tokens in `studio.js`, `base.css` and `studio.css`; theme-specific overrides matter. Use semantic tokens for controls and text. Save sky blue, clay, sage and warm cream for recognizable objects, course identities and useful distinctions. The Computer Graphics sheet is a good cream reference.
 
@@ -34,7 +36,6 @@ The code uses alternate SVG paths, stepped CSS keyframes and timed JavaScript po
 | Schedule review | A cream desktop folder exposes a sheet. The front cover yields at its base. The sheet settles before the ink does. Names and credits stay readable below it. | `app.js` → desktop-folder markup; `studio.css` → folder-lift, folder-open, folder-contour, folder-pen |
 | Timetable and greeting | Nodes depict Algorithms, a faceted solid depicts Graphics, a bug belongs to Advanced Computer Lab, and a coffee cup marks a free day. The sun or moon sits beside the greeting. Study each silhouette at card size. | `images/symbols/`, `app.js`, `studio.css` |
 | Calendar | Follow a paper corner around the rings. The binding anchors the rotation, successive turns can overlap, and the seasonal art belongs to its sheet. Deadline notes share the calendar’s perspective. | `binder-motion.js`, `concertina.js`, `concertina-turn.css`, `seasonal-calendar.js` |
-| Recent activity | The object identifies what happened. Study the advising draft and the published template side by side. The stamp descends, leaves its mark, lifts and holds. | `activity-art.js` → `activityStamp`; `activity.css` |
 | Staff and student pages | Apply illustrations to the particular workflow while preserving the arrangement people use to complete it. Compare coordinator and student routes. | `staff-art.js`, `student-art.js`, corresponding CSS, `desk-details.css`, `academic-pages.css` |
 
 ## Sign-in and the lamp

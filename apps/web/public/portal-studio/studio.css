@@ -1682,3 +1682,103 @@ html[data-theme=dark] .illustrated-greeting .night-sky{color:#c9cde6}
  @keyframes april-breeze{21%{transform:skewX(-2deg)}34%{transform:skewX(-5deg)}46%{transform:skewX(-6deg)}59%{transform:skewX(-3deg)}75%{transform:skewX(2deg)}89%{transform:skewX(1deg)}}
 }
 @media(prefers-reduced-motion:no-preference){.pine-flurry{animation:february-drift 3.6s -.9s steps(1,end) infinite}}
+
+/* The staff overview leads with work, then pairs schedule review with term dates. */
+.portal-studio[data-workspace=claude-study] .dashboard-edition[data-edition=teaching] .page-head {
+  justify-content: flex-start;
+  min-height: 0;
+  padding: clamp(12px, 2.5vw, 32px) 0 0;
+  text-align: start;
+}
+.dashboard-edition[data-edition=teaching] :is(.illustrated-greeting, .page-head p) {
+  justify-content: flex-start;
+}
+.dashboard-edition[data-edition=teaching] .module-intro { text-align: start; }
+.dashboard-edition[data-edition=teaching] .work-grid > .work-module { width: 100%; }
+.dashboard-edition[data-edition=teaching] .module-calendar { align-self: start; }
+.dashboard-edition[data-edition=teaching] :is(.module-review, .module-calendar) {
+  border-top: 1px solid var(--line);
+  padding-top: clamp(16px, 2vw, 24px);
+}
+.dashboard-edition[data-edition=teaching] .desk-calendar {
+  width: min(100%, 390px);
+  margin-block-start: 0;
+  padding-block-start: 0;
+}
+
+.portal-studio[data-workspace=claude-study] .dashboard-edition[data-edition=teaching] [data-direction=illustrated] .queue-entries {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 165px), 1fr));
+  gap: 12px;
+}
+.portal-studio[data-workspace=claude-study] .dashboard-edition[data-edition=teaching] [data-direction=illustrated] .queue-entry {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: 64px 1fr auto;
+  gap: 8px;
+  padding: clamp(12px, 2vw, 20px);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--raised);
+}
+.dashboard-edition[data-edition=teaching] .queue-entry:is(:hover, :focus-within) {
+  outline: 1px solid var(--muted);
+  outline-offset: -1px;
+}
+.dashboard-edition[data-edition=teaching] .queue-entry :is(.queue-icon, .queue-link) { justify-self: start; }
+.module-activity:has(.student-calendar-action) .desk-calendar { margin-inline: auto; }
+.student-calendar-action { margin-top: 12px; text-align: center; }
+.portal-studio[data-workspace=claude-study] .module-review:has(.student-inbox) {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+}
+.student-inbox {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  margin-top: 20px;
+  padding: clamp(14px, 2.5vw, 24px);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--raised);
+}
+.student-inbox .section-head { flex-wrap: wrap; gap: 8px 12px; }
+.student-inbox-count {
+  display: inline-block;
+  margin-inline-start: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.student-inbox-list { margin: 0; padding: 0; list-style: none; }
+.student-inbox-list li { padding-block: 12px; border-top: 1px solid var(--line); }
+.student-inbox-list p { margin: 4px 0; color: var(--muted); }
+.student-inbox-list small { color: var(--muted); }
+.student-inbox-empty {
+  flex: 1;
+  display: grid;
+  align-content: center;
+  gap: 10px;
+  min-height: 220px;
+  padding-block: 12px;
+}
+.student-inbox-empty p { margin: 0; color: var(--muted); }
+.student-inbox-empty .student-inbox-message {
+  color: var(--ink);
+  font: 400 clamp(30px, 4vw, 54px)/1.03 Tiempos, Georgia, serif;
+  letter-spacing: -.04em;
+}
+.student-inbox-sun { color: var(--ink); font-size: 32px; line-height: 1; }
+
+@container workqueue (max-width:365px) {
+  .portal-studio[data-workspace=claude-study] .dashboard-edition[data-edition=teaching] [data-direction=illustrated] .queue-entries {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .portal-studio[data-workspace=claude-study] .dashboard-edition[data-edition=teaching] [data-direction=illustrated] .queue-entry {
+    grid-template-columns: 62px minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    column-gap: 12px;
+  }
+  .dashboard-edition[data-edition=teaching] .queue-entry .queue-icon { grid-row: span 2; align-self: center; }
+  .dashboard-edition[data-edition=teaching] .queue-entry :is(.queue-copy, .queue-link) { grid-column: 2; }
+}
