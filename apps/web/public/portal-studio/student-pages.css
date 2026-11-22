@@ -36,13 +36,10 @@
   & [data-screen="preferences"] .preference-day-grid label{
     min-height:36px;gap:6px;padding:5px 9px;background:transparent;border-radius:7px;
   }
-  & [data-screen="preferences"] .preference-day-grid label:has(:checked){
-    background:var(--raised);border-color:var(--control);color:var(--ink);
-  }
   & [data-screen="preferences"] .preference-course{border:0;padding:9px 0}
   & [data-screen="preferences"] .student-course-emblem{width:33px;height:33px;border-radius:8px}
   & [data-screen="preferences"] .student-course-emblem .course-drawing{width:23px;height:20px}
-  & [data-screen="preferences"] .preference-notes textarea{background:var(--paper);border-color:var(--control);border-radius:10px}
+  & [data-screen="preferences"] .preference-notes textarea{background:var(--paper);border:0;border-radius:8px}
   & .academic-standing{display:flex;gap:clamp(20px,5vw,70px);flex-wrap:wrap;margin:0 0 27px}
   & .academic-standing dt,& .academic-standing dd:last-child{font-size:12px;color:var(--muted)}
   & .academic-standing dd{margin:0}

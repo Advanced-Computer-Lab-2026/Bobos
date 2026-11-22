@@ -112,3 +112,39 @@
 @media (max-width:720px) {
   .content:has(.staff-heading) .week-columns.compact-week > .week-day {min-width:0}
 }
+/* The back card is stationary. The front card stays behind the box's lip. */
+@media(prefers-reduced-motion:no-preference){
+  [data-screen=courses] .staff-heading .desk-index {
+    animation:none;transition:transform 340ms cubic-bezier(.2,.8,.3,1);
+  }
+  [data-screen=courses] .staff-heading:hover .desk-index {transform:translateY(-7px) rotate(-2deg)}
+  [data-screen=mandatory-removals] .staff-heading .desk-eraser {
+    animation:eraser-pass 5.2s ease-in-out infinite;
+  }
+  [data-screen=mandatory-removals] .staff-heading .desk-pencilmark {
+    animation:pencil-erased 5.2s ease-in-out infinite;
+  }
+  @keyframes eraser-pass {
+    0%,12%,100% {transform:translate(8px,-8px)}
+    22% {transform:translate(5px,-1px)}
+    38% {transform:translate(-7px,2px)}
+    44% {transform:translate(-4px,1px)}
+    62% {transform:translate(-20px,5px)}
+    68% {transform:translate(-17px,4px)}
+    75% {transform:translate(-25px,6px)}
+    84% {transform:translate(-22px,-7px)}
+    96% {transform:translate(8px,-8px)}
+  }
+  @keyframes pencil-erased {
+    0%,22% {stroke-dashoffset:0;opacity:1}
+    38%,44% {stroke-dashoffset:.43}
+    62%,68% {stroke-dashoffset:.85}
+    75%,89% {stroke-dashoffset:1;opacity:0}
+    90% {stroke-dashoffset:0;opacity:0}
+    100% {stroke-dashoffset:0;opacity:1}
+  }
+  [data-screen=group-assignments] .staff-heading .desk-group-file {
+    animation:none;transition:transform 320ms cubic-bezier(.2,.7,.25,1);
+  }
+  [data-screen=group-assignments] .staff-heading:hover .desk-group-file {transform:translateY(-5px)}
+}
