@@ -1,0 +1,106 @@
+@font-face {
+  font-family: Styrene;
+  src: local("StyreneB-Regular");
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: Tiempos;
+  src: local("TiemposText-Regular");
+  font-weight: 400;
+  font-display: swap;
+}
+
+/* Claude Study colors and spacing for the live Extra-hours workspace. */
+.extra-hours-shell {
+  --canvas: #f0eee6;
+  --sidebar: #e8e4da;
+  --paper: #f8f6ef;
+  --raised: #eae6dc;
+  --active: #ded9cd;
+  --ink: #302d28;
+  --muted: #615c52;
+  --line: #d8d3c7;
+  --accent: #285ca1;
+  --study-gutter: clamp(24px, 4vw, 64px);
+  grid-template-columns: clamp(212px, 17vw, 300px) minmax(0, 1fr);
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: Styrene, system-ui, sans-serif;
+}
+
+:root[data-theme="dark"] .extra-hours-shell {
+  --canvas: #151515;
+  --sidebar: #0f0f0f;
+  --paper: #232323;
+  --raised: #292929;
+  --active: #3b3b3b;
+  --ink: #efeee9;
+  --muted: #bdbbb0;
+  --line: #303030;
+  --control: #656565;
+  --accent: #8dbbfa;
+}
+
+.extra-hours-shell .sidebar { padding: 28px 16px 20px; }
+.extra-hours-shell .sidebar > .portal-home { align-self: flex-start; margin: 4px 16px 24px; }
+.extra-hours-shell .portal-wordmark { font: 400 36px/1.1 Tiempos, Georgia, serif; letter-spacing: -.052em; }
+.extra-hours-shell .portal-find { display: none; }
+.extra-hours-shell .sidebar .nav-group-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 4px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 500;
+  list-style: none;
+  cursor: pointer;
+}
+.extra-hours-shell .nav-group-title::-webkit-details-marker { display: none; }
+.extra-hours-shell .nav-group-title:hover { background: var(--raised); }
+.extra-hours-shell .nav-group-title svg { width: 13px; height: 13px; }
+.extra-hours-shell details:not([open]) > .nav-group-title svg { transform: rotate(-90deg); }
+.extra-hours-shell .sidebar .nav-item { min-height: 32px; gap: 8px; color: var(--muted); font-size: 13px; }
+.extra-hours-shell .sidebar .nav-item:is(:hover, .active) { color: var(--ink); }
+.extra-hours-shell .nav-item svg { width: 15px; height: 15px; }
+.extra-hours-sidebar-footer { margin: 12px 10px 0; color: var(--muted); font-size: 12px; }
+
+.extra-hours-shell .topbar { min-height: 52px; padding-inline: var(--study-gutter); background: var(--sidebar); }
+.extra-hours-shell .portal-menu-button { display: inline-grid; }
+.extra-hours-crumb { margin-inline-end: 8px; color: var(--muted); }
+.extra-hours-crumb > span { margin-inline-start: 8px; }
+.extra-hours-shell .topbar-actions :is(.icon-button, .user-chip, .portal-theme) { border-color: transparent; background: transparent; }
+.extra-hours-shell .topbar-actions :is(.icon-button, .user-chip, .portal-theme):hover { background: var(--raised); }
+.extra-hours-shell .user-chip .avatar { background: #bcbdcf; color: #313532; }
+.extra-hours-shell .page-content { padding: clamp(28px, 4.5vw, 64px) var(--study-gutter) 48px; }
+
+.extra-hours-page .workspace-header { align-items: flex-end; margin-bottom: 8px; }
+.extra-hours-page .workspace-header h1 {
+  font: 400 clamp(34px, 4.2vw, 56px)/1.08 Tiempos, Georgia, serif;
+  letter-spacing: -.045em;
+}
+.extra-hours-page .workspace-header p { margin-top: 12px; }
+.extra-hours-page .panel { border-radius: 12px; }
+.extra-hours-page .panel h2 { font-size: 18px; font-weight: 600; }
+.extra-hours-page .panel > .detail-grid { gap: 12px 20px; margin-bottom: 16px; }
+.extra-hours-page .panel > :is(.feedback, .form-stack, .form-actions) { margin-top: 16px; }
+.extra-hours-page .wallet-balance { margin-bottom: 0; color: var(--ink); }
+.extra-hours-page .wallet-balance p { color: var(--muted); }
+.extra-hours-page .panel > details { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); }
+.extra-hours-page .panel > details summary { width: fit-content; min-height: 32px; color: var(--ink); cursor: pointer; }
+.extra-hours-page .panel > details ol { margin: 6px 0 0; padding-inline-start: 22px; color: var(--muted); }
+.extra-hours-page .panel > details li + li { margin-top: 8px; }
+
+@media (max-width: 800px) {
+  .extra-hours-shell { --study-gutter: 16px; }
+  .extra-hours-shell .portal-mobile-brand .portal-wordmark { font-size: clamp(21px, 5vw, 27px); font-weight: 700; }
+}
+
+@media (max-width: 700px) {
+  .extra-hours-page .workspace-header { align-items: stretch; }
+}

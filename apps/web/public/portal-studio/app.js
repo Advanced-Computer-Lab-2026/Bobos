@@ -19,6 +19,7 @@ const pages = {
 const roleNames = {coordinator:'Coordinator', administrator:'Administrator', advisor:'Advisor', advisingStudent:'Advising student', normalStudent:'Normal student'};
 const authPages = new Set(['login','forgot','reset']);
 const previewSessionKey = 'portal-studio-preview-session';
+const workspaceSessionKey = 'bobos.token';
 const previewEmail = 'demo@portal.test';
 const signedIn = () => localStorage.getItem(previewSessionKey) === '1';
 const pageKey = key => Object.hasOwn(pages,key) ? key : 'overview';
@@ -50,6 +51,10 @@ const href = (target,index=selectedStudent,course=selectedCourse) => {
 };
 
 const link = (target, text, cls='', index) => `<a class="${cls}" href="${href(target,index)}" data-page="${target}"${index===undefined?'':` data-student="${index}"`}>${text}</a>`;
+const navigationLabel = id => id === 'extra-hours' ? 'Extra-hours requests' : pages[id];
+const navigationLink = (id, label, cls) => id === 'extra-hours'
+  ? `<a class="${cls}" href="../workspace.html?screen=extra-hours&theme=${lab.dark ? 'dark' : 'light'}" data-live-extra-hours>${label}</a>`
+  : link(id,label,cls);
 const button = (text, action, cls='btn', extra='') => `<button class="${cls}" type="button" data-action="${action}" ${extra}>${text}</button>`;
 const badge = (text, tone='') => `<span class="badge ${tone}">${icon(tone==='draft'?'edit':tone==='neutral'?'circle':tone==='pending'||tone==='payment-pending'?'clock':tone==='ready'||tone==='review'?'inbox':'check')}${text}</span>`;
 const names = ['Omar Hassan','Mariam Mostafa','Ahmed Khaled','Farah Mahmoud','Youssef Tarek','Laila Amr','Nour Ibrahim','Salma Tamer','Kareem Mostafa','Yasmin Adel','Ali Nabil','Hana Sherif'];
@@ -359,13 +364,13 @@ function groups(){
   if (student()) return [
     ['Home', ['overview']],
     ['Classes', ['my-schedule','my-courses', ...(role === 'normalStudent' ? ['schedule-swap'] : ['preferences'])]],
-    ['Support', ['my-advisor','calendar-sync', ...(role === 'advisingStudent' ? ['records'] : [])]]
+    ['Support', ['my-advisor','calendar-sync', ...(role === 'advisingStudent' ? ['records','extra-hours'] : [])]]
   ];
   return [
     ['Home', ['overview', ...(role === 'coordinator' ? ['pending-work'] : [])]],
     ['Student services', [
       ...(managesAcademics ? ['directory','financial-records'] : []),
-      ...(advises ? ['advising'] : [])
+      ...(advises ? ['advising','extra-hours'] : [])
     ]],
     ['Scheduling', [
       'student-schedules', ...(advises ? ['preferences'] : []),
@@ -383,6 +388,7 @@ function sidebar(){
     <div class="brand">${link('overview',portalWordmark(),'wordmark')}<span>Academic workspace</span></div>
     <nav aria-label="Main navigation">${groups().map(([name,items],groupIndex)=>{
       const contents = `<ul>${items.map(id => {
+        if (id === 'extra-hours') return `<li>${navigationLink(id,`<span>${navigationLabel(id)}</span>`,'navlink')}</li>`;
         const current = page === id || parent[page] === id;
         const count = id === 'student-schedules' ? readyStudents.length : id === 'mandatory-removals' ? 3 : '';
         return `<li><a class="navlink${current ? ' active' : ''}" href="${href(id)}" data-page="${id}" ${current ? 'aria-current="page"' : ''}>${study && groupIndex===0 ? icon(id==='overview'?'home':'inbox') : ''}<span>${pages[id]}</span>${count ? `<span class="nav-count">${count}</span>` : ''}</a></li>`;
@@ -1303,6 +1309,43 @@ function startPreview(destination){
   returnAfterSignIn = 'overview';
   navigate(destination);
 }
+async function signInWorkspace(credentials, expectedRole){
+  const response = await fetch('../api/identity/login', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(credentials),
+  });
+  const data = await response.json();
+  if (!response.ok || !data.token || !Object.hasOwn(roleNames,data.user?.role)) {
+    throw new Error(data.message || 'Could not sign in to the workspace.');
+  }
+  if (expectedRole && data.user.role !== expectedRole) throw new Error('The demo account has a different role.');
+  localStorage.setItem(workspaceSessionKey,data.token);
+  return data.user.role;
+}
+
+async function signInDemoWorkspace(demoRole){
+  const response = await fetch(`../__bobos_local_demo?role=${encodeURIComponent(demoRole)}`);
+  if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) return false;
+  await signInWorkspace(await response.json(),demoRole);
+  return true;
+}
+
+async function choosePreviewRole(el){
+  if (page !== 'login' || !Object.hasOwn(roleNames,el.dataset.previewRole)) return;
+  const selected = el.dataset.previewRole;
+  const picker = el.closest('.preview-role-picker');
+  picker.disabled = true;
+  try {
+    await signInDemoWorkspace(selected);
+    role = selected;
+    startPreview('overview');
+  } catch (error) {
+    toast(error.message);
+  } finally {
+    picker.disabled = false;
+  }
+}
 function replayInboxArt(scene){
   if (!scene) return;
   inboxArtObserver?.disconnect();
@@ -1386,19 +1429,27 @@ function action(name,el){
       if(select){select.value='';filterRows();}
       break;}
     case 'preview-sign-in':
-      if (page !== 'login' || !Object.hasOwn(roleNames,el.dataset.previewRole)) break;
-      role = el.dataset.previewRole;
-      startPreview('overview');
+      void choosePreviewRole(el);
       break;
     case 'sign-out':
       document.querySelector('portal-action-feedback').clear();
+      {
+        const token = localStorage.getItem(workspaceSessionKey);
+        localStorage.removeItem(workspaceSessionKey);
+        if (token) {
+          void fetch('../api/identity/logout', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+          }).catch(() => {});
+        }
+      }
       localStorage.removeItem(previewSessionKey);
       returnAfterSignIn = 'overview';
       navigate('login');
       break;
     case 'pick-review':selectedStudent=Number(el.dataset.student);render();document.querySelector('.dispatch-person[aria-pressed=true]')?.focus();break;
-    case 'quick-find':modal('Find a page',fields('<label>Search pages<input id="page-finder" type="search" placeholder="Schedule, students, courses…" autofocus></label>')+`<nav class="page-results">${groups().flatMap(([,ids])=>ids).map(id=>link(id,pages[id],'navlink')).join('')}</nav>`,'Close','close');break;
-    case 'mobile-menu':modal('Navigation',`<nav aria-label="Mobile navigation">${groups().map(([name,items])=>`<div class="navgroup"><p class="navlabel">${name}</p>${items.map(id=>link(id,pages[id],`navlink ${id===page?'active':''}`)).join('')}</div>`).join('')}${link('profile','My profile','navlink')}</nav>`,'Close','close');break;
+    case 'quick-find':modal('Find a page',fields('<label>Search pages<input id="page-finder" type="search" placeholder="Schedule, students, courses…" autofocus></label>')+`<nav class="page-results">${groups().flatMap(([,ids])=>ids).map(id=>navigationLink(id,navigationLabel(id),'navlink')).join('')}</nav>`,'Close','close');break;
+    case 'mobile-menu':modal('Navigation',`<nav aria-label="Mobile navigation">${groups().map(([name,items])=>`<div class="navgroup"><p class="navlabel">${name}</p>${items.map(id=>navigationLink(id,navigationLabel(id),`navlink ${id===page?'active':''}`)).join('')}</div>`).join('')}${link('profile','My profile','navlink')}</nav>`,'Close','close');break;
     case 'test-notification':testCount++;render();toast('Test notification created in this preview.');break;
     case 'refresh':toast('Preview refreshed.', 'info');break;
     case 'read-all':notificationEntries().forEach(([id]) => readNotifications.add(notificationKey(id)));render();document.querySelector('[aria-selected=true]')?.focus();toast('All notifications marked as read.');break;
@@ -1588,7 +1639,16 @@ document.addEventListener('click',event=>{
   }
   expose(0);
 });
-document.addEventListener('click',event=>{
+document.addEventListener('click',async event=>{
+  const workspaceLink = event.target.closest('[data-live-extra-hours]');
+  if (workspaceLink && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) {
+    event.preventDefault();
+    if (!localStorage.getItem(workspaceSessionKey)) {
+      try { await signInDemoWorkspace(role); } catch { /* The workspace can prompt for a real sign-in. */ }
+    }
+    location.assign(workspaceLink.href);
+    return;
+  }
   const target=event.target.closest('[data-page],[data-action],[data-tab]');if(!target)return;
   if(target.dataset.page){if(event.ctrlKey||event.metaKey||event.shiftKey||event.altKey)return;if(target.dataset.student !== undefined)selectedStudent=Number(target.dataset.student);if(target.dataset.courseCode)selectedCourse=resolveCourse(target.dataset.courseCode);event.preventDefault();
     navigate(target.dataset.page);}
@@ -1665,11 +1725,22 @@ document.addEventListener('change',event=>{
   }
 });
 document.addEventListener('input',event=>{if(event.target.id==='search')filterRows();if(event.target.id==='page-finder')document.querySelectorAll('.page-results a').forEach(el=>el.hidden=!el.textContent.toLowerCase().includes(event.target.value.toLowerCase()));});
-document.addEventListener('submit',event=>{
+document.addEventListener('submit',async event=>{
   event.preventDefault();
   if(event.target.id==='auth-form'){
     if(page==='login'){
-      startPreview(returnAfterSignIn);
+      const {email,password} = Object.fromEntries(new FormData(event.target));
+      const submit = event.submitter;
+      if (submit) submit.disabled = true;
+      try {
+        if (email === previewEmail && password === 'portal-demo') await signInDemoWorkspace(role);
+        else role = await signInWorkspace({email,password});
+        startPreview(returnAfterSignIn);
+      } catch (error) {
+        toast(error.message);
+      } finally {
+        if (submit) submit.disabled = false;
+      }
     }
     else if(page==='forgot'){navigate('reset');toast('Sample reset code: 123456.', 'info');}
     else{navigate('login');toast('Reset preview complete.');}
