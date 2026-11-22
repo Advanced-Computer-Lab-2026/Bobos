@@ -8,6 +8,8 @@ From the repository root run `python3 -m http.server 8080 --bind 127.0.0.1 --dir
 
 The paths below refer to `apps/web/public/portal-studio/`. It is the runnable visual reference. The React application lives under `apps/web/src/`. When bringing artwork to a real workflow, keep its existing data, access controls, loading states and submission behavior.
 
+For local tests with seeded accounts, start Vite with `BOBOS_PORTAL_DEMO=standard` for the standard seed or `BOBOS_PORTAL_DEMO=extra-hours` for the extra-hours sandbox. Quick demo sign-in then signs in through the API and shares the session with the React workspace. Extra-hours requests opens the corresponding workspace page on the same origin. Overview and the Portal wordmark return to the illustrated home for the signed-in role.
+
 ## Surface, type and composition
 
 Normal and advising students use the illustrated teaching week. Below it, Coming up and the notification preview share a column beside the academic calendar. A bell ringer accompanies unread notices. The mallet strikes first, then the bell swings and settles. A chime plays only when the user presses Ring bell. When the inbox is caught up, gust lines sweep across a desert ridge and a tumbleweed rolls above the break message. The scene plays once when it enters view and can be replayed. Reduced motion uses a gentle roll without bounces and keeps the bell ringer still until pressed. Coordinators see assignments and requests, advisors see advising work, and administrators see academic setup in the work queue.
@@ -15,6 +17,8 @@ Normal and advising students use the illustrated teaching week. Below it, Coming
 The console palette uses charcoal canvas (#151515), a slightly deeper sidebar (#0f0f0f), warm white ink (#efeee9), muted copy (#bdbbb0) and quiet rules (#303030). Light mode uses a muted ground (#f0eee6), paper (#f8f6ef) and dark brown ink (#302d28). Read the applied tokens in `studio.js`, `base.css` and `studio.css`; theme-specific overrides matter. Use semantic tokens for controls and text. Save sky blue, clay, sage and warm cream for recognizable objects, course identities and useful distinctions. The Computer Graphics sheet is a good cream reference.
 
 The greeting and wordmark carry the serif voice. Operational titles, student names, labels, counts and controls use the sans-serif system. The stylesheet requests local Tiempos and Styrene with fallbacks. Give the greeting room and keep the term visible alongside its context. Work queue and Schedule review sit on the canvas. Timetable classes have their own colored cards. Preserve this hierarchy when adding content. Use space and alignment to group related items before adding borders or containers. The current brand mark is `portal-card-index.svg`.
+
+The live Extra-hours workspace uses the Home wordmark, grouped sidebar, breadcrumb, and Console tones in light and dark mode. Request details, forms, and financial history use the same card surfaces and typography across student, advisor, and coordinator views.
 
 ## Draw an object that explains the action
 

@@ -598,19 +598,11 @@ td strong, td .secondary-text { display: block; }
 .portal-wordmark {
   display: inline-flex;
   align-items: center;
-  gap: .14em;
+  gap: .24em;
   color: var(--ink);
   font: 700 clamp(25px, 23cqi, 38px)/1.08 Georgia, serif;
   letter-spacing: -.06em;
   white-space: nowrap;
-}
-.portal-wordmark::before {
-  content: "";
-  width: .94em;
-  height: .94em;
-  flex: none;
-  background: currentColor;
-  mask: url("/folded-page.svg") center / contain no-repeat;
 }
 .portal-scope { margin: 5px 0 22px; color: var(--muted); font-size: 12px; }
 .portal-find { align-self: stretch; justify-content: flex-start; margin-bottom: 10px; }

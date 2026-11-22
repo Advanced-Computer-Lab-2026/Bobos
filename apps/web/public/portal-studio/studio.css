@@ -1737,10 +1737,8 @@ html[data-theme=dark] .illustrated-greeting .night-sky{color:#c9cde6}
   flex-direction: column;
   min-width: 0;
   margin-top: 20px;
-  padding: clamp(14px, 2.5vw, 24px);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--raised);
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
 }
 .student-inbox .section-head { flex-wrap: wrap; gap: 8px 12px; }
 .student-inbox-count {
