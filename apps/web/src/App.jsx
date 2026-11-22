@@ -28,6 +28,8 @@ const roleNames = {
   administrator: "Administrator",
 };
 
+const notify = (tone, text) => document.querySelector("portal-action-feedback")?.show(tone, text);
+
 const navGroups = (role) => {
   const student = ["normalStudent", "advisingStudent"].includes(role);
   const staff = ["advisor", "coordinator", "administrator"].includes(role);
@@ -84,16 +86,23 @@ const titleByScreen = {
   "my-graduation": "My graduation", "graduation-review": "Graduation plans",
 };
 
+function openIllustratedHome(role) {
+  const home = new URL("./portal-studio/index.html", window.location.href);
+  home.search = new URLSearchParams({ page: "overview", role, preview: "live" });
+  window.localStorage.setItem("portal-studio-preview-session", "1");
+  window.location.assign(home);
+}
+
 export default function App() {
   const [token, setToken] = useState(() => window.localStorage.getItem("bobos.token"));
   const [profile, setProfile] = useState(null);
   const [profileLoading, setProfileLoading] = useState(Boolean(token));
   const [activeScreen, setActiveScreen] = useState("overview");
   const [screenContext, setScreenContext] = useState(null);
-  const [notice, setNotice] = useState(null);
   const [navQuery, setNavQuery] = useState("");
   const navigation = useRef(null);
   const account = useRef(null);
+  const freshLogin = useRef(false);
 
   useEffect(() => {
     if (!token) {
@@ -105,24 +114,30 @@ export default function App() {
     setProfileLoading(true);
     api("/api/identity/profile", { token })
       .then((data) => {
-        if (alive) setProfile(data.profile);
+        if (!alive) return;
+        const requestedScreen = new URLSearchParams(window.location.search).get("screen");
+        if (freshLogin.current) {
+          freshLogin.current = false;
+          if (import.meta.env.DEV || requestedScreen === "extra-hours") {
+            openIllustratedHome(data.profile.role);
+            return;
+          }
+        }
+        setProfile(data.profile);
+        if (requestedScreen === "extra-hours" && ["advisor", "coordinator", "advisingStudent"].includes(data.profile.role)) {
+          setActiveScreen(requestedScreen);
+        }
       })
       .catch((error) => {
         if (!alive) return;
         window.localStorage.removeItem("bobos.token");
         setToken(null);
         setProfile(null);
-        if (error.status !== 401) setNotice({ type: "error", text: error.message });
+        if (error.status !== 401) notify("error", error.message);
       })
       .finally(() => alive && setProfileLoading(false));
     return () => { alive = false; };
   }, [token]);
-
-  useEffect(() => {
-    if (!notice) return undefined;
-    const timeout = window.setTimeout(() => setNotice(null), 5000);
-    return () => window.clearTimeout(timeout);
-  }, [notice]);
 
   const groups = useMemo(() => navGroups(profile?.role), [profile?.role]);
   const allNavItems = groups.flatMap((group) => group.items);
@@ -132,6 +147,8 @@ export default function App() {
   }, [activeScreen, profile?.role]);
 
   const acceptLogin = (newToken) => {
+    document.querySelector("portal-action-feedback")?.clear();
+    freshLogin.current = true;
     window.localStorage.setItem("bobos.token", newToken);
     setToken(newToken);
     setActiveScreen("overview");
@@ -141,13 +158,21 @@ export default function App() {
   const signOut = async () => {
     try { await api("/api/identity/logout", { token, method: "POST", body: {} }); } catch { /* Clear the local session even when the API is offline. */ }
     window.localStorage.removeItem("bobos.token");
+    window.localStorage.removeItem("portal-studio-preview-session");
     setToken(null);
     setProfile(null);
     setActiveScreen("overview");
+    document.querySelector("portal-action-feedback")?.clear();
   };
 
-  const notify = (type, text) => setNotice({ type, text });
   const openScreen = (screen, context = null) => {
+    if (screen === "overview" && profile && (
+      new URLSearchParams(window.location.search).get("screen") === "extra-hours"
+      || window.localStorage.getItem("portal-studio-preview-session") === "1"
+    )) {
+      openIllustratedHome(profile.role);
+      return;
+    }
     setActiveScreen(screen);
     setScreenContext(context);
     navigation.current?.close();
@@ -164,9 +189,8 @@ export default function App() {
     const result = new URLSearchParams(window.location.search).get("calendar");
     if (!result) return;
     setActiveScreen("calendar-sync");
-    setNotice(result === "connected"
-      ? { type: "success", text: "Google Calendar connected." }
-      : { type: "error", text: "Google Calendar connection could not be completed." });
+    if (result === "connected") notify("success", "Google Calendar connected.");
+    else notify("error", "Google Calendar connection could not be completed.");
     window.history.replaceState({}, "", window.location.pathname);
   }, []);
 
@@ -174,16 +198,15 @@ export default function App() {
   if (profileLoading) return <div className="app-loading"><span className="loader" />Loading your workspace…</div>;
   if (!profile) return <AuthPage onLogin={acceptLogin} />;
 
-  const renderNavigation = (search = "") => {
+  const isExtraHours = activeScreen === "extra-hours";
+  const renderNavigation = (search = "", collapsible = false) => {
     const query = search.trim().toLowerCase();
     const matchingGroups = groups.map(({ title, items }) => ({
       title,
       items: items.filter((item) => item.label.toLowerCase().includes(query)),
     })).filter((group) => group.items.length);
-    return matchingGroups.length ? matchingGroups.map((group) => (
-      <div className="nav-group" key={group.title}>
-        <p className="nav-group-title">{group.title}</p>
-        {group.items.map((item) => (
+    return matchingGroups.length ? matchingGroups.map(({ title, items }) => {
+      const links = items.map((item) => (
           <button
             className={`nav-item ${activeScreen === item.id ? "active" : ""}`}
             aria-current={activeScreen === item.id ? "page" : undefined}
@@ -191,21 +214,33 @@ export default function App() {
             key={item.id}
             onClick={() => openScreen(item.id)}
           >
+            {isExtraHours && item.id === "overview" && <ChromeIcon name="home" />}
             {item.label}
           </button>
-        ))}
-      </div>
-    )) : <p className="page-description">No pages match your search.</p>;
+      ));
+      return collapsible ? (
+        <details className="nav-group" key={title} open>
+          <summary className="nav-group-title">{title}<ChromeIcon name="chevron" /></summary>
+          {links}
+        </details>
+      ) : (
+        <div className="nav-group" key={title}>
+          <p className="nav-group-title">{title}</p>
+          {links}
+        </div>
+      );
+    }) : <p className="page-description">No pages match your search.</p>;
   };
 
   return (
-    <div className="app-shell">
+    <div className={isExtraHours ? "app-shell extra-hours-shell" : "app-shell"}>
       <a className="portal-skip-link" href="#workspace-content">Skip to content</a>
       <aside className="sidebar">
         <button className="portal-home" type="button" onClick={() => openScreen("overview")}><Wordmark /></button>
-        <p className="portal-scope">Academic workspace</p>
+        {!isExtraHours && <p className="portal-scope">Academic workspace</p>}
         <button className="portal-find outline-button" type="button" onClick={openNavigation}><ChromeIcon name="search" /> Find a page</button>
-        <nav aria-label="Main navigation">{renderNavigation()}</nav>
+        <nav aria-label="Main navigation">{renderNavigation("", isExtraHours)}</nav>
+        {isExtraHours && <p className="extra-hours-sidebar-footer">German University in Cairo</p>}
       </aside>
 
       <dialog ref={navigation} className="portal-navigation" aria-labelledby="portal-navigation-heading">
@@ -220,7 +255,10 @@ export default function App() {
       <main className="main-area">
         <header className="topbar">
           <button className="portal-home portal-mobile-brand" type="button" onClick={() => openScreen("overview")}><Wordmark /></button>
-          <strong className="portal-screen-title">{titleByScreen[activeScreen] || "Overview"}</strong>
+          <div className="portal-screen-title">
+            {isExtraHours && <span className="extra-hours-crumb">Academic workspace <span aria-hidden="true">/</span></span>}
+            <strong>{titleByScreen[activeScreen] || "Overview"}</strong>
+          </div>
           <div className="topbar-actions">
             <button className="icon-button portal-menu-button" type="button" aria-label="Open navigation" onClick={openNavigation}><ChromeIcon name="menu" /></button>
             <ThemeControl />
@@ -232,7 +270,7 @@ export default function App() {
               }
             }}>
               <summary className="user-chip" aria-label="Account options">
-                <span className="avatar" aria-hidden="true">{(profile.fullName || "U").trim().slice(0, 1).toUpperCase()}</span>
+                <span className="avatar" aria-hidden="true">{(profile.fullName?.trim() || "U").split(/\s+/).slice(0, isExtraHours ? 2 : 1).map((name) => name[0]).join("").toUpperCase()}</span>
                 <strong>{profile.fullName}</strong>
               </summary>
               <div className="portal-account-menu">
@@ -246,7 +284,6 @@ export default function App() {
         </header>
 
         <div className="page-content" id="workspace-content" tabIndex={-1}>
-          {notice && <div className={`toast ${notice.type}`} role={notice.type === "error" ? "alert" : "status"}>{notice.text}<button type="button" aria-label="Dismiss" onClick={() => setNotice(null)}>×</button></div>}
           {activeScreen === "overview" && <OverviewPage token={token} profile={profile} onOpen={openScreen} />}
           {activeScreen === "profile" && <ProfilePage profile={profile} />}
           {activeScreen === "notifications" && <NotificationsPage token={token} notify={notify} />}
@@ -254,7 +291,7 @@ export default function App() {
           {activeScreen === "preferences" && <PreferencesPage token={token} profile={profile} profileId={screenContext?.id || screenContext?._id || profile.studentProfileId} studentTarget={screenContext?._id ? screenContext : undefined} notify={notify} onOpenDraftSchedule={(student, selectedTermId) => openScreen("student-schedules", { draftStudent: student, termId: selectedTermId })} />}
           {activeScreen === "directory" && <StudentDirectoryPage token={token} role={profile.role} notify={notify} />}
           {activeScreen === "financial-records" && <FinancialRecordsPage token={token} role={profile.role} notify={notify} />}
-          {activeScreen === "advising" && <AdvisingPage token={token} role={profile.role} onOpenPreferences={(student) => openScreen("preferences", student)} />}
+          {activeScreen === "advising" && <AdvisingPage token={token} role={profile.role} notify={notify} onOpenPreferences={(student) => openScreen("preferences", student)} />}
           {activeScreen === "graduation-review" && ["advisor", "coordinator"].includes(profile.role) && <GraduationReview token={token} role={profile.role} />}
           {activeScreen === "my-graduation" && profile.role === "advisingStudent" && <StudentGraduation token={token} />}
           {activeScreen === "my-advisor" && profile.role === "advisingStudent" && <MyAdvisorPage token={token} />}
@@ -262,7 +299,7 @@ export default function App() {
           {activeScreen === "pending-work" && profile.role === "coordinator" && <PendingWorkPage token={token} />}
           {activeScreen === "schedule-activity" && ["coordinator", "administrator"].includes(profile.role) && <ScheduleActivityPage token={token} />}
           {activeScreen === "mandatory-removals" && ["coordinator", "administrator", "advisor"].includes(profile.role) && <MandatoryRemovalDashboard token={token} role={profile.role} notify={notify} />}
-          {activeScreen === "extra-hours" && ["advisingStudent", "coordinator", "advisor"].includes(profile.role) && <ExtraHoursPage token={token} role={profile.role} notify={notify} />}
+          {activeScreen === "extra-hours" && ["advisingStudent", "coordinator", "advisor"].includes(profile.role) && <ExtraHoursPage token={token} role={profile.role} advisorId={profile._id} notify={notify} />}
           {activeScreen === "group-assignments" && <GroupAssignmentsPage token={token} canAssign={profile.role === "coordinator"} notify={notify} />}
           {activeScreen === "student-schedules" && <StaffSchedulesPage token={token} role={profile.role} notify={notify} initialStudent={screenContext?.draftStudent} initialTermId={screenContext?.termId} />}
           {activeScreen === "slot-changes" && <SlotChangesPage token={token} role={profile.role} onOpenSchedule={() => openScreen("my-schedule")} />}

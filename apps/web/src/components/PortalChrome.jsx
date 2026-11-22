@@ -3,7 +3,7 @@ import { flushSync } from "react-dom";
 import { revealTheme } from "../theme-reveal.js";
 
 export function Wordmark() {
-  return <span className="portal-wordmark">Portal</span>;
+  return <span className="portal-wordmark"><img className="portal-brand-mark" src="/portal-studio/portal-card-index.svg" alt="" />Portal</span>;
 }
 
 const iconPaths = {
@@ -16,6 +16,8 @@ const iconPaths = {
   bell: "M18 8a6 6 0 0 0-12 0c0 7-2 7-2 9h16c0-2-2-2-2-9m-8 12a2 2 0 0 0 4 0",
   menu: "M4 6h16M4 12h16M4 18h16",
   search: "M16 10a6 6 0 1 1-12 0 6 6 0 0 1 12 0Zm-2 4 5 5",
+  home: "M3 10 12 3l9 7M5 9v12h14V9M9 21v-7h6v7",
+  chevron: "m7 10 5 5 5-5",
 };
 
 export function ChromeIcon({ name }) {

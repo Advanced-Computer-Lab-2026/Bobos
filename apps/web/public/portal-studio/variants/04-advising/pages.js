@@ -162,7 +162,7 @@
   function el(tag, cls, html = '') { const node = document.createElement(tag); node.className = cls; node.innerHTML = html; return node; }
   function read(key, fallback) { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } }
   function write(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); return true; } catch { return false; } }
-  function say(text) { if (typeof toast === 'function') toast(text); }
+  function say(text, tone) { if (typeof toast === 'function') toast(text, tone); }
   function btn(text, action, extra = '', cls = '') { return `<button type="button" class="btn ${cls}" data-ad4-action="${action}" ${extra}>${text}</button>`; }
   function pill(text) { return `<span class="badge ${/Processed|Approved|Active|Ready/.test(text) ? 'ready' : /pending|Pending|Draft|Reopened/.test(text) ? 'pending' : 'neutral'}">${E(text)}</span>`; }
   function art(kind = 'folder') {
@@ -210,7 +210,7 @@
       removals: students.slice(0,3).map((s,i)=>({ id:`MR-${1042+i}`, student:i, course:cs[i].code, reason:['First makeup','Completed hours','Restricted pair'][i], note:['Eligible for a first makeup. Please retain the makeup route instead of a repeat.','160 completed hours; requesting deferral under the completed-hours rule.','Requesting deferral to avoid a restricted course pair.'][i], status:'Pending', date:`2026-11-${13+i}`, advisor:s.advisor === 'Unassigned' ? 'Dr. Salma Adel' : s.advisor, advisorEmail:'salma.adel@guc.edu.eg', response:'', decidedAt:'' })) };
   }
   function state() { const value = read(storeKey, null); return value?.version === 2 ? value : initial(); }
-  function save(value) { const ok = write(storeKey, value); if (!ok) say('Browser storage is unavailable. Keep this page open; changes cannot be retained.'); return ok; }
+  function save(value) { const ok = write(storeKey, value); if (!ok) say('Browser storage is unavailable. Keep this page open; changes cannot be retained.', 'warning'); return ok; }
   function record(student, data) {
     const draft = data.drafts[student.index], issues = R.validate(draft, student, courses(), slots()), blocks = R.blockers(draft);
     return { ...student, status: student.type === 'Normal' ? 'Schedule assigned' : R.status(draft), blocking: student.type === 'Normal' ? 'None' : blocks[0] || issues[0] || 'None',
@@ -235,7 +235,7 @@
     const focus = document.activeElement;
     const dialog = el('dialog','ad4-dialog');
     dialog.setAttribute('aria-labelledby','ad4-dialog-title');
-    dialog.innerHTML = `<form class="ad4-dialog-form"><header><h2 id="ad4-dialog-title">${title}</h2><button type="button" class="btn" data-close>Close</button></header>${body}<p class="ad4-error" role="alert" hidden></p><footer><button type="button" class="btn" data-close>Cancel</button><button type="submit" class="btn ${danger ? 'danger' : 'primary'}">${submit}</button></footer></form>`;
+    dialog.innerHTML = `<form class="ad4-dialog-form"><header><h2 id="ad4-dialog-title">${title}</h2><button type="button" class="btn" data-close>Close</button></header>${body}<p class="ad4-error feedback error" role="alert" hidden></p><footer><button type="button" class="btn" data-close>Cancel</button><button type="submit" class="btn ${danger ? 'danger' : 'primary'}">${submit}</button></footer></form>`;
     root.append(dialog);
     $$('[data-close]',dialog).forEach(b=>b.onclick=()=>dialog.close());
     dialog.addEventListener('close',()=>{ dialog.remove(); if (focus?.isConnected) focus.focus(); });
@@ -258,13 +258,13 @@
       if (!selected) return 'Choose an active advisor in the advising system.';
       if (current.advisor!==selected.name) current.history.push({date:'20 Nov 2026', title:'Advisor reassigned',detail:`${current.advisor} → ${selected.name}`});
       current.advisor=selected.name; current.advisorEmail=selected.email;
-      save(data); say('Advisor assignment saved in this preview.'); setTimeout(redraw,0);
+      if (save(data)) say('Advisor assignment saved in this preview.'); setTimeout(redraw,0);
     }});
   }
   function account(root, student, data, role) {
     if (!R.can(role,'account')) return;
     confirmDialog(root,{title: `${student.account==='Active'?'Deactivate':'Activate'} this account?`,submit: student.account==='Active'?'Deactivate account':'Activate account',danger:student.account==='Active',body:`<p><strong>${E(student.name)}</strong> · ${E(student.email)}</p><p>Deactivation prevents login. Academic records, schedules and audit history are kept. This preview does not revoke a real session.</p>`,onSubmit:()=>{
-      data.students[student.index].account=student.account==='Active'?'Inactive':'Active';save(data);say('Account status updated in this preview.');setTimeout(redraw,0);
+      data.students[student.index].account=student.account==='Active'?'Inactive':'Active';if (save(data)) say('Account status updated in this preview.');setTimeout(redraw,0);
     }});
   }
   function management(root,data,role) {
@@ -274,12 +274,12 @@
     $('.ad4-lookup',box).addEventListener('submit',event=>{
       event.preventDefault();event.stopPropagation();
       const email=new FormData(event.target).get('email').trim().toLowerCase(), person=data.advisors.find(a=>a.email===email), result=$('.ad4-lookup-result',box);
-      if(!person){ result.innerHTML='<p role="alert">No preview advisor has that email. Try salma.adel@guc.edu.eg, hany.youssef@guc.edu.eg or dina.samir@guc.edu.eg.</p>';return; }
+      if(!person){ result.innerHTML='<p class="feedback error" role="alert">No preview advisor has that email. Try salma.adel@guc.edu.eg, hany.youssef@guc.edu.eg or dina.samir@guc.edu.eg.</p>';return; }
       result.innerHTML=`<div class="ad4-access-result"><div><strong>${E(person.name)}</strong><small>${E(person.email)}</small></div>${pill(person.active?'In advising system':'Not in advising system')}${btn(person.active?'Remove advisor':'Add advisor','membership')}</div>`;
       $('[data-ad4-action=membership]',result).onclick=()=>confirmDialog(root,{title:person.active?'Remove advising access?':'Add advising access?',submit:person.active?'Remove advisor':'Add advisor',body:`<p>${E(person.name)} · ${E(person.email)}</p><p>${person.active?'Current assignments will be cleared. Previous schedule actions and advisor history remain available.':'This advisor will become available for assignment.'}</p><p>Email is simulated in this preview; no email is sent.</p>`,onSubmit:()=>{
         person.active=!person.active;
         if(!person.active)data.students.forEach(s=>{if(s.advisor===person.name){s.history.push({date:'20 Nov 2026',title:'Advisor removed from system',detail:person.name});s.advisor='Unassigned';s.advisorEmail='';}});
-        save(data);say('Advisor membership updated in this preview; email not sent.');setTimeout(redraw,0);
+        if (save(data)) say('Advisor membership updated in this preview; email not sent.');setTimeout(redraw,0);
       }});
       Motion.play(box);
     });
@@ -464,7 +464,7 @@
       }
       draft.pendingRemoval=fresh.removals.some(r=>r.student===live.student&&r.status==='Pending');
       draft.history.push({date:'20 Nov 2026',title:`Removal ${decision.toLowerCase()}`,detail:live.course});
-      save(fresh);say(`Request ${decision.toLowerCase()} in this preview.`);setTimeout(redraw,0);
+      if (save(fresh)) say(`Request ${decision.toLowerCase()} in this preview.`);setTimeout(redraw,0);
     }});
   }
   function renderWeek(draft) {
@@ -517,12 +517,12 @@
   }
   function requestRemoval(root,s,d,data,role,code) {
     if(!R.can(role,'removalRequest'))return;
-    if(s.advisor!=='Dr. Salma Adel'){say('Only the assigned advisor may submit a removal request in this preview.');return;}
+    if(s.advisor!=='Dr. Salma Adel'){say('Only the assigned advisor may submit a removal request in this preview.', 'error');return;}
     confirmDialog(root,{title:'Request mandatory-course removal',submit:'Submit removal request',body:`<div class="ad4-dialog-identity">${art('letter')}<div><strong>${E(code)}</strong><p>${E(s.name)} · ${E(s.id)}</p></div></div><p>The course remains mandatory until a Coordinator approves the request.</p><label class="ad4-field">Reason category<select name="reason" required><option value="">Choose a valid reason</option>${['First makeup','Second makeup','Completed hours','Restricted pair'].map(v=>`<option ${R.removalEligible(s,v)?'':'disabled'}>${v}</option>`).join('')}</select></label><p class="ad4-caption">${s.failedCount} failed courses · ${s.completedHours} completed hours. Second makeup: one or two failed courses. Hours deferral: more than 157 completed hours.</p><label class="ad4-field">Explanation<textarea name="note" rows="3" required maxlength="1000"></textarea></label>`,onSubmit:values=>{
       if(!R.removalEligible(s,values.get('reason')))return 'The student is not eligible for this removal reason.';
       if(!String(values.get('note')||'').trim())return 'Explain why this course should be removed.';
       if(data.removals.some(r=>r.student===s.index&&r.course===code&&r.status==='Pending'))return 'A pending request already exists for this course.';
-      data.removals.push({id:`MR-${1042+data.removals.length}`,student:s.index,course:code,reason:values.get('reason'),note:String(values.get('note')).trim(),status:'Pending',date:'2026-11-20',advisor:s.advisor,advisorEmail:s.advisorEmail,response:'',decidedAt:''});d.pendingRemoval=true;save(data);say('Removal request submitted in this preview.');setTimeout(redraw,0);
+      data.removals.push({id:`MR-${1042+data.removals.length}`,student:s.index,course:code,reason:values.get('reason'),note:String(values.get('note')).trim(),status:'Pending',date:'2026-11-20',advisor:s.advisor,advisorEmail:s.advisorEmail,response:'',decidedAt:''});d.pendingRemoval=true;if (save(data)) say('Removal request submitted in this preview.');setTimeout(redraw,0);
     }});
   }
   function editSlots(root, s, d, data, code, role) {
@@ -532,7 +532,7 @@
       const next=structuredClone(d);next.slots[code]=Object.fromEntries(course.components.map(component=>[component,String(values.get(component)||'')]).filter(([,id])=>id));
       const hard=R.validate(next,s,courses(),slots()).filter(x=>x.includes('clash')||x.includes('is full')||x.includes('invalid'));
       if(hard.length)return hard.join(' ');
-      d.slots[code]=next.slots[code];d.status='Draft';d.reserved=Object.values(d.slots).flatMap(Object.values);save(data);say('Component selections saved locally. Missing components still block review.');setTimeout(redraw,0);
+      d.slots[code]=next.slots[code];d.status='Draft';d.reserved=Object.values(d.slots).flatMap(Object.values);if (save(data)) say('Component selections saved locally. Missing components still block review.');setTimeout(redraw,0);
     }});
   }
   function draftPage(root,page,role,index) {
@@ -598,7 +598,7 @@
         const code=control.dataset.ad4GroupCourse,group=+control.value;if(!group)return editSlots(root,s,d,data,code,role);
         const next=structuredClone(d);next.slots[code]=Object.fromEntries(cs.find(c=>c.code===code).components.map(t=>[t,`${code}:${t}:${group}`]));
         const hard=R.validate(next,s,cs,slots()).filter(x=>x.includes('clash')||x.includes('is full'));
-        if(hard.length){say(hard.join(' '));control.value=[...new Set(Object.values(d.slots[code]||{}).map(id=>slots().find(x=>x.id===id)?.group))].length===1?slots().find(x=>x.id===Object.values(d.slots[code]||{})[0])?.group:'';return;}
+        if(hard.length){say(hard.join(' '), 'warning');control.value=[...new Set(Object.values(d.slots[code]||{}).map(id=>slots().find(x=>x.id===id)?.group))].length===1?slots().find(x=>x.id===Object.values(d.slots[code]||{})[0])?.group:'';return;}
         d.slots[code]=next.slots[code];d.status='Draft';d.reserved=Object.values(d.slots).flatMap(Object.values);save(data);redraw();
       }
       if(control.matches('[data-ad4-bachelor]')){event.stopPropagation();if(!editable)return;d.bachelor=control.value;d.status='Draft';save(data);redraw();}
@@ -611,29 +611,29 @@
       if(!R.can(role,'edit')||s.type!=='Advising')return;
       if(name==='reopen'){
         if(d.status!=='Processed')return;
-        confirmDialog(root,{title:'Reopen the processed schedule?',submit:'Reopen schedule',body:'<p>The schedule returns to Draft and is hidden from the student until it is completed and shared for review again. Processing history is kept.</p><label class="ad4-field">Reason<textarea name="reason" required maxlength="1000" rows="3"></textarea></label>',onSubmit:values=>{const reason=String(values.get('reason')||'').trim();if(!reason)return 'A reopening reason is required.';d.status='Draft';d.version++;d.history.push({date:'20 Nov 2026',title:'Schedule reopened',detail:reason});save(data);say('Schedule reopened in this preview.');setTimeout(redraw,0);}});return;
+        confirmDialog(root,{title:'Reopen the processed schedule?',submit:'Reopen schedule',body:'<p>The schedule returns to Draft and is hidden from the student until it is completed and shared for review again. Processing history is kept.</p><label class="ad4-field">Reason<textarea name="reason" required maxlength="1000" rows="3"></textarea></label>',onSubmit:values=>{const reason=String(values.get('reason')||'').trim();if(!reason)return 'A reopening reason is required.';d.status='Draft';d.version++;d.history.push({date:'20 Nov 2026',title:'Schedule reopened',detail:reason});if (save(data)) say('Schedule reopened in this preview.');setTimeout(redraw,0);}});return;
       }
       if(!editable)return;
       if(name==='slots')return editSlots(root,s,d,data,code,role);
       if(name==='request-removal')return requestRemoval(root,s,d,data,role,code);
       if(name==='remove-course'){
-        if(d.mandatory.includes(code)&&!d.removed.includes(code)){say('Mandatory courses require approved removal.');return;}
+        if(d.mandatory.includes(code)&&!d.removed.includes(code)){say('Mandatory courses require approved removal.', 'warning');return;}
         d.courses=d.courses.filter(c=>c!==code);delete d.slots[code];d.reserved=Object.values(d.slots).flatMap(Object.values);d.status='Draft';save(data);redraw();return;
       }
       if(name==='add-course'){
         const course=cs.find(c=>c.code===code);if(!course||d.courses.includes(code))return;
-        if(course.credits>R.totals(d,s,cs).remaining){say('This course exceeds the available credit hours.');return;}
-        if(!d.mandatory.includes(code)&&missingMandatory.length){say('Select the outstanding mandatory courses first.');return;}
+        if(course.credits>R.totals(d,s,cs).remaining){say('This course exceeds the available credit hours.', 'warning');return;}
+        if(!d.mandatory.includes(code)&&missingMandatory.length){say('Select the outstanding mandatory courses first.', 'warning');return;}
         d.courses.push(code);d.slots[code]={};d.status='Draft';save(data);redraw();return;
       }
-      if(name==='save-draft'){d.savedAt='20 Nov 2026, 10:42';d.version++;d.history.push({date:'20 Nov 2026',title:'Draft saved',detail:`${d.courses.length} courses · ${R.totals(d,s,cs).selected} credits`});save(data);say('Draft saved in this browser. Incomplete drafts remain hidden from the student.');redraw();return;}
+      if(name==='save-draft'){d.savedAt='20 Nov 2026, 10:42';d.version++;d.history.push({date:'20 Nov 2026',title:'Draft saved',detail:`${d.courses.length} courses · ${R.totals(d,s,cs).selected} credits`});if (save(data)) say('Draft saved in this browser. Incomplete drafts remain hidden from the student.');redraw();return;}
       const liveIssues=[...R.validate(d,s,cs,slots()),...R.blockers(d)];
-      if(liveIssues.length){say(liveIssues[0]);return;}
+      if(liveIssues.length){say(liveIssues[0], 'warning');return;}
       if(name==='mark-ready'){
-        confirmDialog(root,{title:'Share for student review?',submit:'Mark ready for review',body:`<p>${E(s.name)} will receive read-only access to this completed draft and may submit slot-change requests before the advising deadline. This is not final processing.</p>`,onSubmit:()=>{d.status='Ready for student review';d.version++;d.history.push({date:'20 Nov 2026',title:'Ready for student review',detail:'Completed draft shared read-only.'});save(data);say('Ready for student review in this preview.');setTimeout(redraw,0);}});
+        confirmDialog(root,{title:'Share for student review?',submit:'Mark ready for review',body:`<p>${E(s.name)} will receive read-only access to this completed draft and may submit slot-change requests before the advising deadline. This is not final processing.</p>`,onSubmit:()=>{d.status='Ready for student review';d.version++;d.history.push({date:'20 Nov 2026',title:'Ready for student review',detail:'Completed draft shared read-only.'});if (save(data)) say('Ready for student review in this preview.');setTimeout(redraw,0);}});
       }else if(name==='process'){
         if(d.status!=='Ready for student review')return;
-        confirmDialog(root,{title:'Process the final schedule?',submit:'Process schedule',body:`<p>${E(s.name)} · ${total.selected} credits · no outstanding blocker.</p><p>Processing finalizes the schedule and closes pre-processing slot changes. The final schedule becomes available to view and download.</p>`,onSubmit:()=>{d.status='Processed';d.version++;d.history.push({date:'20 Nov 2026',title:'Schedule processed',detail:`Version ${d.version} · ${role==='advisor'?'Dr. Salma Adel':'Nadia Ahmed'}`});save(data);say('Schedule processed in this preview.');setTimeout(redraw,0);}});
+        confirmDialog(root,{title:'Process the final schedule?',submit:'Process schedule',body:`<p>${E(s.name)} · ${total.selected} credits · no outstanding blocker.</p><p>Processing finalizes the schedule and closes pre-processing slot changes. The final schedule becomes available to view and download.</p>`,onSubmit:()=>{d.status='Processed';d.version++;d.history.push({date:'20 Nov 2026',title:'Schedule processed',detail:`Version ${d.version} · ${role==='advisor'?'Dr. Salma Adel':'Nadia Ahmed'}`});if (save(data)) say('Schedule processed in this preview.');setTimeout(redraw,0);}});
       }
     },true);
   }

@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import { FinancialTransaction, FinancialReversalRequest } from "../models/finance.js";
 import { StudentProfile, User } from "../models/identity.js";
 import { AcademicTerm } from "../models/catalogue.js";
+import { ExtraHoursRequest } from "../models/requests.js";
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -312,54 +313,35 @@ export async function processRefund(req, res) {
       return res.status(404).json({ message: "Transaction not found." });
     }
 
-    const transaction = await FinancialTransaction.findById(id);
-    if (!transaction) {
-      return res.status(404).json({ message: "Transaction not found." });
-    }
+    const outcome = await mongoose.connection.transaction(async (session) => {
+      const transaction = await FinancialTransaction.findById(id).session(session);
+      if (!transaction) return { status: 404, message: "Transaction not found." };
 
-    // Check if already refunded
-    const isAlreadyRefunded =
-      ["REFUNDED", "refunded"].includes(transaction.status) ||
-      transaction.refundedAt !== null;
+      const existingRefund = await FinancialTransaction.exists({
+        relatedTransaction: transaction._id, kind: "refund",
+      }).session(session);
+      if (["REFUNDED", "refunded"].includes(transaction.status) || transaction.refundedAt || existingRefund) {
+        return { status: 400, message: "Transaction has already been refunded." };
+      }
+      if (!["COMPLETED", "succeeded", "completed"].includes(transaction.status)) {
+        return { status: 400, message: "Only completed transactions are eligible for refund." };
+      }
 
-    if (isAlreadyRefunded) {
-      return res.status(400).json({ message: "Transaction has already been refunded." });
-    }
+      const refundReason = (req.body.reason || req.body.refundReason || "Administrative refund").trim();
+      const refundAmount = Number(req.body.amount) || transaction.amount;
+      if (refundAmount <= 0 || refundAmount > transaction.amount) {
+        return { status: 400, message: "Invalid refund amount." };
+      }
 
-    // Check if there is an existing refund transaction referencing this
-    const existingRefund = await FinancialTransaction.findOne({
-      relatedTransaction: transaction._id,
-      kind: "refund",
-    });
-    if (existingRefund) {
-      return res.status(400).json({ message: "Transaction has already been refunded." });
-    }
+      const now = new Date();
+      transaction.status = "REFUNDED";
+      transaction.refundedAt = now;
+      transaction.refundedBy = req.user._id;
+      transaction.refundReason = refundReason;
+      await transaction.save({ session });
 
-    // Validate that transaction has status COMPLETED or succeeded
-    const isCompleted = ["COMPLETED", "succeeded", "completed"].includes(transaction.status);
-    if (!isCompleted) {
-      return res.status(400).json({ message: "Only completed transactions are eligible for refund." });
-    }
-
-    const refundReason = (req.body.reason || req.body.refundReason || "Administrative refund").trim();
-    const refundAmount = Number(req.body.amount) || transaction.amount;
-    if (refundAmount <= 0 || refundAmount > transaction.amount) {
-      return res.status(400).json({ message: "Invalid refund amount." });
-    }
-
-    const now = new Date();
-
-    // Mark original transaction as REFUNDED with audit metadata
-    transaction.status = "REFUNDED";
-    transaction.refundedAt = now;
-    transaction.refundedBy = req.user._id;
-    transaction.refundReason = refundReason;
-    await transaction.save();
-
-    // Create balancing ledger entry to atomically credit wallet
-    const refundRef = `REF-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
-    const [refundRecord] = await FinancialTransaction.create([
-      {
+      const refundRef = `REF-${new mongoose.Types.ObjectId()}`;
+      const [refundRecord] = await FinancialTransaction.create([{
         student: transaction.student,
         extraHoursRequest: transaction.extraHoursRequest || null,
         kind: "refund",
@@ -369,31 +351,42 @@ export async function processRefund(req, res) {
         status: "succeeded",
         settlementOption: "wallet",
         transactionReference: refundRef,
-        referenceNumber: refundRef,
-        receiptId: refundRef,
         relatedTransaction: transaction._id,
         refundedAt: now,
         refundedBy: req.user._id,
-        refundReason: refundReason,
+        refundReason,
         occurredAt: now,
-      },
-    ]);
+      }], { session });
 
-    // Update pending reversal request if exists
-    await FinancialReversalRequest.findOneAndUpdate(
-      { originalTransaction: transaction._id },
-      {
-        status: "completed",
-        decidedBy: req.user._id,
-        decidedAt: now,
+      await FinancialReversalRequest.findOneAndUpdate(
+        { originalTransaction: transaction._id },
+        { status: "completed", decidedBy: req.user._id, decidedAt: now },
+        { session },
+      );
+      if (transaction.extraHoursRequest) {
+        await ExtraHoursRequest.updateOne(
+          { _id: transaction.extraHoursRequest, student: transaction.student, settlementStatus: "paid" },
+          {
+            $set: { settlementStatus: "refunded" },
+            $push: { history: {
+              action: "refunded", actor: req.user._id, note: refundReason.slice(0, 1000),
+              settlementOption: transaction.settlementOption, settlementStatus: "refunded",
+              amount: refundAmount, occurredAt: now,
+            } },
+          },
+          { session, runValidators: true },
+        );
       }
-    );
 
+      return { transaction, refundRecord };
+    });
+
+    if (outcome.status) return res.status(outcome.status).json({ message: outcome.message });
     return res.status(200).json({
       success: true,
       message: "Refund processed successfully.",
-      originalTransaction: formatTransactionRecord(transaction),
-      refundRecord: formatTransactionRecord(refundRecord),
+      originalTransaction: formatTransactionRecord(outcome.transaction),
+      refundRecord: formatTransactionRecord(outcome.refundRecord),
     });
   } catch (error) {
     return res.status(500).json({ message: "Failed to process refund.", error: error.message });

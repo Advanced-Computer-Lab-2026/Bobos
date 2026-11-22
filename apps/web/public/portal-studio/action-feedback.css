@@ -1,0 +1,141 @@
+.feedback, .action-feedback-card {
+  --feedback-accent: var(--ready-ink);
+  --feedback-tint: var(--ready-bg);
+  --feedback-symbol: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round'%3E%3Ccircle cx='10' cy='10' r='7.5'/%3E%3Cpath d='M10 9.5v4M10 6.6h.01'/%3E%3C/svg%3E");
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-inline-start: 3px solid var(--feedback-accent);
+  border-radius: 9px;
+  overflow-wrap: anywhere;
+}
+
+.feedback.success, .action-feedback-card[data-tone="success"] {
+  --feedback-accent: var(--success-ink);
+  --feedback-tint: var(--success-bg);
+  --feedback-symbol: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4.5 10.5 3.6 3.6 7.4-7.4'/%3E%3C/svg%3E");
+}
+
+.feedback.warning, .action-feedback-card[data-tone="warning"] {
+  --feedback-accent: var(--draft-ink);
+  --feedback-tint: var(--draft-bg);
+  --feedback-symbol: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m10 3 8 14H2zM10 8v3.5m0 2.8h.01'/%3E%3C/svg%3E");
+}
+
+.feedback.error, .action-feedback-card[data-tone="error"] {
+  --feedback-accent: var(--danger-ink, var(--pending-ink));
+  --feedback-tint: var(--danger-bg, var(--pending-bg));
+  --feedback-symbol: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round'%3E%3Ccircle cx='10' cy='10' r='7.5'/%3E%3Cpath d='M10 6.3v4.4m0 2.7h.01'/%3E%3C/svg%3E");
+}
+
+.feedback {
+  position: relative;
+  min-inline-size: 0;
+  padding-block: 11px;
+  padding-inline: 47px 13px;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.feedback::before, .action-feedback-icon {
+  display: grid;
+  place-items: center;
+  inline-size: 26px;
+  block-size: 26px;
+  border-radius: 7px;
+  background: var(--feedback-tint);
+}
+
+.feedback::before {
+  content: "";
+  position: absolute;
+  inset-block-start: 8px;
+  inset-inline-start: 10px;
+  pointer-events: none;
+}
+
+.feedback::after, .action-feedback-icon::after {
+  content: "";
+  inline-size: 17px;
+  block-size: 17px;
+  background: var(--feedback-accent);
+  mask: var(--feedback-symbol) center / contain no-repeat;
+}
+
+.feedback::after {
+  position: absolute;
+  inset-block-start: 12.5px;
+  inset-inline-start: 14.5px;
+  pointer-events: none;
+}
+
+.action-feedback-card {
+  position: fixed;
+  z-index: 90;
+  inset-inline-end: max(16px, env(safe-area-inset-right));
+  inset-block-end: max(16px, env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 10px;
+  inline-size: min(360px, calc(100% - 32px));
+  padding: 12px 10px 12px 12px;
+  box-shadow: 0 3px 6px #0001, 0 12px 32px #0003;
+  font: inherit;
+  animation: action-feedback-arrive 180ms cubic-bezier(.22, 1, .36, 1) both;
+}
+
+.action-feedback-card[hidden] { display: none; }
+.action-feedback-icon { inline-size: 34px; block-size: 34px; border-radius: 8px; }
+.action-feedback-icon::after { inline-size: 20px; block-size: 20px; }
+.action-feedback-card strong { display: block; font-size: 13px; line-height: 1.4; }
+.action-feedback-message {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+  max-block-size: 35vh;
+  overflow: auto;
+}
+
+.action-feedback-dismiss {
+  display: grid;
+  place-items: center;
+  inline-size: 36px;
+  block-size: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  color: var(--muted);
+  background: transparent;
+  font: inherit;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.action-feedback-dismiss:hover { color: var(--ink); background: var(--raised); }
+.action-feedback-dismiss:focus-visible { outline: 2px solid var(--feedback-accent); outline-offset: 1px; }
+
+.action-feedback-announcement {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@keyframes action-feedback-arrive {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .action-feedback-card { animation: none; }
+}
+
+@media print {
+  portal-action-feedback { display: none; }
+}

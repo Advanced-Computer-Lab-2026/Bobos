@@ -14,6 +14,26 @@ import { standardCreditAllowance } from "../utils/credit-allowance.js";
 import { notifyStudents } from "../services/student-notifications.js";
 
 const { Types } = mongoose;
+const walletKinds = ["walletTopUp", "refund", "extraHoursWalletPayment"];
+const isProbationStudent = (student) => student.academicStanding === "probation"
+  || student.advisingReason === "probation" || student.gpa >= 3.70;
+
+async function creditHoursBefore(student, term, standardAllowance, { session, exclude } = {}) {
+  const requests = await ExtraHoursRequest.find({
+    student, term, decisionStatus: "approved",
+    settlementStatus: { $in: ["awaitingChoice", "paid", "deferred"] },
+    ...(exclude && { _id: { $ne: exclude } }),
+  }).session(session ?? null).select("requestedHours").lean();
+  return requests.reduce((total, request) => total + request.requestedHours, standardAllowance);
+}
+
+function walletDelta(transaction) {
+  if (transaction.kind === "extraHoursWalletPayment") {
+    return ["succeeded", "REFUNDED", "refunded"].includes(transaction.status) ? -Math.round(transaction.amount * 100) : 0;
+  }
+  return transaction.status === "succeeded" ? Math.round(transaction.amount * 100) : 0;
+}
+
 const populatedRequest = (id) => ExtraHoursRequest.findById(id)
   .populate({ path: "student", populate: { path: "user", select: "fullName email" } })
   .populate("advisor", "fullName email")
@@ -24,9 +44,8 @@ const populatedRequest = (id) => ExtraHoursRequest.findById(id)
 async function studentAndWallet(userId) {
   const student = await StudentProfile.findOne({ user: userId });
   if (!student) return { student: null, balance: 0 };
-  const transactions = await FinancialTransaction.find({ student: student._id, kind: { $in: ["walletTopUp", "refund", "extraHoursWalletPayment"] }, status: "succeeded" }).select("kind amount").lean();
-  const balance = transactions.reduce((sum, txn) => sum + (txn.kind === "extraHoursWalletPayment" ? -1 : 1) * Number(txn.amount), 0);
-  return { student, balance: Math.round(balance * 100) / 100 };
+  const transactions = await FinancialTransaction.find({ student: student._id, kind: { $in: walletKinds } }).select("kind amount status").lean();
+  return { student, balance: transactions.reduce((sum, txn) => sum + walletDelta(txn), 0) / 100 };
 }
 
 function notifyExtraHoursDecision(request, message, session) {
@@ -89,6 +108,9 @@ export async function createExtraHoursRequest(req, res) {
     if (student.studentType !== "advising") {
       return res.status(400).json({ message: "Extra hours can only be requested for advising students." });
     }
+    if (req.user.role === "advisor" && !student.assignedAdvisor?.equals(req.user._id)) {
+      return res.status(403).json({ message: "You can only request extra hours for your assigned students." });
+    }
 
     // Resolve Academic Term
     let term = null;
@@ -119,10 +141,7 @@ export async function createExtraHoursRequest(req, res) {
 
     // Rule 1: Probation check
     // On the GUC scale, GPA 3.70 or above is probation.
-    const isProbation =
-      student.academicStanding === "probation" ||
-      student.advisingReason === "probation" ||
-      (typeof student.gpa === "number" && student.gpa >= 3.70);
+    const isProbation = isProbationStudent(student);
 
     if (isProbation) {
       return res.status(400).json({
@@ -180,7 +199,7 @@ export async function createExtraHoursRequest(req, res) {
     const totalCost = itemizedCourses.reduce((sum, item) => sum + item.subtotal, 0);
 
     // Hours before and after
-    const hoursBeforeRequest = standardAllowance;
+    const hoursBeforeRequest = await creditHoursBefore(student._id, term._id, standardAllowance);
     const hoursAfterRequest = hoursBeforeRequest + requestedHours;
 
     // Rule 4: Total hours and graduation caps
@@ -190,9 +209,9 @@ export async function createExtraHoursRequest(req, res) {
       });
     }
 
-    if (!isGraduating && requestedHours > 3) {
+    if (!isGraduating && hoursAfterRequest > standardAllowance + 3) {
       return res.status(400).json({
-        message: `A student not graduating within one year may add at most 3 hours above standard allowance (${standardAllowance} standard + 3 max extra = ${standardAllowance + 3}). Requested: ${requestedHours} extra hours.`,
+        message: `A student not graduating within one year may add at most 3 hours above standard allowance (${standardAllowance} standard + 3 max extra = ${standardAllowance + 3}). This request would bring the total to ${hoursAfterRequest} hours.`,
       });
     }
 
@@ -309,12 +328,31 @@ export async function decideExtraHoursRequest(req, res) {
     const { decision, responseNote = "" } = req.body || {};
     if (!Types.ObjectId.isValid(id)) return res.status(400).json({ message: "Invalid request ID." });
     if (!["approved", "rejected"].includes(decision)) return res.status(400).json({ message: "Decision must be approved or rejected." });
+    if (typeof responseNote !== "string" || !responseNote.trim() || responseNote.trim().length > 1000) {
+      return res.status(400).json({ message: "Enter a response note between 1 and 1000 characters." });
+    }
     await mongoose.connection.transaction(async (session) => {
       const request = await ExtraHoursRequest.findById(id).session(session);
       if (!request) throw Object.assign(new Error("Extra-hours request not found."), { status: 404 });
       if (request.decisionStatus !== "pending") throw Object.assign(new Error("Only pending requests can be decided."), { status: 409 });
+      if (decision === "approved") {
+        // Updating the student serializes approvals that share a credit limit.
+        const student = await StudentProfile.findByIdAndUpdate(request.student, { $inc: { __v: 1 } }, { session });
+        if (!student || student.studentType !== "advising" || isProbationStudent(student)) {
+          throw Object.assign(new Error("The student is no longer eligible for extra hours."), { status: 409 });
+        }
+        const allowance = standardCreditAllowance(student.currentSemester);
+        if (!allowance) throw Object.assign(new Error("The student's standard credit allowance is unavailable."), { status: 409 });
+        const before = await creditHoursBefore(student._id, request.term, allowance, { session, exclude: request._id });
+        const after = before + request.requestedHours;
+        const limit = request.eligibilitySnapshot.graduatingWithinOneYear ? 34 : Math.min(34, allowance + 3);
+        if (after > limit) throw Object.assign(new Error(`Approval would exceed the student's ${limit}-hour limit.`), { status: 409 });
+        request.eligibilitySnapshot.standardAllowance = allowance;
+        request.eligibilitySnapshot.hoursBeforeRequest = before;
+        request.eligibilitySnapshot.hoursAfterRequest = after;
+      }
       request.decisionStatus = decision;
-      request.decisionNote = String(responseNote).trim();
+      request.decisionNote = responseNote.trim();
       request.decidedBy = req.user._id;
       request.decidedAt = new Date();
       request.settlementStatus = decision === "approved" ? "awaitingChoice" : "none";
@@ -383,9 +421,11 @@ export async function chooseExtraHoursSettlement(req, res) {
         const previousChoice = request.settlementOption;
         request.settlementOption = method;
         if (method === "wallet") {
-          const entries = await FinancialTransaction.find({ student: profile._id, kind: { $in: ["walletTopUp", "refund", "extraHoursWalletPayment"] }, status: "succeeded" }).session(session).select("kind amount").lean();
-          const balance = entries.reduce((sum, txn) => sum + (txn.kind === "extraHoursWalletPayment" ? -1 : 1) * Number(txn.amount), 0);
-          if (balance + 1e-9 < request.totalCost) throw Object.assign(new Error("Your wallet balance is not sufficient for this payment."), { status: 409 });
+          // Payments for different requests share one wallet.
+          await StudentProfile.updateOne({ _id: profile._id }, { $inc: { __v: 1 } }, { session });
+          const entries = await FinancialTransaction.find({ student: profile._id, kind: { $in: walletKinds } }).session(session).select("kind amount status").lean();
+          const balance = entries.reduce((sum, txn) => sum + walletDelta(txn), 0);
+          if (balance < Math.round(request.totalCost * 100)) throw Object.assign(new Error("Your wallet balance is not sufficient for this payment."), { status: 409 });
         } else {
           if (!["succeeded", "failed", "cancelled"].includes(gatewayResult)) throw Object.assign(new Error("Invalid sandbox gateway result."), { status: 400 });
           status = gatewayResult;
@@ -431,8 +471,8 @@ export async function getExtraHoursWallet(req, res) {
     const rows = await FinancialTransaction.find({ student: student._id, kind: { $in: ["walletTopUp", "refund", "extraHoursWalletPayment"] } }).sort({ occurredAt: 1, _id: 1 }).lean();
     let running = 0;
     for (const row of rows) {
-      if (row.status === "succeeded") running += row.kind === "extraHoursWalletPayment" ? -Number(row.amount) : Number(row.amount);
-      row.resultingBalance = Math.round(running * 100) / 100;
+      running += walletDelta(row);
+      row.resultingBalance = running / 100;
       row.direction = row.kind === "extraHoursWalletPayment" ? "debit" : "credit";
     }
     return res.json({ studentId: student.studentId, balance, currency: "EGP", transactions: rows.reverse() });
@@ -449,7 +489,9 @@ export async function downloadExtraHoursConfirmation(req, res) {
     if (!transaction) return res.status(404).json({ message: "Confirmation is not available for this financial record." });
     const deferred = transaction.kind === "deferredCharge";
     if (deferred && transaction.status !== "pending") return res.status(404).json({ message: "Deferred-payment confirmation is available only for an outstanding deferred charge." });
-    if (!deferred && transaction.status !== "succeeded") return res.status(404).json({ message: "A paid receipt is available only after successful payment." });
+    if (!deferred && (!["extraHoursWalletPayment", "gatewayPayment"].includes(transaction.kind) || transaction.status !== "succeeded")) {
+      return res.status(404).json({ message: "A paid receipt is available only after successful payment." });
+    }
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename="${deferred ? "deferred-payment-confirmation" : "extra-hours-receipt"}-${transaction._id}.pdf"`);
     const doc = new PDFDocument({ margin: 56 });

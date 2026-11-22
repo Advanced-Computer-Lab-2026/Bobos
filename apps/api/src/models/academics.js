@@ -328,12 +328,10 @@ export const getWallet = async (studentId) => {
   let balanceCents = 0;
 
   transactions.forEach(txn => {
-    if (txn.status === 'succeeded') {
-      if (txn.kind === 'walletTopUp' || txn.kind === 'refund') {
-        balanceCents += Math.round(txn.amount * 100);
-      } else if (txn.kind === 'extraHoursWalletPayment') {
-        balanceCents -= Math.round(txn.amount * 100);
-      }
+    if (txn.kind === 'extraHoursWalletPayment' && ['succeeded', 'REFUNDED', 'refunded'].includes(txn.status)) {
+      balanceCents -= Math.round(txn.amount * 100);
+    } else if (txn.kind !== 'extraHoursWalletPayment' && txn.status === 'succeeded') {
+      balanceCents += Math.round(txn.amount * 100);
     }
     txn.resultingBalance = balanceCents / 100;
     txn.direction = txn.kind === 'extraHoursWalletPayment' ? 'debit' : 'credit';

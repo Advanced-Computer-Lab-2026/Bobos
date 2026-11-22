@@ -191,32 +191,32 @@ test("A2 Req 117: actual A3 acceptance and exit decisions reach only the subject
   assert.deepEqual((await inbox("otherStudent")).data.notifications, []);
 });
 
-test("GAP A1 Req 83: advisors cannot submit requests for another advisor's student", gap("Submission does not check assigned-advisor ownership"), async () => {
+test("Req 83: advisors cannot submit requests for another advisor's student", async () => {
   const result = await call("/extra-hours", { role: "otherAdvisor", method: "POST", body: requestBody() });
   assert.equal(result.status, 403);
 });
 
-test("GAP A1 Req 83: separate approved requests cannot cumulatively exceed the allowed extra hours", gap("Creation always starts at the standard allowance and ignores prior activated requests"), async () => {
+test("Req 83: separate approved requests cannot cumulatively exceed the allowed extra hours", async () => {
   await extra({ decisionStatus: "approved", settlementStatus: "paid" });
   const additionalCourse = await Course.create({ code: "AEX503", name: "Another extra course", creditHours: 3, courseType: "core", facultyMajors: ["CS"], offeringSeasons: ["winter"] });
   const result = await call("/extra-hours", { role: "advisor", method: "POST", body: { ...requestBody(), courseIds: [String(additionalCourse._id)] } });
   assert.ok([400, 409, 422].includes(result.status), `second request above the non-graduating 3-hour limit accepted: ${result.status}`);
 });
 
-test("GAP A1 Req 87: a coordinator decision requires a response note", gap("Missing/blank response notes are accepted"), async () => {
+test("Req 87: a coordinator decision requires a response note", async () => {
   const request = await extra();
   const result = await decide(request, { decision: "approved", responseNote: "   " });
   assert.equal(result.status, 400);
 });
 
-test("GAP A1 Req 87: eligibility is rechecked at approval after the student enters probation", gap("Approval uses the saved request without rechecking current student eligibility"), async () => {
+test("Req 87: eligibility is rechecked at approval after the student enters probation", async () => {
   const request = await extra();
   await StudentProfile.updateOne({ _id: student._id }, { gpa: 3.8, academicStanding: "probation", advisingReason: "probation" });
   const result = await decide(request, { decision: "approved", responseNote: "Checked" });
   assert.ok([400, 409, 422].includes(result.status), `probation request approved: ${result.status}`);
 });
 
-test("GAP A1 Req 91: simultaneous payments of different requests cannot overspend the same wallet", gap("Different request transactions have no shared wallet debit lock"), async () => {
+test("Req 91: simultaneous payments of different requests cannot overspend the same wallet", async () => {
   const requests = await Promise.all([extra({ decisionStatus: "approved", settlementStatus: "awaitingChoice" }), extra({ term: terms[1]._id, decisionStatus: "approved", settlementStatus: "awaitingChoice" })]);
   await FinancialTransaction.create({ student: student._id, kind: "walletTopUp", amount: 2400, status: "succeeded" });
   const results = await Promise.all(requests.map((request) => settle(request, { option: "now", method: "wallet" })));
@@ -224,7 +224,7 @@ test("GAP A1 Req 91: simultaneous payments of different requests cannot overspen
   assert.ok((await getWallet(student._id)).balance >= 0);
 });
 
-test("GAP A1 Req 95: a completed refund is reflected in the request's status/history", gap("The B2 refund flow does not synchronize extra-hours settlement/history"), async () => {
+test("Req 95: a completed refund is reflected in the request's status/history", async () => {
   const request = await extra({ decisionStatus: "withdrawn", settlementStatus: "paid", settlementOption: "gateway" });
   const paid = await FinancialTransaction.create({ student: student._id, extraHoursRequest: request._id, amount: 2400, kind: "gatewayPayment", status: "succeeded", settlementOption: "gateway" });
   await FinancialReversalRequest.create({ student: student._id, extraHoursRequest: request._id, originalTransaction: paid._id, requestedBy: users.advisor._id, reversalType: "refundToWallet" });

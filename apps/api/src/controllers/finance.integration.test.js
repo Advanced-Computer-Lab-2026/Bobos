@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test, { before, after } from "node:test";
 import mongoose from "mongoose";
-import { MongoMemoryServer } from "mongodb-memory-server";
+import { MongoMemoryReplSet } from "mongodb-memory-server";
 import app from "../app.js";
 import { User, StudentProfile } from "../models/identity.js";
 import { AcademicTerm } from "../models/catalogue.js";
@@ -16,7 +16,7 @@ let adminToken, coordinatorToken, student1Token, student2Token, advisorToken, no
 let record1, record2, record3, record4;
 
 before(async () => {
-  database = await MongoMemoryServer.create();
+  database = await MongoMemoryReplSet.create({ replSet: { count: 1 } });
   await mongoose.connect(database.getUri());
 
   // 1. Create users

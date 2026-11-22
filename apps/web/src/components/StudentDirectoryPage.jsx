@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, explainApiError } from "../api.js";
 import { ScheduleActivityPage } from "./B1Pages.jsx";
+import FilterDisclosure from "./FilterDisclosure.jsx";
 
 const emptyFilters = { search: "", studentType: "", advisor: "", major: "", currentSemester: "", academicStanding: "", workflowStatus: "", blockingStep: "", accountStatus: "" };
 const pretty = (value = "") => String(value || "—").replace(/([a-z])([A-Z])/g, "$1 $2").replace(/^./, (letter) => letter.toUpperCase());
@@ -32,6 +33,12 @@ export default function StudentDirectoryPage({ token, role, notify }) {
     return () => controller.abort();
   }, [loadStudents]);
 
+  const chipLabels = { studentType: "Type", advisor: "Advisor", major: "Major", currentSemester: "Semester", academicStanding: "Standing", workflowStatus: "Status", blockingStep: "Blocking step", accountStatus: "Account" };
+  const chipValue = (key, value) => key === "advisor" ? ((directory.filters?.advisors || []).find((item) => item.id === value)?.fullName || value) : pretty(value);
+  const filterChips = Object.keys(chipLabels).filter((key) => applied[key]).map((key) => ({
+    key, label: `${chipLabels[key]}: ${chipValue(key, applied[key])}`,
+    onRemove: () => { setFilters((current) => ({ ...current, [key]: "" })); setApplied((current) => ({ ...current, [key]: "" })); },
+  }));
   const updateFilter = (key, value) => setFilters((current) => ({ ...current, [key]: value, ...(key === "studentType" && value === "normal" ? { advisor: "" } : {}) }));
   const openDetails = async (studentId) => {
     setDetails({ loading: true });
@@ -74,8 +81,12 @@ export default function StudentDirectoryPage({ token, role, notify }) {
     <section className="panel directory-filters">
       <div className="panel-heading"><div><p className="eyebrow">FIND A STUDENT</p><h2>Search and filters</h2></div><span className="panel-count">01</span></div>
       <form onSubmit={(event) => { event.preventDefault(); setApplied({ ...filters }); }}>
-        <div className="filter-grid">
-          <label className="field span-two"><span>Search students</span><input type="search" maxLength={100} value={filters.search} onChange={(event) => updateFilter("search", event.target.value)} placeholder="Student ID, name, or email" /></label>
+        <FilterDisclosure
+          search={<label className="field filter-search"><span>Search students</span><input type="search" maxLength={100} value={filters.search} onChange={(event) => updateFilter("search", event.target.value)} placeholder="Student ID, name, or email" /></label>}
+          chips={filterChips}
+          onClear={filterChips.length ? () => { setFilters(emptyFilters); setApplied(emptyFilters); } : undefined}
+        >{({ close }) => <>
+          <div className="filter-grid">
           <Select label="Student type" value={filters.studentType} onChange={(value) => updateFilter("studentType", value)} options={options.studentTypes || []} />
           <Select label="Advisor" value={filters.advisor} onChange={(value) => updateFilter("advisor", value)} options={(options.advisors || []).map((item) => ({ value: item.id, label: item.fullName }))} disabled={filters.studentType === "normal"} />
           <Select label="Major" value={filters.major} onChange={(value) => updateFilter("major", value)} options={options.majors || []} />
@@ -84,8 +95,10 @@ export default function StudentDirectoryPage({ token, role, notify }) {
           <Select label="Workflow status" value={filters.workflowStatus} onChange={(value) => updateFilter("workflowStatus", value)} options={options.workflowStatuses || []} />
           <Select label="Blocking step" value={filters.blockingStep} onChange={(value) => updateFilter("blockingStep", value)} options={options.blockingSteps || []} />
           <Select label="Account status" value={filters.accountStatus} onChange={(value) => updateFilter("accountStatus", value)} options={[{ value: "active", label: "Active" }, { value: "inactive", label: "Inactive" }]} />
-        </div>
-        <div className="form-actions"><button className="primary-button" type="submit">Apply filters <span>→</span></button><button className="text-button" type="button" onClick={() => { setFilters(emptyFilters); setApplied(emptyFilters); }}>Clear filters</button><button className="text-button push-right" type="button" onClick={() => loadStudents()}>↻ Refresh</button></div>
+          </div>
+          <div className="filter-panel-actions"><button className="primary-button" type="submit" onClick={() => setTimeout(close, 0)}>Apply filters</button><button className="text-button" type="button" onClick={() => { setFilters(emptyFilters); setApplied(emptyFilters); close(); }}>Clear filters</button></div>
+        </>}</FilterDisclosure>
+        <div className="form-actions"><button className="text-button push-right" type="button" onClick={() => loadStudents()}>↻ Refresh</button></div>
       </form>
     </section>
 
@@ -99,7 +112,7 @@ export default function StudentDirectoryPage({ token, role, notify }) {
 
     {role === "coordinator" && <section className="panel advisor-management"><div className="panel-heading"><div><p className="eyebrow">ADVISOR SYSTEM</p><h2>Advisor access</h2></div><span className="panel-count">02</span></div><p className="page-description">Look up an existing university advisor and add or remove advising-system access.</p><form className="inline-controls" onSubmit={lookupAdvisor}><label className="field"><span>Advisor GUC email</span><input type="email" required value={advisorEmail} onChange={(event) => setAdvisorEmail(event.target.value)} placeholder="name@guc.edu.eg" /></label><button className="primary-button" disabled={advisorBusy}>{advisorBusy ? "Looking up…" : "Look up advisor"}</button></form>{advisorError && <div className="feedback error" role="alert">{advisorError}</div>}{advisor && <div className="advisor-result"><span className="avatar">{advisor.fullName?.slice(0, 1)}</span><div><strong>{advisor.fullName}</strong><small>{advisor.email}</small></div><span className={`status-pill ${advisor.isAdvisorInSystem ? "good" : "muted"}`}>{advisor.isAdvisorInSystem ? "In advising system" : "Not in advising system"}</span><button className={advisor.isAdvisorInSystem ? "outline-button danger-button" : "primary-button"} type="button" onClick={changeAdvisor} disabled={advisorBusy}>{advisor.isAdvisorInSystem ? "Remove" : "Add advisor"}</button></div>}<p className="helper-text">Email notices need SMTP settings configured by the system administrator.</p></section>}
 
-    {details && <div className="modal-backdrop" role="presentation" onClick={() => setDetails(null)}><section className="modal-card" role="dialog" aria-modal="true" aria-labelledby="student-details-title" onClick={(event) => event.stopPropagation()}><div className="modal-heading"><div><p className="eyebrow">STUDENT RECORD</p><h2 id="student-details-title">Student details</h2></div><button className="icon-button" type="button" onClick={() => setDetails(null)} aria-label="Close">×</button></div>{details.loading ? <div className="loading-state"><span className="loader" />Loading student…</div> : details.error ? <div className="feedback error">{details.error}</div> : <><div className="detail-grid modal-details"><Detail label="Student ID" value={details.studentId} /><Detail label="Name" value={details.user?.fullName} /><Detail label="Email" value={details.user?.email} /><Detail label="Student type" value={pretty(details.studentType)} /><Detail label="Major" value={details.major} /><Detail label="Semester" value={details.currentSemester} /><Detail label="Academic standing" value={pretty(details.academicStanding)} /><Detail label="GPA" value={details.gpa} /><Detail label="Enrollment" value={pretty(details.enrollmentStatus)} /><Detail label="Advisor" value={details.assignedAdvisor?.fullName || "Unassigned"} /><Detail label="Account" value={details.user?.isActive ? "Active" : "Inactive"} /></div>{role === "administrator" && details.user && <button className={details.user.isActive ? "outline-button danger-button" : "primary-button"} type="button" onClick={setAccountStatus}>{details.user.isActive ? "Deactivate account" : "Activate account"}</button>}{details.studentType === "advising" && <div style={{ marginTop: "1rem" }}><ScheduleActivityPage token={token} studentId={details._id} /></div>}</>}</section></div>}
+    {details && <div className="modal-backdrop" role="presentation" onClick={() => setDetails(null)}><section className="modal-card" role="dialog" aria-modal="true" aria-labelledby="student-details-title" onClick={(event) => event.stopPropagation()}><div className="modal-heading"><div><p className="eyebrow">STUDENT RECORD</p><h2 id="student-details-title">Student details</h2></div><button className="icon-button" type="button" onClick={() => setDetails(null)} aria-label="Close">×</button></div>{details.loading ? <div className="loading-state"><span className="loader" />Loading student…</div> : details.error ? <div className="feedback error" role="alert">{details.error}</div> : <><div className="detail-grid modal-details"><Detail label="Student ID" value={details.studentId} /><Detail label="Name" value={details.user?.fullName} /><Detail label="Email" value={details.user?.email} /><Detail label="Student type" value={pretty(details.studentType)} /><Detail label="Major" value={details.major} /><Detail label="Semester" value={details.currentSemester} /><Detail label="Academic standing" value={pretty(details.academicStanding)} /><Detail label="GPA" value={details.gpa} /><Detail label="Enrollment" value={pretty(details.enrollmentStatus)} /><Detail label="Advisor" value={details.assignedAdvisor?.fullName || "Unassigned"} /><Detail label="Account" value={details.user?.isActive ? "Active" : "Inactive"} /></div>{role === "administrator" && details.user && <button className={details.user.isActive ? "outline-button danger-button" : "primary-button"} type="button" onClick={setAccountStatus}>{details.user.isActive ? "Deactivate account" : "Activate account"}</button>}{details.studentType === "advising" && <div style={{ marginTop: "1rem" }}><ScheduleActivityPage token={token} studentId={details._id} /></div>}</>}</section></div>}
   </div>;
 }
 

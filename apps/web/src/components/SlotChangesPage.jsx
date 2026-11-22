@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api.js";
 import { filterSlotChanges } from "../slot-change-filters.js";
+import FilterDisclosure from "./FilterDisclosure.jsx";
 import { WorkspaceEmpty } from "./WorkspaceUI.jsx";
 
 const path = "/api/slot-changes";
@@ -32,7 +33,6 @@ export default function SlotChangesPage({ token, role, onOpenSchedule }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const [messageTone, setMessageTone] = useState("info");
   const heading = useRef(null);
   const studentRequestHeading = useRef(null);
   const load = useCallback((signal) => api(mine ? `${path}/me` : path, { token, signal }), [mine, token]);
@@ -56,8 +56,7 @@ export default function SlotChangesPage({ token, role, onOpenSchedule }) {
     setError(""); setMessage(""); setBusy(true);
     try {
       const result = await api(endpoint, { token, method: "POST", body });
-      setMessageTone(body?.decision === "rejected" ? "error" : "info");
-      setMessage(result.message || (endpoint === path ? "Request submitted." : "Request withdrawn."));
+      setMessage(result.message || (body?.decision ? "Decision saved." : endpoint === path ? "Request submitted." : "Request withdrawn."));
       if (endpoint === path) { setSlotId(""); setNote(""); }
       setData(await load());
       if (detail) {
@@ -80,6 +79,13 @@ export default function SlotChangesPage({ token, role, onOpenSchedule }) {
     const advisor = student?.assignedAdvisor;
     return [advisor?._id || "unassigned", advisor?.fullName || "Unassigned"];
   })).entries()].sort((a, b) => a[1].localeCompare(b[1]));
+  const filterChips = [
+    filters.status && { key: "status", label: `Status: ${statuses[filters.status] || filters.status}`, onRemove: () => setFilters((old) => ({ ...old, status: "" })) },
+    filters.advisor && { key: "advisor", label: `Advisor: ${advisors.find(([id]) => id === filters.advisor)?.[1] || filters.advisor}`, onRemove: () => setFilters((old) => ({ ...old, advisor: "" })) },
+    filters.course && { key: "course", label: `Course: ${filters.course}`, onRemove: () => setFilters((old) => ({ ...old, course: "" })) },
+    filters.from && { key: "from", label: `From: ${filters.from}`, onRemove: () => setFilters((old) => ({ ...old, from: "" })) },
+    filters.to && { key: "to", label: `To: ${filters.to}`, onRemove: () => setFilters((old) => ({ ...old, to: "" })) },
+  ].filter(Boolean);
   const setFilter = (key) => (event) => setFilters((old) => ({ ...old, [key]: event.target.value }));
   const currentRequest = detail?.request;
   const eligibleSlots = (data?.slots || []).filter((slot) => !requests.some((request) =>
@@ -91,7 +97,7 @@ export default function SlotChangesPage({ token, role, onOpenSchedule }) {
       {mine && <button type="button" className="outline-button" onClick={onOpenSchedule}>My schedule</button>}
     </div>
     {error && <div className="feedback error" role="alert">{error}</div>}
-    {message && <div className={`feedback ${messageTone}`} role="status">{message}</div>}
+    {message && <div className="feedback success" role="status">{message}</div>}
     {!data && !error && <p role="status">Loading requests…</p>}
     {mine && data && <section className="panel form-stack">
       <h2>Request a slot change</h2>
@@ -115,15 +121,17 @@ export default function SlotChangesPage({ token, role, onOpenSchedule }) {
     </section>}
     {data && !detail && <section className="panel form-stack">
       <div className="results-heading"><h2>{mine ? "My requests" : "Request queue"}</h2><span className="result-count" aria-live="polite">{shown.length} {shown.length === 1 ? "request" : "requests"}</span></div>
-      {!mine && <div className="slot-request-filters">
-        <label className="field"><span>Student or course</span><input type="search" name="slot-search" autoComplete="off" placeholder="Student ID, name or course…" value={filters.search} onChange={setFilter("search")} /></label>
+      {!mine && <FilterDisclosure
+        search={<label className="field filter-search"><span>Student or course</span><input type="search" name="slot-search" autoComplete="off" placeholder="Student ID, name or course…" value={filters.search} onChange={setFilter("search")} /></label>}
+        chips={filterChips}
+        onClear={filterChips.length ? () => setFilters(emptyFilters) : undefined}
+      ><div className="slot-request-filters">
         <label className="field"><span>Status</span><select value={filters.status} onChange={setFilter("status")}><option value="">All statuses</option>{Object.entries(statuses).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
         <label className="field"><span>Advisor</span><select value={filters.advisor} onChange={setFilter("advisor")}><option value="">All advisors</option>{advisors.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label>
         <label className="field"><span>Course</span><select value={filters.course} onChange={setFilter("course")}><option value="">All courses</option>{options(requests.map((item) => item.course?.code)).map((code) => <option key={code}>{code}</option>)}</select></label>
         <label className="field"><span>Start date</span><input type="date" value={filters.from} max={filters.to || undefined} onChange={setFilter("from")} /></label>
         <label className="field"><span>End date</span><input type="date" value={filters.to} min={filters.from || undefined} onChange={setFilter("to")} /></label>
-        {Object.values(filters).some(Boolean) && <div className="form-actions"><button type="button" className="text-button" onClick={() => setFilters(emptyFilters)}>Clear filters</button></div>}
-      </div>}
+      </div></FilterDisclosure>}
       {shown.length ? <div className="table-scroll"><table>
         <thead><tr>{!mine && <th>Student</th>}<th>Course and slot</th><th>Submitted</th><th>Status</th>{!mine && <th>Action</th>}{mine && <th>Details</th>}</tr></thead>
         <tbody>{shown.map((item) => <tr key={item._id}>

@@ -313,10 +313,18 @@ test("Req 96: Advisor can withdraw a pending extra-hours request", async () => {
 
 test("Req 117 delivers extra-hours decisions, payment outcomes, deferred charges and reversals to the owner", async () => {
   await Promise.all([ExtraHoursRequest.deleteMany({}), Notification.deleteMany({}), FinancialTransaction.deleteMany({})]);
-  const submit = async () => {
+  const activeTerm = await AcademicTerm.findOne({ isActive: true }).lean();
+  const alternateTerm = (code, season) => {
+    const { _id, ...fields } = activeTerm;
+    return AcademicTerm.create({ ...fields, code, season, isActive: false });
+  };
+  const [walletTerm, deferredTerm] = await Promise.all([
+    alternateTerm("EH-WALLET", "spring"), alternateTerm("EH-DEFERRED", "summer"),
+  ]);
+  const submit = async (termId) => {
     const response = await apiCall("/extra-hours", {
       method: "POST",
-      body: { studentId: String(profiles.regular._id), courseIds: [String(courses[0]._id)] },
+      body: { studentId: String(profiles.regular._id), courseIds: [String(courses[0]._id)], termId },
     });
     assert.equal(response.status, 201, response.body.message);
     return response.body._id;
@@ -346,8 +354,8 @@ test("Req 117 delivers extra-hours decisions, payment outcomes, deferred charges
   assert.equal(paid.body.transaction.status, "succeeded");
   assert.equal((await settle(paidId, gateway)).status, 409);
 
-  const walletId = await submit();
-  assert.equal((await decide(walletId, "approved")).status, 200);
+  const walletId = await submit(walletTerm._id);
+  assert.equal((await decide(walletId, "approved", "Approved wallet scenario.")).status, 200);
   const wallet = { option: "now", method: "wallet" };
   assert.equal((await settle(walletId, wallet)).status, 409);
   await FinancialTransaction.create({ student: profiles.regular._id, kind: "walletTopUp", status: "succeeded", amount: 3000 });
@@ -355,8 +363,8 @@ test("Req 117 delivers extra-hours decisions, payment outcomes, deferred charges
   assert.equal(walletPayment.status, 200, walletPayment.body.message);
   assert.equal(walletPayment.body.transaction.kind, "extraHoursWalletPayment");
 
-  const deferredId = await submit();
-  assert.equal((await decide(deferredId, "approved")).status, 200);
+  const deferredId = await submit(deferredTerm._id);
+  assert.equal((await decide(deferredId, "approved", "Approved deferral scenario.")).status, 200);
   const deferred = await settle(deferredId, { option: "deferred" });
   assert.equal(deferred.status, 200, deferred.body.message);
   assert.equal(deferred.body.request.settlementStatus, "deferred");

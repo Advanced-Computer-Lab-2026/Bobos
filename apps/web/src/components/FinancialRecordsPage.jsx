@@ -496,7 +496,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
                 Loading record breakdown…
               </div>
             ) : viewError ? (
-              <div className="feedback error">{viewError}</div>
+              <div className="feedback error" role="alert">{viewError}</div>
             ) : (
               <>
                 <div className="detail-grid modal-details">
@@ -703,7 +703,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
               </div>
             </div>
 
-            {refundError && <div className="feedback error">{refundError}</div>}
+            {refundError && <div className="feedback error" role="alert">{refundError}</div>}
 
             <form onSubmit={handleRefundSubmit}>
               <label className="field" style={{ marginTop: "12px" }}>

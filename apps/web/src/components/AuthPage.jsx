@@ -3,6 +3,14 @@ import { api } from "../api.js";
 
 import { ThemeControl } from "./PortalChrome.jsx";
 
+const standardDemoAccounts = [
+  ["Administrator", "admin@guc.edu.eg"],
+  ["Coordinator", "nadia.coordinator@guc.edu.eg"],
+  ["Advisor", "sherif.advisor@guc.edu.eg"],
+  ["Normal student", "karim.normal@student.guc.edu.eg"],
+  ["Advising student", "layla.advising@student.guc.edu.eg"],
+].map(([label, email]) => ({ label, email, password: "Password123!" }));
+
 export default function AuthPage({ onLogin }) {
   const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
@@ -12,6 +20,20 @@ export default function AuthPage({ onLogin }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [demoAccounts, setDemoAccounts] = useState(null);
+
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    const controller = new AbortController();
+    fetch("./__bobos_local_demo", { signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok || !response.headers.get("content-type")?.includes("application/json")) return standardDemoAccounts;
+        return (await response.json()).accounts || standardDemoAccounts;
+      })
+      .then((accounts) => { if (!controller.signal.aborted) setDemoAccounts(accounts); })
+      .catch(() => { if (!controller.signal.aborted) setDemoAccounts(standardDemoAccounts); });
+    return () => controller.abort();
+  }, []);
 
   const lampHost = useRef(null);
   useEffect(() => {
@@ -100,15 +122,10 @@ export default function AuthPage({ onLogin }) {
             <details className="portal-demo">
               <summary>Local demo accounts</summary>
               <div className="portal-demo-accounts">
-                {[
-                  ["Administrator", "admin@guc.edu.eg"],
-                  ["Coordinator", "nadia.coordinator@guc.edu.eg"],
-                  ["Advisor", "sherif.advisor@guc.edu.eg"],
-                  ["Normal student", "karim.normal@student.guc.edu.eg"],
-                  ["Advising student", "layla.advising@student.guc.edu.eg"],
-                ].map(([label, account]) => (
+                {demoAccounts === null && <p role="status">Loading demo accounts…</p>}
+                {demoAccounts?.map(({ label, email: account, password: demoPassword }) => (
                   <button key={account} className="outline-button" type="button" disabled={busy}
-                    onClick={() => { setEmail(account); setPassword("Password123!"); setError(""); }}>
+                    onClick={() => { setEmail(account); setPassword(demoPassword); setError(""); }}>
                     {label}
                   </button>
                 ))}

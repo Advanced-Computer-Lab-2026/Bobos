@@ -19,6 +19,7 @@ const pages = {
 const roleNames = {coordinator:'Coordinator', administrator:'Administrator', advisor:'Advisor', advisingStudent:'Advising student', normalStudent:'Normal student'};
 const authPages = new Set(['login','forgot','reset']);
 const previewSessionKey = 'portal-studio-preview-session';
+const workspaceSessionKey = 'bobos.token';
 const previewEmail = 'demo@portal.test';
 const signedIn = () => localStorage.getItem(previewSessionKey) === '1';
 const pageKey = key => Object.hasOwn(pages,key) ? key : 'overview';
@@ -30,8 +31,11 @@ let page = pageKey(params.get('page'));
 let tab = '';
 let testCount = 0;
 const readNotifications = new Set();
+const notificationKey = id => `${role}:${id}`;
+const isNotificationUnread = id => !readNotifications.has(notificationKey(id));
 let connected = true;
-let toastTimer;
+let inboxArtObserver;
+let bellAudio;
 let returnFocus;
 const studentPreferences = new Map([[0,{days:['Thursday'],groups:Array(4).fill('Group 4'),notes:'I would prefer to keep Thursday free.'}]]);
 const app = document.querySelector('#app');
@@ -41,12 +45,16 @@ const student = () => ['normalStudent','advisingStudent'].includes(role);
 const person = () => student() ? 'Omar Hassan' : role === 'advisor' ? 'Dr. Salma Adel' : role === 'administrator' ? 'Youssef Ali' : 'Nadia Ahmed';
 const href = (target,index=selectedStudent,course=selectedCourse) => {
   const destination = authPages.has(target) ? returnAfterSignIn : target;
-  const preserveStudent = ['draft-schedule','student-detail','preferences'].includes(destination);
+  const preserveStudent = ['draft-schedule','student-detail'].includes(destination) || (destination === 'preferences' && !student());
   const look = productionPreview ? '&preview=live' : `&layout=${lab.layout+1}&palette=${lab.palette+1}&mode=${lab.dark?'dark':'light'}`;
   return `?page=${target}&role=${role}${look}${comparePageDesigns?'&designs=compare':''}${target==='login' && comparePageDesigns && params.has('image')?`&image=${signinImage.id}`:''}${authPages.has(target)&&destination!=='overview'?`&next=${destination}`:''}${preserveStudent?`&student=${index}`:''}${destination==='course-detail'?`&course=${encodeURIComponent(course[0])}`:''}`;
 };
 
 const link = (target, text, cls='', index) => `<a class="${cls}" href="${href(target,index)}" data-page="${target}"${index===undefined?'':` data-student="${index}"`}>${text}</a>`;
+const navigationLabel = id => id === 'extra-hours' ? 'Extra-hours requests' : pages[id];
+const navigationLink = (id, label, cls) => id === 'extra-hours'
+  ? `<a class="${cls}" href="../workspace.html?screen=extra-hours&theme=${lab.dark ? 'dark' : 'light'}" data-live-extra-hours>${label}</a>`
+  : link(id,label,cls);
 const button = (text, action, cls='btn', extra='') => `<button class="${cls}" type="button" data-action="${action}" ${extra}>${text}</button>`;
 // The outline names the state even when the timetable colors are unavailable.
 const statusMarks = {
@@ -60,6 +68,7 @@ const statusMarks = {
   upcoming: '<path d="m3 5 17.5-.5.5 16-18 .5Z"/><path class="mark-ink" d="m3 9 17.6-.5M7 2.8l.1 4.1m9.1-4.3.1 4.1m-7.9 8 7-.2m-2.7-2.7 2.8 2.7-2.7 2.8"/>'
 };
 function badge(text, tone='') {
+  if (page==='overview') return `<span class="badge ${tone}">${icon(tone==='draft'?'edit':tone==='neutral'?'circle':tone==='pending'||tone==='payment-pending'?'clock':tone==='ready'||tone==='review'?'inbox':'check')}${text}</span>`;
   const kind = ({
     'Ready for review':'ready', Draft:'draft', 'Not started':'blank', Complete:'complete', Published:'complete',
     Upcoming:'upcoming', Archived:'archived', Ended:'archived', Unassigned:'warning', Rejected:'warning'
@@ -373,13 +382,13 @@ function groups(){
   if (student()) return [
     ['Home', ['overview']],
     ['Classes', ['my-schedule','my-courses', ...(role === 'normalStudent' ? ['schedule-swap'] : ['preferences'])]],
-    ['Support', ['my-advisor','calendar-sync', ...(role === 'advisingStudent' ? ['records'] : [])]]
+    ['Support', ['my-advisor','calendar-sync', ...(role === 'advisingStudent' ? ['records','extra-hours'] : [])]]
   ];
   return [
     ['Home', ['overview', ...(role === 'coordinator' ? ['pending-work'] : [])]],
     ['Student services', [
       ...(managesAcademics ? ['directory','financial-records'] : []),
-      ...(advises ? ['advising'] : [])
+      ...(advises ? ['advising','extra-hours'] : [])
     ]],
     ['Scheduling', [
       'student-schedules', ...(advises ? ['preferences'] : []),
@@ -397,6 +406,7 @@ function sidebar(){
     <div class="brand">${link('overview',portalWordmark(),'wordmark')}<span>Academic workspace</span></div>
     <nav aria-label="Main navigation">${groups().map(([name,items],groupIndex)=>{
       const contents = `<ul>${items.map(id => {
+        if (id === 'extra-hours') return `<li>${navigationLink(id,`<span>${navigationLabel(id)}</span>`,'navlink')}</li>`;
         const current = page === id || parent[page] === id;
         const count = id === 'student-schedules' ? readyStudents.length : id === 'mandatory-removals' ? 3 : '';
         return `<li><a class="navlink${current ? ' active' : ''}" href="${href(id)}" data-page="${id}" ${current ? 'aria-current="page"' : ''}>${study && groupIndex===0 ? icon(id==='overview'?'home':'inbox') : ''}<span>${pages[id]}</span>${count ? `<span class="nav-count">${count}</span>` : ''}</a></li>`;
@@ -432,7 +442,8 @@ function table(headers,rows,search=true){
 }
 
 function filterbar(placeholder,options=[],action=''){
-  return `<div class="toolbar"><div class="filters"><input aria-label="${placeholder}" placeholder="${placeholder}" id="search" type="search">${options.map(([label,values,field])=>`<span class="filter-tab"><svg class="filter-mark" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="m2.8 7.5 6-.3m3.7.1 6.3-.3m-16 8 10.2-.3m3.6-.1 2.7-.1"/><path d="M12.4 7a2 2 0 1 1-4 .2 2 2 0 1 1 4-.2Zm4 7.5a2 2 0 1 1-4 .2 2 2 0 1 1 4-.2Z"/></svg><select aria-label="${label}" data-filter="${field||''}"><option value="">${label}</option>${values.map(value=>`<option>${value}</option>`).join('')}</select></span>`).join('')}</div>${action?`<div class="actions">${action}</div>`:''}</div>`;
+  const chips=options.length?'<ul class="filter-chips" id="filter-chips" aria-label="Active filters" hidden></ul>':'';
+  return `<div class="toolbar"><div class="filters"><input aria-label="${placeholder}" placeholder="${placeholder}" id="search" type="search">${options.map(([label,values,field])=>`<span class="filter-tab"><svg class="filter-mark" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="m2.8 7.5 6-.3m3.7.1 6.3-.3m-16 8 10.2-.3m3.6-.1 2.7-.1"/><path d="M12.4 7a2 2 0 1 1-4 .2 2 2 0 1 1 4-.2Zm4 7.5a2 2 0 1 1-4 .2 2 2 0 1 1 4-.2Z"/></svg><select aria-label="${label}" data-filter="${field||''}"><option value="">${label}</option>${values.map(value=>`<option>${value}</option>`).join('')}</select></span>`).join('')}${chips}</div>${action?`<div class="actions">${action}</div>`:''}</div>`;
 }
 function tabs(items,defaultTab,style='file'){
   if(!items.some(([id])=>id===tab)) tab=defaultTab||items[0][0];
@@ -447,13 +458,18 @@ function termContext(context) {
 }
 
 function workspaceGrid(view, modules) {
+  const lanes = Object.fromEntries(Object.entries(view.lanes || {}).map(([key, children]) =>
+    [key, children.filter(child=>Object.hasOwn(modules,child))]));
+  const rows = view.rows.map(row=>row.split(' ').map(key=>
+    Object.hasOwn(modules,key) || lanes[key]?.length ? key : '.'))
+    .filter(row=>row.some(key=>key!=='.'));
   const section = key => `<section class="work-module module-${key}" style="--area:${key}">${modules[key]}</section>`;
-  const layout = key => view.lanes?.[key]
-    ? `<div class="work-lane work-lane-${key}" style="--area:${key}">${view.lanes[key].map(section).join('')}</div>`
+  const layout = key => lanes[key]
+    ? `<div class="work-lane work-lane-${key}" style="--area:${key}">${lanes[key].map(section).join('')}</div>`
     : section(key);
-  const order = [...new Set(view.rows.flatMap(row=>row.split(' ')))];
+  const order = [...new Set(rows.flat().filter(key=>key!=='.'))];
   const columns = view.columns.split(' ').map(size=>`minmax(0,${size})`).join(' ');
-  const areas = view.rows.map(row=>`'${row}'`).join(' ');
+  const areas = rows.map(row=>`'${row.join(' ')}'`).join(' ');
   return `<div class="work-grid" style="--columns:${columns};--areas:${areas}">
     ${order.map(layout).join('')}
   </div>`;
@@ -485,7 +501,8 @@ function workspaceTimetable(view,title,target,label) {
 
 function draftProgress() {
   const statusCounts = ['Ready for review','Draft','Not started'].map(label=>[label,scheduleStates.filter(status=>status===label).length]);
-  return `<dl class="draft-tallies">${statusCounts.map(([label,count])=>`<div><dt>${badge(label,statusTone(label))}</dt><dd>${count}</dd></div>`).join('')}</dl>`;
+  return `<div class="draft-meter" role="img" aria-label="${statusCounts.map(([label,count])=>`${count} ${label}`).join(', ')}">${statusCounts.map(([,count])=>`<span style="flex-grow:${count}"></span>`).join('')}</div>
+    <ul class="meter-key">${statusCounts.map(([label,count])=>`<li><i aria-hidden="true"></i><strong>${count}</strong> ${label}</li>`).join('')}</ul>`;
 }
 
 const recentScheduleEvents = [
@@ -494,27 +511,12 @@ const recentScheduleEvents = [
   {action:'Template published',subject:'Group 4',author:'Nadia Ahmed',date:'2026-11-19',time:'16:20',tone:'payment-complete',stamp:'press',caption:'Nadia Ahmed · Group 4',target:'template-detail'}
 ];
 
-function teachingActivity(canManage){
-  const days = [...new Set(recentScheduleEvents.map(event => event.date))];
-  const groups = days.map(date => {
-    const rows = recentScheduleEvents.filter(event => event.date === date).map(event => {
-      const target = event.stamp === 'press' && !canManage ? 'student-schedules' : event.target;
-      const label = `<span class="impression-copy"><strong>${event.action}</strong><span class="impression-byline">${event.caption}</span></span>`;
-      const time = `<time datetime="${date}T${event.time}">${event.time}</time>`;
-      return `<li>${link(target,activityStamp(event.stamp,'margin') + label + time,'activity-impression',event.index)}</li>`;
-    }).join('');
-    return `<section class="activity-leaf"><h3><time datetime="${date}" aria-label="${formatCalendarDay(date,{day:'numeric',month:'long'})}"><span>${formatCalendarDay(date,{day:'numeric'})}</span> ${formatCalendarDay(date,{month:'short'})}</time></h3><ol class="activity-impressions" role="list">${rows}</ol></section>`;
-  }).join('');
-  return `<div class="activity-edition activity-margins"><div class="section-head activity-heading"><h2 id="recent-activity">Recent activity</h2>
-    ${link(canManage?'schedule-activity':'notifications',canManage?'View log':'Notifications','quiet-link')}</div>${groups}</div>`;
-}
-
 const dashboardViews = {
-  daybook:{label:'Daybook',columns:'1.45fr 1fr',rows:['intro activity','queue activity','week week','review review']},
-  teaching:{label:'Teaching week',columns:'1.5fr 1fr',rows:['intro intro','week week','tasks dateside'],lanes:{tasks:['queue','review'],dateside:['calendar','activity']}},
-  advising:{label:'Advising desk',columns:'1.25fr 1fr',rows:['intro intro','review queue','review activity','week week']},
-  almanac:{label:'Term almanac',columns:'1fr 1.5fr',rows:['activity intro','activity queue','week week','review review']},
-  handover:{label:'Staff handover',columns:'1fr 1.1fr',rows:['intro intro','activity review','queue review','week week']}
+  daybook:{label:'Daybook',columns:'1.45fr 1fr',rows:['intro intro','queue dates','review review']},
+  teaching:{label:'Work overview',columns:'1.5fr 1fr',rows:['intro intro','queue queue','review calendar']},
+  advising:{label:'Advising desk',columns:'1.25fr 1fr',rows:['intro intro','review tasks'],lanes:{tasks:['queue','dates']}},
+  almanac:{label:'Term almanac',columns:'1fr 1.5fr',rows:['intro intro','dates tasks'],lanes:{tasks:['queue','review']}},
+  handover:{label:'Staff handover',columns:'1fr 1.1fr',rows:['intro intro','tasks review'],lanes:{tasks:['queue','dates']}}
 };
 const dashboardViewKey='portal-studio-dashboard-view';
 const requestedView=new URLSearchParams(location.search).get('view');
@@ -534,7 +536,8 @@ function overview(){
   if(student()) return studentOverview();
   const view = workspaces[lab.layout];
   const canManage = ['administrator','coordinator'].includes(role);
-  const canAdvise = ['advisor','coordinator'].includes(role);
+  const queueDestination = role==='coordinator' ? 'pending-work' : role==='advisor' ? 'advising' : 'courses';
+  const queueLabel = role==='coordinator' ? 'All work' : role==='advisor' ? 'Advising students' : 'Course catalogue';
   const formatDate = (day,month,label,tone) => `<li data-tone="${tone}"><time><strong>${day}</strong><span>${month}</span></time><span>${label}</span></li>`;
   const reviewCircle = '<svg class="review-circle" aria-hidden="true" viewBox="0 0 68 30" preserveAspectRatio="none"><path pathLength="1" d="M50 5C36 1 10 3 5 12S12 26 32 26C51 27 66 22 64 14S54 4 40 4"/></svg>';
   const advisingDesk = view.name==='Claude Study' && dashboardView==='advising';
@@ -542,15 +545,22 @@ function overview(){
   const teachingDesk = view.name==='Claude Study' && dashboardView==='teaching';
   const reviewFiles = teachingDesk ? `<div class="draft-index">${readyStudents.map(({name,index})=>link('draft-schedule',
     `<svg class="desktop-folder" viewBox="0 0 96 72" aria-hidden="true"><path fill="#bdbaaf" d="M5 15q0-6 6-6h22l8 7h43q6 0 6 6v39H5z"/><g class="folder-sheet"><path class="folder-leaf-edge" fill="#fffdf6" stroke="#b8b4a7" stroke-width=".85" d="M12 21Q45 19 82 20L84 59Q50 60 11 60Z"/><path class="folder-writing" stroke="#989383" fill="none" stroke-linecap="round" stroke-width="1.65" d="M19 27q13-.6 35 0m-35 5q16-.8 48 0"/><path class="folder-third" stroke="#aaa396" fill="none" stroke-linecap="round" stroke-width="1.4" d="M19 36.7q11-.4 24 .1"/></g><path class="folder-cover" fill="var(--console-ivory,#f0eee6)" stroke="#c7c3b7" d="M5 31q0-5 5-5h75q5 0 5 5l-2 28q0 5-5 5H12q-5 0-5-5z"/></svg><strong>${name}</strong><small>${index===0?'19 credits · Thursday off':'Semester 7 · Group 4'}</small>`,'draft-file',index)).join('')}</div>` : '';
-  const tasks = [
-    ['course-removal','rose',3,'Course removals','course removal requests','Credit load and scheduling decisions','mandatory-removals','Review'],
-    ...(canAdvise ? [['advisor-assignment','mint',2,'Advisors','students need an advisor','Advising assignments','advising','Assign']] : []),
-    ...(canManage ? [['group-assignment','iris',6,'Group assignment','students need a group','Computer Engineering · Semester 7','group-assignments','Assign']] : [])
+  const removalsTask = ['course-removal','rose',3,'Course removals','course removal requests','Credit load and scheduling decisions','mandatory-removals','Review'];
+  const tasks = role==='coordinator' ? [
+    removalsTask,
+    ['advisor-assignment','mint',2,'Advisors','students need an advisor','Advising assignments','advising','Assign'],
+    ['group-assignment','iris',6,'Group assignment','students need a group','Computer Engineering · Semester 7','group-assignments','Assign'],
+  ] : role==='advisor' ? [
+    removalsTask,
+    ['advisor-assignment','mint',readyStudents.length,'Advising','drafts ready to review','Student schedules and preferences','advising','Open advising'],
+  ] : [
+    ['group-assignment','iris',courseData.length,'Course offerings','courses in the winter catalogue','Review offerings and class groups','offerings','View offerings'],
+    ['advisor-assignment','mint',registrationDates.length,'Academic terms','registration milestones','Review dates for the active term','terms','Manage terms'],
   ];
   const actions = [
     ['calendar','student-schedules','Review schedules'],
     ['people', canManage ? 'directory' : 'advising','Find a student'],
-    ['clock','pending-work','Open work queue']
+    ['clock',queueDestination,queueLabel]
   ];
   const distribution = draftProgress();
   const activeStudent = readyStudents.find(({index})=>index===selectedStudent) || readyStudents[0];
@@ -564,23 +574,10 @@ function overview(){
       <div class="task-shortcuts">${actions.map(([symbol,target,label])=>link(target,icon(symbol)+label,'btn')).join('')}</div></div>`,
     capacity:workspaceSection('Draft progress','student-schedules','View schedules',distribution),
     review:workspaceSection('Schedule review','student-schedules','All schedules',advisingDesk ? `<p class="review-summary">${readyStudents.length} student drafts ready</p>${reviewRows}` : teachingDesk ? reviewFiles : reviewRows),
-    queue:workspaceSection('Work queue','pending-work','All work',workQueue(tasks,view.name==='Claude Study')),
+    queue:workspaceSection('Work queue',queueDestination,queueLabel,workQueue(tasks,view.name==='Claude Study')),
     dates:workspaceSection('Registration dates',canManage?'terms':'student-schedules',icon('calendar')+(canManage?'Term settings':'Schedules'),`<ol class="milestones">${registrationDates.map(date=>formatDate(...date)).join('')}</ol>`,'btn date-action'),
-    activity:teachingDesk ? teachingActivity(canManage) : workspaceSection('Recent activity',canManage?'schedule-activity':'notifications',canManage?'View log':'Notifications',[
-      ['Mariam Mostafa','submitted her preferences','Today · 10:42'],
-      ['Dr. Salma Adel','saved Omar’s advising draft','Today · 09:15'],
-      ['Nadia Ahmed','published the Group 4 template','Yesterday · 16:20']
-    ].map(([name,event,time],i)=>{
-      if(view.name==='Claude Study' && dashboardView==='handover'){
-        const subjects=['Preferences submitted','Advising draft saved','Group template published'];
-        const detail=[name,`Omar Hassan · ${name}`,`Group 4 · ${name}`];
-        return `<div class="event handover-entry">${avatar(name)}<div><strong>${subjects[i]}</strong><p>${detail[i]}</p><time>${time}</time></div></div>`;
-      }
-      return `<div class="event">${avatar(name)}<div><p><strong>${name}</strong> ${event}</p><time>${time}</time></div></div>`;
-    }).join('')),
     dispatch,
     register:workspaceSection('Student drafts','student-schedules','All schedules',table(['Student','Schedule',''],names.slice(0,8).map((name,index)=>[`<strong>${name}</strong><small>70-${71577+index}</small>`,badge(scheduleStates[index],statusTone(scheduleStates[index])),link('draft-schedule','Open','quiet-link',index)]),false)),
-    week:workspaceTimetable(view,'Group 4 timetable','student-schedules','Open schedules'),
     people:workspaceSection('Student directory',canManage?'directory':'advising','All students',names.slice(0,6).map((name,index)=>`<div class="review-person">${avatar(name)}<div><strong>${name}</strong><span>70-${71577+index} · Semester 7</span></div>${link('student-detail','Open','btn row-control',index)}</div>`).join('')),
     courses:workspaceSection('Winter courses',canManage?'courses':'student-schedules',canManage?'View catalogue':'View schedules',`<div class="course-map">${courseData.map(([code,title,department,credits])=>`<article><span>${code}</span><h3>${title}</h3><p>${department} · ${credits} credits</p></article>`).join('')}</div>`),
   };
@@ -602,10 +599,11 @@ function studentOverview(){
     cover:`<div><h2>Winter semester</h2><p>${coursesThisTerm.length} registered courses · ${credits} credit hours</p>${link('my-schedule','My timetable','btn primary')}</div><img src="images/window-desk.webp" alt="Open books on a desk by a window">`,
     command:`<div class="command-box"><button type="button" class="workspace-search" data-action="quick-find">${icon('search')}<span>Find a page or action</span><kbd>/</kbd>${icon('chevron')}</button><div class="task-shortcuts">${[['calendar','my-schedule','My timetable'],['book','my-courses','My courses'],['people','my-advisor','My advisor']].map(([symbol,target,label])=>link(target,icon(symbol)+label,'btn')).join('')}</div></div>`,
     capacity:workspaceSection('Course load','my-courses','My courses',`<p>${coursesThisTerm.length} courses · ${credits} credit hours · Semester 7</p>`),
-    review:workspaceSection('Coming up','my-schedule','Full timetable',`<div class="review-person"><div><strong>Embedded Systems</strong><span>Sunday · 08:30 · Lecture · C2.301</span></div></div><div class="review-person"><div><strong>Analysis & Design of Algorithms</strong><span>Sunday · 12:00 · Tutorial · C3.104</span></div></div>`),
+    review:workspaceSection('Coming up','my-schedule','Full timetable',`<div class="review-person"><div><strong>Embedded Systems</strong><span>Sunday · 08:30 · Lecture · C2.301</span></div></div><div class="review-person"><div><strong>Analysis & Design of Algorithms</strong><span>Sunday · 12:00 · Tutorial · C3.104</span></div></div>`)
+      + (view.name==='Claude Study' ? studentNotificationPanel() : ''),
     queue:workspaceSection('Schedule changes',nextAction,nextLabel,`<p>${normal?'Review swap groups before schedule swaps close on 13 December.':'Review your preferred days and groups with your advisor.'}</p>`),
     dates:workspaceSection('Registration dates','my-schedule','My timetable',`<ol class="milestones"><li><time><strong>22</strong><span>Nov</span></time><span>Registration opens</span></li><li><time><strong>06</strong><span>Dec</span></time><span>Registration closes</span></li><li><time><strong>13</strong><span>Dec</span></time><span>Schedule swaps close</span></li></ol>`),
-    activity:workspaceSection('Calendar','calendar-sync','Calendar sync','<p>Connect a calendar to see lectures, labs, and tutorials alongside your other events.</p>'),
+    activity:`${deskCalendar(true)}<div class="student-calendar-action">${link('calendar-sync','Calendar sync','quiet-link')}</div>`,
     dispatch:workspaceSection('Group 4 timetable','my-schedule','Full timetable',weekly()),
     register:workspaceSection('Registered courses','my-courses','Course details',courseRows),
     week:workspaceTimetable(view,'Teaching week','my-schedule','Full timetable'),
@@ -695,12 +693,92 @@ function profile(detail=false){
     ${disclosure('Schedule workflow',workflow())}<div class="profile-actions">${actions}</div></div></div>`;
 }
 function notificationEntries(){
+  const testEntries = Array.from({length:testCount}, (_, i) => [`test-${i}`, 'Test notification', 'This is a test notification for your account.', 'Just now']);
+  if (role==='normalStudent') return testEntries;
+  const registration = ['term', 'Winter 2026 dates updated', 'The registration window opens on 22 November.', 'Yesterday'];
+  if (student()) return [
+    ...testEntries,
+    ['schedule', 'Your timetable is ready', 'Check the teaching week for your class times and rooms.', 'Today, 10:42'],
+    registration,
+  ];
   return [
-    ...Array.from({length:testCount}, (_, i) => [`test-${i}`, 'Test notification', 'This is a test notification for your account.', 'Just now']),
+    ...testEntries,
     ['schedule', 'Schedule ready for review', 'Omar Hassan’s advising schedule is ready for your review.', 'Today, 10:42', names[0]],
     ['removal', 'Course removal requested', 'Mariam Mostafa requested removal of CSEN 701.', 'Today, 09:30', names[1]],
-    ['term', 'Winter 2026 dates updated', 'The registration window opens on 22 November.', 'Yesterday']
+    registration,
   ];
+}
+
+function inboxBellRinger(){
+  return button(`<svg class="student-inbox-bell" viewBox="0 0 180 126" aria-hidden="true" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path class="inbox-bell-frame" d="M87 23h79M102 23V12m48 11V12M11 115h154"/>
+    <path class="inbox-ringer-boot" d="M32 98h11l-1 13 5 4H29Zm18 0h10l1 13 5 4H49Z"/>
+    <path class="inbox-ringer-skin" d="M22 83l8 2-1 8-4 2-4-3Z"/>
+    <path class="inbox-ringer-back-sleeve" d="M32 52q-7 1-9 10l-5 16q-1 5 3 8l9 2 4-10 5-18Z"/>
+    <path class="inbox-ringer-coat" d="M31 54q7-6 17-5 11 0 14 12l-3 20 7 21q-20 9-40 0l6-20-4-17q-2-6 3-11Z"/>
+    <path class="inbox-ringer-collar" d="M32 53l6-4 10 2 5 5-9 5-5-4-4 2Z"/>
+    <path class="inbox-ringer-detail" d="m44 61-2 42m-5-28h1m-2 9h1m-2 9h1"/>
+    <path class="inbox-ringer-skin" d="M34 30q14-9 22 0v6l5 5-5 2v4q-7 7-17 1l-2 7-8-5 4-8Z"/>
+    <path class="inbox-ringer-hat" d="M25 32q3-6 7-7l2-14q9-4 19 0l5 13 7 4q-16 8-40 4Z"/>
+    <path class="inbox-ringer-detail" d="M33 24q13 1 24-2m-7 13h1m-5 12q4 1 6-1"/>
+    <g class="inbox-bell-swing">
+      <path class="inbox-bell-body" d="M99 72c8-9 10-18 10-29 0-11 8-17 18-17 11 0 18 6 18 17 0 11 2 21 10 29l3 5H96Z"/>
+      <path d="M125 26v-3m-24 48h52m-38-22c0-7 3-12 8-14m0 42v4m8-4v4"/>
+      <path class="inbox-bell-body" d="M123 81q4-4 8 0l2 4q-6 5-12 0Z"/>
+    </g>
+    <g class="inbox-ringer-arm">
+      <path class="inbox-mallet" d="m80 74 13-9m-3-7 8-4 7 12-8 5Z"/>
+      <path class="inbox-ringer-coat" d="M52 51q5-1 9 4l7 12 9-1 3 10-13 3q-4 1-7-3L48 62q-4-6 4-11Z"/>
+      <path class="inbox-ringer-sleeve-fold" d="m56 61 6 9q2 3 5 3l4-1"/>
+      <path class="inbox-ringer-collar" d="m73 66 6-1 3 11-7 1Z"/>
+      <path class="inbox-ringer-skin" d="M79 67q3-4 7-3l3 4-3 5-5 1Z"/>
+    </g>
+    <path class="inbox-bell-rays" d="m158 36 8-6m-4 15 11-2m-11 11 8 3"/>
+  </svg><span>Ring bell</span>`,'ring-student-bell','student-bell-control');
+}
+
+function studentNotificationPanel(){
+  const unread = notificationEntries().filter(([id]) => isNotificationUnread(id));
+  const content = unread.length
+    ? `<div class="student-inbox-unread">
+        ${inboxBellRinger()}
+        <ul class="student-inbox-list" role="list">${unread.slice(0,3).map(([,title,description,time])=>`
+          <li><strong>${title}</strong><p>${description}</p><small>${time}</small></li>`).join('')}</ul>
+      </div>`
+    : `<div class="student-inbox-empty">
+        <div class="student-tumbleweed-scene" aria-hidden="true">
+          <svg class="student-desert-line" viewBox="0 0 260 32" preserveAspectRatio="none" fill="none" stroke="currentColor" stroke-linecap="round">
+            <path d="M0 26q64-6 125 0t135-3M0 19q19-3 38-14 16-9 43 7m99 9q14-10 27-12 13-3 31 9M22 30h19m45-2h9m114 2h15"/>
+          </svg>
+          <svg class="student-wind student-wind-near" viewBox="0 0 180 38" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M2 18h68c15 0 22-8 15-13-5-4-12-2-13 3M28 27h118c20 0 27-11 18-16-5-3-11-1-12 3M108 35h41"/>
+          </svg>
+          <svg class="student-wind student-wind-far" viewBox="0 0 180 38" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M3 13h111c15 0 20-9 13-11-4-2-10 0-10 4M21 25h139c15 0 23-8 15-14M81 35h55"/>
+          </svg>
+          <div class="student-tumbleweed-track">
+            <div class="student-tumbleweed-bounce">
+          <svg class="student-tumbleweed" viewBox="0 0 88 88" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <path class="tumbleweed-shape" d="M10 42c-2-10 4-21 14-23 5-10 18-15 27-9 10-3 23 4 25 14 8 7 10 19 4 27 2 11-6 22-18 24-6 8-20 11-29 5-11 0-22-7-23-17-6-5-6-14 0-21Z"/>
+            <path d="M13 52 28 48l14 7 15-7 19 6M24 20l4 14 14 21 5 22M51 11l-3 20 9 17 3 24M76 25 63 28l-15 3-20 3-16 9M75 43l-12-15-3-13M18 64l16 2 8-11M34 66l-2 12M60 72l8-10 8-8M30 22l12-5 6 14"/>
+            <path d="m22 45-8-9m16 5 12-5m-8 30-9-10m22 15 7-9m3-14 10-7 7 1m-21-7 5-12m9 38 7 4m-56-1 3 5m20-51 1-6"/>
+          </svg>
+            </div>
+          </div>
+        </div>
+        <p class="student-inbox-message">The inbox is quiet.<br>Go touch grass.</p>
+        <div class="student-inbox-empty-footer">
+          <p>No unread notifications.</p>
+          ${button('Replay wind','replay-tumbleweed','btn text')}
+        </div>
+      </div>`;
+  return `<section class="student-inbox" aria-labelledby="student-inbox-heading">
+    <div class="section-head">
+      <h2 id="student-inbox-heading">Notifications${unread.length ? ` <span class="student-inbox-count">${unread.length} unread</span>` : ''}</h2>
+      ${link('notifications','Open inbox','quiet-link')}
+    </div>
+    ${content}
+  </section>`;
 }
 
 function notificationViews(unreadCount) {
@@ -718,14 +796,14 @@ function notificationViews(unreadCount) {
 
 function notifications(){
   const entries = notificationEntries();
-  const unread = entries.filter(([id]) => !readNotifications.has(id));
+  const unread = entries.filter(([id]) => isNotificationUnread(id));
   const strip = notificationViews(unread.length);
   const visible = tab === 'unread' ? unread : entries;
   return head('Notifications', '', (productionPreview?'':button('Create test notification','test-notification'))+
     (unread.length ? button('Mark all as read','read-all','btn primary') : ''), '')+strip+
     `<section id="notice-results" role="tabpanel" aria-labelledby="notice-view-${tab}">`+
     (visible.length ? `<div class="notification-list">${visible.map(([id,title,description,time,subject]) => {
-      const isUnread = !readNotifications.has(id);
+      const isUnread = isNotificationUnread(id);
       return `<article class="inbox-item ${isUnread ? 'unread' : ''}">
         ${workspaces[lab.layout].name==='Claude Study' ? `<span class="notice-symbol" data-kind="${id}">${icon(({schedule:'book',removal:'inbox',term:'calendar'})[id]||'bell')}</span>` : ''}
         <div class="inbox-text"><h3>${title}</h3><p>${description}</p><time>${time}</time></div>
@@ -1091,6 +1169,11 @@ function auth(){
             <button type="submit" class="btn primary">${page==='forgot'?'Send reset code':'Update password'}</button>
             ${link('login','Back to sign in','auth-recovery')}`}
         </form>
+        ${page==='login' ? `<fieldset class="preview-role-picker">
+          <legend>Quick demo sign-in</legend>
+          <div class="preview-role-options">${Object.entries(roleNames).map(([id,label])=>
+            button(label,'preview-sign-in','preview-role-button',`data-preview-role="${id}"`)).join('')}</div>
+        </fieldset>` : ''}
       </section>
       ${productionPreview?'':'<footer><span>Design preview</span></footer>'}
     </div>
@@ -1104,7 +1187,7 @@ function accountControls(){
     <path class="bell-clapper" d="M12 22q2 2 4-.2"/>
     <path class="bell-echo" pathLength="1" d="M4.4 7.8Q2.5 10 2.7 12.4M23.6 7.3q2.1 2.3 2 4.4"/>
   </svg>`;
-  return `<a class="icon-button" href="${href('notifications')}" data-page="notifications" aria-label="Notifications" title="Notifications">${bell}${notificationEntries().some(([id])=>!readNotifications.has(id)) ? '<span class="notification-dot"></span>' : ''}</a>
+  return `<a class="icon-button" href="${href('notifications')}" data-page="notifications" aria-label="Notifications" title="Notifications">${bell}${notificationEntries().some(([id])=>isNotificationUnread(id)) ? '<span class="notification-dot"></span>' : ''}</a>
     <button type="button" class="account-button" popovertarget="account-menu" aria-label="Account menu for ${person()}">${avatar(person())}<span>${person()}</span>${icon('down')}</button>
     <div id="account-menu" popover><div class="account-caption">${roleNames[role]}</div>${link('profile','My profile')}${button('Sign out','sign-out','sign-out')}</div>`;
 }
@@ -1344,6 +1427,7 @@ function render(focus=false){
   document.body.classList.toggle('auth-screen',authPages.has(page));
   const body=authPages.has(page)?auth():`<div class="shell">${sidebar()}<div class="workspace"><header class="topbar">${link('overview',portalWordmark(),'mobile-nav wordmark')}<span class="term">${workspaces[lab.layout].name==='Claude Study'?'<small class="study-crumb">Academic workspace &nbsp; / &nbsp;</small>':''}${pages[page]}<span>Winter 2026 / 2027</span></span><div class="topactions">${button(icon('menu')+'<span class="sr-only">Menu</span>','mobile-menu','mobile-menu')}${accountControls()}</div></header><main class="content" data-screen="${page}" id="content" tabindex="-1">${renderers[page]()}</main></div></div>`;
   arrivalObserver?.disconnect();
+  inboxArtObserver?.disconnect();
   app.innerHTML=body;
   if (comparePageDesigns) attachPageDesign(page,role,render);
   drawInputEdges(app);
@@ -1354,13 +1438,96 @@ function render(focus=false){
   }
   syncControls(role, page);
   if(page==='overview' && workspaces[lab.layout].name==='Claude Study') stageOverview(app.querySelector('main'));
+  const inboxArt = app.querySelector('.student-tumbleweed-scene,.student-bell-control');
+  if (inboxArt) {
+    inboxArtObserver = new IntersectionObserver(([entry], observer) => {
+      if (!entry.isIntersecting) return;
+      inboxArt.classList.add('is-playing');
+      observer.disconnect();
+    }, { threshold: 0.5 });
+    inboxArtObserver.observe(inboxArt);
+  }
   const lamp = app.querySelector('.desk-lamp-scene');
   if (lamp) mountDeskLamp(lamp);
   binderMotion.mount(app.querySelector('[data-concertina=true] .folio-stack'));
   if(focus)document.querySelector('#content')?.focus({preventScroll:true});
 }
 function navigate(target,url){if(dialog.open)dialog.close();page=pageKey(target);tab='';history.pushState({},'',url || href(page));render(true);window.scrollTo(0,0);}
-function toast(text){const el=document.querySelector('#toast');el.textContent=text;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),4000);}
+function startPreview(destination){
+  localStorage.setItem(previewSessionKey,'1');
+  returnAfterSignIn = 'overview';
+  navigate(destination);
+}
+async function signInWorkspace(credentials, expectedRole){
+  const response = await fetch('../api/identity/login', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(credentials),
+  });
+  const data = await response.json();
+  if (!response.ok || !data.token || !Object.hasOwn(roleNames,data.user?.role)) {
+    throw new Error(data.message || 'Could not sign in to the workspace.');
+  }
+  if (expectedRole && data.user.role !== expectedRole) throw new Error('The demo account has a different role.');
+  localStorage.setItem(workspaceSessionKey,data.token);
+  return data.user.role;
+}
+
+async function signInDemoWorkspace(demoRole){
+  const response = await fetch(`../__bobos_local_demo?role=${encodeURIComponent(demoRole)}`);
+  if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) return false;
+  await signInWorkspace(await response.json(),demoRole);
+  return true;
+}
+
+async function choosePreviewRole(el){
+  if (page !== 'login' || !Object.hasOwn(roleNames,el.dataset.previewRole)) return;
+  const selected = el.dataset.previewRole;
+  const picker = el.closest('.preview-role-picker');
+  picker.disabled = true;
+  try {
+    await signInDemoWorkspace(selected);
+    role = selected;
+    startPreview('overview');
+  } catch (error) {
+    toast(error.message);
+  } finally {
+    picker.disabled = false;
+  }
+}
+function replayInboxArt(scene){
+  if (!scene) return;
+  inboxArtObserver?.disconnect();
+  scene.classList.remove('is-playing', 'is-replaying');
+  void scene.offsetWidth;
+  scene.classList.add('is-replaying');
+}
+
+async function chimeAtStrike(){
+  const Audio = window.AudioContext || window.webkitAudioContext;
+  if (!Audio) return;
+  try {
+    bellAudio ??= new Audio();
+    if (bellAudio.state === 'suspended') await bellAudio.resume();
+    const strike = bellAudio.currentTime + 0.48;
+    for (const [frequency, volume, decay] of [[440, .065, 1.45], [708, .032, 1.15], [1184, .018, .7], [1756, .009, .38]]) {
+      const tone = bellAudio.createOscillator();
+      const envelope = bellAudio.createGain();
+      tone.frequency.value = frequency;
+      envelope.gain.setValueAtTime(.0001, strike);
+      envelope.gain.exponentialRampToValueAtTime(volume, strike + .012);
+      envelope.gain.exponentialRampToValueAtTime(.0001, strike + decay);
+      tone.connect(envelope).connect(bellAudio.destination);
+      tone.start(strike);
+      tone.stop(strike + decay + .02);
+    }
+  } catch {
+    // The illustration still plays when audio is unavailable.
+  }
+}
+function toast(text, tone = 'success') {
+  document.querySelector('portal-action-feedback').show(tone, text);
+}
 function modal(title,content,submit='Save changes',action='save-modal'){
   returnFocus=document.activeElement;
   dialog.innerHTML=`<div class="modal-head"><h2>${title}</h2>${button('Close','close-dialog','')}</div>${content}<form id="modal-form" data-submit-action="${action}"><div id="modal-fields"></div><div class="form-footer">${button('Cancel','close-dialog')}<button class="btn primary" type="submit">${submit}</button></div></form>`;
@@ -1392,26 +1559,68 @@ function filterRows(){
     previousLetter=letter;
   }
   const result=document.querySelector('#result-count');if(result)result.textContent=`${count} ${count===1?'record':'records'}`;const empty=document.querySelector('.search-empty');if(empty)empty.hidden=count>0;
+  syncFilterChips();
+}
+function syncFilterChips(){
+  const chips=document.querySelector('#filter-chips');if(!chips)return;
+  const selects=Array.from(document.querySelectorAll('[data-filter]'));
+  const active=selects.map((el,index)=>({el,index})).filter(({el})=>el.value);
+  chips.innerHTML=active.map(({el,index})=>`<li class="filter-chip">${el.value}<button type="button" data-action="remove-filter" data-filter-index="${index}" aria-label="Remove filter ${el.value}">\u00d7</button></li>`).join('')+(active.length?'<li><button class="btn text" type="button" data-action="clear-filters">Clear all</button></li>':'');
+  chips.hidden=!active.length;
+  const count=document.querySelector('.filter-toggle .filter-count');if(count){count.textContent=active.length;count.hidden=!active.length;}
 }
 function action(name,el){
   switch(name){
+    case 'replay-tumbleweed': {
+      replayInboxArt(el.closest('.student-inbox')?.querySelector('.student-tumbleweed-scene'));
+      break;
+    }
+    case 'ring-student-bell':
+      replayInboxArt(el);
+      void chimeAtStrike();
+      break;
+    case 'toggle-filters':{
+      const panel=document.querySelector('#filter-panel');if(!panel)break;
+      panel.hidden=!panel.hidden;el.setAttribute('aria-expanded',String(!panel.hidden));
+      if(!panel.hidden)panel.querySelector('select')?.focus();
+      break;}
+    case 'clear-filters':
+      document.querySelectorAll('[data-filter]').forEach(select=>{select.value='';});filterRows();break;
+    case 'remove-filter':{
+      const select=document.querySelectorAll('[data-filter]')[Number(el.dataset.filterIndex)];
+      if(select){select.value='';filterRows();}
+      break;}
+    case 'preview-sign-in':
+      void choosePreviewRole(el);
+      break;
     case 'sign-out':
+      document.querySelector('portal-action-feedback').clear();
+      {
+        const token = localStorage.getItem(workspaceSessionKey);
+        localStorage.removeItem(workspaceSessionKey);
+        if (token) {
+          void fetch('../api/identity/logout', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+          }).catch(() => {});
+        }
+      }
       localStorage.removeItem(previewSessionKey);
       returnAfterSignIn = 'overview';
       navigate('login');
       break;
     case 'pick-review':selectedStudent=Number(el.dataset.student);render();document.querySelector('.dispatch-person[aria-pressed=true]')?.focus();break;
-    case 'quick-find':modal('Find a page',fields('<label>Search pages<input id="page-finder" type="search" placeholder="Schedule, students, courses…" autofocus></label>')+`<nav class="page-results">${groups().flatMap(([,ids])=>ids).map(id=>link(id,pages[id],'navlink')).join('')}</nav>`,'Close','close');break;
-    case 'mobile-menu':modal('Navigation',`<nav aria-label="Mobile navigation">${groups().map(([name,items])=>`<div class="navgroup"><p class="navlabel">${name}</p>${items.map(id=>link(id,pages[id],`navlink ${id===page?'active':''}`)).join('')}</div>`).join('')}${link('profile','My profile','navlink')}</nav>`,'Close','close');break;
+    case 'quick-find':modal('Find a page',fields('<label>Search pages<input id="page-finder" type="search" placeholder="Schedule, students, courses…" autofocus></label>')+`<nav class="page-results">${groups().flatMap(([,ids])=>ids).map(id=>navigationLink(id,navigationLabel(id),'navlink')).join('')}</nav>`,'Close','close');break;
+    case 'mobile-menu':modal('Navigation',`<nav aria-label="Mobile navigation">${groups().map(([name,items])=>`<div class="navgroup"><p class="navlabel">${name}</p>${items.map(id=>navigationLink(id,navigationLabel(id),`navlink ${id===page?'active':''}`)).join('')}</div>`).join('')}${link('profile','My profile','navlink')}</nav>`,'Close','close');break;
     case 'test-notification':testCount++;render();toast('Test notification created in this preview.');break;
-    case 'refresh':toast('Preview refreshed.');break;
-    case 'read-all':notificationEntries().forEach(([id]) => readNotifications.add(id));render();document.querySelector('[aria-selected=true]')?.focus();toast('All notifications marked as read.');break;
-    case 'read-one':readNotifications.add(el.dataset.notification);render();document.querySelector('[aria-selected=true]')?.focus();break;
+    case 'refresh':toast('Preview refreshed.', 'info');break;
+    case 'read-all':notificationEntries().forEach(([id]) => readNotifications.add(notificationKey(id)));render();document.querySelector('[aria-selected=true]')?.focus();toast('All notifications marked as read.');break;
+    case 'read-one':readNotifications.add(notificationKey(el.dataset.notification));render();document.querySelector('[aria-selected=true]')?.focus();toast('Notification marked as read.');break;
     case 'close-dialog':closeDialog();break;
     case 'save-draft':toast('Draft saved in this preview.');break;
-    case 'save-preferences':if(document.querySelectorAll('.dayoff:checked').length>2)toast('Choose up to two preferred days.');else {studentPreferences.set(student()?0:selectedStudent,{days:Array.from(document.querySelectorAll('.dayoff:checked')).map(el=>el.value),groups:Array.from(document.querySelectorAll('[data-course-group]')).map(el=>el.value),notes:document.querySelector('#preference-notes').value});toast('Preferences saved in this preview.');}break;
+    case 'save-preferences':if(document.querySelectorAll('.dayoff:checked').length>2)toast('Choose up to two preferred days.', 'warning');else {studentPreferences.set(student()?0:selectedStudent,{days:Array.from(document.querySelectorAll('.dayoff:checked')).map(el=>el.value),groups:Array.from(document.querySelectorAll('[data-course-group]')).map(el=>el.value),notes:document.querySelector('#preference-notes').value});toast('Preferences saved in this preview.');}break;
     case 'toggle-calendar':connected=!connected;render();toast(connected?'Sample calendar connected.':'Sample calendar disconnected.');break;
-    case 'sync-now':toast(connected?'Sample schedule synced.':'Connect your calendar first.');break;
+    case 'sync-now':toast(connected?'Sample schedule synced.':'Connect your calendar first.', connected ? 'success' : 'warning');break;
     case 'export-csv':download('sample-financial-records.csv','Transaction,Student,Type,Amount,Status\n'+names.slice(0,6).map((name,i)=>`TXN-${1042+i},${name},${i===4?'Refund':'Payment'},${i===4?2500:7500},${[1,5].includes(i)?'Pending':'Completed'}`).join('\n'),'text/csv');break;
     case 'export-calendar':download('sample-schedule.ics','BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Portal//Design Preview//EN\r\nBEGIN:VEVENT\r\nUID:sample-csen701@bobos\r\nDTSTAMP:20261114T080000Z\r\nDTSTART:20261115T063000Z\r\nDTEND:20261115T080000Z\r\nSUMMARY:CSEN 701 - Embedded Systems (sample)\r\nLOCATION:C2.301\r\nEND:VEVENT\r\nEND:VCALENDAR','text/calendar');break;
     case 'transcript':download('sample-transcript.txt','DESIGN PREVIEW - SAMPLE TRANSCRIPT\nOmar Hassan, 70-71577\nCumulative GPA: 1.70\nCompleted credits: 116\nNot an official academic record.');break;
@@ -1441,7 +1650,7 @@ function action(name,el){
     }
     case 'add-offering':modal('Add course offering',fields('<label>Course<select><option>CSEN 701 · Embedded Systems</option><option>CSEN 703 · Algorithms</option></select></label><div class="formgrid"><label>Term<select><option>Winter 2026</option></select></label><label>Number of groups<input type="number" min="1" value="4" required></label></div>'),'Add offering');break;
     case 'manage-sections':modal('CSEN 701 sections',table(['Section','Time','Room'],[['Lecture 1','Sun 08:30','C2.301'],['Tutorial 4','Tue 10:00','C2.204'],['Lab 4','Wed 12:00','C7.102']],false),'Save sections');break;
-    case 'copy-confirm':{const count=document.querySelectorAll('table input:checked').length;if(!count){toast('Select at least one offering.');break;}modal('Copy selected offerings?',`<p>${count} offerings will be copied from Winter 2025 to Winter 2026 in this preview. Existing offerings will be kept.</p>`,'Copy offerings');break;}
+    case 'copy-confirm':{const count=document.querySelectorAll('table input:checked').length;if(!count){toast('Select at least one offering.', 'warning');break;}modal('Copy selected offerings?',`<p>${count} offerings will be copied from Winter 2025 to Winter 2026 in this preview. Existing offerings will be kept.</p>`,'Copy offerings');break;}
     case 'publish':modal('Publish this template?',`<p>${templateGroup()} will become available for student assignments in this preview.</p>`,'Publish template');break;
     case 'process':modal(`Process ${names[selectedStudent].split(' ')[0]}’s schedule?`,'<p>The draft has 19 credit hours and no time conflicts. Processing sends it to the student for review.</p>','Process schedule');break;
     case 'reopen':modal('Reopen this schedule?',fields('<label>Reason<textarea required rows="3" placeholder="Explain why the schedule needs another review."></textarea></label>'),'Reopen schedule');break;
@@ -1620,7 +1829,16 @@ function selectView(id) {
   selected?.focus({preventScroll:true});
   if (page === 'notifications') selected?.classList.add('draw-selection');
 }
-document.addEventListener('click',event=>{
+document.addEventListener('click',async event=>{
+  const workspaceLink = event.target.closest('[data-live-extra-hours]');
+  if (workspaceLink && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) {
+    event.preventDefault();
+    if (!localStorage.getItem(workspaceSessionKey)) {
+      try { await signInDemoWorkspace(role); } catch { /* The workspace can prompt for a real sign-in. */ }
+    }
+    location.assign(workspaceLink.href);
+    return;
+  }
   const target=event.target.closest('[data-page],[data-action],[data-tab]');if(!target)return;
   if(target.dataset.page){if(event.ctrlKey||event.metaKey||event.shiftKey||event.altKey)return;if(target.dataset.student !== undefined)selectedStudent=Number(target.dataset.student);if(target.dataset.courseCode)selectedCourse=resolveCourse(target.dataset.courseCode);event.preventDefault();
     navigate(target.dataset.page,target.getAttribute('href'));}
@@ -1690,23 +1908,31 @@ document.addEventListener('change',event=>{
     const count = document.querySelectorAll('.dayoff:checked').length;
     if (count > 2) {
       event.target.checked = false;
-      toast('Choose up to two preferred days.');
+      toast('Choose up to two preferred days.', 'warning');
     } else {
       document.querySelector('#preferred-day-count').textContent = `${count} of 2 selected`;
     }
   }
 });
 document.addEventListener('input',event=>{if(event.target.id==='search')filterRows();if(event.target.id==='page-finder')document.querySelectorAll('.page-results a').forEach(el=>el.hidden=!el.textContent.toLowerCase().includes(event.target.value.toLowerCase()));});
-document.addEventListener('submit',event=>{
+document.addEventListener('submit',async event=>{
   event.preventDefault();
   if(event.target.id==='auth-form'){
     if(page==='login'){
-      localStorage.setItem(previewSessionKey,'1');
-      const destination = returnAfterSignIn;
-      returnAfterSignIn = 'overview';
-      navigate(destination);
+      const {email,password} = Object.fromEntries(new FormData(event.target));
+      const submit = event.submitter;
+      if (submit) submit.disabled = true;
+      try {
+        if (email === previewEmail && password === 'portal-demo') await signInDemoWorkspace(role);
+        else role = await signInWorkspace({email,password});
+        startPreview(returnAfterSignIn);
+      } catch (error) {
+        toast(error.message);
+      } finally {
+        if (submit) submit.disabled = false;
+      }
     }
-    else if(page==='forgot'){navigate('reset');toast('Sample reset code: 123456.');}
+    else if(page==='forgot'){navigate('reset');toast('Sample reset code: 123456.', 'info');}
     else{navigate('login');toast('Reset preview complete.');}
   }else if(event.target.id==='modal-form'){
     const label=event.submitter?.textContent||'Saved';const close=event.target.dataset.submitAction==='close';closeDialog();if(!close)toast(`${label} — completed in this preview.`);

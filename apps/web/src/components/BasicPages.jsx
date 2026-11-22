@@ -15,7 +15,6 @@ export function OverviewPage({ token, profile, onOpen }) {
   const managesTerms = coordinator || profile.role === "administrator";
   const [work, setWork] = useState(null);
   const [terms, setTerms] = useState(null);
-  const [activity, setActivity] = useState(null);
   const [unavailable, setUnavailable] = useState({});
 
   useEffect(() => {
@@ -28,7 +27,6 @@ export function OverviewPage({ token, profile, onOpen }) {
     if (coordinator) load("work", "/api/admin/pending-work", setWork);
     if (managesTerms) {
       load("terms", "/api/academic-terms/academicTerm", setTerms);
-      load("activity", "/api/admin/schedule-activity?limit=3", setActivity);
     }
     return () => controller.abort();
   }, [token, coordinator, managesTerms]);
@@ -57,7 +55,7 @@ export function OverviewPage({ token, profile, onOpen }) {
       <h1>Good day, {greetingName(profile.fullName)}.</h1>
       <p>{new Intl.DateTimeFormat(undefined, { dateStyle: "full" }).format(new Date())}</p>
     </header>
-    <div className="folio-desk">
+    <div className={managesTerms ? "folio-desk folio-desk-staff" : "folio-desk"}>
       <section className="folio-feature">
         <div>
           <p className="folio-caption">{student ? "This semester" : "Advising review"}</p>
@@ -107,17 +105,10 @@ export function OverviewPage({ token, profile, onOpen }) {
         {coordinator && <button type="button" className="outline-button" onClick={() => onOpen("pending-work")}>All pending work</button>}
       </section>
 
-      <section className="folio-activity">
-        <h2>{managesTerms ? "Recent activity" : "Notifications"}</h2>
-        {managesTerms ? <>
-          {activity?.activities?.slice(0, 3).map((entry) => <div className="folio-activity-row" key={entry.id}>
-            <time dateTime={entry.occurredAt}>{entry.occurredAt ? new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(new Date(entry.occurredAt)) : "—"}</time>
-            <div><strong>{entry.studentName || entry.studentId || "Student schedule"}</strong><p>{humanize(entry.action)} · {entry.staffName}</p></div>
-          </div>)}
-          {!activity?.activities?.length && <p>{unavailable.activity ? "Schedule activity unavailable." : activity ? "No schedule activity recorded." : "Loading schedule activity…"}</p>}
-          <button className="outline-button" type="button" onClick={() => onOpen("schedule-activity")}>View schedule activity</button>
-        </> : <button className="outline-button" type="button" onClick={() => onOpen("notifications")}>Open notifications</button>}
-      </section>
+      {!managesTerms && <section className="folio-activity">
+        <h2>Notifications</h2>
+        <button className="outline-button" type="button" onClick={() => onOpen("notifications")}>Open notifications</button>
+      </section>}
     </div>
   </div>;
 }
@@ -161,6 +152,7 @@ export function NotificationsPage({ token, notify }) {
     try {
       await api(`/api/notifications/${item._id}/read`, { token, method: "PATCH", body: {} });
       setItems((current) => current.map((entry) => entry._id === item._id ? { ...entry, isRead: true, readAt: new Date().toISOString() } : entry));
+      notify("success", "Notification marked as read.");
     } catch (requestError) { notify("error", requestError.message); }
   };
 

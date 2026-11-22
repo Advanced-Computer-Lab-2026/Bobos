@@ -1860,7 +1860,7 @@ const field = (label,name,value='',type='text',attrs='') => `<label>${escape(lab
 const selectField = (label,name,options,attrs='') => `<label>${escape(label)}<select name="${escape(name)}" ${attrs}>${options}</select></label>`;
 const checkField = (label,name,checked=false) => `<label class="as-check"><input type="checkbox" name="${name}" ${checked?'checked':''}>${escape(label)}</label>`;
 const smallTag = (text,tone='') => `<span class="as-tag ${tone}">${escape(text)}</span>`;
-const issueHTML = issues => issues.length ? `<div class="as-errors" role="alert"><strong>Review before continuing</strong><ul>${issues.map(i=>`<li>${i.row?`Row ${i.row} · `:''}${i.field?`${escape(titleCase(i.field))}: `:''}${escape(i.message||i)}</li>`).join('')}</ul></div>` : '';
+const issueHTML = issues => issues.length ? `<div class="as-errors feedback error" role="alert"><strong>Review before continuing</strong><ul>${issues.map(i=>`<li>${i.row?`Row ${i.row} · `:''}${i.field?`${escape(titleCase(i.field))}: `:''}${escape(i.message||i)}</li>`).join('')}</ul></div>` : '';
 const factsHTML = fields => `<dl class="as-facts">${fields.map(([name,value])=>`<div><dt>${escape(name)}</dt><dd>${escape(value)}</dd></div>`).join('')}</dl>`;
 const emptyHTML = (title,text,action='clear') => `<div class="as-empty" role="status"><h2>${escape(title)}</h2><p>${escape(text)}</p>${action?buttonHTML(action==='clear'?'Clear filters':'Try again',action):''}</div>`;
 const kinds=['ledger','index','desk','cards','folders','queue','compare','plan','focus','matrix'];
@@ -2003,7 +2003,7 @@ function renderArrangement(ctx,records){
 
 /* ===== src/forms.js ===== */
 /* Scoped native dialogs: original Portal controls open these complete preview transactions. */
-function announce(ctx,text,error=false){ctx.notice.innerHTML=`<div class="as-notice ${error?'is-error':''}" role="${error?'alert':'status'}"><span>${escape(text)}</span><button type="button" data-as-action="dismiss" aria-label="Dismiss message">×</button></div>`;}
+function announce(ctx,text,error=false){ctx.notice.innerHTML=`<div class="as-notice feedback ${error?'is-error error':'success'}"><span role="${error?'alert':'status'}">${escape(text)}</span><button type="button" class="action-feedback-dismiss" data-as-action="dismiss" aria-label="Dismiss message">×</button></div>`;}
 function closeModal(ctx){if(!ctx.dialog)return;const focus=ctx.dialog._returnFocus;ctx.dialog.close();ctx.dialog.remove();ctx.dialog=null;if(focus?.isConnected)focus.focus();}
 function showModal(ctx,{title,body,submit='Save changes',onSubmit,onChange,wide=false,readonly=false,art='file'}){
  const oldFocus=ctx.dialog?ctx.dialog._returnFocus:document.activeElement;closeModal(ctx);
