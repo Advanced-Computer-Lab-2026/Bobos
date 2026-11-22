@@ -25,15 +25,31 @@
       + shape('M11 35q11 0 18-.5l5 6 13-.8 5-5.5 13-.3 14-14 .8 19.5-15 15-52.5 2Z', blue)
       + ink('m16 51 45-1m5-1 9-9m-27 5 4-.3') + shape('m27 44 20-.5.1 5-19 .7Z', stock);
   }
-  function timeRecorder() {
-    return shape('M15 49 18 28q1-5 8-6l34-3q7 0 10 6l6 24-5 5-51 3Z', sage)
-      + shape('m19 47 52-3 5 5-56 4Z', '#809b88')
-      + shape('M27 24q-1-7 6-12 8-5 16-2 9 3 10 12l-2 6-29 2Z', brass)
-      + shape('M32 23q-2-11 10-12 11-.5 12 10l-2 5-19 1Z', cream)
-      + part('hand', ink('m42 21 6-5m-6 5-4-3', graphite))
-      + ink('m42 13 0 2m8 3-2 1m-14 3h2') + shape('m28 33 31-2 1 5-32 3Z', graphite)
-      + part('feed', shape('m32 35 23-1 4 12-3-1-2 2-4-1-3 2-3-1-3 1-2-1-3 1Z', stock)
-        + ink('m36 38 14-.8m-13 4 9-.6'));
+  function activityJournal() {
+    // The nib meets the last line of the log.
+    return place('rotate(-5 40 34)',
+      shape('M11 17q0-2 3-2l36 .3q4 0 5 4l2 31-43 2Z','#a5bcb1')
+      + shape('m15 12 35-.2 3 35-36 2Z','#f2ebd8')
+      + ink('m21 19 19-.5m-19 7 4-.1m4-.1 14-.4m-21 7 4-.1m4-.2 12-.3')
+      + shape('m22 40q3-5 4-1t4-1q1 4 5-.4','none','stroke="#597a83" stroke-width="1.5"')
+      + place('translate(36 38) rotate(7)',shape('M0 0 4-12l6-3 5 5-3 6Z','#dfbb7c')
+        + ink('m1-1 8-8') + shape('m8-15 19-20q3-3 6 1t1 6L15-8Z','#556e78')
+        + shape('m7-14 2-3 9 7-2 3Z','#d4be91')
+        + ink('m15-19 12-13','#b6d2d3')));
+  }
+  function scheduleBag() {
+    // An open satchel with a student’s timetable visible above the front pocket.
+    return place('rotate(-5 42 31)',
+      shape('M18 26q2-12 12-13l28 1q9 2 10 14l-1 21q-1 6-8 6l-36-1q-8 0-8-8Z','#92b4a6')
+      + shape('M30 15q-.5-11 8-12 10-1 12 11l-4 .4Q44 6 39 7t-5 8Z','#739186')
+      + shape('m26 28-2-15 32-4 3 21Z','#f1ebdc')
+      + ink('m28 17 22-3m-21 8 22-3m-16-3 .9 9m8-10 1 8')
+      + shape('m37 18 6-.8.4 3.7-6 .8Z','#d8967b')
+      + shape('M14 28q21-1 45-4l9 3-1 23q0 5-7 5l-40-.8q-6-.3-6-6Z','#a7c5b5')
+      + shape('M14 28q22-1 45-4l7 3-4 10q-24 4-44 2Z','#c3d4c6')
+      + shape('m34 33 8-.6.3 11-8 .5Z','#9e7962')
+      + shape('m34.2 37 8-.6.3 4-8 .6Z','#e2c28b')
+      + ink('m21 47 7 .2m24 0 7-.8m5-6-.5 8'));
   }
   function clipboard() {
     return place('rotate(-8 45 32)', shape('M19 12q0-3 4-4l44-.4q4 0 4 4l-1 39q0 3-3 4l-47 1Z', walnut)
@@ -43,17 +59,19 @@
       + part('slide', shape('m27 41 37-.8.4 5.8-37 1Z', brass) + ink('m31 42 .1 2m5-2 .1 2.5m5-2.5 .1 2m6-2.4 .2 2.5m5-2.5v2')));
   }
   function eraser() {
-    return place('rotate(-6 45 35)', paper + rules + ink('m32 41 16-.5'))
-      + part('rub', shape('M47 29 59 16l15 5-11 15Z', clay)
-        + shape('m47 29 16 7 11-15-.5 7-10 13-16-6Z', '#bd826c')
-        + shape('m52 22 6-7 16 6-6 6Z', '#9bb5b5') + ink('m55 22 9 3', cream))
-      + ink('m52 41 2 .4m5 1 2 1m-13-.4 1.5-.3');
+    return shape('m10 15 52-3 8 37-54 5Z',stock)
+      + ink('m18 22 25-2m-24 9 15-1')
+      + part('pencilmark',shape('m23 42 3-5 2 4 3-6 2 5 3-3 3 2 3-5 2 4 3-4 2 2 4-4','none',`stroke="${graphite}" stroke-width="2" pathLength="1" stroke-dasharray="1"`))
+      + part('eraser',place('translate(5 1)',shape('m43 32 9-15 20 6-10 15Z',clay)
+        + shape('m43 32 19 6 10-15 .2 6-10 15-19-6Z','#b8806f')
+        + ink('m47 36 6 2')));
+
   }
   function catalogue() {
     return shape('M11 28 27 16l47 1 3 27-17 11-47-.3Z', walnut)
       + shape('m16 29 13-9 38 .6-11 10Z', '#62584e')
-      + part('index', shape('M23 33 23 15l12-1 2-4 11-.7 2 4 15-.4 1 16Z', sage)
-        + shape('M19 34 20 20l10-.5 2-4 12-.3 2 4 15-.5v11Z', stock)
+      + shape('M23 34 23 15l12-1 2-4 11-.7 2 4 15-.4 1 18Z', sage)
+        + part('index',shape('M19 44 20 20l10-.5 2-4 12-.3 2 4 15-.5v24Z', stock)
         + ink('M26 24.5 48 24m-22 4 17-.3'))
       + shape('M11.5 29q21 1 47-.5l1 26-46.5.5Z', '#c89e77')
       + shape('M25 35q10-1 21-.6l1 11q-10 .8-22 .7Z', brass)
@@ -66,7 +84,6 @@
       + shape('m22 12 41-2-5 38q-22 1-41 2Z', cream)
       + shape('m22 12 41-2-.9 9-42 2Z', clay)
       + ink('m26 28 25-1m-26 7 25-1m-26 7 25-1m-16-18-2 21m10-21-2 21')
-      + part('curl', shape('M42 48q10-3 16-13l-.8 12Z', brass))
       + place('translate(30 15)',ring) + place('translate(53 14)',ring);
   }
   const ticket = shape('M23 21 58 18l3 17-35 4Z', cream)
@@ -85,11 +102,18 @@
       + part('peel', place('translate(-3 -4) rotate(-7 47 30)', paper + grid + ink('m31 22 19-.6')))
       + ink('m18 48 5 .9m36 3 13-.9');
   }
-  const stencil = shape('M18 18 67 16l2 30-49 2Z M25 25l9-.3.1 6-9 .4Z M39 24l20-.6.1 6-20 .5Z M26 37l16-.7.1 5-16 .6Z M48 36l11-.2.1 5-11 .4Z',brass,'fill-rule="evenodd"')
-    + ink('m22 20 10-.4m26 23 7-.3');
   function templates() {
-    return place('translate(0 4) rotate(4 45 33)',paper+grid)
-      + part('slide',place('rotate(-9 45 31)',stencil));
+    // A drafting stencil sits just above the blocks it printed.
+    const openings = 'M26 20h16v5H26Z M26 30h7v9h-7Z M39 29h15v5H39Z';
+    return place('rotate(-5 42 31)',
+      shape('m17 16 51-.5 1 36-51 1Z','#e9e9e3')
+      + shape('m21 39 13-1v7l-13 1Z','#8db9dd')
+      + shape('m39 38 20-.7.2 6-20 1Z','#e99e84')
+      + place('rotate(-7 40 28)',shape('M17 11q0-2 3-2h39q3 0 3 3l1 30q0 2-3 2l-40 .7q-3 0-3-3Z '+openings,'#9ec1e9','fill-rule="evenodd"')
+        + ink('m22 12 .1 3m4-3 .1 2m4-2 .1 3m4-3 .1 2m4-2 .1 3m4-3 .1 2m4-2 .1 3'))
+      + shape('m58 38 8-23 3-3 2 5-8 23-5 6Z','#ea9a83')
+      + shape('m58 38 5 2-5 6Z','#ede1cb') + ink('m58 43 .3 2'));
+
   }
   function drafting(template) {
     return place('translate(-3 4) rotate(-6 40 35)',paper+grid)
@@ -98,12 +122,16 @@
       + part('write',place('translate(46 37) scale(.87)',pencil));
   }
   function groups() {
-    return shape('m13 31 15-11 45 1-14 12Z','#657a71')
-      + shape('M19 36 18 20l9-.2 3-5 12-1 2 5 16-1 .6 14Z',brass)
-      + part('file',shape('M36 33 34 17l9-1 2-6 12-1 3 5 12-.9 1 15Z',blue)
-        + ink('m42 21 20-1.5m-20 5 14-.8'))
-      + shape('m13 30 21 .5 8-5 32-2 1 17-15 13-45 .7Z',sage)
-      + ink('m36 31 1.5 17m23-17 .8 20m4-8 7-6m-54 .8 12-.4m13-2.8 12-.6');
+    // Bottom edges extend behind the front board for the full travel of the file.
+    return shape('M12 26 27 13l44-2 3 29-16 14-44-1Z',walnut)
+      + shape('m20 18 13-1 3-4 27-1 2 32-43 4Z',clay)
+      + shape('m18 22 19-1 2-4 22-1 2 31-44 3Z',stock)
+      + part('group-file',shape('m16 25 8-.5 3-4 29-1.5 1.8 30-40 2Z',blue)
+        + ink('m22 28 25-1m-24 5 18-.6'))
+      + shape('m12 31 44-.7 2 24-45-1Z',sage)
+      + shape('m56 30.3 16.8-13 1.1 23.4L58 54.3Z','#90ac9a')
+      + shape('m21 38 25-.6.3 8-25 .6Z',stock) + ink('m26 42 15-.4');
+
   }
   function bell() {
     return shape('M16 47q3-5 15-6 19-3 33 1 8 2 7 6l-3 4q-24 4-50-.1Z',graphite)
@@ -137,7 +165,7 @@
       + part('point', emblem);
   }
   const scenes = {
-    'pending-work': inbox, 'schedule-activity': timeRecorder, 'student-schedules': clipboard,
+    'pending-work': inbox, 'schedule-activity': activityJournal, 'student-schedules': scheduleBag,
     'mandatory-removals': eraser, 'draft-schedule': () => drafting(false),
     courses: catalogue, 'course-detail': () => subject(selectedCourse[0]), terms: calendar,
     offerings, 'copy-offerings': copies, templates, 'template-detail': () => drafting(true),
@@ -148,6 +176,7 @@
   }
   window.addStaffArt = function (page,root) {
     const head = root?.querySelector('.page-head');
+    if (root?.querySelector('.campus-id')) return;
     if (!head || !Object.hasOwn(scenes,page) || head.querySelector('.staff-heading')) return;
     const title = head.firstElementChild;
     const wrapper = document.createElement('div');
@@ -161,9 +190,6 @@
       const firstAction = root.querySelector('.staff-queue-art');
       if (firstAction) firstAction.innerHTML = drawing(clipboard(), 'desk-small');
     }
-    if (page === 'templates') root.querySelectorAll('.template-name > .icon').forEach(icon => {
-      icon.outerHTML = drawing(stencil, 'desk-small');
-    });
     if (page === 'terms') root.querySelectorAll('.semester-identity').forEach(term => {
       const month = term.querySelector('h2').textContent.startsWith('Winter') ? 11 : 2;
       term.insertAdjacentHTML('afterbegin',`<span class="desk-season" aria-hidden="true">${seasonDrawing(month)}</span>`);

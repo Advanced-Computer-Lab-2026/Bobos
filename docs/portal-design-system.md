@@ -48,3 +48,18 @@ Use `desk-lamp.js` → `hopToDesk` for choreography, `lamp-cord.js` → `drawHop
 Watch it at normal speed in the surrounding page, then inspect the first contact and last moving frame. Check that the final pose lands on the resting artwork. Move off halfway through, come back, click again and use the keyboard. Check focus, touch, light and dark backgrounds, a narrow viewport, and reduced motion. The still pose must communicate the state. Existing buttons retain their actions; the examples here give designers room to invent new gestures.
 
 When an approved change alters one of these references, update the relevant passage and source pointer in the same change.
+
+## Workspace fields and records
+
+Portal Studio uses the sign-in contour on text entry throughout the workspace, including searches, notes and dialogs. The SVG sits above the native control so the caret stays still. Reduced motion keeps one ink contour visible. Preferred days use a single drawn check that settles when selected. See `drawInputEdges` and `workspace-pages.css`.
+
+The directory files students alphabetically by first name. Schedule review pairs each student with a draft state and its action. Course removals use the catalogue’s course drawings; align each request with its student, reason and review button. Group advising and assignment rosters by who needs attention first. Financial totals use tabular sans-serif figures on the canvas, with EGP secondary to the amount. Academic terms use whitespace between entries, readable dates and a visible action button. Use the seasonal artwork directly on the canvas and keep the notification drawings large enough to identify at reading distance.
+
+Save preferences uses button study 06, **Bookmark tab**. A sage ribbon with a notched tip drops 16px on hover or keyboard focus and settles in 430ms. The existing reduced-motion rule shows its end pose immediately.
+
+
+Use the advising roster’s circular initials anywhere a student appears in a list. In notifications the person sits beside the read action. Student schedules groups records by stage. Each stage name stands alone as a section heading above the rows of students, their majors and their next actions. Status drawings borrow the timetable stock colors. A blue inbox means ready for review, a sage check means complete, and a coral warning marks an assignment that needs attention. Pair every mark with its written state. Search, filter and action contours use the three sign-in drawings. The pending-work envelope and advisor bubbles respond across the full queue link. The course-removal eraser plays its slow pass on entry and holds still with reduced motion enabled.
+
+When an action shows its line boil, the active SVG path draws both the button face and its perimeter. Keep the native hit area stationary. Related views use file-shaped tabs with a sage selected face. Notifications pairs open and sealed envelopes with the view names. Switching views draws one pencil loop around the selected label and then holds. Work queues share rows with their student work items. Schedule actions center on the same track across groups. Course removals uses the compact original segmented selector. Schedule activity places dates above their entries and pairs the time with the author’s profile.
+
+Profiles use a sage campus ID with the same initials as the directory. On a student record, Academic details, Advisor history and Schedule workflow expand independently so the reader can consult multiple sections. Student actions carry the selected student through to their schedule and preferences.

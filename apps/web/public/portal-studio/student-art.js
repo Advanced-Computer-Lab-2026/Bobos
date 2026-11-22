@@ -42,14 +42,18 @@
       <text class="sa-initials" x="56" y="38" transform="rotate(-11 56 38)"></text><path class="sa-gold" d="m48 24 15-3 1 5-15 3z"/></g>
       <path class="sa-ground" d="m39 84 44-8m4-1 5-1"/> `,
     advising: `
-      <path class="sa-paper" d="M10 32q0-11 15-15 11-4 21 0 11 5 9 14-1 9-15 13l-9 10-1-8q-18 1-20-14Z"/>
-      <path d="m18 29 25-7m-23 13 17-4"/>
-      <g class="sa-pendulum"><path class="sa-sage" d="M58 22q4-11 18-11 18-1 24 11 6 14-9 20l2 8-13-7q-16 0-21-9-3-6-1-12Z"/>
-      <path d="m67 23 19-1m-17 7 15-1"/></g>
-      <path class="sa-blue" d="m18 63 34-10 27 11-35 12z"/><path class="sa-paper" d="m20 60 32-10 27 11-34 12z"/>
-      <path d="m27 60 23-7m1 11 17-4"/>
-      <path class="sa-coral" d="m61 74 31-14 7-1-5 6-30 13-7 1z"/><path d="m90 62 2 3"/>
-      <path class="sa-ground" d="m26 79 11 4m38-4 21-9"/> `,
+      <g transform="rotate(-4 52 48)">
+        <path fill="#a5c6ea" d="M13 74q0-20 14-23 17-5 25 11l3 14q-21 5-42-2Z"/>
+        <path fill="#d6a185" d="M22 38q0-13 11-13 13 0 14 12l-2 7 2 3-5 1q-3 7-10 6-11-1-10-16Z"/>
+        <path fill="#4d4645" d="M21 41q-4-9 .7-14 1-8 8-8 6-5 13 0 7 .8 7 10l-4 6-3-7q-8 6-15 3l-2 10Z"/>
+        <path d="m39 37 1 .1m-7 14 5 1m-14 5 7 7 6-9"/>
+        <path fill="#bbd1c6" d="M60 76q1-18 12-23 16-7 25 9l3 14q-18 5-40 0Z"/>
+        <path fill="#b88265" d="M70 38q4-10 14-8 11 2 10 14-1 12-10 13-8 0-12-9l-4-2 3-4Z"/>
+        <path fill="#383a38" d="M70 39q-4-13 6-15 4-7 11-4 9-2 11 8 5 8-3 17l-4-.8-1-9q-9 4-16-2Z"/>
+        <path d="m75 40 1 .1m3 11 5 1m-6 7 7 5 5-6"/>
+        <path fill="#f2eee4" d="M47 14q1-8 15-8 16-1 18 8 2 10-12 11l-10-.2-8 6 2-8q-7-2-5-9Z"/>
+        <path d="m54 14 16-.4m-15 5 8-.3"/>
+      </g>`,
     office: `
       <path class="sa-sage" d="M15 73q13-10 25-4l5 4-27 6z"/><path class="sa-paper" d="m26 69 6-27 6 1-7 27z"/>
       <path class="sa-sage" d="m33 42-10-21 5-2 12 22z"/>
@@ -71,15 +75,16 @@
       <g class="sa-exchange-front"><path class="sa-blue" d="m57 32 38 13-12 36-38-15z"/><path class="sa-paper" d="m62 42 14 5-4 13-14-6z"/><path d="m79 49 8 3m-10 4 8 3m-31 2 21 8"/></g>
       <path class="sa-ground" d="M55 10q23-3 38 18m0-8 1 9-9-2M48 80q-20 2-32-15m-1 8-1-9 9 3"/> `,
     preference: `
-      <path class="sa-blue" d="M12 34q23 0 44-8l41 6-5 40-39-5q-21 6-43 5z"/>
-      <path class="sa-paper" d="M13 28q25 1 44-7 19 2 37 8l-5 38q-16-6-37-5-24 6-42 4z"/>
-      <path d="m56 24-4 38m10-24 18 2m-19 6 11 1"/>
-      <g transform="translate(19 38) skewY(-10)">
-        <path class="sa-week-rule" d="M0 0h4v4H0zm10 0h4v4h-4zm10 0h4v4h-4zM0 11h4v4H0zm10 0h4v4h-4z"/>
-        <g class="sa-day-check"><path d="m0 1 2 2 4-7"/><path d="m10 1 2 2 4-7"/><path d="m20 1 2 2 4-7"/><path d="m0 12 2 2 4-7"/><path d="m10 12 2 2 4-7"/></g>
-      </g>
-      <g class="sa-pen"><path class="sa-coral" d="m50 53 36-36 5-1 3 5-36 37-11 5z"/><path class="sa-gold" d="m50 53 8 5-11 5z"/><path d="m55 53 34-34m-8 3 7 6"/></g>
-      <path class="sa-ground" d="m20 77 24-3m17-2 24 5"/> `,
+      <g transform="rotate(-6 54 45)">
+        <path fill="#b5c6ed" d="m19 25 65-3 3 52-67 2Z"/>
+        <path fill="#f2eee4" d="M14 19q0-3 3-3l61-2q3 0 3 4l1 49q0 3-3 3l-61 2q-3 0-3-3Z"/>
+        <path d="m24 26 27-.8"/>
+        <path fill="#c1d4c6" d="m24 35 10-.6.4 10-10 .4Z"/><path d="m26 39 3 2 7-9m6 7 19-.8"/>
+        <path d="m25 51 10-.4.2 10-10 .4Zm18 4 26-1"/>
+        <g class="sa-pen"><path fill="#6da7ec" d="m57 54 4-10 26-28q3-3 7 1 4 3 1 6L68 50Z"/>
+        <path fill="#ece4cf" d="m57 54 4-10 7 6Z"/><path fill="#414645" d="m57 54 1.7-4 2.4 2Z"/>
+        <path d="m65 44 23-24"/></g>
+      </g>`,
     transcript: `
       <path class="sa-blue" d="m19 28 42-10 27 4 5 46-48 11-21-8z"/>
       <path class="sa-paper" d="m16 22 41-10 27 6 5 45-45 11-23-8z"/>
@@ -89,12 +94,15 @@
       <circle cx="72" cy="48" r="6"/></g>
       <path class="sa-ground" d="m34 81 12 3 42-10"/> `,
     receipt: `
-      <path class="sa-sage" d="m21 42 44-15 26 13 5 22-44 18-35-17z"/>
-      <path class="sa-blue" d="m17 42 43-15 31 12-44 18z"/><path d="m29 41 32-11m-8 29 25-9m-25 15 15-5"/>
-      <g class="sa-receipt"><path class="sa-paper" d="M30 40q4-8 1-18-4-9-9-11l24-5q8-2 12 9 6 12 0 17z"/>
-      <path d="m32 16 16-5m-13 11 17-5m-17 12 18-6m-12 10 12-4"/></g>
-      <path class="sa-paper" d="m26 58 19 7 4 13-4-1-2 2-4-3-2 2-4-4-3 1z"/><path d="m31 64 9 4"/>
-      <path class="sa-gold" d="m63 43 8-3 5 2-8 4zm13-4 6-2 4 2-6 3z"/><path class="sa-ground" d="m22 77 28 9 41-16"/> `,
+      <g transform="rotate(-8 50 50)">
+        <path class="sa-paper" d="m14 16 42-1 1 54-5-3-5 3-5-3-5 3-5-3-6 3-6-3-5 3Z"/>
+        <path d="m21 24 24-.7m-24 8 14-.3m5 0 8-.4m-27 8 12-.3m6 0 8-.4m-26 8 27-.7"/>
+        <path class="sa-sage" d="m30 49 53-3 10 24-54 5Z"/>
+        <path class="sa-sage" d="m29 45 54-3 9 23-54 5Z"/>
+        <path d="m36 49 42-2 6 15-42 4Z"/><ellipse class="sa-paper" cx="60" cy="56" rx="7" ry="8"/>
+        <path class="sa-gold" d="M17 64q9-5 18-1l1 9q-7 7-19 1Z"/>
+        <ellipse class="sa-gold" cx="26" cy="64" rx="10" ry="4"/><path d="m18 69q8 4 16-1"/>
+      </g>`,
     sync: `
       <path class="sa-blue" d="m10 28 45-10 7 40-46 11z"/>
       <path class="sa-paper" d="m13 32 40-9 6 32-41 9z"/><path d="m19 40 29-7m-24 7 4 15m5-17 3 14m4-15 4 14m-22-4 28-7"/>
@@ -125,16 +133,16 @@
     'my-schedule': ['week'],
     'my-courses': ['books'],
     'schedule-swap': ['exchange', '.panel'],
-    preferences: ['preference', '.preference-block:has(#preferred-days)'],
+    preferences: ['preference'],
     records: ['transcript', '.academic-standing'],
     'my-advisor': ['office', '.advisor-callout'],
     'calendar-sync': ['sync', '.calendar-file'],
-    'financial-records': ['receipt', '.ledger-summary']
+    'financial-records': ['receipt']
   };
 
   window.addStudentArt = (page, root, role) => {
     const entry = placements[page];
-    if (!entry || !root || root.querySelector('.student-desk-art')) return;
+    if (!entry || !root || root.querySelector('.student-desk-art,.campus-id')) return;
     if (page === 'overview' && !['advisingStudent', 'normalStudent'].includes(role)) return;
     const [name, selector] = entry;
     const target = (selector && root.querySelector(selector)) || root.querySelector('.page-head > div');

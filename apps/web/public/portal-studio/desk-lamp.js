@@ -11,19 +11,24 @@ function drawInputEdges(form) {
     'M9 2.15L61 2Q94 1.6 123 2.1L197 2Q232 2.35 266 2.05L318 1.8L350 2.1Q357.5 2.4 358 9.2L357.65 24Q358.4 32 358 39Q357.4 46 350 46.1L318 45.8L266 46.05Q232 46.35 197 46L123 46.1Q94 45.6 61 46L9 46.15Q2.35 45.7 2 39L1.8 29L2.35 15L2.1 9Q2.35 2 9 2.15Z',
     'M9 1.95L45 2.15Q73 2.4 103 1.85L172 2.05L235 2Q268 1.7 303 2.12L350 2Q358.2 2.1 357.8 9L358.3 18L357.9 31L358.1 39Q358 46.25 350 46L303 46.12Q268 45.7 235 46L172 46.05L103 45.85Q73 46.4 45 46.15L9 45.95Q1.8 46.1 2.15 39L2.35 32L1.85 19L2 9Q1.85 2.35 9 1.95Z'
   ];
-  for (const input of form.querySelectorAll('label > input')) {
+  const contour = '<svg class="ink-contour" viewBox="0 0 360 48" preserveAspectRatio="none" aria-hidden="true">' +
+    outlines.map(d => '<path vector-effect="non-scaling-stroke" d="'+d+'"/>').join('')+'</svg>';
+  for (const input of form.querySelectorAll('textarea, input:not([type]), input:is([type=text],[type=email],[type=password],[type=search],[type=number],[type=tel],[type=url],[type=date],[type=time],[type=datetime-local])')) {
+    if (input.closest('.ink-field')) continue;
     const wrap = document.createElement('span');
     wrap.className = 'ink-field';
     input.before(wrap);
-    wrap.innerHTML = '<svg viewBox="0 0 360 48" preserveAspectRatio="none" aria-hidden="true">' +
-      outlines.map(d => '<path vector-effect="non-scaling-stroke" d="'+d+'"/>').join('')+'</svg>';
+    wrap.innerHTML = contour;
     wrap.append(input);
+  }
+  for (const control of form.querySelectorAll('main:not([data-screen=overview]) .btn, dialog .btn, .filter-tab')) {
+    if (!control.querySelector(':scope > .ink-contour')) control.insertAdjacentHTML('beforeend',contour);
   }
 }
 
 async function mountDeskLamp(scene) {
   const form = scene.closest('.auth').querySelector('form');
-  drawInputEdges(form);
+
   const image = scene.querySelector('img');
   try {
     lampArtwork ??= fetch(image.src).then(response => {
