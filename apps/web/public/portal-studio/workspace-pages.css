@@ -457,3 +457,5 @@
 
 .profile-pane > .profile-facts:has(a:only-child) {grid-template-columns:1fr}
 .profile-facts a {color:var(--ink);text-underline-offset:3px}
+
+.extra-hours-frame { display:block; width:100%; height:200px; border:0; }

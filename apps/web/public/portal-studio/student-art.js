@@ -103,6 +103,16 @@
         <path class="sa-gold" d="M17 64q9-5 18-1l1 9q-7 7-19 1Z"/>
         <ellipse class="sa-gold" cx="26" cy="64" rx="10" ry="4"/><path d="m18 69q8 4 16-1"/>
       </g>`,
+    timeTicket: `
+      <g transform="translate(8 7) scale(1.2)">
+        <path fill="#eec59c" d="m9 17 51-4 1 10a5 5 0 0 0 1 10l1 11-51 5-1-11a5 5 0 0 0-1-10z"/>
+        <path stroke-dasharray="1 4" d="m25 17 2 30"/>
+        <path d="m15 23 5-.4m-4 19 5-.4"/>
+        <circle fill="#f6ecda" cx="44" cy="30" r="12"/>
+        <path d="M44 23v7l5 3"/>
+        <circle fill="#b9d0bd" cx="61" cy="43" r="9"/>
+        <path d="M61 39v8m-4-4h8"/>
+      </g>`,
     sync: `
       <path class="sa-blue" d="m10 28 45-10 7 40-46 11z"/>
       <path class="sa-paper" d="m13 32 40-9 6 32-41 9z"/><path d="m19 40 29-7m-24 7 4 15m5-17 3 14m4-15 4 14m-22-4 28-7"/>
@@ -129,6 +139,7 @@
     overview: ['bag', '.module-queue'],
     directory: ['index'],
     advising: ['advising'],
+    'extra-hours': ['timeTicket'],
     'student-detail': ['badge', '.person-title'],
     'my-schedule': ['week'],
     'my-courses': ['books'],

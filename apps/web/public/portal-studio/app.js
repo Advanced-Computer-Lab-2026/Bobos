@@ -4,7 +4,7 @@ const params = new URLSearchParams(location.search);
 const comparePageDesigns = params.get('designs') === 'compare';
 const pages = {
   overview:'Overview', notifications:'Notifications', profile:'My profile',
-  directory:'Student directory', 'student-detail':'Student details', advising:'Advising students',
+  directory:'Student directory', 'extra-hours':'Extra-hours requests', 'student-detail':'Student details', advising:'Advising students',
   'pending-work':'Pending work', 'schedule-activity':'Schedule activity',
   'financial-records':'Financial records', 'mandatory-removals':'Course removals',
   'student-schedules':'Student schedules', 'draft-schedule':'Advising draft',
@@ -51,10 +51,8 @@ const href = (target,index=selectedStudent,course=selectedCourse) => {
 };
 
 const link = (target, text, cls='', index) => `<a class="${cls}" href="${href(target,index)}" data-page="${target}"${index===undefined?'':` data-student="${index}"`}>${text}</a>`;
-const navigationLabel = id => id === 'extra-hours' ? 'Extra-hours requests' : pages[id];
-const navigationLink = (id, label, cls) => id === 'extra-hours'
-  ? `<a class="${cls}" href="../workspace.html?screen=extra-hours&theme=${lab.dark ? 'dark' : 'light'}" data-live-extra-hours>${label}</a>`
-  : link(id,label,cls);
+const navigationLabel = id => pages[id];
+const navigationLink = link;
 const button = (text, action, cls='btn', extra='') => `<button class="${cls}" type="button" data-action="${action}" ${extra}>${text}</button>`;
 // The outline names the state even when the timetable colors are unavailable.
 const statusMarks = {
@@ -1180,7 +1178,12 @@ function auth(){
     ${comparePageDesigns && params.has('image') ? signinGallery() : '<figure class="signin-print"><div class="desk-lamp-scene"><img src="images/borrowed-light.svg" alt="Desk lamp lighting a sheet of paper" fetchpriority="high"></div></figure>'}
   </main>`;
 }
-const renderers = {overview,notifications,profile, directory, 'student-detail':()=>profile(true),advising,'pending-work':pending,'schedule-activity':activity,'financial-records':financial,'mandatory-removals':removals,'student-schedules':()=>schedule(true),'draft-schedule':draft,courses,'course-detail':courseDetail,terms,offerings,'copy-offerings':copyOfferings,templates,'template-detail':templateDetail,'group-assignments':assignments,'my-schedule':schedule,'my-courses':registered,'schedule-swap':swap,preferences,records,'my-advisor':advisor,'calendar-sync':calendarSync};
+function extraHours(){
+  return head('Extra-hours requests') +
+    `<iframe class="extra-hours-frame" title="Extra-hours request workspace" src="../workspace.html?screen=extra-hours&amp;embedded=1&amp;theme=${lab.dark ? 'dark' : 'light'}&amp;role=${role}"></iframe>`;
+}
+
+const renderers = {'extra-hours':extraHours,overview,notifications,profile, directory, 'student-detail':()=>profile(true),advising,'pending-work':pending,'schedule-activity':activity,'financial-records':financial,'mandatory-removals':removals,'student-schedules':()=>schedule(true),'draft-schedule':draft,courses,'course-detail':courseDetail,terms,offerings,'copy-offerings':copyOfferings,templates,'template-detail':templateDetail,'group-assignments':assignments,'my-schedule':schedule,'my-courses':registered,'schedule-swap':swap,preferences,records,'my-advisor':advisor,'calendar-sync':calendarSync};
 function accountControls(){
   const bell = `<svg class="icon notice-bell" aria-hidden="true" viewBox="0 0 28 28" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
     <path class="bell-body" d="M8 12c0-4 2.1-6.6 6-6.6s6 2.8 6 6.6c0 3.6 1.2 5.4 2.4 7.1-4.7.8-12.3.8-16.8 0C7 17.4 8 15.4 8 12Z"/>
@@ -1430,6 +1433,24 @@ function render(focus=false){
   inboxArtObserver?.disconnect();
   app.innerHTML=body;
   if (comparePageDesigns) attachPageDesign(page,role,render);
+  const extraHoursFrame = app.querySelector('.extra-hours-frame');
+  extraHoursFrame?.addEventListener('load', () => {
+    const frameDocument = extraHoursFrame.contentDocument;
+    const root = frameDocument?.getElementById('root');
+    if (!root) return;
+    const portalStyle = getComputedStyle(extraHoursFrame);
+    for (const [target, source] of Object.entries({
+      canvas: 'canvas', ink: 'ink', muted: 'muted', line: 'rule', raised: 'raised', paper: 'paper'
+    })) {
+      const value = portalStyle.getPropertyValue(`--${source}`).trim();
+      if (value) frameDocument.documentElement.style.setProperty(`--embedded-${target}`, value);
+    }
+    const resize = new ResizeObserver(() => {
+      extraHoursFrame.style.height = `${Math.ceil(root.getBoundingClientRect().height)}px`;
+    });
+    resize.observe(root);
+    extraHoursFrame.contentWindow.addEventListener('pagehide', () => resize.disconnect(), { once: true });
+  });
   drawInputEdges(app);
   const main = app.querySelector('main');
   if (main && !authPages.has(page) && (!comparePageDesigns || !Number(localStorage.getItem('portal-page-design:'+page)))) {
@@ -1830,15 +1851,6 @@ function selectView(id) {
   if (page === 'notifications') selected?.classList.add('draw-selection');
 }
 document.addEventListener('click',async event=>{
-  const workspaceLink = event.target.closest('[data-live-extra-hours]');
-  if (workspaceLink && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) {
-    event.preventDefault();
-    if (!localStorage.getItem(workspaceSessionKey)) {
-      try { await signInDemoWorkspace(role); } catch { /* The workspace can prompt for a real sign-in. */ }
-    }
-    location.assign(workspaceLink.href);
-    return;
-  }
   const target=event.target.closest('[data-page],[data-action],[data-tab]');if(!target)return;
   if(target.dataset.page){if(event.ctrlKey||event.metaKey||event.shiftKey||event.altKey)return;if(target.dataset.student !== undefined)selectedStudent=Number(target.dataset.student);if(target.dataset.courseCode)selectedCourse=resolveCourse(target.dataset.courseCode);event.preventDefault();
     navigate(target.dataset.page,target.getAttribute('href'));}

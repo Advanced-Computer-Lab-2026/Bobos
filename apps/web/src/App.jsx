@@ -94,6 +94,8 @@ function openIllustratedHome(role) {
 }
 
 export default function App() {
+  const workspaceParams = new URLSearchParams(window.location.search);
+  const embeddedExtraHours = window.parent !== window && workspaceParams.get("embedded") === "1" && workspaceParams.get("screen") === "extra-hours";
   const [token, setToken] = useState(() => window.localStorage.getItem("bobos.token"));
   const [profile, setProfile] = useState(null);
   const [profileLoading, setProfileLoading] = useState(Boolean(token));
@@ -118,7 +120,7 @@ export default function App() {
         const requestedScreen = new URLSearchParams(window.location.search).get("screen");
         if (freshLogin.current) {
           freshLogin.current = false;
-          if (import.meta.env.DEV || requestedScreen === "extra-hours") {
+          if (!embeddedExtraHours && (import.meta.env.DEV || requestedScreen === "extra-hours")) {
             openIllustratedHome(data.profile.role);
             return;
           }
@@ -137,7 +139,7 @@ export default function App() {
       })
       .finally(() => alive && setProfileLoading(false));
     return () => { alive = false; };
-  }, [token]);
+  }, [token, embeddedExtraHours]);
 
   const groups = useMemo(() => navGroups(profile?.role), [profile?.role]);
   const allNavItems = groups.flatMap((group) => group.items);
@@ -197,6 +199,20 @@ export default function App() {
   if (!token) return <AuthPage onLogin={acceptLogin} />;
   if (profileLoading) return <div className="app-loading"><span className="loader" />Loading your workspace…</div>;
   if (!profile) return <AuthPage onLogin={acceptLogin} />;
+
+  if (embeddedExtraHours) {
+    const notifyEmbedded = (tone, text) => {
+      const feedback = window.parent.document.querySelector("portal-action-feedback");
+      if (feedback) feedback.show(tone, text);
+      else notify(tone, text);
+    };
+    if (!["advisor", "coordinator", "advisingStudent"].includes(profile.role) || workspaceParams.get("role") !== profile.role) {
+      return <div className="feedback error" role="alert">Sign in with the matching portal role to view extra-hours requests.</div>;
+    }
+    return <div className="extra-hours-shell extra-hours-embedded">
+      <ExtraHoursPage token={token} role={profile.role} advisorId={profile._id} notify={notifyEmbedded} embedded />
+    </div>;
+  }
 
   const isExtraHours = activeScreen === "extra-hours";
   const renderNavigation = (search = "", collapsible = false) => {

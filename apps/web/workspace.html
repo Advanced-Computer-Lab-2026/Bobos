@@ -8,10 +8,13 @@
     <link rel="icon" type="image/svg+xml" href="/portal-studio/portal-card-index.svg" />
     <script>
       const workspaceUrl = new URL(window.location.href);
+      if (window.parent !== window && workspaceUrl.searchParams.get("embedded") === "1") {
+        document.documentElement.dataset.embedded = "true";
+      }
       const linkedTheme = workspaceUrl.searchParams.get("theme");
       if (linkedTheme === "dark" || linkedTheme === "light") {
         document.documentElement.dataset.theme = linkedTheme;
-        try { localStorage.setItem("portal.theme", linkedTheme); } catch { /* Apply the theme for this page. */ }
+        try { if (!workspaceUrl.searchParams.has("embedded")) localStorage.setItem("portal.theme", linkedTheme); } catch { /* Apply the theme for this page. */ }
         workspaceUrl.searchParams.delete("theme");
         window.history.replaceState(window.history.state, "", workspaceUrl);
       } else {
