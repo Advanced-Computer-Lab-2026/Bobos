@@ -198,10 +198,20 @@ export default function ExtraHoursPage({
     </>
   );
 
+  const walletSummary = student && (
+    <dl className="extra-wallet-summary">
+      <dt>Available wallet balance</dt>
+      <dd>{money(walletBalance)}</dd>
+    </dl>
+  );
+
   return (
     <div className="page-stack workspace-page extra-hours-page">
       {embedded ? (
-        <div className="extra-hours-toolbar">{toolbar}</div>
+        <div className="extra-hours-toolbar">
+          {walletSummary}
+          <div className="extra-hours-toolbar-actions">{toolbar}</div>
+        </div>
       ) : (
         <WorkspaceHeader
           title="Extra-hours requests"
@@ -227,12 +237,7 @@ export default function ExtraHoursPage({
           }}
         />
       )}
-      {student && (
-        <dl className="extra-wallet-summary">
-          <dt>Available wallet balance</dt>
-          <dd>{money(walletBalance)}</dd>
-        </dl>
-      )}
+      {!embedded && walletSummary}
       {role === "coordinator" && (
         <section className="extra-filters" aria-label="Filter requests">
           <div className="filter-grid">
@@ -385,9 +390,10 @@ export default function ExtraHoursPage({
                   ? ` · ${pretty(row.settlementStatus)}`
                   : ""}
               </span>
-              <strong className="extra-request-total">
-                {money(row.totalCost)}
-              </strong>
+              <dl className="extra-request-price">
+                <dt>Request total</dt>
+                <dd>{money(row.totalCost)}</dd>
+              </dl>
             </header>
             {row.decisionNote && (
               <p className="feedback info">

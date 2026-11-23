@@ -98,9 +98,9 @@
 }
 .extra-hours-page .extra-request-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, auto) auto;
-  align-items: center;
-  gap: 12px 24px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 14px 20px;
 }
 .extra-hours-page .extra-request-row h2,
 .extra-hours-page .extra-financial h2 {
@@ -116,23 +116,37 @@
   justify-self: start;
   white-space: normal;
 }
-.extra-request-total,
-.extra-wallet-summary dd {
+.extra-wallet-summary,
+.extra-request-price { margin: 0; }
+.extra-wallet-summary dt,
+.extra-request-price dt {
+  color: var(--muted);
+  font-size: 13px;
+}
+.extra-wallet-summary dd,
+.extra-request-price dd {
+  margin: 2px 0 0;
   color: var(--ink);
   font-variant-numeric: tabular-nums;
 }
-.extra-wallet-summary { margin: 0; }
-.extra-wallet-summary dt { color: var(--muted); }
-.extra-wallet-summary dd {
-  margin: 4px 0 0;
-  font: 500 clamp(23px, 2.4vw, 34px)/1.18 Styrene, system-ui, sans-serif;
-  letter-spacing: -.04em;
+.extra-wallet-summary {
+  width: fit-content;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--raised);
+}
+.extra-wallet-summary dd { font-size: 16px; font-weight: 600; }
+.extra-request-price { grid-column: 1 / -1; }
+.extra-request-price dd {
+  font-size: clamp(23px, 3vw, 32px);
+  font-weight: 700;
+  line-height: 1.16;
+  letter-spacing: -.035em;
 }
 .extra-hours-page .extra-request > :is(.feedback, .form-stack, .form-actions) {
   margin-top: 16px;
 }
 .extra-hours-page .extra-request > details {
-  border-bottom: 1px solid var(--line);
   padding-block: 7px;
 }
 .extra-hours-page .extra-request > :not(details) + details { margin-top: 14px; }
@@ -169,10 +183,8 @@
   outline: 2px solid var(--accent);
   outline-offset: -2px;
 }
-@media (max-width: 760px) {
-  .extra-hours-page .extra-request-row { grid-template-columns: minmax(0, 1fr) auto; }
-  .extra-hours-page .extra-request-row > div { grid-column: 1 / -1; }
-  .extra-hours-page .extra-request-total { text-align: end; }
+@media (max-width: 520px) {
+  .extra-hours-page .extra-request-row { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 800px) {
   .extra-hours-shell { --study-gutter: 16px; }
@@ -188,17 +200,20 @@
   padding-bottom: 4px;
 }
 body:has(.extra-hours-embedded) { background: transparent; }
-.extra-hours-toolbar { display: flex; flex-wrap: wrap; gap: 8px; }
+.extra-hours-toolbar,
+.extra-hours-toolbar-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+.extra-hours-toolbar-actions { margin-inline-start: auto; }
 .extra-hours-page .extra-request-row .status-pill {
   font-size: clamp(15px, 2vw, 19px);
   font-weight: 700;
   padding: 5px 10px;
 }
-.extra-request-total {
-  font-size: clamp(22px, 3vw, 32px);
-  font-weight: 700;
-  letter-spacing: -.035em;
-}
+
 .extra-request-details { margin-block: 20px 12px; }
 .extra-request-details h3,
 .extra-request-history summary {
@@ -260,10 +275,15 @@ body:has(.extra-hours-embedded) { background: transparent; }
   align-items: baseline;
   flex-wrap: wrap;
   gap: 4px 16px;
-  padding: 10px 0;
-  border-top: 1px solid var(--line);
+  padding-block: 7px;
 }
 .extra-course-list p { margin: 2px 0 0; }
+.extra-course-list li + li { border-top: 1px solid var(--line); }
+.extra-course-list li > strong {
+  color: var(--muted);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
 
 @media (max-width: 680px) {
   .extra-hours-page .extra-financial :is(th, td) { padding-inline: 4px; }
@@ -282,60 +302,4 @@ body:has(.extra-hours-embedded) { background: transparent; }
   --line: var(--embedded-line, #777);
   --raised: var(--embedded-raised, transparent);
   --paper: var(--embedded-paper, transparent);
-}
-.extra-hours-embedded .extra-hours-toolbar { justify-content: flex-end; }
-.extra-hours-embedded .extra-wallet-summary {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 4px 16px;
-  padding-block: 0 12px;
-}
-.extra-hours-embedded .extra-wallet-summary dd { margin: 0; }
-.extra-hours-embedded .extra-request-details {
-  padding: 14px clamp(12px, 2vw, 20px);
-  border-inline-start: 2px solid var(--line);
-}
-/* Keep course facts and money aligned as one calm reading column. */
-.extra-hours-embedded .extra-wallet-summary {
-  justify-content: flex-start;
-  align-items: baseline;
-  gap: 8px 20px;
-}
-.extra-hours-embedded .extra-wallet-summary dd {
-  font-size: 20px;
-  font-weight: 600;
-}
-.extra-hours-page .extra-request-row {
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: start;
-}
-.extra-hours-page .extra-request-total {
-  grid-column: 1 / -1;
-  grid-row: 2;
-  justify-self: start;
-  font-size: clamp(24px, 3vw, 34px);
-  line-height: 1.15;
-}
-.extra-hours-page .extra-request-details {
-  margin-block: 18px 12px;
-  padding: 0;
-  border: 0;
-}
-.extra-hours-page .extra-course-facts {
-  column-gap: 28px;
-  row-gap: 8px;
-}
-.extra-hours-page .extra-course-list li {
-  border-top: 0;
-  border-bottom: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
-}
-.extra-hours-page .extra-course-list li:last-child { border-bottom: 0; }
-.extra-hours-page .extra-course-list li > strong {
-  font-size: 16px;
-  font-variant-numeric: tabular-nums;
-}
-.extra-hours-page .extra-request > :is(.extra-request-history, .extra-request-details) {
-  border: 0;
 }
