@@ -297,3 +297,45 @@ body:has(.extra-hours-embedded) { background: transparent; }
   padding: 14px clamp(12px, 2vw, 20px);
   border-inline-start: 2px solid var(--line);
 }
+/* Keep course facts and money aligned as one calm reading column. */
+.extra-hours-embedded .extra-wallet-summary {
+  justify-content: flex-start;
+  align-items: baseline;
+  gap: 8px 20px;
+}
+.extra-hours-embedded .extra-wallet-summary dd {
+  font-size: 20px;
+  font-weight: 600;
+}
+.extra-hours-page .extra-request-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+}
+.extra-hours-page .extra-request-total {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  justify-self: start;
+  font-size: clamp(24px, 3vw, 34px);
+  line-height: 1.15;
+}
+.extra-hours-page .extra-request-details {
+  margin-block: 18px 12px;
+  padding: 0;
+  border: 0;
+}
+.extra-hours-page .extra-course-facts {
+  column-gap: 28px;
+  row-gap: 8px;
+}
+.extra-hours-page .extra-course-list li {
+  border-top: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
+}
+.extra-hours-page .extra-course-list li:last-child { border-bottom: 0; }
+.extra-hours-page .extra-course-list li > strong {
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+}
+.extra-hours-page .extra-request > :is(.extra-request-history, .extra-request-details) {
+  border: 0;
+}
