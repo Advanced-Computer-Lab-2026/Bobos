@@ -204,3 +204,33 @@
 .desk-lamp-scene .shade-switch:hover {fill:#d38a6a}
 .desk-lamp-scene .shade-switch:focus-visible {stroke:#ffdfa8;stroke-width:4}
 .desk-lamp-scene[data-lamp-arriving] .shade-switch {pointer-events:none}
+
+/* Keyboard focus for controls on both portal entry points. */
+.portal-focus-ring {
+  position:fixed;
+  display:none;
+  z-index:2147483647;
+  pointer-events:none;
+  color:var(--ink);
+}
+dialog > .portal-focus-ring {position:absolute}
+:root:has([data-portal-focus]:focus-visible) .portal-focus-ring {display:block}
+.portal-focus-ring svg {display:block;width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:2}
+.portal-focus-ring path:not(:first-child) {opacity:0}
+
+@media (forced-colors:none) {
+  [data-portal-focus]:focus-visible {outline:none!important}
+}
+@media (prefers-reduced-motion:no-preference) {
+  .portal-focus-ring path {
+    transform-box:view-box;
+    transform-origin:center;
+    animation:ink-field-exposure .51s steps(1,end) infinite;
+  }
+  .portal-focus-ring path:nth-child(2) {transform:rotate(.2deg);animation-delay:-.17s}
+  .portal-focus-ring path:nth-child(3) {transform:rotate(.1deg);animation-delay:-.34s}
+}
+@media (forced-colors:active) {
+  .portal-focus-ring {visibility:hidden}
+  [data-portal-focus]:focus-visible {outline:2px solid Highlight!important}
+}

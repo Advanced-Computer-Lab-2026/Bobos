@@ -21,7 +21,7 @@
 [data-workspace] .content:not([data-screen=overview]) .filters .ink-field input {
   min-height:40px;border-color:transparent;outline:none;box-shadow:none;
 }
-[data-workspace] .content .badge[data-state] {
+[data-workspace] :is(.content,.transaction-detail) .badge[data-state] {
   
   display:inline-flex;justify-self:start;align-items:center;justify-content:flex-start;
   background:none;color:var(--ink);border:0;padding:0;gap:8px;
@@ -31,7 +31,7 @@
 [data-workspace] .badge:is([data-state=draft],[data-state=pending]) {--stock:#e8c590}
 [data-workspace] .badge:is([data-state=archived],[data-state=blank]) {--stock:#d6d0c3}
 [data-workspace] .badge[data-state=warning] {--stock:var(--console-coral,#ee9b83)}
-[data-workspace] .content .badge[data-state] .status-mark {
+[data-workspace] :is(.content,.transaction-detail) .badge[data-state] .status-mark {
   display:block;flex:none;width:28px;height:28px;fill:var(--stock,var(--console-sage,#bcd1ca));color:#383a35;stroke:currentColor;stroke-width:1.25;
 }
 [data-workspace] .status-mark .mark-ink {fill:none;stroke-width:1.85}
@@ -68,7 +68,10 @@
   background:transparent;border:0;border-radius:0;padding:9px 6px;min-height:44px;cursor:pointer;
 }
 .dayoff {position:absolute;opacity:0}
-.preference-day-grid input:focus-visible + .day-mark {outline:2px solid var(--ink);outline-offset:3px;border-radius:3px}
+.preference-day-grid input:focus-visible:not([data-portal-focus]) + .day-mark {outline:2px solid var(--ink);outline-offset:3px;border-radius:3px}
+@media (forced-colors:active) {
+  .preference-day-grid input:focus-visible + .day-mark {outline:2px solid Highlight;outline-offset:3px}
+}
 .day-mark {width:23px;height:23px;fill:none;stroke:var(--muted);stroke-width:1.4;stroke-linejoin:round;stroke-linecap:round}
 .day-mark .day-tick {stroke:#393830;stroke-width:2.5;stroke-dasharray:1;stroke-dashoffset:1}
 .dayoff:checked + .day-mark .day-tick {stroke-dashoffset:0}
@@ -290,6 +293,10 @@
   fill:none;stroke:currentColor;stroke-width:1.5;opacity:0;
 }
 .filter-tab > .ink-contour {stroke:var(--muted);opacity:.55;stroke-width:1.1}
+.filter-tab:has(select:focus-visible) > .ink-contour {stroke:var(--ink);stroke-width:2}
+@media (forced-colors:none) {
+  .filter-tab:has(> .ink-contour) select:focus-visible {outline:none}
+}
 :is(.btn,.filter-tab) > .ink-contour path:not(:first-child) {opacity:0}
 :is(.btn,.filter-tab):is(:hover,:focus-visible,:focus-within) > .ink-contour {opacity:1}
 .portal-studio[data-workspace] :is(.content,dialog) .btn:has(> .ink-contour) {transition-property:transform}
@@ -459,3 +466,115 @@
 .profile-facts a {color:var(--ink);text-underline-offset:3px}
 
 .extra-hours-frame { display:block; width:100%; height:200px; border:0; }
+
+/* The personal profile's ID card and links to the signed-in workspace. */
+.personal-profile .campus-id {
+  padding:32px 0 0;
+  border-radius:19px 17px 14px 15px;
+  background:#d5e0d3;
+}
+.personal-profile .campus-id::before {
+  top:12px;
+  height:8px;
+  box-shadow:inset 0 2px 2px #16201980,0 1px #f1f5ec;
+}
+.personal-profile :is(.campus-wordmark,.campus-owner,.campus-card-foot) {
+  padding-inline:clamp(18px,2.4vw,32px);
+}
+.personal-profile .campus-owner {min-height:128px;gap:16px;padding-block:20px}
+[data-workspace] .personal-profile .campus-owner .avatar {
+  width:60px;
+  height:60px;
+  font-size:21px;
+}
+.personal-profile .campus-owner h2 {
+  font-family:Tiempos,Georgia,serif;
+  font-size:clamp(26px,3vw,36px);
+  overflow-wrap:anywhere;
+}
+.personal-profile .campus-card-foot {
+  background:#bacbb9;
+  border-top:0;
+  padding-block:15px;
+}
+.personal-profile .profile-pane > h2 {margin-bottom:8px}
+.personal-profile .profile-facts {padding-bottom:26px}
+.profile-shortcuts {display:grid;max-width:470px}
+.profile-shortcut {
+  display:grid;
+  grid-template-columns:24px minmax(0,1fr) 16px;
+  align-items:center;
+  gap:12px;
+  min-height:52px;
+  padding:8px 12px;
+  border-bottom:1px solid var(--rule);
+  color:var(--ink);
+  text-decoration:none;
+}
+.profile-shortcut .icon {color:var(--muted)}
+.profile-shortcut:is(:hover,:focus-visible) {background:var(--raised)}
+.profile-shortcut:focus-visible {outline:2px solid var(--ink);outline-offset:2px}
+.draft-workflow-actions {padding:20px 0 22px}
+@media(max-width:940px) {
+  .personal-profile {gap:28px}
+}
+
+dialog:has(> .transaction-detail) {
+  width:min(530px,calc(100% - 32px));
+  isolation:isolate;
+  background:transparent;
+  border:0;
+  box-shadow:none;
+}
+.transaction-edge {
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  z-index:-1;
+  fill:var(--paper);
+  stroke:color-mix(in srgb,var(--muted) 55%,var(--paper));
+  stroke-width:1.4;
+  pointer-events:none;
+}
+@media (forced-colors:active) {
+  .transaction-edge {fill:Canvas;stroke:CanvasText}
+}
+dialog:has(> .transaction-detail) .modal-head {margin-bottom:24px}
+.transaction-total {
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:center;
+  gap:16px 24px;
+}
+.transaction-state {display:grid;gap:3px}
+.transaction-state time {
+  margin-inline-start:36px;
+  color:var(--muted);
+  font-size:14px;
+  white-space:nowrap;
+}
+.transaction-total p,.transaction-facts dt {color:var(--muted);font-size:14px}
+.transaction-total strong {
+  display:block;
+  margin-top:3px;
+  font-size:clamp(32px,7vw,46px);
+  font-weight:500;
+  font-variant-numeric:tabular-nums;
+  line-height:1.15;
+  letter-spacing:-.05em;
+}
+.transaction-total strong small {font-size:15px;color:var(--muted);letter-spacing:0}
+.transaction-facts {margin:24px 0 30px}
+.transaction-facts dd {display:flex;align-items:center;gap:9px;min-height:35px;margin:4px 0 0}
+.transaction-facts dd small {display:block;color:var(--muted);font-size:12px}
+.transaction-facts .avatar {flex:none;width:34px;height:34px}
+.transaction-footer {display:flex;align-items:center;flex-wrap:wrap;gap:10px}
+.transaction-footer [data-action=close-dialog] {margin-inline-start:auto}
+@media(max-width:400px) {
+  .transaction-total {column-gap:12px}
+  .transaction-facts {margin-block:22px 26px}
+}
+@media(max-width:340px) {
+  .transaction-total {grid-template-columns:1fr}
+}

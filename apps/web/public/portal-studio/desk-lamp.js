@@ -3,26 +3,78 @@ let lampArtwork;
 const lampFoot = {x:216, y:621.75};
 const lampReducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 
+// Keep the long sides the same distance apart. Register the corners a
+// fraction differently in each drawing, like lifting and replacing a pen.
+const inkOutlines = [
+  'M9 2Q40 1.7 70 2L147 2.15Q182 1.85 218 2L292 1.9L350 2Q357.8 2 358 9Q358.25 18 358 29L358 39Q357.8 46 350 46L292 45.9L218 46Q182 45.85 147 46.15L70 46Q40 45.7 9 46Q2 46 2 39L2.15 24L2 9Q2.05 2.1 9 2Z',
+  'M9 2.15L61 2Q94 1.6 123 2.1L197 2Q232 2.35 266 2.05L318 1.8L350 2.1Q357.5 2.4 358 9.2L357.65 24Q358.4 32 358 39Q357.4 46 350 46.1L318 45.8L266 46.05Q232 46.35 197 46L123 46.1Q94 45.6 61 46L9 46.15Q2.35 45.7 2 39L1.8 29L2.35 15L2.1 9Q2.35 2 9 2.15Z',
+  'M9 1.95L45 2.15Q73 2.4 103 1.85L172 2.05L235 2Q268 1.7 303 2.12L350 2Q358.2 2.1 357.8 9L358.3 18L357.9 31L358.1 39Q358 46.25 350 46L303 46.12Q268 45.7 235 46L172 46.05L103 45.85Q73 46.4 45 46.15L9 45.95Q1.8 46.1 2.15 39L2.35 32L1.85 19L2 9Q1.85 2.35 9 1.95Z'
+];
+const inkContour = '<svg class="ink-contour" viewBox="0 0 360 48" preserveAspectRatio="none" aria-hidden="true">' +
+  inkOutlines.map(d => '<path vector-effect="non-scaling-stroke" d="'+d+'"/>').join('')+'</svg>';
+
 function drawInputEdges(form) {
-  // Keep the long sides the same distance apart. Register the corners a
-  // fraction differently in each drawing, like lifting and replacing a pen.
-  const outlines = [
-    'M9 2Q40 1.7 70 2L147 2.15Q182 1.85 218 2L292 1.9L350 2Q357.8 2 358 9Q358.25 18 358 29L358 39Q357.8 46 350 46L292 45.9L218 46Q182 45.85 147 46.15L70 46Q40 45.7 9 46Q2 46 2 39L2.15 24L2 9Q2.05 2.1 9 2Z',
-    'M9 2.15L61 2Q94 1.6 123 2.1L197 2Q232 2.35 266 2.05L318 1.8L350 2.1Q357.5 2.4 358 9.2L357.65 24Q358.4 32 358 39Q357.4 46 350 46.1L318 45.8L266 46.05Q232 46.35 197 46L123 46.1Q94 45.6 61 46L9 46.15Q2.35 45.7 2 39L1.8 29L2.35 15L2.1 9Q2.35 2 9 2.15Z',
-    'M9 1.95L45 2.15Q73 2.4 103 1.85L172 2.05L235 2Q268 1.7 303 2.12L350 2Q358.2 2.1 357.8 9L358.3 18L357.9 31L358.1 39Q358 46.25 350 46L303 46.12Q268 45.7 235 46L172 46.05L103 45.85Q73 46.4 45 46.15L9 45.95Q1.8 46.1 2.15 39L2.35 32L1.85 19L2 9Q1.85 2.35 9 1.95Z'
-  ];
-  const contour = '<svg class="ink-contour" viewBox="0 0 360 48" preserveAspectRatio="none" aria-hidden="true">' +
-    outlines.map(d => '<path vector-effect="non-scaling-stroke" d="'+d+'"/>').join('')+'</svg>';
   for (const input of form.querySelectorAll('textarea, input:not([type]), input:is([type=text],[type=email],[type=password],[type=search],[type=number],[type=tel],[type=url],[type=date],[type=time],[type=datetime-local])')) {
     if (input.closest('.ink-field')) continue;
     const wrap = document.createElement('span');
     wrap.className = 'ink-field';
     input.before(wrap);
-    wrap.innerHTML = contour;
+    wrap.innerHTML = inkContour;
     wrap.append(input);
   }
   for (const control of form.querySelectorAll('main:not([data-screen=overview]) .btn, dialog .btn, .filter-tab')) {
-    if (!control.querySelector(':scope > .ink-contour')) control.insertAdjacentHTML('beforeend',contour);
+    if (!control.querySelector(':scope > .ink-contour')) control.insertAdjacentHTML('beforeend',inkContour);
+  }
+}
+
+// One outline follows keyboard focus on controls without a built-in ink edge.
+{
+  const layer = document.createElement('span');
+  layer.className = 'portal-focus-ring';
+  layer.innerHTML = inkContour;
+  layer.setAttribute('aria-hidden', 'true');
+  let target;
+  let frame;
+  const resize = new ResizeObserver(scheduleFocusRing);
+
+  function updateFocusRing() {
+    const focused = document.activeElement;
+    const next = focused?.matches(':focus-visible') &&
+      !focused.closest('.ink-field,.filter-tab:has(> .ink-contour)') &&
+      !focused.matches('.portal-studio[data-workspace] :is(main,dialog) .btn:has(> .ink-contour)')
+      ? focused : null;
+    if (target !== next) {
+      target?.removeAttribute('data-portal-focus');
+      resize.disconnect();
+      target = next;
+      if (target) resize.observe(target);
+    }
+    if (!target) {
+      layer.remove();
+      return;
+    }
+    const dialog = target.closest('dialog[open]');
+    const host = dialog || document.body;
+    if (layer.parentElement !== host) host.append(layer);
+    const anchor = target.matches('.dayoff') ? target.nextElementSibling : target;
+    const rect = anchor.getBoundingClientRect();
+    const bounds = dialog?.getBoundingClientRect();
+    const left = bounds ? bounds.left + dialog.clientLeft - dialog.scrollLeft : 0;
+    const top = bounds ? bounds.top + dialog.clientTop - dialog.scrollTop : 0;
+    layer.style.left = `${rect.left - left - 3}px`;
+    layer.style.top = `${rect.top - top - 3}px`;
+    layer.style.width = `${rect.width + 6}px`;
+    layer.style.height = `${rect.height + 6}px`;
+    target.setAttribute('data-portal-focus', '');
+  }
+
+  function scheduleFocusRing() {
+    cancelAnimationFrame(frame);
+    frame = requestAnimationFrame(updateFocusRing);
+  }
+
+  for (const event of ['focusin','focusout','keydown','pointerdown','scroll','resize']) {
+    window.addEventListener(event, scheduleFocusRing, {capture:true, passive:true});
   }
 }
 
