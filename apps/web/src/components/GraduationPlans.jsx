@@ -1,6 +1,23 @@
 import { useEffect, useState } from "react";
 import { api, explainApiError } from "../api.js";
 import { WorkspaceEmpty } from "./WorkspaceUI.jsx";
+import "./graduation-paper-toss.css";
+
+function PaperTossButton({ children, disabled, onClick, tossing = false }) {
+  return (
+    <button type="button" className="graduation-paper-toss" disabled={disabled}
+      onClick={onClick} data-tossing={tossing || undefined}>
+      <svg className="graduation-toss-sheet" viewBox="0 0 20 22" aria-hidden="true">
+        <path d="M3 1.5h8.9l4.9 5V20H3zM11.9 1.5v5h4.9M5.8 10h8M5.8 13h8M5.8 16h5.6" />
+      </svg>
+      <svg className="graduation-toss-bin" viewBox="0 0 18 20" aria-hidden="true">
+        <path className="graduation-toss-lid" d="M3 5.4h12M6.6 3.2h4.8" />
+        <path d="M4.6 7 5.3 17.4h7.4L13.4 7M7.3 9v5.5M10.8 9v5.5" />
+      </svg>
+      {children}
+    </button>
+  );
+}
 
 function assignmentsFor(plan) {
   return Object.fromEntries((plan?.termPlans ?? []).flatMap(({ term, courses }) =>
@@ -98,6 +115,9 @@ export default function GraduationPlans({ student, token, onBack }) {
 
   function deletePlan() {
     return perform(async () => {
+      if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        await new Promise((resolve) => window.setTimeout(resolve, 580));
+      }
       await api(`${path}/${plan._id}`, { token, method: "DELETE", body: { version: plan.version } });
       setWorkspace((previous) => ({ ...previous, plans: previous.plans.filter((item) => item._id !== plan._id) }));
       setConfirmDelete(false);
@@ -240,14 +260,14 @@ export default function GraduationPlans({ student, token, onBack }) {
             </select>
           </label>}
           <div className="form-actions planner-actions">
-            {plan && <button className="outline-button" type="button" disabled={busy} onClick={() => setConfirmDelete(true)}>Delete draft</button>}
+            {plan && <PaperTossButton disabled={busy} onClick={() => setConfirmDelete(true)}>Delete draft</PaperTossButton>}
             <button className="outline-button" type="button" disabled={busy} onClick={() => perform(savePlan, "Private draft saved.")}>Save draft</button>
             <button className="primary-button" type="button" disabled={busy} onClick={submitPlan}>Submit plan</button>
           </div>
           {confirmDelete && <div className="feedback" role="group" aria-label="Confirm draft deletion">
             <p>Delete this private draft?</p>
             <button className="outline-button" type="button" disabled={busy} onClick={() => setConfirmDelete(false)}>Cancel</button>{" "}
-            <button className="primary-button" type="button" disabled={busy} onClick={deletePlan}>Confirm delete</button>
+            <PaperTossButton disabled={busy} onClick={deletePlan} tossing={busy}>{busy ? "Deleting…" : "Confirm delete"}</PaperTossButton>
           </div>}
         </>}
       </section>}
