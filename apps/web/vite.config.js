@@ -67,7 +67,7 @@ function localPortalDemo() {
 
 export default defineConfig({
   plugins: [react(), localPortalDemo()],
-  build: { rollupOptions: { input: ["index.html", "workspace.html"] } },
+  build: { rollupOptions: { input: ["index.html", "academic-services.html", "workspace.html"] } },
   envDir: "../..",
   server: {
     proxy: {

@@ -8,7 +8,7 @@ From the repository root run `python3 -m http.server 8080 --bind 127.0.0.1 --dir
 
 The paths below refer to `apps/web/public/portal-studio/`. It is the runnable visual reference. The React application lives under `apps/web/src/`. When bringing artwork to a real workflow, keep its existing data, access controls, loading states and submission behavior.
 
-For local tests with seeded accounts, start Vite with `BOBOS_PORTAL_DEMO=standard` for the standard seed or `BOBOS_PORTAL_DEMO=extra-hours` for the extra-hours sandbox. Quick demo sign-in then signs in through the API and shares the session with the React workspace. Extra-hours requests opens the corresponding workspace page on the same origin. Overview and the Portal wordmark return to the illustrated home for the signed-in role.
+For local tests with seeded accounts, start Vite with `BOBOS_PORTAL_DEMO=standard` for the standard seed or `BOBOS_PORTAL_DEMO=extra-hours` for the extra-hours sandbox. Quick demo sign-in then signs in through the API and shares the session with the React workspace. Extra-hours requests opens the corresponding workspace page on the same origin. Academic services opens the role-specific React screens with the Portal sidebar and theme. Graduation plans opens the advisor’s student list, the coordinator’s review queue, or the advising student’s plan. Signed-in students open Calendar sync from Support. Overview and the Portal wordmark return to the illustrated home for the signed-in role.
 
 ## Surface, type and composition
 
