@@ -62,7 +62,7 @@ When an approved change alters one of these references, update the relevant pass
 
 ## Workspace fields and records
 
-Portal Studio uses the sign-in contour on text entry throughout the workspace, including searches, notes and dialogs. The SVG sits above the native control so the caret stays still. Reduced motion keeps one ink contour visible. Preferred days use a single drawn check that settles when selected. See `drawInputEdges` and `workspace-pages.css`.
+Portal Studio uses the sign-in contour on text entry throughout the workspace, including searches, notes and dialogs. The SVG sits above the native control so the caret stays still. Keyboard focus uses the same contour on both portal entry points, including buttons, links, and native controls. Reduced motion keeps one ink contour visible. Preferred days use a single drawn check that settles when selected. See `drawInputEdges` and `workspace-pages.css`.
 
 The directory files students alphabetically by first name. Schedule review pairs each student with a draft state and its action. Course removals use the catalogue’s course drawings; align each request with its student, reason and review button. Group advising and assignment rosters by who needs attention first. Financial totals use tabular sans-serif figures on the canvas, with EGP secondary to the amount. Academic terms use whitespace between entries, readable dates and a visible action button. Use the seasonal artwork directly on the canvas and keep the notification drawings large enough to identify at reading distance.
 

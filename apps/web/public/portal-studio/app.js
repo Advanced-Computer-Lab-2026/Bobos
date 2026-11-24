@@ -674,10 +674,13 @@ function profile(detail=false){
   if (!detail) {
     const shortcuts = student() ? ['my-schedule',role==='advisingStudent'?'preferences':'my-courses'] :
       role==='advisor' ? ['advising','student-schedules'] : role==='administrator' ? ['directory','financial-records'] : ['pending-work','student-schedules'];
-    return heading+`<div class="profile-desk">${identity}<div class="profile-pane">
+    return heading+`<div class="profile-desk personal-profile">${identity}<div class="profile-pane">
       <h2>Contact</h2>${facts([['University email',`<a href="mailto:${email}">${email}</a>`]])}
       ${isStudent?`<h2>Academic information</h2>${academic}`:''}
-      <h2>My workspace</h2><div class="profile-actions">${shortcuts.map(target=>link(target,pages[target],'btn desk-action')).join('')}</div>
+      <h2>My workspace</h2><div class="profile-shortcuts">${shortcuts.map(target=>link(target,
+        icon({'pending-work':'inbox','student-schedules':'calendar','my-schedule':'calendar',preferences:'edit',
+          'my-courses':'book',advising:'people',directory:'people','financial-records':'book'}[target])+
+        `<span>${pages[target]}</span>`+icon('chevron'),'profile-shortcut')).join('')}</div>
       </div></div>`;
   }
   const history = `<ul class="advisor-records">${[
@@ -981,7 +984,7 @@ function workflow() {
     ${badge(status,status==='Awaiting decision'?'pending':statusTone(status))}</div>`).join('');
 }
 function draft(){return head(`${names[selectedStudent].split(' ')[0]}’s advising draft`, `70-${71577+selectedStudent} · ${selectedStudent===3?'Digital Media Engineering':'Computer Engineering'} · Semester 7`,button('Save draft','save-draft')+button('Process schedule','process','btn primary'),'Winter 2026')+
-  `<div class="split academic-plan"><section class="panel"><h2>Selected courses</h2><div class="smallstats"><div><strong>19</strong><span>Credit hours</span></div><div><strong>4</strong><span>Courses selected</span></div><div><strong>0</strong><span>Time conflicts</span></div></div>${courseData.slice(0,4).map(c=>`<div class="task">${academicCourse(c,`<div><h3>${c[0]}</h3><p>${c[1]}</p></div>`)}<label><span class="sr-only">${c[0]} group</span><select aria-label="${c[0]} group"><option>Group 4</option><option>Group 2</option></select></label></div>`).join('')}</section><aside><section class="note"><div class="kicker">Student preferences</div><h2>Thursday off.</h2><p>Preferred group: 4<br>Earliest class: 08:30<br>Preferences updated 12 November.</p>${link('preferences','View preferences','btn text')}</section><section class="panel" style="margin-top:24px"><h2>Validation</h2><p>No time conflicts. Credit load is within the allowed range.</p></section></aside></div>`+(academicStudy() ? '<h2 class="academic-week-title">Proposed timetable</h2>' : '')+weekly()+`<section class="panel draft-workflow" style="margin-top:24px"><h2>Workflow</h2>${workflow()}${button('Reopen schedule','reopen','btn text')}</section>`;}
+  `<div class="split academic-plan"><section class="panel"><h2>Selected courses</h2><div class="smallstats"><div><strong>19</strong><span>Credit hours</span></div><div><strong>4</strong><span>Courses selected</span></div><div><strong>0</strong><span>Time conflicts</span></div></div>${courseData.slice(0,4).map(c=>`<div class="task">${academicCourse(c,`<div><h3>${c[0]}</h3><p>${c[1]}</p></div>`)}<label><span class="sr-only">${c[0]} group</span><select aria-label="${c[0]} group"><option>Group 4</option><option>Group 2</option></select></label></div>`).join('')}</section><aside><section class="note"><div class="kicker">Student preferences</div><h2>Thursday off.</h2><p>Preferred group: 4<br>Earliest class: 08:30<br>Preferences updated 12 November.</p>${link('preferences','View preferences','btn text')}</section><section class="panel" style="margin-top:24px"><h2>Validation</h2><p>No time conflicts. Credit load is within the allowed range.</p></section></aside></div>`+(academicStudy() ? '<h2 class="academic-week-title">Proposed timetable</h2>' : '')+weekly()+`<section class="panel draft-workflow" style="margin-top:24px"><h2>Workflow</h2>${workflow()}<div class="draft-workflow-actions">${button('Reopen schedule','reopen','btn desk-action')}</div></section>`;}
 function registeredTable(){return table(['Course','Type','Credits','Group',''],courseData.slice(0,4).map(c=>[`<strong>${c[1]}</strong><small>${c[0]}</small>`,'Mandatory',c[3],'4',courseLink(c[0],'View sections','btn row-control')]));}
 function courseEmblem(code) {
   const courseTone = {'CSEN 701':'blue','CSEN 703':'coral','CSEN 704':'sage','DMET 701':'ivory','ELCT 701':'sage','MATH 701':'ivory'};
@@ -1551,7 +1554,9 @@ function toast(text, tone = 'success') {
 }
 function modal(title,content,submit='Save changes',action='save-modal'){
   returnFocus=document.activeElement;
-  dialog.innerHTML=`<div class="modal-head"><h2>${title}</h2>${button('Close','close-dialog','')}</div>${content}<form id="modal-form" data-submit-action="${action}"><div id="modal-fields"></div><div class="form-footer">${button('Cancel','close-dialog')}<button class="btn primary" type="submit">${submit}</button></div></form>`;
+  const form=submit===null?'':`<form id="modal-form" data-submit-action="${action}"><div id="modal-fields"></div><div class="form-footer">${button('Cancel','close-dialog')}<button class="btn primary" type="submit">${submit}</button></div></form>`;
+  dialog.innerHTML=`<div class="modal-head"><h2 id="portal-dialog-title">${title}</h2>${form?button('Close','close-dialog',''):''}</div>${content}${form}`;
+  dialog.setAttribute('aria-labelledby','portal-dialog-title');
   // Keep all form controls inside the form so native validation works.
   const fields=dialog.querySelectorAll(':scope > .modal-fields');
   fields.forEach(el=>dialog.querySelector('#modal-fields').replaceWith(el));
@@ -1677,10 +1682,30 @@ function action(name,el){
     case 'reopen':modal('Reopen this schedule?',fields('<label>Reason<textarea required rows="3" placeholder="Explain why the schedule needs another review."></textarea></label>'),'Reopen schedule');break;
     case 'financial-detail': {
       const i=Number(el.dataset.record||0);
-      modal(`Transaction TXN-${1042+i}`,`<dl class="details"><div><dt>Student</dt><dd>${names[i]}</dd></div><div><dt>Date</dt><dd>14 Nov 2026</dd></div><div><dt>Type</dt><dd>${i===4?'Refund':'Course payment'}</dd></div><div><dt>Amount</dt><dd>EGP ${i===4?'2,500':'7,500'}</dd></div></dl>${i!==4 && ![1,5].includes(i)?button('Refund transaction','refund','btn danger'):''}`,'Close','close');
+      const isRefund=i===4;
+      const pending=[1,5].includes(i);
+      modal(`Transaction TXN-${1042+i}`,`<div class="transaction-detail">
+        <svg class="transaction-edge" viewBox="0 0 360 230" preserveAspectRatio="none" aria-hidden="true">
+          <path vector-effect="non-scaling-stroke" d="M12 3Q94 1 170 2.8T346 2.5Q356 2 357 13Q359 62 357.5 111T357 215Q356 227 345 227Q275 226 197 228T15 226.5Q3 227 3 215Q1 165 2.5 112T3 16Q3 5 12 3Z"/>
+        </svg>
+        <div class="transaction-total">
+          <div><p>${isRefund?'Refund':'Course payment'}</p><strong>${isRefund?'2,500':'7,500'} <small>EGP</small></strong></div>
+          <div class="transaction-state">
+            ${badge(pending?'Pending':'Completed',pending?'payment-pending':'payment-complete')}
+            <time datetime="2026-11-14">14 Nov 2026</time>
+          </div>
+        </div>
+        <dl class="transaction-facts">
+          <div><dt>Student</dt><dd>${avatar(names[i])}<span>${names[i]}<small>70-${71577+i}</small></span></dd></div>
+        </dl>
+        <div class="transaction-footer">
+          ${!isRefund&&!pending?button('Refund transaction','refund','btn danger'):''}
+          ${button('Close','close-dialog','btn primary','autofocus')}
+        </div>
+      </div>`,null);
       break;
     }
-    case 'refund':dialog.close();modal('Refund this transaction?',fields('<p>EGP 7,500 will be returned to the student’s wallet in this preview.</p><label>Refund reason<textarea required rows="3"></textarea></label>'),'Confirm refund');break;
+    case 'refund':{const opener=returnFocus;dialog.close();modal('Refund this transaction?',fields('<p>EGP 7,500 will be returned to the student’s wallet in this preview.</p><label>Refund reason<textarea required rows="3"></textarea></label>'),'Confirm refund');returnFocus=opener;break;}
     case 'removal-decision': {
       const i=Number(el.dataset.request || 0);
       modal(`${courseData[i][0]} removal request`,`<p>${names[i]} · 70-${71577+i}<br>Reason: ${removalReasons[i]}.${i===0?'<br>Removing this course reduces the semester load from 19 to 14 credits.':''}</p>`+fields('<label>Decision<select><option>Approve removal</option><option>Reject request</option></select></label><label>Decision note<textarea required rows="3" placeholder="Explain the decision to the student."></textarea></label>'),'Submit decision');break;
