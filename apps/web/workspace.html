@@ -1,38 +1,14 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#faf8f4" />
-    <meta name="description" content="Portal for university scheduling and academic services portal" />
-    <link rel="icon" type="image/svg+xml" href="/portal-studio/portal-card-index.svg" />
+    <meta charset="utf-8">
+    <title>Open Portal</title>
     <script>
-      const workspaceUrl = new URL(window.location.href);
-      if (window.parent !== window && workspaceUrl.searchParams.get("embedded") === "1") {
-        document.documentElement.dataset.embedded = "true";
-      }
-      const linkedTheme = workspaceUrl.searchParams.get("theme");
-      if (linkedTheme === "dark" || linkedTheme === "light") {
-        document.documentElement.dataset.theme = linkedTheme;
-        try { if (!workspaceUrl.searchParams.has("embedded")) localStorage.setItem("portal.theme", linkedTheme); } catch { /* Apply the theme for this page. */ }
-        workspaceUrl.searchParams.delete("theme");
-        window.history.replaceState(window.history.state, "", workspaceUrl);
-      } else {
-        try {
-          if (localStorage.getItem("portal.theme") === "dark") document.documentElement.dataset.theme = "dark";
-        } catch { /* Use the default theme if storage is unavailable. */ }
-      }
+      const url = new URL(location.href);
+      const hasDestination = ["calendar", "screen", "embedded"].some(key => url.searchParams.has(key));
+      url.pathname = new URL(hasDestination ? "./academic-services.html" : "./", url).pathname;
+      location.replace(url);
     </script>
-    <link rel="stylesheet" href="/portal-studio/login-art.css" />
-    <link rel="stylesheet" href="/portal-studio/action-feedback.css" />
-    <script defer src="/portal-studio/lamp-cord.js"></script>
-    <script defer src="/portal-studio/desk-lamp.js"></script>
-    <title>Portal · Academic workspace</title>
   </head>
-  <body>
-    <div id="root"></div>
-    <portal-action-feedback></portal-action-feedback>
-    <script src="/portal-studio/action-feedback.js"></script>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+  <body><a href="./">Open Portal</a></body>
 </html>

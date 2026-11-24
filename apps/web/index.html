@@ -9,7 +9,7 @@
       destination.search = location.search;
       destination.hash = location.hash;
       if (destination.searchParams.has("calendar")) {
-        destination.pathname = new URL("workspace.html", location.href).pathname;
+        destination.pathname = new URL("academic-services.html", location.href).pathname;
       } else if (!destination.searchParams.has("page")) {
         destination.searchParams.set("page", localStorage.getItem("portal-studio-preview-session") === "1" ? "overview" : "login");
       }
