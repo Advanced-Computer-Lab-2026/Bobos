@@ -98,6 +98,10 @@ export default function App() {
   const embeddedCalendar = window.parent !== window && workspaceParams.get("embedded") === "1" && workspaceParams.get("screen") === "calendar-sync";
   const embeddedExtraHours = window.parent !== window && workspaceParams.get("embedded") === "1" && workspaceParams.get("screen") === "extra-hours";
   const [token, setToken] = useState(() => window.localStorage.getItem("bobos.token"));
+  const [previewExtraHours] = useState(() =>
+    embeddedExtraHours && !token && workspaceParams.get("role") === "advisingStudent"
+    && window.localStorage.getItem("portal-studio-preview-session") === "1"
+  );
   const [profile, setProfile] = useState(null);
   const [profileLoading, setProfileLoading] = useState(Boolean(token));
   useEffect(() => {
@@ -118,6 +122,7 @@ export default function App() {
     };
   }, [embeddedExtraHours, profile, profileLoading]);
   const [activeScreen, setActiveScreen] = useState(() => workspaceParams.get("page") === "calendar-sync" ? "calendar-sync" : "overview");
+  const [embeddedProfileError, setEmbeddedProfileError] = useState("");
   const [screenContext, setScreenContext] = useState(null);
   const [navQuery, setNavQuery] = useState("");
   const navigation = useRef(null);
@@ -157,7 +162,13 @@ export default function App() {
       })
       .catch((error) => {
         if (!alive) return;
-        window.localStorage.removeItem("bobos.token");
+        if (embeddedExtraHours && error.status !== 401) {
+          setEmbeddedProfileError("Extra-hours requests couldn’t load. Try refreshing the page.");
+          return;
+        }
+        if (window.localStorage.getItem("bobos.token") === token) {
+          window.localStorage.removeItem("bobos.token");
+        }
         setToken(null);
         setProfile(null);
         if (error.status !== 401) notify("error", error.message);
@@ -221,16 +232,27 @@ export default function App() {
     window.history.replaceState({}, "", window.location.pathname + "?page=calendar-sync");
   }, []);
 
-  if (embeddedExtraHours && !profileLoading && (!token || !profile)) {
-    const destination = new URL("./portal-studio/index.html", window.location.href);
-    destination.search = new URLSearchParams({page:"login", next:"extra-hours", role:workspaceParams.get("role") || "advisingStudent", preview:"live"});
-    window.top.location.replace(destination);
-    return <p role="status">Opening Portal sign-in…</p>;
-  }
-  if (!token) return <AuthPage onLogin={acceptLogin} />;
   if (profileLoading && embeddedExtraHours) return <div className="extra-hours-loading" aria-busy="true"><span className="sr-only">Loading extra-hours requests…</span></div>;
   if (profileLoading) return <div className="app-loading"><span className="loader" />Loading your workspace…</div>;
-  if (!profile) return <AuthPage onLogin={acceptLogin} />;
+  if (embeddedExtraHours && embeddedProfileError) {
+    return <div className="feedback error" role="alert">{embeddedProfileError}</div>;
+  }
+  if (previewExtraHours) {
+    return <div className="extra-hours-shell extra-hours-embedded">
+      <ExtraHoursPage role="advisingStudent" notify={notify} embedded preview />
+    </div>;
+  }
+  if (!token || !profile) {
+    if (!embeddedExtraHours) return <AuthPage onLogin={acceptLogin} />;
+    const signIn = new URL("./portal-studio/index.html", window.location.href);
+    signIn.search = new URLSearchParams({
+      page: "login",
+      role: workspaceParams.get("role") || "",
+      preview: "live",
+      next: "extra-hours",
+    });
+    return <p className="feedback error">Your session has ended. <a href={signIn.href} target="_top">Sign in to Portal</a>.</p>;
+  }
 
   if (embeddedCalendar) {
     if (!["normalStudent", "advisingStudent"].includes(profile.role)) {

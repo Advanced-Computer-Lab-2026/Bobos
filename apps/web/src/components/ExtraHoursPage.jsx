@@ -11,17 +11,36 @@ const money = (amount) =>
   `${Number(amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EGP`;
 const date = (value) => (value ? new Date(value).toLocaleString() : "—");
 
+const sampleRequest = {
+  _id: "demo-001",
+  term: { code: "Winter 2026" },
+  advisor: { fullName: "Dr. Salma Adel" },
+  createdAt: "2026-11-24T08:00:00Z",
+  decisionStatus: "approved",
+  settlementStatus: "awaitingChoice",
+  totalCost: 2400,
+  requestedHours: 3,
+  eligibilitySnapshot: { hoursBeforeRequest: 19, hoursAfterRequest: 22, standardAllowance: 19, graduatingWithinOneYear: true },
+  courses: [{
+    course: { _id: "demo-course", code: "DMET 502", name: "Computer Graphics" },
+    hours: 3, pricePerHour: 800, subtotal: 2400,
+  }],
+  history: [{ _id: "demo-approved", action: "approved", occurredAt: "2026-11-24T09:00:00Z" }],
+};
+const sampleBalance = 5000;
+
 export default function ExtraHoursPage({
   token,
   role,
   advisorId,
   notify,
   embedded = false,
+  preview = false,
 }) {
   const [sampleView, setSampleView] = useState(false);
   const student = role === "advisingStudent";
   const [composing, setComposing] = useState(false);
-  const [rows, setRows] = useState([]);
+  const [rows, setRows] = useState(() => preview ? [sampleRequest] : []);
   const [filters, setFilters] = useState({
     studentId: "",
     advisorId: "",
@@ -31,13 +50,14 @@ export default function ExtraHoursPage({
   });
   const [advisors, setAdvisors] = useState([]);
   const [history, setHistory] = useState([]);
-  const [walletBalance, setWalletBalance] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [walletBalance, setWalletBalance] = useState(preview ? sampleBalance : 0);
+  const [loading, setLoading] = useState(!preview);
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState("");
   const [notes, setNotes] = useState({});
   const [gateway, setGateway] = useState({});
   const load = useCallback(async () => {
+    if (preview) return;
     setLoading(true);
     setError("");
     try {
@@ -68,7 +88,7 @@ export default function ExtraHoursPage({
     } finally {
       setLoading(false);
     }
-  }, [token, student, role, filters]);
+  }, [token, student, role, filters, preview]);
   useEffect(() => {
     load();
   }, [load]);
@@ -113,6 +133,25 @@ export default function ExtraHoursPage({
     }
   };
   const settle = async (row, option, method) => {
+    if (preview) {
+      const deferred = option === "deferred";
+      const outcome = method === "gateway" ? gateway[row._id] || "succeeded" : "succeeded";
+      const succeeded = outcome === "succeeded";
+      const settlementStatus = succeeded ? (deferred ? "deferred" : "paid") : "awaitingChoice";
+      const settlementOption = method || option;
+      const occurredAt = new Date().toISOString();
+      const entry = { _id: occurredAt, action: succeeded ? settlementStatus : "paymentAttempt", settlementStatus, occurredAt };
+      setRows([{ ...row, settlementStatus, settlementOption, history: [...row.history, entry] }]);
+      if (succeeded && method === "wallet") setWalletBalance(balance => balance - row.totalCost);
+      setHistory(records => [...records, {
+        _id: occurredAt, extraHoursRequest: row,
+        kind: deferred ? "deferredCharge" : method === "wallet" ? "extraHoursWalletPayment" : "gatewayPayment",
+        settlementOption, amount: row.totalCost, occurredAt, status: deferred ? "pending" : outcome,
+      }]);
+      if (!succeeded) setError(outcome === "failed" ? "Demo payment failed. You can try again." : "Demo payment cancelled. You can choose another option.");
+      else setError("");
+      return;
+    }
     setBusyId(row._id);
     setError("");
     try {
@@ -192,9 +231,15 @@ export default function ExtraHoursPage({
         className="outline-button"
         type="button"
         disabled={loading}
-        onClick={load}
+        onClick={preview ? () => {
+          setRows([sampleRequest]);
+          setHistory([]);
+          setWalletBalance(sampleBalance);
+          setGateway({});
+          setError("");
+        } : load}
       >
-        {loading ? "Refreshing…" : "Refresh"}
+        {preview ? "Reset demo" : loading ? "Refreshing…" : "Refresh"}
       </button>
     </>
   );
@@ -210,7 +255,10 @@ export default function ExtraHoursPage({
     <div className="page-stack workspace-page extra-hours-page">
       {embedded ? (
         <div className="extra-hours-toolbar">
-          {walletSummary}
+          <div className="extra-hours-account">
+            {walletSummary}
+            {preview && <p className="helper-text">Demo · Payments are simulated</p>}
+          </div>
           <div className="extra-hours-toolbar-actions">{toolbar}</div>
         </div>
       ) : (
@@ -384,221 +432,229 @@ export default function ExtraHoursPage({
                   {row.student?.user?.fullName || "Your request"}{" "}
                   {row.student?.studentId ? `· ${row.student.studentId}` : ""}
                 </h2>
-                <p className="helper-text">
-                  Request {row._id.slice(-8)} · {row.term?.code} · Submitted{" "}
-                  {date(row.createdAt)} · Advisor {row.advisor?.fullName || "—"}
-                </p>
+                <p className="helper-text">{row.term?.code} · Request {row._id.slice(-8)}</p>
+                <dl className="extra-request-meta">
+                  <div><dt>Advisor</dt><dd>{row.advisor?.fullName || "—"}</dd></div>
+                  <div><dt>Submitted</dt><dd>{date(row.createdAt)}</dd></div>
+                </dl>
               </div>
-              <span
-                className={`status-pill ${row.decisionStatus === "approved" ? "good" : row.decisionStatus === "rejected" ? "danger" : row.decisionStatus === "pending" ? "warning" : "muted"}`}
-              >
-                {pretty(row.decisionStatus)}
-                {row.settlementStatus && row.settlementStatus !== "none"
-                  ? ` · ${pretty(row.settlementStatus)}`
-                  : ""}
-              </span>
-              <dl className="extra-request-price">
-                <dt>Request total</dt>
-                <dd>{money(row.totalCost)}</dd>
-              </dl>
+              <div className="extra-request-summary">
+                <span
+                  className={`status-pill ${row.decisionStatus === "approved" ? "good" : row.decisionStatus === "rejected" ? "danger" : row.decisionStatus === "pending" ? "warning" : "muted"}`}
+                >
+                  {pretty(row.decisionStatus)}
+                  {row.settlementStatus && row.settlementStatus !== "none"
+                    ? ` · ${pretty(row.settlementStatus)}`
+                    : ""}
+                </span>
+                <dl className="extra-request-price">
+                  <dt>Request total</dt>
+                  <dd>{money(row.totalCost)}</dd>
+                </dl>
+              </div>
             </header>
-            {row.decisionNote && (
-              <p className="feedback info">
-                Coordinator response: {row.decisionNote}
-              </p>
-            )}
-            {role === "coordinator" && row.decisionStatus === "pending" && (
-              <div className="form-stack">
-                <label className="field">
-                  <span>Response note (required)</span>
-                  <textarea
-                    rows={2}
-                    maxLength={1000}
-                    value={notes[row._id] || ""}
-                    onChange={(e) =>
-                      setNotes({ ...notes, [row._id]: e.target.value })
-                    }
-                  />
-                </label>
-                <div className="form-actions">
-                  <button
-                    className="outline-button"
-                    disabled={busyId === row._id || !notes[row._id]?.trim()}
-                    onClick={() => decision(row, "rejected")}
-                  >
-                    Reject
-                  </button>
-                  <button
-                    className="primary-button"
-                    disabled={busyId === row._id || !notes[row._id]?.trim()}
-                    onClick={() => decision(row, "approved")}
-                  >
-                    Approve · makes available to settle
-                  </button>
-                </div>
-              </div>
-            )}
-            {student &&
-              row.decisionStatus === "approved" &&
-              row.settlementStatus === "awaitingChoice" && (
-                <div className="form-stack">
-                  <p className="helper-text">
-                    Approval does not add these courses to your usable schedule
-                    until payment succeeds or you confirm deferral.
+            <div className="extra-record-desk">
+              <div className="extra-record-content">
+                {row.decisionNote && (
+                  <p className="feedback info">
+                    Coordinator response: {row.decisionNote}
                   </p>
-                  <div className="inline-controls">
-                    <button
-                      className="primary-button"
-                      disabled={
-                        busyId === row._id ||
-                        walletBalance < Number(row.totalCost)
-                      }
-                      onClick={() => settle(row, "now", "wallet")}
-                    >
-                      Pay with wallet · {money(row.totalCost)}
-                      {walletBalance < Number(row.totalCost)
-                        ? " · insufficient balance"
-                        : ""}
-                    </button>
-                    <button
-                      className="outline-button"
-                      disabled={busyId === row._id}
-                      onClick={() => settle(row, "deferred")}
-                    >
-                      Add to next installment
-                    </button>
-                  </div>
-                  <div className="inline-controls">
-                    <label className="field">
-                      <span>Sandbox gateway result</span>
-                      <select
-                        value={gateway[row._id] || "succeeded"}
-                        onChange={(e) =>
-                          setGateway({ ...gateway, [row._id]: e.target.value })
-                        }
-                      >
-                        <option value="succeeded">Successful</option>
-                        <option value="failed">Failed</option>
-                        <option value="cancelled">Cancelled</option>
-                      </select>
-                    </label>
-                    <button
-                      className="outline-button"
-                      disabled={busyId === row._id}
-                      onClick={() => settle(row, "now", "gateway")}
-                    >
-                      {row.history?.some(
-                        (item) => item.action === "paymentAttempt",
-                      )
-                        ? "Retry gateway payment"
-                        : "Pay through sandbox gateway"}
-                    </button>
-                  </div>
-                  <p className="helper-text">
-                    Sandbox only. No card details are collected or stored.
-                  </p>
-                </div>
-              )}
-            {student && row.settlementStatus === "paid" && (
-              <div className="feedback success">
-                Paid receipt · {pretty(row.settlementOption)} ·{" "}
-                {money(row.totalCost)}. Download the receipt from financial
-                history below.
-              </div>
-            )}
-            {student && row.settlementStatus === "deferred" && (
-              <div className="feedback info">
-                Deferred-payment confirmation · {money(row.totalCost)} due with
-                your next university installment. Download its confirmation
-                below.
-              </div>
-            )}
-            {!student &&
-              role === "advisor" &&
-              row.decisionStatus === "pending" && (
-                <div className="form-actions">
-                  <button
-                    className="text-button danger-text"
-                    disabled={busyId === row._id}
-                    onClick={() => withdraw(row)}
-                  >
-                    Withdraw request
-                  </button>
-                </div>
-              )}
-            <section className="extra-request-details">
-              <h3>Courses and eligibility</h3>
-              <p className="extra-eligibility-summary">
-                {row.eligibilitySnapshot?.isProbation ? (
-                  "Ineligible due to academic probation"
-                ) : (
-                  <>
-                    <strong>
-                      {row.eligibilitySnapshot?.hoursAfterRequest} hours
-                    </strong>{" "}
-                    after this request{" "}
-                    <span>
-                      ({row.eligibilitySnapshot?.hoursBeforeRequest} current +{" "}
-                      {row.requestedHours} extra)
-                    </span>
-                  </>
                 )}
-              </p>
-              <dl className="extra-course-facts">
-                <div>
-                  <dt>Standard allowance</dt>
-                  <dd>{row.eligibilitySnapshot?.standardAllowance} hours</dd>
-                </div>
-                <div>
-                  <dt>Graduating within one year</dt>
-                  <dd>
-                    {row.eligibilitySnapshot?.graduatingWithinOneYear
-                      ? "Yes"
-                      : "No"}
-                  </dd>
-                </div>
-              </dl>
-              <ul className="extra-course-list" aria-label="Requested courses">
-                {row.courses?.map((item) => (
-                  <li key={item.course?._id || item.course}>
+                {role === "coordinator" && row.decisionStatus === "pending" && (
+                  <div className="form-stack">
+                    <label className="field">
+                      <span>Response note (required)</span>
+                      <textarea
+                        rows={2}
+                        maxLength={1000}
+                        value={notes[row._id] || ""}
+                        onChange={(e) =>
+                          setNotes({ ...notes, [row._id]: e.target.value })
+                        }
+                      />
+                    </label>
+                    <div className="form-actions">
+                      <button
+                        className="outline-button"
+                        disabled={busyId === row._id || !notes[row._id]?.trim()}
+                        onClick={() => decision(row, "rejected")}
+                      >
+                        Reject
+                      </button>
+                      <button
+                        className="primary-button"
+                        disabled={busyId === row._id || !notes[row._id]?.trim()}
+                        onClick={() => decision(row, "approved")}
+                      >
+                        Approve · makes available to settle
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {student &&
+                  row.decisionStatus === "approved" &&
+                  row.settlementStatus === "awaitingChoice" && (
+                    <section className="form-stack extra-payment" aria-label="Payment options">
+                      <div>
+                        <h3>Payment options</h3>
+                        <p className="helper-text">Pay now or add the charge to your next installment to activate these courses.</p>
+                      </div>
+                      <div className="inline-controls">
+                        <button
+                          className="primary-button"
+                          disabled={
+                            busyId === row._id ||
+                            walletBalance < Number(row.totalCost)
+                          }
+                          onClick={() => settle(row, "now", "wallet")}
+                        >
+                          Pay with wallet · {money(row.totalCost)}
+                          {walletBalance < Number(row.totalCost)
+                            ? " · insufficient balance"
+                            : ""}
+                        </button>
+                        <button
+                          className="outline-button"
+                          disabled={busyId === row._id}
+                          onClick={() => settle(row, "deferred")}
+                        >
+                          Add to next installment
+                        </button>
+                      </div>
+                      <div className="inline-controls extra-gateway">
+                        <label className="field">
+                          <span>Sandbox gateway result</span>
+                          <select
+                            value={gateway[row._id] || "succeeded"}
+                            onChange={(e) =>
+                              setGateway({ ...gateway, [row._id]: e.target.value })
+                            }
+                          >
+                            <option value="succeeded">Successful</option>
+                            <option value="failed">Failed</option>
+                            <option value="cancelled">Cancelled</option>
+                          </select>
+                        </label>
+                        <button
+                          className="outline-button"
+                          disabled={busyId === row._id}
+                          onClick={() => settle(row, "now", "gateway")}
+                        >
+                          {row.history?.some(
+                            (item) => item.action === "paymentAttempt",
+                          )
+                            ? "Retry gateway payment"
+                            : "Pay through sandbox gateway"}
+                        </button>
+                      </div>
+                    </section>
+                  )}
+                {student && row.settlementStatus === "paid" && (
+                  <div className="feedback success">
+                    Paid receipt · {pretty(row.settlementOption)} ·{" "}
+                    {money(row.totalCost)}. {!preview && "Download the receipt from financial history below."}
+                  </div>
+                )}
+                {student && row.settlementStatus === "deferred" && (
+                  <div className="feedback info">
+                    Deferred-payment confirmation · {money(row.totalCost)} due with
+                    your next university installment. {!preview && "Download its confirmation below."}
+                  </div>
+                )}
+                {!student &&
+                  role === "advisor" &&
+                  row.decisionStatus === "pending" && (
+                    <div className="form-actions">
+                      <button
+                        className="text-button danger-text"
+                        disabled={busyId === row._id}
+                        onClick={() => withdraw(row)}
+                      >
+                        Withdraw request
+                      </button>
+                    </div>
+                  )}
+                <section className="extra-request-details">
+                  <h3>Requested courses</h3>
+                  <ul className="extra-course-list" aria-label="Requested courses">
+                    {row.courses?.map((item) => (
+                      <li key={item.course?._id || item.course}>
+                        <div>
+                          <strong>
+                            {item.course?.name || item.course?.code || "Course"}
+                          </strong>
+                          <p>
+                            {item.course?.name && item.course?.code && (
+                              <>{item.course.code} · </>
+                            )}
+                            {item.hours} {item.hours === 1 ? "hour" : "hours"} at{" "}
+                            {money(item.pricePerHour)} per hour
+                            {item.isRepeated && " · Repeated course"}
+                          </p>
+                        </div>
+                        <strong>{money(item.subtotal)}</strong>
+                      </li>
+                    ))}
+                  </ul>
+                  <dl className="extra-course-facts">
                     <div>
-                      <strong>
-                        {item.course?.name || item.course?.code || "Course"}
-                      </strong>
-                      <p>
-                        {item.course?.name && item.course?.code && (
-                          <>{item.course.code} · </>
-                        )}
-                        {item.hours} {item.hours === 1 ? "hour" : "hours"} at{" "}
-                        {money(item.pricePerHour)} per hour
-                        {item.isRepeated && " · Repeated course"}
-                      </p>
+                      <dt>Hours after request</dt>
+                      <dd>{row.eligibilitySnapshot?.hoursAfterRequest ?? "—"} hours <small>({row.eligibilitySnapshot?.hoursBeforeRequest ?? "—"} current + {row.requestedHours} extra)</small></dd>
                     </div>
-                    <strong>{money(item.subtotal)}</strong>
-                  </li>
-                ))}
-              </ul>
-            </section>
-            <details className="extra-request-history" open>
-              <summary>Request history</summary>
-              <ol>
-                {(row.history || []).map((entry) => (
-                  <li key={entry._id}>
-                    <div className="extra-history-event">
-                      <strong>{pretty(entry.action)}</strong>
-                      {entry.settlementStatus &&
-                        entry.settlementStatus !== "none" && (
-                          <span>{pretty(entry.settlementStatus)}</span>
-                        )}
-                      <time dateTime={entry.occurredAt}>
-                        {date(entry.occurredAt)}
-                      </time>
+                    <div>
+                      <dt>Standard allowance</dt>
+                      <dd>{row.eligibilitySnapshot?.standardAllowance ?? "—"} hours</dd>
                     </div>
-                    {entry.note && <p>{entry.note}</p>}
-                  </li>
-                ))}
-              </ol>
-            </details>
+                    <div>
+                      <dt>Graduating within one year</dt>
+                      <dd>{row.eligibilitySnapshot?.graduatingWithinOneYear ? "Yes" : "No"}</dd>
+                    </div>
+                  </dl>
+                  {row.eligibilitySnapshot?.isProbation && (
+                    <p className="feedback error">Ineligible due to academic probation</p>
+                  )}
+                </section>
+              </div>
+              <details className="extra-request-history" open>
+                <summary>Request history</summary>
+                <div className="extra-record-ticket" key={row.history?.at(-1)?._id}>
+                  <div className="extra-record-number">Request {row._id.slice(-8)}</div>
+                  {row.history?.length ? (
+                    <ol>
+                      {(row.history || []).map((entry) => (
+                        <li key={entry._id}>
+                          <div className="extra-history-event">
+                            <strong>{pretty(entry.action)}</strong>
+                            {entry.settlementStatus &&
+                              entry.settlementStatus !== "none" && (
+                                <span>{pretty(entry.settlementStatus)}</span>
+                              )}
+                            <time dateTime={entry.occurredAt}>
+                              {date(entry.occurredAt)}
+                            </time>
+                          </div>
+                          {entry.note && <p>{entry.note}</p>}
+                        </li>
+                      ))}
+                    </ol>
+                  ) : (
+                    <p>No history recorded yet.</p>
+                  )}
+                  <svg className="extra-record-punch" viewBox="0 0 116 65" aria-hidden="true"
+                    stroke="#302e28" strokeWidth="2.3" strokeLinejoin="round">
+                    <path fill="#707d71" d="m9 50 83-5 11 8-2 7-88 2-6-6z" />
+                    <path fill="#bbc4ad" d="m12 49 79-5 10 8-88 4z" />
+                    <path fill="#657970" d="m73 47 3-16q5-7 12 0l4 14z" />
+                    <g className="extra-punch-lever">
+                      <path fill="#b97859" d="m10 12 74 17 7 8-7 5-75-19q-6-6 1-11z" />
+                      <path stroke="#e3ab83" d="m14 16 63 15" />
+                      <path fill="#c7bc9f" d="m29 28 8 2-1 10-6-1z" />
+                    </g>
+                    <circle cx="82" cy="36" r="3.5" fill="#dccdaa" />
+                  </svg>
+                </div>
+              </details>
+            </div>
           </article>
         ))
       )}
@@ -643,12 +699,12 @@ export default function ExtraHoursPage({
                       </td>
                       <td>{date(item.occurredAt)}</td>
                       <td>
-                        {(item.kind === "deferredCharge" &&
+                        {!preview && ((item.kind === "deferredCharge" &&
                           item.status === "pending") ||
                         (["extraHoursWalletPayment", "gatewayPayment"].includes(
                           item.kind,
                         ) &&
-                          item.status === "succeeded") ? (
+                          item.status === "succeeded")) ? (
                           <button
                             className="text-button"
                             type="button"

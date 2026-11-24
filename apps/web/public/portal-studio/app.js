@@ -1282,6 +1282,16 @@ function auth(){
   </main>`;
 }
 function extraHours(){
+  if (!['advisor', 'coordinator', 'advisingStudent'].includes(role)) {
+    return head('Extra-hours requests') + '<p>This page is unavailable for your role.</p>';
+  }
+  if (role !== 'advisingStudent' && !localStorage.getItem(workspaceSessionKey)) {
+    const request = ['Winter 2026', '3', badge('Awaiting decision', 'pending')];
+    const sampleTable = student()
+      ? table(['Term', 'Credits', 'Status'], [request], false)
+      : table(['Student', 'Term', 'Credits', 'Status'], [['Omar Hassan', ...request]], false);
+    return head('Extra-hours requests', 'Demo preview · Sample requests') + sampleTable;
+  }
   return head('Extra-hours requests') +
     `<iframe class="extra-hours-frame" style="border:0;background:transparent;color-scheme:${lab.dark ? 'dark' : 'light'}" title="Extra-hours request workspace" src="../workspace.html?screen=extra-hours&amp;embedded=1&amp;theme=${lab.dark ? 'dark' : 'light'}&amp;role=${role}"></iframe>`;
 }

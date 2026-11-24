@@ -136,7 +136,7 @@
   background: var(--raised);
 }
 .extra-wallet-summary dd { font-size: 16px; font-weight: 600; }
-.extra-request-price { grid-column: 1 / -1; }
+
 .extra-request-price dd {
   font-size: clamp(23px, 3vw, 32px);
   font-weight: 700;
@@ -209,11 +209,6 @@ body:has(.extra-hours-embedded) { background: transparent; }
   gap: 8px 12px;
 }
 .extra-hours-toolbar-actions { margin-inline-start: auto; }
-.extra-hours-page .extra-request-row .status-pill {
-  font-size: clamp(15px, 2vw, 19px);
-  font-weight: 700;
-  padding: 5px 10px;
-}
 
 .extra-request-details { margin-block: 20px 12px; }
 .extra-request-details h3,
@@ -258,17 +253,107 @@ body:has(.extra-hours-embedded) { background: transparent; }
   overflow-wrap: anywhere;
   white-space: normal;
 }
+.extra-hours-page .extra-request {
+  padding: clamp(14px, 3vw, 24px);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.extra-request-summary {
+  display: grid;
+  justify-items: end;
+  text-align: end;
+  gap: 8px;
+}
+.extra-hours-page .extra-request-summary .status-pill {
+  justify-self: end;
+  font-size: 12px;
+  font-weight: 600;
+}
+.extra-request-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin: 10px 0 0;
+  font-size: 13px;
+}
+.extra-request-meta dt { color: var(--muted); }
+.extra-request-meta dd { margin: 2px 0 0; }
+.extra-hours-account {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+}
+.extra-hours-account .helper-text,
+.extra-payment .helper-text { margin: 0; }
+.extra-hours-page .extra-payment {
+  gap: 12px;
+  padding: 14px 0 0;
+  border-top: 1px solid var(--line);
+}
+.extra-payment h3 { margin: 0 0 4px; font-size: 15px; }
+.extra-payment .extra-gateway {
+  align-items: end;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.extra-hours-page .extra-request-details,
+.extra-hours-page .extra-request-history {
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+.extra-hours-page .extra-financial {
+  padding-bottom: 12px;
+}
+.extra-financial > .helper-text { margin: 0; }
+
+@media (max-width: 520px) {
+  .extra-request-summary {
+    justify-items: start;
+    text-align: start;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+  .extra-hours-page .extra-request-summary .status-pill { justify-self: start; }
+}
+
 .extra-eligibility-summary { margin: 0 0 10px; }
 .extra-eligibility-summary span,
 .extra-course-facts dt,
 .extra-course-list p { color: var(--muted); }
 .extra-course-facts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 28px;
-  margin: 0 0 14px;
+  max-width: 36rem;
+  margin: 12px 0 0;
+  font-size: 13px;
 }
-.extra-course-facts dd { margin: 2px 0 0; }
+.extra-course-facts > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, auto);
+  align-items: baseline;
+  gap: 4px 14px;
+  padding: 6px 0;
+  border-top: 1px solid var(--line);
+}
+.extra-course-facts dd {
+  margin: 0;
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+.extra-course-facts small {
+  display: block;
+  color: var(--muted);
+}
+.extra-request-details .extra-course-list {
+  max-width: 36rem;
+}
+.extra-request-details .extra-course-list li {
+  flex-wrap: nowrap;
+  align-items: start;
+}
+.extra-request-details .extra-course-list li > strong {
+  white-space: nowrap;
+  color: var(--ink);
+}
 .extra-course-list { list-style: none; margin: 0; padding: 0; }
 .extra-course-list li {
   display: flex;
@@ -312,3 +397,56 @@ body:has(.extra-hours-embedded) { background: transparent; }
 .extra-sample-list { display:grid;gap:18px; }
 .extra-sample-list h2 small { font-size:13px;color:var(--muted);font-weight:400; }
 .extra-hours-empty .outline-button { width:max-content;max-width:100%; }
+.extra-record-desk {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: clamp(18px, 3vw, 36px);
+  margin-top: 16px;
+}
+.extra-record-content > :is(.feedback, .form-stack, .form-actions) { margin-top: 12px; }
+.extra-hours-page .extra-record-desk .extra-request-history { margin-top: 0; }
+.extra-record-ticket {
+  position: relative;
+  margin: 8px 0 14px;
+  padding: 14px 16px 23px;
+  border: 1px solid var(--line);
+  border-inline-start: 3px solid #68816e;
+  border-radius: 1px 10px 2px 3px;
+  background: transparent;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.extra-record-ticket .extra-record-number {
+  padding-bottom: 6px;
+  border-bottom: 1px dashed var(--line);
+  font-size: 12px;
+}
+.extra-hours-page .extra-record-ticket ol { border-color: #68816e; color: var(--muted); }
+.extra-record-ticket .extra-history-event strong { color: var(--ink); }
+.extra-hours-page .extra-record-ticket li::before { background: #68816e; }
+.extra-hours-page .extra-record-ticket li:last-child::before { background: #39382d; }
+.extra-record-punch {
+  position: absolute;
+  inset-inline-end: 6px;
+  bottom: -16px;
+  width: 78px;
+  pointer-events: none;
+}
+.extra-punch-lever { transform-origin: 82px 36px; }
+@media (prefers-reduced-motion: no-preference) {
+  .extra-request-history[open] .extra-punch-lever { animation: extra-punch-press .72s both; }
+  .extra-request-history[open] .extra-record-ticket { animation: extra-paper-yield .72s both; }
+}
+@keyframes extra-punch-press {
+  0%, 100% { transform: rotate(0); }
+  18% { transform: rotate(4deg); }
+  47%, 56% { transform: rotate(-16deg); }
+  78% { transform: rotate(3deg); }
+}
+@keyframes extra-paper-yield {
+  0%, 44%, 100% { transform: none; }
+  50%, 59% { transform: translateY(2px) rotate(.3deg); }
+}
+@media (max-width: 760px) {
+  .extra-record-desk { grid-template-columns: minmax(0, 1fr); }
+}
