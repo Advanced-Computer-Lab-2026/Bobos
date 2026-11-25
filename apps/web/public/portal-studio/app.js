@@ -669,18 +669,7 @@ function staffIdentity(name, id) {
 }
 
 function directory(){
-  return head('Student directory','Find a student and open their academic details.')+
-    filterbar('Search name or ID', [['All majors',['Computer Engineering','Digital Media Engineering']],['All statuses',['Ready for review','Draft','Not started']]])+
-    `<div class="student-register">${[...names.keys()].sort((a,b)=>names[a].localeCompare(names[b])).map((i,position,order)=>{
-      const name = names[i];
-      const letter = name[0];
-      const first = !position || names[order[position-1]][0]!==letter;
-      const major = i===3?'Digital Media Engineering':'Computer Engineering';
-      const detail = i%3?'Advising':'Normal';
-      return `<article data-search-row class="register-entry"><span class="index-letter" aria-hidden="true" data-letter="${letter}">${first?letter:''}</span>
-        ${staffIdentity(name,`70-${71577+i}`)}<div class="register-detail">${major}<small>Semester 7 · ${detail}</small></div>
-        ${badge(scheduleStates[i],statusTone(scheduleStates[i]))}${link('student-detail','Open profile','btn desk-action',i)}</article>`;
-    }).join('')}</div>${listFoot(names.length)}`;
+  return portalService('directory', 'academic-services');
 }
 
 function rosterSection(title, indices, row) {
@@ -1036,19 +1025,7 @@ function weekly(){
 }
 function schedule(staff=false){
   if (staff) {
-    const stages = [['Ready for review','Review schedule'],['Draft','Edit draft'],['Not started','Start draft']];
-    const groups = stages.map(([state,actionLabel])=>{
-      const students = names.map((name,index)=>({name,index})).filter(({index})=>scheduleStates[index]===state);
-      return `<section class="schedule-queue"><h2>${badge(state,statusTone(state))}</h2><ul>
-        ${students.map(({name,index})=>`<li data-search-row data-schedule-state="${state}">
-          <div>${staffIdentity(name,`70-${71577+index}`)}</div>
-          <span class="schedule-major">${index===3?'Digital Media Engineering':'Computer Engineering'}</span>
-          ${link('draft-schedule',actionLabel,'btn desk-action',index)}</li>`).join('')}
-      </ul></section>`;
-    }).join('');
-    return head('Student schedules',termContext('Semester 7'),link('draft-schedule','Create advising draft','btn primary'))+
-      filterbar('Search name or student ID',[['All statuses',stages.map(([state])=>state),'scheduleState'],['All majors',['Computer Engineering','Digital Media Engineering']]])+
-      `<div class="schedule-roster">${groups}</div>${listFoot(names.length)}`;
+    return portalService('student-schedules', 'academic-services');
   }
   const timetableContext = workspaces[lab.layout].name==='Claude Study' ? termContext('Group 4 · Computer Engineering') : '';
   return head('Weekly schedule',timetableContext,button('Export calendar','export-calendar'),'')+
@@ -1153,50 +1130,10 @@ function removals(){return head('Course removals','Review mandatory-course remov
 const removalReasons = ['Credit overload','Academic difficulty','Schedule conflict'];
 
 function pending(){
-  const study = workspaces[lab.layout].name==='Claude Study';
-  const queues = [
-    ['student-schedules','Review 6 student schedules','calendar',[
-      [0,'Advising schedule','13 Nov',link('draft-schedule','Review schedule','btn desk-action',0)],
-      [3,'Advising schedule','12 Nov',link('draft-schedule','Review schedule','btn desk-action',3)]
-    ]],
-    ['mandatory-removals','Decide 3 course removals','course-removal',[
-      [1,'Course removal · '+courseData[1][0],'13 Nov',button('Review request','removal-decision','btn desk-action','data-request="1"')]
-    ]],
-    ['advising','Assign 2 advisors','advisor-assignment',[
-      [2,'Advisor assignment','12 Nov',button('Assign advisor','assign-advisor','btn desk-action','data-student-index="2"')]
-    ]]
-  ];
-  return head('Pending work','',button('Refresh','refresh'))+
-    `<div class="pending-desk"><div class="queue-columns"><h2>Work queues</h2><h2>Work items</h2></div>
-    ${queues.map(([target,label,symbol,items])=>{
-      const drawing = symbol==='calendar' ? icon('calendar') : queueSketch(symbol);
-      const heading = study ? `<span class="staff-queue-art">${drawing}</span><span>${label}</span>${icon('chevron')}` : label;
-      return `<section class="queue-group"><h3>${link(target,heading,'staff-queue-link')}</h3>
-        <ul aria-label="${label} work items">${items.map(([i,task,date,action])=>
-          `<li>${staffIdentity(names[i],task+' · Since '+date)}${action}</li>`).join('')}</ul></section>`;
-    }).join('')}</div>`;
+  return portalService('pending-work', 'academic-services');
 }
 function activity(){
-  const events = [
-    ...recentScheduleEvents,
-    {action:'Draft saved',subject:'Omar Hassan',author:'Dr. Salma Adel',date:'2026-11-14',time:'10:42',tone:'draft'},
-    {action:'Schedule processed',subject:'Mariam Mostafa',author:'Nadia Ahmed',date:'2026-11-14',time:'09:15',tone:'payment-complete'},
-    {action:'Schedule reopened',subject:'Ahmed Khaled',author:'Nadia Ahmed',date:'2026-11-13',time:'14:30',tone:'review'},
-    {action:'Draft saved',subject:'Farah Mahmoud',author:'Dr. Salma Adel',date:'2026-11-13',time:'11:00',tone:'draft'}
-  ];
-  const days = [...new Set(events.map(event=>event.date))];
-  const actions = [...new Set(events.map(event=>event.action))];
-  return head('Schedule activity','','','')+filterbar('Search activity',[['All actions',actions,'eventAction']])+
-    `<div class="schedule-history">${days.map(date=>`<section class="history-day">
-      <h2><time datetime="${date}">${formatCalendarDay(date,{weekday:'long',day:'numeric',month:'long'})}</time></h2>
-      <ol>${events.filter(event=>event.date===date).map(event=>{
-        const target = event.target || 'draft-schedule';
-        const index = event.index ?? Math.max(0,names.indexOf(event.subject));
-        const byline = event.author===event.subject ? event.author : event.subject+' · By '+event.author;
-        return `<li data-search-row data-event-action="${event.action}">${link(target,
-          `<time datetime="${date}T${event.time}">${event.time}</time>${avatar(event.author)}
-          <div><strong>${event.action}</strong><small>${byline}</small></div>${icon('chevron')}`,'history-entry',index)}</li>`;
-      }).join('')}</ol></section>`).join('')}</div>${listFoot(events.length)}`;
+  return portalService('schedule-activity', 'academic-services');
 
 }
 
@@ -1381,7 +1318,7 @@ function graduationPlans() {
   return portalService('graduation-plans');
 }
 
-const renderers = {'academic-services':academicServices,'extra-hours':extraHours,overview,notifications,profile, directory, 'student-detail':()=>profile(true),advising,'pending-work':pending,'schedule-activity':activity,'financial-records':financial,'mandatory-removals':removals,'student-schedules':()=>schedule(true),'draft-schedule':draft,courses,'course-detail':courseDetail,terms,offerings,'copy-offerings':copyOfferings,templates,'template-detail':templateDetail,'group-assignments':assignments,'my-schedule':schedule,'my-courses':registered,'schedule-swap':swap,preferences,records,'my-advisor':advisor,'calendar-sync':calendarSync,'graduation-plans':graduationPlans};
+const renderers = {'academic-services':academicServices,'extra-hours':extraHours,overview,notifications,profile, directory, 'student-detail':()=>profile(true),advising,'pending-work':pending,'schedule-activity':activity,'financial-records':financial,'mandatory-removals':removals,'student-schedules':()=>schedule(true),'draft-schedule':()=>portalService('student-schedules','academic-services'),courses,'course-detail':courseDetail,terms,offerings,'copy-offerings':copyOfferings,templates,'template-detail':templateDetail,'group-assignments':assignments,'my-schedule':schedule,'my-courses':registered,'schedule-swap':swap,preferences,records,'my-advisor':advisor,'calendar-sync':calendarSync,'graduation-plans':graduationPlans};
 function themeControl(){
   return button('<span class="' + (!lab.dark ? 'theme-light' : '') + '">' + icon('sun') + '</span><span class="' + (lab.dark ? 'theme-light' : '') + '">' + icon('moon') + '</span>',
     'toggle-theme', 'theme-toggle', 'aria-label="Switch to ' + (lab.dark ? 'light' : 'dark') + ' mode"');

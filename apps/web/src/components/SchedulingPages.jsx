@@ -468,7 +468,7 @@ export function StaffSchedulesPage({ token, role, notify, initialStudent = null,
     catch (err) { setError(err.message); }
   }
 
-  if (draftStudent) return <AdvisingDraftEditor token={token} student={draftStudent} termId={termId} notify={notify} onBack={() => setDraftStudent(null)} onSaved={(status = "draft") => setStudents((current) => current.map((row) => row._id === draftStudent._id ? { ...row, scheduleStatus: status } : row))} />;
+  if (draftStudent) return <AdvisingDraftEditor token={token} role={role} student={draftStudent} termId={termId} notify={notify} onBack={() => setDraftStudent(null)} onSaved={(status = "draft") => setStudents((current) => current.map((row) => row._id === draftStudent._id ? { ...row, scheduleStatus: status } : row))} />;
 
   return <div className="page-stack scheduling-page workspace-page">
     <div className="workspace-header"><div><h1>Student schedules</h1><p className="page-description">Find a student to create, review or manage their advising schedule.</p></div>
@@ -479,13 +479,13 @@ export function StaffSchedulesPage({ token, role, notify, initialStudent = null,
       <label className="field roster-search"><span>Search students</span><input type="search" name="roster-search" autoComplete="off" value={search} onChange={(event) => setSearch(event.target.value)} maxLength={100} placeholder="Student ID, name or email…" /></label>
       {loading ? <Loading /> : students.length ? <div className="table-scroll"><table><thead><tr><th>Student</th><th>Type</th><th>Major / semester</th><th>Schedule status</th><th /></tr></thead><tbody>{students.map((student) => <tr key={student._id}><td><strong>{student.fullName}</strong><span className="secondary-text">{student.studentId}</span></td><td>{student.studentType}</td><td>{student.major} · {student.currentSemester}</td><td><span className={`status-pill ${{
         readyForStudentReview: "ready", draft: "draft", processed: "completed",
-      }[student.scheduleStatus] || "muted"}`}>{prettyStatus(student.scheduleStatus)}</span></td><td><div className="table-actions">{["advisor", "coordinator"].includes(role) && student.studentType === "advising" && <button className="small-button primary-button" type="button" onClick={() => { setSelected(null); setSchedule(null); setDraftStudent(student); }}>{student.scheduleStatus === "draft" ? "Edit draft" : !student.scheduleStatus ? "Create draft" : student.scheduleStatus === "readyForStudentReview" ? "Review & Process" : "Manage schedule"}</button>}{student.scheduleStatus && <button className="small-button outline-button" type="button" onClick={() => openStudent(student)}>View schedule</button>}</div></td></tr>)}</tbody></table></div> : <WorkspaceEmpty title="No students found" description="Try a different student ID, name or email." />}
+      }[student.scheduleStatus] || "muted"}`}>{prettyStatus(student.scheduleStatus)}</span></td><td><div className="table-actions">{student.studentType === "advising" && (["advisor", "coordinator"].includes(role) || (role === "administrator" && ["readyForStudentReview", "processed"].includes(student.scheduleStatus))) && <button className="small-button primary-button" type="button" onClick={() => { setSelected(null); setSchedule(null); setDraftStudent(student); }}>{role === "administrator" ? "Manage schedule" : student.scheduleStatus === "draft" ? "Edit draft" : !student.scheduleStatus ? "Create draft" : student.scheduleStatus === "readyForStudentReview" ? "Review & Process" : "Manage schedule"}</button>}{student.scheduleStatus && <button className="small-button outline-button" type="button" onClick={() => openStudent(student)}>View schedule</button>}</div></td></tr>)}</tbody></table></div> : <WorkspaceEmpty title="No students found" description="Try a different student ID, name or email." />}
     </section>
-    {selected && schedule?.schedule && <section className="panel staff-schedule-result" ref={scheduleResultRef} tabIndex={-1} aria-label={`${schedule.student?.fullName ?? "Student"} schedule`}><div className="results-heading"><div><p className="eyebrow">{schedule.student?.studentId} · {schedule.term?.season} {schedule.term?.academicYear}</p><h2>{schedule.student?.fullName}’s schedule</h2></div><span className="status-pill">{prettyStatus(schedule.schedule.status)}</span></div>{schedule.schedule.courses?.length ? <WeeklySchedule week={schedule.schedule.week} daysOff={schedule.schedule.daysOff} /> : <Feedback tone="info">This draft is empty. Choose “Edit draft” in the student list to add course groups.</Feedback>}</section>}
+    {selected && schedule?.schedule && <section className="panel staff-schedule-result" ref={scheduleResultRef} tabIndex={-1} aria-label={`${schedule.student?.fullName ?? "Student"} schedule`}><div className="results-heading"><div><p className="eyebrow">{schedule.student?.studentId} · {schedule.term?.season} {schedule.term?.academicYear}</p><h2>{schedule.student?.fullName}’s schedule</h2></div><span className="status-pill">{prettyStatus(schedule.schedule.status)}</span></div>{schedule.schedule.courses?.length ? <WeeklySchedule week={schedule.schedule.week} daysOff={schedule.schedule.daysOff} /> : <Feedback tone="info">{schedule.schedule.status === "readyForStudentReview" ? "This schedule is empty and is not processed, so it cannot be reopened. Select a schedule marked Processed, or complete a valid schedule and process it first." : schedule.schedule.status === "processed" ? "This processed schedule has no course details." : "This draft is empty. Choose “Edit draft” in the student list to add course groups."}</Feedback>}</section>}
   </div>;
 }
 
-function AdvisingDraftEditor({ token, student, termId, notify, onBack, onSaved }) {
+function AdvisingDraftEditor({ token, role, student, termId, notify, onBack, onSaved }) {
   const [data, setData] = useState(null);
   const [selections, setSelections] = useState({});
   const [validationIssues, setValidationIssues] = useState(null);
@@ -506,7 +506,7 @@ function AdvisingDraftEditor({ token, student, termId, notify, onBack, onSaved }
   const [reopenReason, setReopenReason] = useState("");
   const [reopening, setReopening] = useState(false);
   const [reopenError, setReopenError] = useState("");
-  const editable = !data?.schedule || data.editable;
+  const editable = role !== "administrator" && (!data?.schedule || data.editable);
   const draftPath = `/api/schedules/advising/${encodeURIComponent(student._id)}/draft`;
   const termQuery = termId ? `?termId=${encodeURIComponent(termId)}` : "";
 

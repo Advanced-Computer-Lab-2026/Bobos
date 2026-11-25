@@ -25,8 +25,17 @@ export function displayLabel(value = "") {
   const labels = {
     advising: "Advising student", normal: "Normal student", advisor: "Advisor",
     coordinator: "Coordinator", administrator: "Administrator", notStarted: "Not started",
-    readyForStudentReview: "Ready for student review", wholeScheduleSwap: "Schedule swaps",
-    slotChange: "Slot changes", mandatoryCourseRemoval: "Course removals", extraHours: "Extra hours",
+    scheduleAssigned: "Schedule assigned", swapRequestOpen: "Swap open", swapCompleted: "Swap completed",
+    swapWithdrawn: "Swap withdrawn", swapExpired: "Swap expired", draft: "Draft",
+    readyForStudentReview: "Ready for student review", changeRequestPending: "Change request pending",
+    pendingApproval: "Pending approval", awaitingPaymentChoice: "Awaiting payment choice",
+    deferredToNextInstallment: "Deferred to next installment", readyToProcess: "Ready to process",
+    processed: "Processed", reopened: "Reopened", wholeScheduleSwap: "Whole-schedule swap",
+    slotChange: "Slot change", mandatoryCourseRemoval: "Course removal", extraHours: "Extra hours",
+    graduationPlan: "Graduation plan", exitExam: "Exit exam", financialReversal: "Financial reversal",
+    awaitingChoice: "Awaiting choice", failed: "Failed", cancelled: "Cancelled", paid: "Paid",
+    deferred: "Deferred", rejected: "Rejected", approved: "Approved", completed: "Completed",
+    open: "Open", pending: "Pending", unassigned: "Unassigned",
   };
   return labels[value] || String(value || "—").replace(/([a-z])([A-Z])/g, "$1 $2").replace(/_/g, " ").replace(/^./, (letter) => letter.toUpperCase());
 }

@@ -243,9 +243,10 @@ export default function App({ service }) {
     if (workspaceParams.get("role") !== profile.role) {
       return <p className="feedback error" role="alert">Sign in with the matching portal role to view academic services.</p>;
     }
+    const showPagePicker = !requestedScreen || requestedScreen === "overview" || requestedScreen === "academic-services";
     return (
       <div className="extra-hours-shell extra-hours-embedded academic-services-embedded">
-        <label className="field academic-services-picker">
+        {showPagePicker && <label className="field academic-services-picker">
           <span>Academic services page</span>
           <select value={activeScreen} onChange={(event) => openScreen(event.target.value)}>
             {groups.map((group) => (
@@ -255,7 +256,7 @@ export default function App({ service }) {
               </optgroup>
             ))}
           </select>
-        </label>
+        </label>}
         {workspaceContent}
       </div>
     );

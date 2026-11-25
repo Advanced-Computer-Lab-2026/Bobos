@@ -108,3 +108,53 @@
 }
 .graduation-empty-submitted img { width:100px;height:74px }
 .graduation-empty-submitted h2 { font-size:18px }
+
+/* B1 screens use the open Portal queue and dated activity list. */
+.pending-work-groups, .pending-work-records { min-width: 0; }
+.pending-work-groups .results-heading, .pending-work-records .results-heading { margin-bottom: 16px; }
+.pending-work-records .results-heading p { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
+.pending-work-group-grid { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1fr) minmax(0, 1.3fr); gap: 28px; }
+.pending-summary-group { min-width: 0; padding-top: 13px; border-top: 1px solid var(--line); }
+.pending-summary-group h3 { margin: 0 0 8px; color: var(--muted); font-size: 13px; font-weight: 500; }
+.pending-summary-group ul, .pending-request-list { margin: 0; padding: 0; list-style: none; }
+.pending-summary-group li { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-top: 1px solid var(--line); color: var(--ink); font-size: 12px; }
+.pending-summary-group li strong { font-variant-numeric: tabular-nums; font-weight: 500; }
+.pending-work-records .table-wrap { border: 0; border-radius: 0; }
+.pending-work-records .workspace-table { min-width: 1200px; }
+.pending-work-records th { background: transparent; border-bottom: 2px solid var(--control); }
+.pending-work-records td { vertical-align: middle; }
+.pending-student-name { display: inline-flex; align-items: center; gap: 9px; min-width: 150px; }
+.pending-student-name .avatar { flex-basis: 30px; width: 30px; height: 30px; background: var(--raised); font-size: 11px; font-weight: 500; }
+.pending-student-name strong { font-weight: 500; }
+.pending-request-list { display: grid; gap: 6px; min-width: 185px; }
+.pending-request-list li { display: grid; gap: 2px; }
+.pending-request-list li strong { font-size: 12px; font-weight: 500; }
+.pending-request-list li span { color: var(--muted); font-size: 11px; }
+.activity-log { min-width: 0; }
+.activity-log > .results-heading { max-width: 1120px; margin-bottom: 14px; }
+.activity-timeline { max-width: 1120px; }
+.activity-day { margin: 18px 0 28px; }
+.activity-day h3 { margin: 0 0 7px; color: var(--ink); font: 500 17px/1.4 Styrene, system-ui, sans-serif; }
+.activity-day ol { margin: 0; padding: 0; list-style: none; }
+.activity-entry { display: grid; grid-template-columns: 46px 34px minmax(0, 1fr) auto; align-items: center; gap: 12px; min-height: 76px; padding: 14px 8px; border-top: 1px solid var(--line); }
+.activity-entry:is(:hover, :focus-within) { background: var(--raised); }
+.activity-entry > time { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.activity-entry .activity-avatar { width: 34px; height: 34px; background: var(--raised); font-size: 11px; font-weight: 500; }
+.activity-entry-main { min-width: 0; }
+.activity-event-heading, .activity-staff-line { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 9px; }
+.activity-event-heading > strong { color: var(--ink); font-size: 14px; font-weight: 500; }
+.activity-event-heading > span { color: var(--muted); font-size: 12px; }
+.activity-event-heading .activity-student-id { font-variant-numeric: tabular-nums; }
+.activity-staff-line { margin-top: 4px; align-items: center; color: var(--muted); font-size: 11px; overflow-wrap: anywhere; }
+.activity-staff-line > strong { color: var(--ink); font-weight: 500; }
+.activity-role { padding-left: 8px; border-left: 1px solid var(--line); }
+.activity-version { justify-self: end; padding: 4px 7px; border: 1px solid var(--line); border-radius: 5px; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.activity-reason { margin: 6px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.activity-reason strong { color: var(--ink); font-weight: 500; }
+@media (max-width: 900px) { .pending-work-group-grid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 700px) {
+  .pending-work-group-grid { grid-template-columns: 1fr; gap: 14px; }
+  .activity-entry { grid-template-columns: 40px 30px minmax(0, 1fr); gap: 8px; padding-inline: 3px; }
+  .activity-entry .activity-avatar { width: 30px; height: 30px; }
+  .activity-version { grid-column: 3; justify-self: start; margin-top: 3px; }
+}

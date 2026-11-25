@@ -5,9 +5,12 @@ import { Notification, ScheduleActivity } from "../models/communications.js";
 import { AcademicTerm } from "../models/catalogue.js";
 import { ACADEMIC_STANDINGS, STUDENT_TYPES, WORKFLOW_STATUSES } from "../models/shared.js";
 import { AdvisorAssignment, StudentProfile, User } from "../models/identity.js";
+import { FinancialReversalRequest } from "../models/finance.js";
 import { canonicalMajor } from "../utils/major.js";
 import {
   ExtraHoursRequest,
+  ExitExamRequest,
+  GraduationPlan,
   MandatoryCourseRemovalRequest,
   SlotChangeRequest,
   WholeScheduleSwapRequest,
@@ -351,19 +354,33 @@ export async function getPendingWork(req, res) {
   }
   const students = directoryResponse.body.students;
   const ids = students.map((student) => student.id);
+  const normalStudentIds = students.filter((student) => student.studentType === "normal").map((student) => student.id);
   const term = directoryResponse.body.term;
   let termId = null;
   if (term) termId = await AcademicTerm.findOne({ isActive: true }).sort({ termStart: -1 }).select("_id").lean().then((value) => value?._id);
-  const requests = termId && ids.length ? await Promise.all([
-    WholeScheduleSwapRequest.find({ term: termId, student: { $in: ids } }).select("student status expiresAt updatedAt").lean()
-      .then((rows) => rows.map((row) => ({ ...row, type: "wholeScheduleSwap" }))),
-    SlotChangeRequest.find({ term: termId, student: { $in: ids } }).select("student status updatedAt").lean()
-      .then((rows) => rows.map((row) => ({ ...row, type: "slotChange" }))),
-    MandatoryCourseRemovalRequest.find({ term: termId, student: { $in: ids } }).select("student status updatedAt").lean()
-      .then((rows) => rows.map((row) => ({ ...row, type: "mandatoryCourseRemoval" }))),
-    ExtraHoursRequest.find({ term: termId, student: { $in: ids } }).select("student decisionStatus settlementStatus updatedAt").lean()
-      .then((rows) => rows.map((row) => ({ ...row, type: "extraHours" }))),
-  ]).then((groups) => groups.flat()) : [];
+  const currentTermRequests = ids.length ? await Promise.all([
+    termId && normalStudentIds.length ? WholeScheduleSwapRequest.find({ term: termId, student: { $in: normalStudentIds }, status: { $in: ["open", "completed"] } })
+      .select("student status expiresAt updatedAt").lean().then((rows) => rows.map((row) => ({ ...row, type: "wholeScheduleSwap" }))) : [],
+    termId ? SlotChangeRequest.find({ term: termId, student: { $in: ids }, status: "pending" })
+      .select("student status updatedAt").lean().then((rows) => rows.map((row) => ({ ...row, type: "slotChange" }))) : [],
+    termId ? MandatoryCourseRemovalRequest.find({ term: termId, student: { $in: ids }, status: "pending" })
+      .select("student status updatedAt").lean().then((rows) => rows.map((row) => ({ ...row, type: "mandatoryCourseRemoval" }))) : [],
+    termId ? ExtraHoursRequest.find({ term: termId, student: { $in: ids } })
+      .select("_id student decisionStatus settlementStatus updatedAt").lean() : [],
+    GraduationPlan.find({ student: { $in: ids }, status: "submitted", ...(termId ? { "termPlans.term": termId } : {}) })
+      .select("student status submittedAt updatedAt").lean().then((rows) => rows.map((row) => ({ ...row, updatedAt: row.updatedAt || row.submittedAt, type: "graduationPlan" }))),
+    ExitExamRequest.find({ student: { $in: ids }, status: "pending" })
+      .select("student status updatedAt").lean().then((rows) => rows.map((row) => ({ ...row, type: "exitExam" }))),
+  ]) : [[], [], [], [], [], []];
+  const [swapRequests, slotChanges, removalRequests, extraHours, graduationPlans, exitExams] = currentTermRequests;
+  const actionableExtraHours = extraHours.filter((request) => request.decisionStatus === "pending" ||
+    (request.decisionStatus === "approved" && ["awaitingChoice", "failed", "cancelled", "deferred"].includes(request.settlementStatus)))
+    .map((row) => ({ ...row, type: "extraHours" }));
+  const financialReversals = extraHours.length ? await FinancialReversalRequest.find({
+    student: { $in: ids }, extraHoursRequest: { $in: extraHours.map((row) => row._id) }, status: "pending",
+  }).select("student extraHoursRequest reversalType status updatedAt").lean()
+    .then((rows) => rows.map((row) => ({ ...row, type: "financialReversal" }))) : [];
+  const requests = [...swapRequests, ...slotChanges, ...removalRequests, ...actionableExtraHours, ...graduationPlans, ...exitExams, ...financialReversals];
   const requestsByStudent = new Map();
   for (const request of requests) {
     const id = String(request.student);
@@ -371,10 +388,37 @@ export async function getPendingWork(req, res) {
     const status = request.type === "extraHours"
       ? `${request.decisionStatus}${request.settlementStatus && request.settlementStatus !== "none" ? `:${request.settlementStatus}` : ""}`
       : request.status;
-    list.push({ type: request.type, status, updatedAt: request.updatedAt });
+    list.push({ id: String(request._id), type: request.type, status, updatedAt: request.updatedAt || null });
     requestsByStudent.set(id, list);
   }
-  const rows = students.map((student) => ({ ...student, requests: requestsByStudent.get(student.id) || [] }));
+  const approvalBlockers = {
+    mandatoryCourseRemoval: "Resolve pending coordinator approval",
+    extraHours: "Resolve pending coordinator approval",
+    graduationPlan: "Review submitted graduation plan",
+    exitExam: "Review exit-exam request",
+    financialReversal: "Process financial reversal",
+  };
+  const rows = students.map((student) => {
+    const studentRequests = (requestsByStudent.get(student.id) || []).sort((left, right) =>
+      new Date(right.updatedAt || 0) - new Date(left.updatedAt || 0));
+    const newestCoordinatorApproval = studentRequests.find((request) => approvalBlockers[request.type] &&
+      (request.type !== "extraHours" || request.status === "pending") &&
+      (request.type !== "mandatoryCourseRemoval" || request.status === "pending"));
+    const baseLastUpdated = student.lastUpdatedAt ? new Date(student.lastUpdatedAt) : null;
+    const requestLastUpdated = studentRequests.reduce((latest, request) => {
+      const updatedAt = request.updatedAt ? new Date(request.updatedAt) : null;
+      return updatedAt && (!latest || updatedAt > latest) ? updatedAt : latest;
+    }, null);
+    const lastUpdatedAt = !baseLastUpdated || (requestLastUpdated && requestLastUpdated > baseLastUpdated)
+      ? requestLastUpdated : baseLastUpdated;
+    return {
+      ...student,
+      workflowStatus: newestCoordinatorApproval ? "pendingApproval" : student.workflowStatus || "notStarted",
+      blockingStep: newestCoordinatorApproval ? approvalBlockers[newestCoordinatorApproval.type] : student.blockingStep,
+      lastUpdatedAt,
+      requests: studentRequests,
+    };
+  });
   const countBy = (key) => Object.fromEntries([...new Set(rows.map((row) => key(row) || "unassigned"))]
     .sort().map((value) => [value, rows.filter((row) => (key(row) || "unassigned") === value).length]));
   res.json({
@@ -383,7 +427,7 @@ export async function getPendingWork(req, res) {
     groups: {
       studentType: countBy((row) => row.studentType),
       advisor: countBy((row) => row.assignedAdvisor?.fullName),
-      requestType: Object.fromEntries(["wholeScheduleSwap", "slotChange", "mandatoryCourseRemoval", "extraHours"]
+      requestType: Object.fromEntries(["wholeScheduleSwap", "slotChange", "mandatoryCourseRemoval", "extraHours", "graduationPlan", "exitExam", "financialReversal"]
         .map((type) => [type, requests.filter((request) => request.type === type).length])),
     },
   });

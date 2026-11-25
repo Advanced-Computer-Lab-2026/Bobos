@@ -71,11 +71,12 @@ export async function getScheduleActivity(req, res) {
 
 export async function exportScheduleActivity(req, res) {
   try {
-    const firstPage = await queryActivities({ ...req, query: { ...req.query, page: "1", limit: "100" } }, res);
+    const scope = { studentId: req.params?.studentId };
+    const firstPage = await queryActivities({ ...req, query: { ...req.query, page: "1", limit: "100" } }, res, scope);
     if (res.headersSent) return;
     const data = firstPage;
     for (let page = 2; page <= Math.ceil(firstPage.total / firstPage.limit); page += 1) {
-      const next = await queryActivities({ ...req, query: { ...req.query, page: String(page), limit: "100" } }, res);
+      const next = await queryActivities({ ...req, query: { ...req.query, page: String(page), limit: "100" } }, res, scope);
       if (res.headersSent) return;
       data.activities.push(...next.activities);
     }
