@@ -110,7 +110,7 @@ export default function App() {
     const hide = () => frame?.classList.remove("is-ready");
     window.addEventListener("pagehide", hide);
     let first, second;
-    if (profile && !profileLoading) {
+    if (!profileLoading) {
       first = requestAnimationFrame(() => {
         second = requestAnimationFrame(() => frame?.classList.add("is-ready"));
       });
@@ -120,7 +120,7 @@ export default function App() {
       cancelAnimationFrame(second);
       window.removeEventListener("pagehide", hide);
     };
-  }, [embeddedExtraHours, profile, profileLoading]);
+  }, [embeddedExtraHours, profileLoading]);
   const [activeScreen, setActiveScreen] = useState(() => workspaceParams.get("page") === "calendar-sync" ? "calendar-sync" : "overview");
   const [embeddedProfileError, setEmbeddedProfileError] = useState("");
   const [screenContext, setScreenContext] = useState(null);
@@ -156,7 +156,7 @@ export default function App() {
           }
         }
         setProfile(data.profile);
-        if (requestedScreen === "extra-hours" && ["advisor", "coordinator", "advisingStudent"].includes(data.profile.role)) {
+        if (requestedScreen === "profile" || navGroups(data.profile.role).some(group => group.items.some(item => item.id === requestedScreen))) {
           setActiveScreen(requestedScreen);
         }
       })
@@ -204,13 +204,13 @@ export default function App() {
   };
 
   const openScreen = (screen, context = null) => {
-    if (screen === "overview" && profile && (
-      new URLSearchParams(window.location.search).get("screen") === "extra-hours"
-      || window.localStorage.getItem("portal-studio-preview-session") === "1"
-    )) {
+    if (screen === "overview" && profile) {
       openIllustratedHome(profile.role);
       return;
     }
+    const destination = new URL(window.location.href);
+    destination.searchParams.set("screen", screen);
+    window.history.replaceState({}, "", destination);
     setActiveScreen(screen);
     setScreenContext(context);
     navigation.current?.close();
@@ -224,12 +224,17 @@ export default function App() {
   };
 
   useEffect(() => {
-    const result = new URLSearchParams(window.location.search).get("calendar");
+    const destination = new URL(window.location.href);
+    const result = destination.searchParams.get("calendar");
     if (!["connected", "error"].includes(result)) return;
     setActiveScreen("calendar-sync");
     if (result === "connected") notify("success", "Google Calendar connected.");
     else notify("error", "Google Calendar connection could not be completed.");
-    window.history.replaceState({}, "", window.location.pathname + "?page=calendar-sync");
+    destination.searchParams.delete("calendar");
+    if (destination.searchParams.get("screen") !== "calendar-sync") {
+      destination.searchParams.set("page", "calendar-sync");
+    }
+    window.history.replaceState(window.history.state, "", destination);
   }, []);
 
   if (profileLoading && embeddedExtraHours) return <div className="extra-hours-loading" aria-busy="true"><span className="sr-only">Loading extra-hours requests…</span></div>;
@@ -275,7 +280,6 @@ export default function App() {
     </div>;
   }
 
-  const isExtraHours = activeScreen === "extra-hours";
   const renderNavigation = (search = "", collapsible = false) => {
     const query = search.trim().toLowerCase();
     const matchingGroups = groups.map(({ title, items }) => ({
@@ -291,7 +295,7 @@ export default function App() {
             key={item.id}
             onClick={() => openScreen(item.id)}
           >
-            {isExtraHours && item.id === "overview" && <ChromeIcon name="home" />}
+            {item.id === "overview" && <ChromeIcon name="home" />}
             {item.label}
           </button>
       ));
@@ -310,14 +314,13 @@ export default function App() {
   };
 
   return (
-    <div className={isExtraHours ? "app-shell extra-hours-shell" : "app-shell"}>
+    <div className="app-shell extra-hours-shell">
       <a className="portal-skip-link" href="#workspace-content">Skip to content</a>
       <aside className="sidebar">
         <button className="portal-home" type="button" onClick={() => openScreen("overview")}><Wordmark /></button>
-        {!isExtraHours && <p className="portal-scope">Academic workspace</p>}
         <button className="portal-find outline-button" type="button" onClick={openNavigation}><ChromeIcon name="search" /> Find a page</button>
-        <nav aria-label="Main navigation">{renderNavigation("", isExtraHours)}</nav>
-        {isExtraHours && <p className="extra-hours-sidebar-footer">German University in Cairo</p>}
+        <nav aria-label="Main navigation">{renderNavigation("", true)}</nav>
+        <p className="extra-hours-sidebar-footer">German University in Cairo</p>
       </aside>
 
       <dialog ref={navigation} className="portal-navigation" aria-labelledby="portal-navigation-heading">
@@ -333,7 +336,7 @@ export default function App() {
         <header className="topbar">
           <button className="portal-home portal-mobile-brand" type="button" onClick={() => openScreen("overview")}><Wordmark /></button>
           <div className="portal-screen-title">
-            {isExtraHours && <span className="extra-hours-crumb">Academic workspace <span aria-hidden="true">/</span></span>}
+            <span className="extra-hours-crumb">Academic services <span aria-hidden="true">/</span></span>
             <strong>{titleByScreen[activeScreen] || "Overview"}</strong>
           </div>
           <div className="topbar-actions">
@@ -347,7 +350,7 @@ export default function App() {
               }
             }}>
               <summary className="user-chip" aria-label="Account options">
-                <span className="avatar" aria-hidden="true">{(profile.fullName?.trim() || "U").split(/\s+/).slice(0, isExtraHours ? 2 : 1).map((name) => name[0]).join("").toUpperCase()}</span>
+                <span className="avatar" aria-hidden="true">{(profile.fullName?.trim() || "U").split(/\s+/).slice(0, 2).map((name) => name[0]).join("").toUpperCase()}</span>
                 <strong>{profile.fullName}</strong>
               </summary>
               <div className="portal-account-menu">

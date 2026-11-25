@@ -3,7 +3,7 @@
 const params = new URLSearchParams(location.search);
 const comparePageDesigns = params.get('designs') === 'compare';
 const pages = {
-  overview:'Overview', notifications:'Notifications', profile:'My profile',
+  'academic-services':'Academic services', 'graduation-plans':'Graduation plans', overview:'Overview', notifications:'Notifications', profile:'My profile',
   directory:'Student directory', 'extra-hours':'Extra-hours requests', 'student-detail':'Student details', advising:'Advising students',
   'pending-work':'Pending work', 'schedule-activity':'Schedule activity',
   'financial-records':'Financial records', 'mandatory-removals':'Course removals',
@@ -73,7 +73,15 @@ const href = (target,index=selectedStudent,course=selectedCourse) => {
   return `?page=${target}&role=${role}${look}${comparePageDesigns?'&designs=compare':''}${target==='login' && comparePageDesigns && params.has('image')?`&image=${signinImage.id}`:''}${authPages.has(target)&&destination!=='overview'?`&next=${destination}`:''}${preserveStudent?`&student=${index}`:''}${destination==='course-detail'?`&course=${encodeURIComponent(course[0])}`:''}`;
 };
 
-const link = (target, text, cls='', index) => `<a class="${cls}" href="${href(target,index)}" data-page="${target}"${index===undefined?'':` data-student="${index}"`}>${text}</a>`;
+function serviceUrl(target) {
+  const screen = target === 'academic-services' ? 'overview'
+    : target === 'graduation-plans' ? ({advisor:'advising', coordinator:'graduation-review', advisingStudent:'my-graduation'})[role] || 'overview'
+    : target === 'calendar-sync' && localStorage.getItem(workspaceSessionKey) ? 'calendar-sync' : null;
+  return screen ? '../academic-services.html?' + new URLSearchParams({screen, theme:lab.dark?'dark':'light'}) : null;
+}
+const link = (target, text, cls='', index) => serviceUrl(target)
+  ? `<a class="${cls}" href="${serviceUrl(target)}">${text}</a>`
+  : `<a class="${cls}" href="${href(target,index)}" data-page="${target}"${index===undefined?'':` data-student="${index}"`}>${text}</a>`;
 const navigationLabel = id => pages[id];
 const navigationLink = link;
 const button = (text, action, cls='btn', extra='') => `<button class="${cls}" type="button" data-action="${action}" ${extra}>${text}</button>`;
@@ -401,15 +409,15 @@ function groups(){
   const managesAcademics = role === 'coordinator' || role === 'administrator';
   const advises = role === 'coordinator' || role === 'advisor';
   if (student()) return [
-    ['Home', ['overview']],
+    ['Home', ['overview','academic-services']],
     ['Classes', ['my-schedule','my-courses', ...(role === 'normalStudent' ? ['schedule-swap'] : ['preferences'])]],
-    ['Support', ['my-advisor','calendar-sync', ...(role === 'advisingStudent' ? ['records','extra-hours'] : [])]]
+    ['Support', ['my-advisor','calendar-sync', ...(role === 'advisingStudent' ? ['records','extra-hours','graduation-plans'] : [])]]
   ];
   return [
-    ['Home', ['overview', ...(role === 'coordinator' ? ['pending-work'] : [])]],
+    ['Home', ['overview','academic-services', ...(role === 'coordinator' ? ['pending-work'] : [])]],
     ['Student services', [
       ...(managesAcademics ? ['directory','financial-records'] : []),
-      ...(advises ? ['advising','extra-hours'] : [])
+      ...(advises ? ['advising','extra-hours','graduation-plans'] : [])
     ]],
     ['Scheduling', [
       'student-schedules', ...(advises ? ['preferences'] : []),
@@ -427,7 +435,7 @@ function sidebar(){
     <div class="brand">${link('overview',portalWordmark(),'wordmark')}<span>Academic workspace</span></div>
     <nav aria-label="Main navigation">${groups().map(([name,items],groupIndex)=>{
       const contents = `<ul>${items.map(id => {
-        if (id === 'extra-hours') return `<li>${navigationLink(id,`<span>${navigationLabel(id)}</span>`,'navlink')}</li>`;
+        if (id === 'extra-hours' || serviceUrl(id)) return `<li>${navigationLink(id,`<span>${navigationLabel(id)}</span>`,'navlink')}</li>`;
         const current = page === id || parent[page] === id;
         const count = id === 'student-schedules' ? readyStudents.length : id === 'mandatory-removals' ? 3 : '';
         return `<li><a class="navlink${current ? ' active' : ''}" href="${href(id)}" data-page="${id}" ${current ? 'aria-current="page"' : ''}>${study && groupIndex===0 ? icon(id==='overview'?'home':'inbox') : ''}<span>${pages[id]}</span>${count ? `<span class="nav-count">${count}</span>` : ''}</a></li>`;
@@ -1545,6 +1553,16 @@ function render(focus=false){
   }
   document.title=`Portal — ${layoutNames[lab.layout]} · ${pages[page]}`;
   document.body.classList.toggle('auth-screen',authPages.has(page));
+  const service = serviceUrl(page);
+  if (service) {
+    const destination = new URL(service, location.href);
+    const result = new URLSearchParams(location.search).get('calendar');
+    if (page === 'calendar-sync' && ['connected', 'error'].includes(result)) {
+      destination.searchParams.set('calendar', result);
+    }
+    location.replace(destination);
+    return;
+  }
   const body=authPages.has(page)?auth():`<div class="shell">${sidebar()}<div class="workspace"><header class="topbar">${link('overview',portalWordmark(),'mobile-nav wordmark')}<span class="term">${workspaces[lab.layout].name==='Claude Study'?'<small class="study-crumb">Academic workspace &nbsp; / &nbsp;</small>':''}${pages[page]}<span>Winter 2026 / 2027</span></span><div class="topactions">${button(icon('menu')+'<span class="sr-only">Menu</span>','mobile-menu','mobile-menu')}${themeControl()}${accountControls()}</div></header><main class="content" data-screen="${page}" id="content" tabindex="-1">${renderers[page]()}</main></div></div>`;
   arrivalObserver?.disconnect();
   inboxArtObserver?.disconnect();
@@ -2175,7 +2193,7 @@ mountControls(roleNames, pages, () => {
   else render();
 });
 render();
-if (page === 'calendar-sync' && ['connected', 'error'].includes(params.get('calendar'))) {
+if (page === 'calendar-sync' && !serviceUrl(page) && ['connected', 'error'].includes(params.get('calendar'))) {
   const success = params.get('calendar') === 'connected';
   toast(success ? 'Google Calendar connected.' : 'Google Calendar connection could not be completed.', success ? 'success' : 'error');
   const cleanUrl = new URL(location.href);
