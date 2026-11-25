@@ -13,6 +13,11 @@ const inkOutlines = [
 const inkContour = '<svg class="ink-contour" viewBox="0 0 360 48" preserveAspectRatio="none" aria-hidden="true">' +
   inkOutlines.map(d => '<path vector-effect="non-scaling-stroke" d="'+d+'"/>').join('')+'</svg>';
 
+// Keep the button corners round at every width.
+const buttonInkContour = '<svg class="ink-contour" aria-hidden="true">' +
+  [8, 7.5, 8.5].map(radius => `<rect x="1.5" y="1.5" width="100%" height="100%" rx="${radius}"/>`).join('') +
+  '</svg>';
+
 function drawInputEdges(form) {
   for (const input of form.querySelectorAll('textarea, input:not([type]), input:is([type=text],[type=email],[type=password],[type=search],[type=number],[type=tel],[type=url],[type=date],[type=time],[type=datetime-local])')) {
     if (input.closest('.ink-field')) continue;
@@ -23,7 +28,7 @@ function drawInputEdges(form) {
     wrap.append(input);
   }
   for (const control of form.querySelectorAll('main:not([data-screen=overview]) .btn, dialog .btn, .filter-tab')) {
-    if (!control.querySelector(':scope > .ink-contour')) control.insertAdjacentHTML('beforeend',inkContour);
+    if (!control.querySelector(':scope > .ink-contour')) control.insertAdjacentHTML('beforeend',control.matches('.btn') ? buttonInkContour : inkContour);
   }
 }
 
@@ -39,7 +44,7 @@ function drawInputEdges(form) {
 
   function updateFocusRing() {
     const focused = document.activeElement;
-    const next = focused?.matches(':focus-visible') &&
+    const next = focused?.matches(':focus-visible:not(#content, #workspace-content, .menu-close, .workspace-menu a)') &&
       !focused.closest('.ink-field,.filter-tab:has(> .ink-contour)') &&
       !focused.matches('.portal-studio[data-workspace] :is(main,dialog) .btn:has(> .ink-contour)')
       ? focused : null;

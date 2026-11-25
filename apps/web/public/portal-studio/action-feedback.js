@@ -62,6 +62,8 @@
       const kind = Object.hasOwn(titles, tone) ? tone : "info";
       if (!this.card.contains(document.activeElement)) this.#returnFocus = document.activeElement;
       this.card.dataset.tone = kind;
+      this.card.toggleAttribute("data-compact", Boolean(options.compact));
+      this.message.hidden = Boolean(options.compact);
       const result = resultFor(kind, text);
       this.card.dataset.result = result.name;
       const bookmark = kind === "success" && /(?:draft|preferences?|bookmark|favourites?|favorites?).*(?:saved|updated)|(?:saved|updated).*(?:draft|preferences?|bookmark|favourites?|favorites?)/i.test(text);
@@ -74,7 +76,7 @@
       this.message.textContent = text.replace(/^Save sections\s*[—–-]\s*completed in this preview\.?$/i, "Section changes are saved in this preview.");
       this.card.hidden = false;
 
-      const announcement = `${this.heading.textContent}. ${this.message.textContent}`;
+      const announcement = options.compact ? text : `${this.heading.textContent}. ${this.message.textContent}`;
       const error = kind === "error";
       this.statusRegion.textContent = error ? "" : announcement;
       this.alertRegion.textContent = error ? announcement : "";

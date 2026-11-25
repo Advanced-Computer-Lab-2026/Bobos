@@ -1,0 +1,2522 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Portal — Coming up &amp; Notifications · 5 Rework Studies</title>
+  <link rel="icon" type="image/svg+xml" href="portal-card-index.svg">
+  <link rel="stylesheet" href="base.css">
+  <link rel="stylesheet" href="studio.css">
+  <link rel="stylesheet" href="concertina-turn.css">
+  <link rel="stylesheet" href="desk-details.css">
+  <link rel="stylesheet" href="student-art.css">
+  <link rel="stylesheet" href="staff-art.css">
+  <link rel="stylesheet" href="login-art.css">
+  <link rel="stylesheet" href="workspace-pages.css">
+  <link rel="stylesheet" href="action-feedback.css">
+  <style>
+    /* ================================================================
+       Study Toolbar & Layout Chrome
+       ================================================================ */
+    html, body { min-height: 100%; }
+    body.study-mockup {
+      --studio-ground: #151515;
+      --studio-surface: #151515;
+      --studio-ink: #efeee9;
+      --studio-muted: #bdbbb0;
+      --studio-accent: #8dbbfa;
+      --paper-cream: #f4eedc;
+      --paper-cream-edge: #cfc5ad;
+      --ink-stroke: #38352f;
+      --desk-sage: #bcd1ca;
+      --desk-sage-deep: #7f9c92;
+      --desk-blue: #6da7ec;
+      --desk-blue-soft: #9bbcd6;
+      --desk-coral: #f09978;
+      --desk-coral-deep: #c97354;
+      --desk-amber: #e2bd7c;
+      --desk-walnut: #99735b;
+    }
+    html[data-theme="light"] body.study-mockup {
+      --studio-ground: #f0eee6;
+      --studio-surface: #f8f6ef;
+      --studio-ink: #302d28;
+      --studio-muted: #615c52;
+      --studio-accent: #285ca1;
+      --raised: #e8e4d8;
+      --line: #dad3c5;
+      --rule: #e4ded1;
+      --control: #bfb7a7;
+      --sidebar: #e8e4da;
+    }
+
+    /* Fix shell layout to include our top study switcher cleanly */
+    .portal-studio.study-mockup[data-workspace="claude-study"] {
+      height: auto;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+    }
+    .study-bar {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px 12px;
+      padding: 8px clamp(12px, 2vw, 24px);
+      background: color-mix(in srgb, var(--sidebar) 94%, var(--ink) 4%);
+      border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(8px);
+    }
+    .study-bar-brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+    .study-bar-tag {
+      font: 500 10px/1.2 Styrene, system-ui, sans-serif;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: 4px 7px;
+      border-radius: 5px;
+      background: var(--raised);
+      white-space: nowrap;
+    }
+    .study-bar-title {
+      font: 400 14px/1.25 Tiempos, Georgia, serif;
+      color: var(--ink);
+      white-space: nowrap;
+    }
+    .study-versions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 4px;
+    }
+    .study-pill {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      min-height: 31px;
+      padding: 4px 9px;
+      border-radius: 7px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--muted);
+      font: 500 12px/1.2 Styrene, system-ui, sans-serif;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background-color 140ms ease, color 140ms ease;
+    }
+    .study-pill:hover {
+      background: var(--raised);
+      color: var(--ink);
+    }
+    .study-pill[aria-pressed="true"] {
+      background: var(--raised);
+      color: var(--ink);
+      border-color: var(--control);
+    }
+    .study-pill kbd {
+      font: 500 10px/1 Styrene, system-ui, sans-serif;
+      color: var(--muted);
+      opacity: .75;
+    }
+    .study-controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+    }
+    .study-seg {
+      display: inline-flex;
+      padding: 2px;
+      border-radius: 7px;
+      background: var(--canvas);
+      border: 1px solid var(--line);
+      gap: 2px;
+    }
+    .study-seg button {
+      min-height: 27px;
+      padding: 3px 9px;
+      border-radius: 5px;
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      font: 500 12px/1.2 Styrene, system-ui, sans-serif;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .study-seg button[aria-pressed="true"] {
+      background: var(--raised);
+      color: var(--ink);
+    }
+    .study-reset-btn {
+      min-height: 31px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      background: var(--raised);
+      color: var(--ink);
+      font: 500 12px/1.2 Styrene, system-ui, sans-serif;
+      cursor: pointer;
+    }
+    .study-reset-btn:hover { border-color: var(--control); }
+
+    /* Focus treatment matching the portal's drawn ink contour (no blue ring) */
+    .study-mockup :is(a, button, summary):focus-visible {
+      outline: 2px solid var(--ink);
+      outline-offset: 2px;
+    }
+    .study-mockup [data-portal-focus]:focus-visible {
+      outline: none !important;
+    }
+
+    /* Dashboard shell adaptation inside mockup so sticky study-bar never overlaps topbar/content */
+    .study-mockup .shell {
+      flex: 1;
+      min-height: 0;
+      height: auto;
+    }
+    .portal-studio.study-mockup[data-workspace="claude-study"] .sidebar {
+      position: sticky;
+      top: var(--study-bar-h, 52px);
+      height: calc(100dvh - var(--study-bar-h, 52px));
+    }
+    .portal-studio.live-preview.study-mockup[data-workspace="claude-study"] .topbar {
+      position: relative;
+      top: auto;
+      z-index: 4;
+    }
+
+    /* Banner summarizing current study direction */
+    .study-note-strip {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px 18px;
+      padding: 12px 16px;
+      margin-bottom: 18px;
+      border-radius: 10px;
+      background: color-mix(in srgb, var(--raised) 82%, transparent);
+      border: 1px solid var(--line);
+    }
+    .study-note-strip strong {
+      font: 500 14px/1.35 Styrene, system-ui, sans-serif;
+      color: var(--ink);
+    }
+    .study-note-strip p {
+      margin: 2px 0 0;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    .study-note-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .study-note-actions button {
+      min-height: 30px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      background: var(--canvas);
+      border: 1px solid var(--control);
+      color: var(--ink);
+      font: 500 12px/1.2 Styrene, system-ui, sans-serif;
+      cursor: pointer;
+    }
+    .study-note-actions button:hover { background: var(--raised); }
+
+    /* Compare All 5 gallery view */
+    .compare-shell {
+      max-width: 1480px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 28px clamp(16px, 3vw, 44px) 64px;
+    }
+    .compare-intro {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 26px;
+    }
+    .compare-intro h1 {
+      font: 400 clamp(26px, 2.8vw, 38px)/1.12 Tiempos, Georgia, serif;
+      letter-spacing: -.035em;
+      color: var(--ink);
+    }
+    .compare-intro p {
+      max-width: 60ch;
+      margin-top: 6px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .compare-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 540px), 1fr));
+      gap: 28px;
+      align-items: start;
+    }
+    .compare-specimen {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      padding: clamp(18px, 2.2vw, 26px);
+      border-radius: 14px;
+      background: var(--canvas);
+      border: 1px solid var(--line);
+      min-width: 0;
+    }
+    .compare-specimen.is-chosen {
+      border-color: var(--studio-accent);
+      box-shadow: 0 0 0 1px color-mix(in srgb, var(--studio-accent) 45%, transparent);
+    }
+    .compare-specimen-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--rule);
+    }
+    .compare-specimen-head h2 {
+      font: 400 20px/1.2 Tiempos, Georgia, serif;
+      letter-spacing: -.025em;
+      color: var(--ink);
+    }
+    .compare-specimen-head p {
+      margin-top: 4px;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    .compare-use-btn {
+      flex: none;
+      min-height: 32px;
+      padding: 5px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--control);
+      background: var(--raised);
+      color: var(--ink);
+      font: 500 12px/1.2 Styrene, system-ui, sans-serif;
+      cursor: pointer;
+    }
+    .compare-use-btn:hover { background: var(--active); }
+
+    /* Shared rework module container inside dashboard bottom-left (.module-review) */
+    .rework-pair {
+      display: flex;
+      flex-direction: column;
+      gap: 26px;
+      min-width: 0;
+    }
+    .rework-pair .section-head {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      flex-wrap: wrap;
+      gap: 8px 12px;
+      margin-bottom: 14px;
+    }
+    .rework-pair .section-head h2 {
+      font: 500 17px/1.3 Styrene, system-ui, sans-serif;
+      letter-spacing: -.025em;
+      color: var(--ink);
+    }
+    .rework-pair .section-head-right {
+      margin-inline-start: auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .rework-count-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font: 500 12px/1.2 Styrene, system-ui, sans-serif;
+      font-variant-numeric: tabular-nums;
+      background: color-mix(in srgb, var(--desk-blue) 16%, var(--raised));
+      color: var(--ink);
+    }
+    .rework-count-pill.is-clear {
+      background: color-mix(in srgb, var(--desk-sage) 18%, var(--raised));
+    }
+    .rework-quiet-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      min-height: 28px;
+      padding: 3px 9px;
+      border-radius: 6px;
+      border: 0;
+      background: var(--raised);
+      color: var(--ink);
+      font: 500 12px/1.3 Styrene, system-ui, sans-serif;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .rework-quiet-btn:hover {
+      background: color-mix(in srgb, var(--raised) 82%, var(--ink));
+    }
+    .rework-mark-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 30px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--control);
+      background: transparent;
+      color: var(--ink);
+      font: 500 12px/1.25 Styrene, system-ui, sans-serif;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background-color 140ms ease, border-color 140ms ease;
+    }
+    .rework-mark-btn:hover {
+      background: var(--raised);
+      border-color: var(--muted);
+    }
+    .rework-mark-btn svg {
+      width: 14px;
+      height: 14px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.9;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .rework-read-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      color: var(--muted);
+      font: 500 12px/1.2 Styrene, system-ui, sans-serif;
+    }
+
+    /* Course color helper tokens matching Teaching week */
+    .course-tone-blue { --course-fill: #6da7ec; --course-wash: color-mix(in srgb, #6da7ec 15%, var(--raised)); --course-ink: #252725; }
+    .course-tone-coral { --course-fill: #f09978; --course-wash: color-mix(in srgb, #f09978 15%, var(--raised)); --course-ink: #252725; }
+    .course-tone-sage { --course-fill: #bcd1ca; --course-wash: color-mix(in srgb, #bcd1ca 15%, var(--raised)); --course-ink: #252725; }
+    .course-tone-ivory { --course-fill: #f0eee6; --course-wash: color-mix(in srgb, #f0eee6 15%, var(--raised)); --course-ink: #252725; }
+
+    /* Shared house-style stepped cel & line boil utility animations */
+    @keyframes house-ink-boil {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      33% { transform: translate(.4px, -.3px) rotate(.25deg); }
+      66% { transform: translate(-.3px, .4px) rotate(-.2deg); }
+    }
+    @keyframes tick-draw-once {
+      from { stroke-dashoffset: 1; }
+      to { stroke-dashoffset: 0; }
+    }
+    .drawn-tick-path {
+      stroke-dasharray: 1;
+      stroke-dashoffset: 0;
+    }
+    @media (prefers-reduced-motion: no-preference) {
+      .is-just-read .drawn-tick-path {
+        animation: tick-draw-once 280ms ease-out both;
+      }
+    }
+
+    /* ================================================================
+       VERSION 01: Index Slips & Wax-Sealed Dispatch
+       ================================================================ */
+    .v1-slips {
+      display: grid;
+      gap: 10px;
+    }
+    .v1-slip {
+      position: relative;
+      display: grid;
+      grid-template-columns: 74px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 14px;
+      padding: 13px 15px 13px 18px;
+      border-radius: 9px;
+      background: var(--raised);
+      color: var(--ink);
+      text-decoration: none;
+      overflow: hidden;
+      transition: background-color 140ms ease;
+    }
+    .v1-slip::after {
+      content: "";
+      position: absolute;
+      inset: 6px auto 6px 6px;
+      width: 4px;
+      border-radius: 3px;
+      background: var(--course-fill);
+    }
+    .v1-slip:hover {
+      background: color-mix(in srgb, var(--raised) 86%, var(--ink));
+    }
+    .v1-slip-time {
+      display: grid;
+      gap: 2px;
+      font-variant-numeric: tabular-nums;
+    }
+    .v1-slip-time strong {
+      font: 500 18px/1.1 Styrene, system-ui, sans-serif;
+      letter-spacing: -.03em;
+      color: var(--ink);
+    }
+    .v1-slip-time small {
+      font: 500 11px/1.2 Styrene, system-ui, sans-serif;
+      color: var(--muted);
+    }
+    .v1-slip-body {
+      min-width: 0;
+      display: grid;
+      gap: 3px;
+    }
+    .v1-slip-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .v1-slip-title strong {
+      font: 500 15px/1.3 Styrene, system-ui, sans-serif;
+      letter-spacing: -.02em;
+      color: var(--ink);
+    }
+    .v1-next-tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: var(--course-fill);
+      color: var(--course-ink);
+      font: 500 11px/1.2 Styrene, system-ui, sans-serif;
+    }
+    .v1-slip-meta {
+      font: 400 12px/1.35 Styrene, system-ui, sans-serif;
+      color: var(--muted);
+    }
+    .v1-slip-art {
+      width: 34px;
+      height: 28px;
+      flex: none;
+      display: grid;
+      place-items: center;
+      border-radius: 7px;
+      background: var(--course-fill);
+      color: var(--course-ink);
+    }
+    .v1-slip-art svg {
+      width: 22px;
+      height: 18px;
+    }
+    @media (prefers-reduced-motion: no-preference) {
+      .v1-slip:is(:hover, :focus-visible) .v1-slip-art svg {
+        animation: house-ink-boil 440ms steps(1, end) infinite;
+      }
+    }
+
+    /* V1 Notifications: Compact interactive desk envelope header + wide slips */
+    .v1-dispatch-head {
+      display: grid;
+      grid-template-columns: 78px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      background: var(--raised);
+      margin-bottom: 12px;
+    }
+    .v1-envelope-trigger {
+      display: grid;
+      place-items: center;
+      width: 78px;
+      height: 54px;
+      padding: 0;
+      border: 0;
+      border-radius: 7px;
+      background: transparent;
+      cursor: pointer;
+    }
+    .v1-envelope-svg {
+      width: 74px;
+      height: 52px;
+      overflow: visible;
+    }
+    .v1-env-flap-open,
+    .v1-env-letter {
+      transform-box: fill-box;
+      transform-origin: 50% 90%;
+    }
+    @media (prefers-reduced-motion: no-preference) {
+      .v1-dispatch-head:hover .v1-env-letter,
+      .v1-dispatch-head.is-open .v1-env-letter {
+        animation: v1-letter-emerge 520ms steps(1, end) forwards;
+      }
+      .v1-dispatch-head.is-open .v1-env-ink-line {
+        animation: v1-ink-line-boil 460ms steps(1, end) infinite;
+      }
+    }
+    @keyframes v1-letter-emerge {
+      0% { transform: translateY(4px); }
+      28% { transform: translateY(-2px) rotate(-1.5deg); }
+      60% { transform: translateY(-6px) rotate(.8deg); }
+      100% { transform: translateY(-5px) rotate(-.5deg); }
+    }
+    @keyframes v1-ink-line-boil {
+      0%, 100% { d: path("M24 20q10-.6 21-.2m-21 4.5q8-.4 15 0"); }
+      33% { d: path("M24 20.3q10 .3 21-.4m-21 4.2q8 .4 15-.3"); }
+      66% { d: path("M24 19.8q9-.3 21 .2m-21 4.7q8-.5 15 .2"); }
+    }
+    .v1-dispatch-copy strong {
+      display: block;
+      font: 500 14px/1.3 Styrene, system-ui, sans-serif;
+      color: var(--ink);
+    }
+    .v1-dispatch-copy span {
+      display: block;
+      margin-top: 2px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .v1-notice-list {
+      display: grid;
+      gap: 10px;
+    }
+    .v1-notice {
+      display: grid;
+      grid-template-columns: 38px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 9px;
+      background: color-mix(in srgb, var(--raised) 70%, transparent);
+    }
+    .v1-notice.is-read { opacity: .62; }
+    .v1-notice-seal {
+      width: 38px;
+      height: 38px;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      background: var(--canvas);
+    }
+    .v1-notice-seal svg { width: 30px; height: 28px; }
+    .v1-notice-copy { min-width: 0; }
+    .v1-notice-copy h3 {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font: 500 14px/1.3 Styrene, system-ui, sans-serif;
+      color: var(--ink);
+    }
+    .v1-notice-copy h3 .unread-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--desk-blue);
+      flex: none;
+    }
+    .v1-notice-copy p {
+      margin: 3px 0 0;
+      font-size: 13px;
+      line-height: 1.45;
+      color: var(--muted);
+    }
+    .v1-notice-side {
+      display: grid;
+      justify-items: end;
+      gap: 6px;
+    }
+    .v1-notice-side time {
+      font: 400 12px/1.2 Styrene, system-ui, sans-serif;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    .v1-caught-up {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      padding: 20px 18px;
+      border-radius: 10px;
+      background: var(--raised);
+    }
+    .v1-caught-up svg { width: 88px; height: 64px; flex: none; }
+    .v1-caught-up h3 {
+      font: 400 24px/1.12 Tiempos, Georgia, serif;
+      letter-spacing: -.03em;
+      color: var(--ink);
+    }
+    .v1-caught-up p {
+      margin: 5px 0 0;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    /* ================================================================
+       VERSION 02: Chronicle Margin Rail & Brass Letter Rack
+       ================================================================ */
+    .v2-rail {
+      display: grid;
+      gap: 4px;
+      position: relative;
+    }
+    .v2-rail-row {
+      position: relative;
+      display: grid;
+      grid-template-columns: 70px 18px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 10px 11px 4px;
+      border-radius: 8px;
+      text-decoration: none;
+      color: var(--ink);
+      transition: background-color 140ms ease;
+    }
+    .v2-rail-row:hover { background: var(--raised); }
+    .v2-rail-time {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+    .v2-rail-time strong {
+      display: block;
+      font: 500 15px/1.15 Styrene, system-ui, sans-serif;
+      color: var(--ink);
+    }
+    .v2-rail-time small {
+      display: block;
+      font: 400 11px/1.2 Styrene, system-ui, sans-serif;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+    .v2-rail-axis {
+      position: relative;
+      height: 100%;
+      display: grid;
+      place-items: center;
+    }
+    .v2-rail-axis::before {
+      content: "";
+      position: absolute;
+      top: -12px;
+      bottom: -12px;
+      width: 1.5px;
+      background: repeating-linear-gradient(180deg, var(--control) 0 4px, transparent 4px 8px);
+    }
+    .v2-rail-row:first-child .v2-rail-axis::before { top: 50%; }
+    .v2-rail-row:last-child .v2-rail-axis::before { bottom: 50%; }
+    .v2-rail-dot {
+      position: relative;
+      z-index: 1;
+      width: 11px;
+      height: 11px;
+      border-radius: 44% 56% 48% 52%;
+      background: var(--course-fill);
+      border: 1.5px solid var(--canvas);
+    }
+    .v2-rail-main strong {
+      display: block;
+      font: 500 15px/1.3 Styrene, system-ui, sans-serif;
+      color: var(--ink);
+    }
+    .v2-rail-main span {
+      display: block;
+      margin-top: 2px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .v2-rail-room {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 5px 9px;
+      border-radius: 6px;
+      background: var(--course-wash);
+      font: 500 12px/1.2 Styrene, system-ui, sans-serif;
+      color: var(--ink);
+      white-space: nowrap;
+    }
+    .v2-rail-room i {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--course-fill);
+    }
+
+    /* V2 Notifications: Brass Letter Rack in header + full-width postmarked slips */
+    .v2-tray-banner {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      background: var(--raised);
+      margin-bottom: 12px;
+    }
+    .v2-rack-svg {
+      width: 68px;
+      height: 52px;
+      flex: none;
+      overflow: visible;
+    }
+    .v2-rack-env {
+      transition: transform 220ms steps(4, end);
+    }
+    .v2-tray-banner:hover .v2-rack-env-1 { transform: translateY(-4px) rotate(-2deg); }
+    .v2-tray-banner:hover .v2-rack-env-2 { transform: translateY(-2px) rotate(1.5deg); }
+    .v2-tray-meta strong {
+      display: block;
+      font: 500 14px/1.3 Styrene, system-ui, sans-serif;
+      color: var(--ink);
+    }
+    .v2-tray-meta span {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+    .v2-postcards {
+      display: grid;
+      gap: 8px;
+    }
+    .v2-postcard {
+      position: relative;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 14px;
+      padding: 13px 14px;
+      border-radius: 8px;
+      background: transparent;
+      transition: background-color 140ms ease;
+    }
+    .v2-postcard:is(:hover, :focus-within) {
+      background: var(--raised);
+    }
+    .v2-post-stamp {
+      width: 36px;
+      height: 36px;
+      border-radius: 7px;
+      display: grid;
+      place-items: center;
+      background: var(--raised);
+      color: var(--ink);
+    }
+    .v2-post-stamp svg { width: 24px; height: 24px; }
+    .v2-post-copy h3 {
+      font: 500 14px/1.3 Styrene, system-ui, sans-serif;
+      color: var(--ink);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .v2-kind-chip {
+      font: 500 11px/1.1 Styrene, system-ui, sans-serif;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: color-mix(in srgb, var(--desk-blue) 18%, var(--raised));
+      color: var(--ink);
+    }
+    .v2-kind-chip.is-amber {
+      background: color-mix(in srgb, var(--desk-amber) 22%, var(--raised));
+    }
+    .v2-post-copy p {
+      margin: 3px 0 0;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .v2-post-actions {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 5px;
+    }
+    .v2-post-actions time {
+      font-size: 11px;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ================================================================
+       VERSION 03: Single-Contour Drawn Paper Cards (Unified SVG Edge)
+       ================================================================ */
+    .v3-tickets {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+    @media (max-width: 540px) {
+      .v3-tickets { grid-template-columns: 1fr; }
+    }
+    .v3-ticket {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 142px;
+      padding: 20px 16px 14px;
+      text-decoration: none;
+      color: var(--ink);
+      isolation: isolate;
+    }
+    /* One unified SVG card contour — fill and stroke share the exact same path */
+    .v3-card-edge {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+      overflow: visible;
+      pointer-events: none;
+    }
+    .v3-card-edge path.card-shell {
+      fill: var(--raised);
+      stroke: var(--control);
+      stroke-width: 1.35;
+      vector-effect: non-scaling-stroke;
+      stroke-linejoin: round;
+      stroke-linecap: round;
+    }
+    .v3-card-edge path.card-tab {
+      fill: var(--course-fill);
+      stroke: var(--ink-stroke);
+      stroke-width: 1.15;
+      vector-effect: non-scaling-stroke;
+      stroke-linejoin: round;
+    }
+    @media (prefers-reduced-motion: no-preference) {
+      .v3-ticket:is(:hover, :focus-visible) .card-shell {
+        animation: v3-card-boil 480ms steps(1, end) infinite;
+        stroke: var(--ink);
+      }
+      .v3-ticket:is(:hover, :focus-visible) .v3-emblem {
+        transform: translateY(-2px) rotate(-3deg);
+      }
+    }
+    @keyframes v3-card-boil {
+      0%, 100% { d: path("M10 11Q110 9.8 210 10.6L290 10.2Q297.5 10.4 297.6 19L297 156Q297 164.5 289 164.8L12 165.2Q3 165 2.8 156L3 19Q3 11.2 10 11Z"); }
+      33% { d: path("M10 10.6Q108 11.2 210 10L290 10.8Q298 10.8 297.2 19L297.6 156Q296.5 165 289 164.3L12 165.6Q2.5 164.6 3.2 156L2.6 19Q3.4 10.7 10 10.6Z"); }
+      66% { d: path("M10 11.3Q112 10 210 11L290 10Q297.2 10.2 298 19L296.7 156Q297.5 164.2 289 165L12 164.6Q3.3 165.3 2.5 156L3.4 19Q2.8 11.5 10 11.3Z"); }
+    }
+    .v3-ticket-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 4px;
+    }
+    .v3-ticket-time {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font: 500 12px/1.2 Styrene, system-ui, sans-serif;
+      font-variant-numeric: tabular-nums;
+      color: var(--ink);
+    }
+    .v3-ticket-time b {
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: var(--course-fill);
+      color: var(--course-ink);
+      font-weight: 600;
+    }
+    .v3-emblem {
+      width: 28px;
+      height: 24px;
+      transition: transform 200ms steps(3, end);
+    }
+    .v3-ticket-body h3 {
+      margin: 10px 0 4px;
+      font: 500 16px/1.25 Styrene, system-ui, sans-serif;
+      letter-spacing: -.02em;
+      color: var(--ink);
+    }
+    .v3-ticket-body p {
+      margin: 0;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    /* V3 Notifications: Clipped folded paper notices (full width, single SVG edge) */
+    .v3-notices {
+      display: grid;
+      gap: 11px;
+    }
+    .v3-notice {
+      position: relative;
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      isolation: isolate;
+    }
+    .v3-notice-edge {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+      pointer-events: none;
+    }
+    .v3-notice-edge .notice-sheet {
+      fill: var(--raised);
+      stroke: var(--control);
+      stroke-width: 1.25;
+      vector-effect: non-scaling-stroke;
+      stroke-linejoin: round;
+    }
+    .v3-corner-fold {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      width: 15px;
+      height: 15px;
+      pointer-events: none;
+    }
+    @media (prefers-reduced-motion: no-preference) {
+      .v3-notice:is(:hover, :focus-within) .notice-sheet {
+        stroke: var(--ink);
+        animation: v3-notice-boil 510ms steps(1, end) infinite;
+      }
+    }
+    @keyframes v3-notice-boil {
+      0%, 100% { d: path("M8 2.4Q180 1.7 360 2.4L542 2.2Q550 2.2 550 10L550 84Q550 92 542 92L10 92Q2.4 92 2.2 84L2.4 10Q2.2 2.4 8 2.4Z"); }
+      50% { d: path("M8 2Q180 2.9 360 1.9L542 2.6Q550.5 2.5 549.6 10L550.2 84Q549.8 92.4 542 92L10 91.6Q2 92 2.6 84L2 10Q2.6 2.1 8 2Z"); }
+    }
+    .v3-clip-icon {
+      width: 32px;
+      height: 32px;
+      display: grid;
+      place-items: center;
+    }
+    .v3-notice-copy h3 {
+      font: 500 14px/1.3 Styrene, system-ui, sans-serif;
+      color: var(--ink);
+    }
+    .v3-notice-copy p {
+      margin: 3px 0 0;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .v3-notice-right {
+      display: grid;
+      justify-items: end;
+      gap: 6px;
+    }
+    .v3-notice-right time {
+      font-size: 11px;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+    .v3-caught-up {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      padding: 20px 20px;
+      isolation: isolate;
+    }
+    .v3-caught-up h3 {
+      font: 400 22px/1.15 Tiempos, Georgia, serif;
+      color: var(--ink);
+    }
+    .v3-caught-up p {
+      margin: 4px 0 0;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    /* ================================================================
+       VERSION 04: Unified Desk Folio (Shared Vertical Axis & Bookmark)
+       ================================================================ */
+    .v4-folio {
+      padding: 20px 22px;
+      border-radius: 14px;
+      background: color-mix(in srgb, var(--raised) 56%, var(--canvas));
+      border: 1px solid var(--line);
+    }
+    .v4-list {
+      display: grid;
+      gap: 6px;
+    }
+    /* Same 36px emblem column across Coming up AND Notifications! */
+    .v4-class-row {
+      position: relative;
+      display: grid;
+      grid-template-columns: 36px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 13px;
+      padding: 10px 10px;
+      border-radius: 8px;
+      text-decoration: none;
+      color: var(--ink);
+      overflow: hidden;
+    }
+    .v4-class-row:hover { background: var(--raised); }
+    .v4-emblem-tile {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      background: var(--course-fill);
+      color: var(--course-ink);
+    }
+    .v4-emblem-tile svg { width: 22px; height: 20px; }
+    .v4-class-info strong {
+      display: block;
+      font: 500 15px/1.3 Styrene, system-ui, sans-serif;
+      color: var(--ink);
+    }
+    .v4-class-info span {
+      display: block;
+      margin-top: 2px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .v4-class-when {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      padding-right: 16px;
+    }
+    .v4-class-when strong {
+      display: block;
+      font: 500 14px/1.2 Styrene, system-ui, sans-serif;
+      color: var(--ink);
+    }
+    .v4-class-when small {
+      display: block;
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+    /* Notched sage bookmark (Study 06 spirit) on Next class */
+    .v4-bookmark-ribbon {
+      position: absolute;
+      top: -6px;
+      right: 10px;
+      width: 12px;
+      height: 20px;
+      background: var(--desk-sage);
+      clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 76%, 0 100%);
+      transition: transform 420ms cubic-bezier(.17, 1.45, .46, 1);
+      pointer-events: none;
+    }
+    .v4-class-row:is(:hover, :focus-visible) .v4-bookmark-ribbon {
+      transform: translateY(8px);
+    }
+    .v4-folio-gap {
+      margin-top: 22px;
+      padding-top: 18px;
+    }
+    .v4-view-pills {
+      display: inline-flex;
+      gap: 4px;
+      padding: 2px;
+      border-radius: 6px;
+      background: var(--canvas);
+    }
+    .v4-view-pills button {
+      min-height: 26px;
+      padding: 2px 9px;
+      border: 0;
+      border-radius: 4px;
+      background: transparent;
+      color: var(--muted);
+      font: 500 11px/1.2 Styrene, system-ui, sans-serif;
+      cursor: pointer;
+    }
+    .v4-view-pills button[aria-pressed="true"] {
+      background: var(--raised);
+      color: var(--ink);
+    }
+    .v4-notice-row {
+      display: grid;
+      grid-template-columns: 36px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 13px;
+      padding: 10px 10px;
+      border-radius: 8px;
+    }
+    .v4-notice-row:is(:hover, :focus-within) { background: var(--raised); }
+    .v4-notice-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      background: var(--raised);
+    }
+    .v4-notice-row:hover .v4-notice-icon { background: var(--canvas); }
+    .v4-notice-icon svg { width: 26px; height: 24px; }
+    .v4-notice-text h3 {
+      font: 500 14px/1.3 Styrene, system-ui, sans-serif;
+      color: var(--ink);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .v4-notice-text p {
+      margin: 2px 0 0;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .v4-notice-end {
+      display: grid;
+      justify-items: end;
+      gap: 4px;
+    }
+    .v4-notice-end time {
+      font-size: 11px;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+    .v4-caught-up {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 10px 6px;
+    }
+    .v4-caught-up svg { width: 72px; height: 48px; flex: none; }
+    .v4-caught-up h3 {
+      font: 400 20px/1.15 Tiempos, Georgia, serif;
+      color: var(--ink);
+    }
+    .v4-caught-up p { margin: 3px 0 0; font-size: 12px; color: var(--muted); }
+    @media (prefers-reduced-motion: no-preference) {
+      .v4-flourish-line {
+        stroke-dasharray: 1;
+        animation: tick-draw-once 680ms ease-out both;
+      }
+    }
+
+    /* ================================================================
+       VERSION 05: Pass Deck & Interactive Desk Stamp (Silent Cel Art)
+       ================================================================ */
+    .v5-passes {
+      display: grid;
+      gap: 10px;
+    }
+    .v5-pass {
+      display: grid;
+      grid-template-columns: 76px minmax(0, 1fr) 48px;
+      align-items: stretch;
+      border-radius: 10px;
+      background: var(--raised);
+      color: var(--ink);
+      text-decoration: none;
+      overflow: hidden;
+      transition: background-color 140ms ease;
+    }
+    .v5-pass:hover { background: color-mix(in srgb, var(--raised) 86%, var(--ink)); }
+    .v5-pass-stub {
+      position: relative;
+      display: grid;
+      place-content: center;
+      text-align: center;
+      padding: 10px 8px;
+      background: var(--course-fill);
+      color: var(--course-ink);
+      font-variant-numeric: tabular-nums;
+    }
+    .v5-pass-stub::after {
+      content: "";
+      position: absolute;
+      top: 7px;
+      bottom: 7px;
+      right: -1px;
+      border-right: 2px dashed var(--canvas);
+    }
+    .v5-pass-stub strong {
+      font: 600 16px/1.1 Styrene, system-ui, sans-serif;
+    }
+    .v5-pass-stub small {
+      margin-top: 2px;
+      font: 500 10px/1.1 Styrene, system-ui, sans-serif;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      opacity: .8;
+    }
+    .v5-pass-copy {
+      padding: 12px 14px;
+      min-width: 0;
+      display: grid;
+      align-content: center;
+      gap: 3px;
+    }
+    .v5-pass-copy strong {
+      font: 500 15px/1.25 Styrene, system-ui, sans-serif;
+      color: var(--ink);
+    }
+    .v5-pass-copy span {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .v5-pass-symbol {
+      display: grid;
+      place-items: center;
+      padding-right: 10px;
+    }
+    .v5-pass-symbol svg {
+      width: 30px;
+      height: 24px;
+      overflow: visible;
+    }
+    @media (prefers-reduced-motion: no-preference) {
+      .v5-pass:is(:hover, :focus-visible) .v5-pass-symbol svg {
+        animation: house-ink-boil 460ms steps(1, end) infinite;
+      }
+    }
+
+    /* V5 Notifications: Interactive Mechanical Desk Stamp + Spacious Inbox List */
+    .v5-inbox-stage {
+      display: grid;
+      grid-template-columns: 152px minmax(0, 1fr);
+      align-items: center;
+      gap: 18px;
+    }
+    @media (max-width: 580px) {
+      .v5-inbox-stage {
+        grid-template-columns: 1fr;
+        gap: 14px;
+      }
+    }
+    .v5-stamp-widget {
+      display: grid;
+      justify-items: center;
+      gap: 6px;
+      padding: 12px 10px 10px;
+      border-radius: 12px;
+      background: var(--raised);
+      border: 0;
+      color: var(--ink);
+      cursor: pointer;
+      text-align: center;
+      transition: background-color 140ms ease;
+    }
+    .v5-stamp-widget:hover {
+      background: color-mix(in srgb, var(--raised) 84%, var(--ink));
+    }
+    .v5-stamp-svg {
+      width: 126px;
+      height: 92px;
+      overflow: visible;
+    }
+    .v5-stamp-label {
+      font: 500 12px/1.25 Styrene, system-ui, sans-serif;
+      color: var(--ink);
+    }
+    .v5-stamp-sub {
+      font: 400 11px/1.2 Styrene, system-ui, sans-serif;
+      color: var(--muted);
+    }
+    .v5-stamp-imprint { opacity: 0; }
+    .v5-stamp-widget.is-cleared .v5-stamp-imprint,
+    .v5-stamp-widget.has-stamped .v5-stamp-imprint { opacity: 1; }
+
+    @media (prefers-reduced-motion: no-preference) {
+      .v5-stamp-widget.is-stamping .v5-stamp-arm {
+        transform-origin: 64px 52px;
+        animation: v5-stamp-press 960ms steps(1, end) both;
+      }
+      .v5-stamp-widget.is-stamping .v5-stamp-pad {
+        transform-origin: 64px 56px;
+        animation: v5-stamp-squash 960ms steps(1, end) both;
+      }
+      .v5-stamp-widget.is-stamping .v5-stamp-imprint {
+        animation: v5-stamp-mark 960ms steps(1, end) both;
+      }
+    }
+    @keyframes v5-stamp-press {
+      0% { transform: translate(0, 0) rotate(0deg); }
+      14% { transform: translate(-2px, -9px) rotate(-6deg); }
+      28% { transform: translate(-1px, -11px) rotate(-7deg); }
+      42% { transform: translate(0, 3px) rotate(1deg); }
+      52%, 68% { transform: translate(0, 6px) rotate(0deg); }
+      82% { transform: translate(1px, -3px) rotate(2deg); }
+      100% { transform: translate(0, 0) rotate(0deg); }
+    }
+    @keyframes v5-stamp-squash {
+      0%, 40%, 78%, 100% { transform: scaleY(1); }
+      52%, 68% { transform: scaleX(1.06) scaleY(.76); }
+    }
+    @keyframes v5-stamp-mark {
+      0%, 48% { opacity: 0; }
+      52%, 100% { opacity: 1; }
+    }
+
+    .v5-notice-stack {
+      display: grid;
+      gap: 10px;
+      min-width: 0;
+    }
+    .v5-notice-card {
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr);
+      gap: 10px 12px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      background: color-mix(in srgb, var(--raised) 74%, transparent);
+    }
+    .v5-notice-card:hover { background: var(--raised); }
+    .v5-notice-card-glyph {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border-radius: 7px;
+      background: var(--canvas);
+    }
+    .v5-notice-card-glyph svg { width: 24px; height: 22px; }
+    .v5-notice-card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .v5-notice-card-head h3 {
+      font: 500 14px/1.3 Styrene, system-ui, sans-serif;
+      color: var(--ink);
+    }
+    .v5-status-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 2px 7px;
+      border-radius: 5px;
+      font: 500 11px/1.2 Styrene, system-ui, sans-serif;
+      background: color-mix(in srgb, var(--desk-blue) 18%, var(--canvas));
+      color: var(--ink);
+    }
+    .v5-status-tag.is-amber {
+      background: color-mix(in srgb, var(--desk-amber) 22%, var(--canvas));
+    }
+    .v5-notice-card p {
+      margin: 4px 0 8px;
+      font-size: 13px;
+      line-height: 1.4;
+      color: var(--muted);
+    }
+    .v5-notice-card-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .v5-notice-card-foot time {
+      font-size: 11px;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+    .v5-caught-up-panel {
+      display: grid;
+      gap: 8px;
+      align-content: center;
+      padding: 8px 4px;
+    }
+    .v5-caught-up-panel h3 {
+      font: 400 22px/1.15 Tiempos, Georgia, serif;
+      color: var(--ink);
+    }
+    .v5-caught-up-panel p {
+      margin: 0;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    @media (max-width: 720px) {
+      .v1-slip, .v1-dispatch-head, .v1-notice,
+      .v2-rail-row, .v2-postcard,
+      .v3-notice,
+      .v4-class-row, .v4-notice-row {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 6px;
+      }
+      .v1-notice-side, .v2-post-actions, .v3-notice-right, .v4-notice-end {
+        justify-items: start;
+        align-items: flex-start;
+      }
+      .v2-rail-axis { display: none; }
+      .v2-rail-time { text-align: left; }
+      .v4-class-when { text-align: left; padding-right: 0; }
+    }
+  </style>
+</head>
+<body class="portal-studio live-preview claude-family study-mockup" data-palette="console-tones" data-workspace="claude-study">
+  <header class="study-bar" aria-label="Rework study controls">
+    <div class="study-bar-brand">
+      <span class="study-bar-tag">Advising Student · Study</span>
+      <span class="study-bar-title">Coming up &amp; Notifications</span>
+    </div>
+
+    <nav class="study-versions" aria-label="Five rework directions">
+      <button type="button" class="study-pill" data-version="1" aria-pressed="true"><kbd>1</kbd> Index &amp; Seal</button>
+      <button type="button" class="study-pill" data-version="2" aria-pressed="false"><kbd>2</kbd> Rail &amp; Rack</button>
+      <button type="button" class="study-pill" data-version="3" aria-pressed="false"><kbd>3</kbd> Drawn Tickets</button>
+      <button type="button" class="study-pill" data-version="4" aria-pressed="false"><kbd>4</kbd> Unified Folio</button>
+      <button type="button" class="study-pill" data-version="5" aria-pressed="false"><kbd>5</kbd> Pass &amp; Desk Stamp</button>
+    </nav>
+
+    <div class="study-controls">
+      <div class="study-seg" role="group" aria-label="Layout mode">
+        <button type="button" data-view-mode="dashboard" aria-pressed="true">In Dashboard</button>
+        <button type="button" data-view-mode="compare" aria-pressed="false">Compare All 5</button>
+      </div>
+      <div class="study-seg" role="group" aria-label="Inbox state">
+        <button type="button" data-inbox-state="unread" aria-pressed="true">2 Unread</button>
+        <button type="button" data-inbox-state="clear" aria-pressed="false">Caught up</button>
+      </div>
+      <div class="study-seg" role="group" aria-label="Theme">
+        <button type="button" data-theme-mode="dark" aria-pressed="true">Dark</button>
+        <button type="button" data-theme-mode="light" aria-pressed="false">Light</button>
+      </div>
+      <button type="button" class="study-reset-btn" data-reset-demo>Reset</button>
+    </div>
+  </header>
+
+  <div id="study-root"></div>
+  <portal-action-feedback></portal-action-feedback>
+
+  <script src="action-feedback.js"></script>
+  <script src="lamp-cord.js"></script>
+  <script src="desk-lamp.js"></script>
+  <script>
+    'use strict';
+
+    const VERSIONS = [
+      {
+        id: 1,
+        name: '01 · Index Slips & Wax-Sealed Dispatch',
+        summary: 'Treats Coming up as color-banded index slips with course emblems, and replaces the noisy bell-ringer with a silent desk dispatch envelope that opens via stepped cel frames beside wide, readable notice cards.'
+      },
+      {
+        id: 2,
+        name: '02 · Margin Timeline & Brass Letter Rack',
+        summary: 'Connects Coming up along a notebook time-rail, while a compact walnut-and-brass letter rack (showing the live count of protruding envelopes) frees Notifications to use the full column width.'
+      },
+      {
+        id: 3,
+        name: '03 · Single-Contour Drawn Paper Cards',
+        summary: 'Uses one shared SVG contour (fill + stroke on the same irregular hand-inked path) for side-by-side pocket class tickets and folded paper notice slips with sign-in style 3-frame perimeter line boil.'
+      },
+      {
+        id: 4,
+        name: '04 · Unified Desk Folio (Aligned Axis & Bookmark)',
+        summary: 'Combines Coming up and Notifications into one calm desk organizer sharing a strict 36px left emblem axis, a Study-06 notched sage bookmark ribbon on the next class, and an inline All/Unread folio ledger.'
+      },
+      {
+        id: 5,
+        name: '05 · Campus Class Passes & Silent Desk Stamp',
+        summary: 'Pairs perforated timetable pass stubs (with live animated course symbols) with an interactive silent mechanical rubber stamp & desk tray drawn in 8 stepped cel poses—zero sound, maximum desk craft.'
+      }
+    ];
+
+    const UPCOMING = [
+      {
+        code: 'CSEN 701',
+        title: 'Embedded Systems',
+        day: 'Sunday',
+        shortDay: 'Sun',
+        time: '08:30',
+        kind: 'Lecture',
+        room: 'C2.301',
+        tone: 'blue',
+        next: true,
+        symbol: 'chip'
+      },
+      {
+        code: 'CSEN 703',
+        title: 'Analysis & Design of Algorithms',
+        day: 'Sunday',
+        shortDay: 'Sun',
+        time: '12:00',
+        kind: 'Tutorial',
+        room: 'C3.104',
+        tone: 'coral',
+        next: false,
+        symbol: 'graph'
+      }
+    ];
+
+    const INITIAL_NOTICES = [
+      {
+        id: 'schedule',
+        title: 'Your timetable is ready',
+        body: 'Check the teaching week for your class times and rooms.',
+        time: 'Today, 10:42',
+        kindLabel: 'Timetable',
+        tone: 'blue',
+        read: false
+      },
+      {
+        id: 'term',
+        title: 'Winter 2026 dates updated',
+        body: 'The registration window opens on 22 November.',
+        time: 'Yesterday',
+        kindLabel: 'Term dates',
+        tone: 'amber',
+        read: false
+      }
+    ];
+
+    const state = {
+      version: 1,
+      viewMode: 'dashboard',
+      theme: 'dark',
+      calendarOffset: 0,
+      notices: structuredClone(INITIAL_NOTICES),
+      v4Filter: 'unread',
+      justReadId: null,
+      v1Opened: false,
+      v5Stamping: false,
+      v5Stamped: false
+    };
+
+    const toast = (text, tone = 'success') => document.querySelector('portal-action-feedback')?.show(tone, text);
+
+    function courseSvg(symbol) {
+      if (symbol === 'chip') {
+        return `<svg viewBox="0 0 30 24" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="m9 6 11-.5.6 10.5-11 1z M12 9l5-.4.4 4.4-5 .4z M11 3v3m4-3v3m4-3v2m-8 12v3m4-3v3m4-4v3M6 9h3m-3 4h3m12-5h3m-3 5h3"/>
+        </svg>`;
+      }
+      return `<svg viewBox="0 0 120 96" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <g stroke-width="5.2">
+          <path d="M13 47Q31 33 49 20m1 2q4 24 10 50M61 72q24-16 45-33M105 38Q80 30 50 20M14 49q23 12 45 24"/>
+          <g fill="#f6d6bb">
+            <path d="M5 47c0-5 4-8 8-7.5 5 .4 8 3 7.5 8-.4 5-4.5 8-9 7.5C7 55 4.4 52 5 47Z"/>
+            <path d="M40 20c.2-6 4.5-9.8 10-9.1 5.4.5 8.8 4.7 8.2 9.8-.5 5.5-4.4 8.5-10 8.1-5.4-.4-8.4-3.7-8.2-8.8Z"/>
+            <path d="M51.7 72c.5-5 3.7-8 8.8-7.5 5.2.3 8.2 4 7.7 9.3-.5 4.7-4.4 8.2-9.3 7.5-5-.5-7.8-4.5-7.2-9.3Z"/>
+            <path d="M99 39c-.3-4.5 3.1-8.5 7.9-8.3 5.2 0 8.1 3.1 8.3 7.8.1 5.1-3.6 8.6-8.5 8.5-4.7-.1-7.8-3.3-7.7-8Z"/>
+          </g>
+        </g>
+      </svg>`;
+    }
+
+    function noticeKindSvg(id) {
+      if (id === 'schedule') {
+        return `<svg viewBox="0 0 36 32" fill="none" stroke="#38352f" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="m4 8 24-4 4 19-24 4Z" fill="#f4eedc"/>
+          <path d="m4 8 24-4 1.2 5.5-24 4Z" fill="#6da7ec"/>
+          <path d="m9 16 14-2.3m-13 6 12-2m-1 5 4-.7" stroke="#5c564b"/>
+          <path d="m22 18 2.2 2 4.5-5.2" stroke="#35684e" stroke-width="1.8"/>
+        </svg>`;
+      }
+      return `<svg viewBox="0 0 36 32" fill="none" stroke="#38352f" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="m5 7 25-2-2 21-24 1.5Z" fill="#f4eedc"/>
+        <path d="m5 7 25-2-.6 5.5-24.8 1.6Z" fill="#f09978"/>
+        <path d="M11 4v4m12-5v4m-13 9h14m-14 5h9" stroke="#5c564b"/>
+        <circle cx="23" cy="21" r="3.4" fill="none" stroke="#cb6849" stroke-width="1.6"/>
+      </svg>`;
+    }
+
+    function checkIconSvg(animated = false) {
+      return `<svg viewBox="0 0 18 18" aria-hidden="true">
+        <path class="${animated ? 'drawn-tick-path' : ''}" pathLength="1" d="M3.5 9.5 7.2 13 14.5 5"/>
+      </svg>`;
+    }
+
+    function markButton(id) {
+      return `<button type="button" class="rework-mark-btn" data-mark-read="${id}">
+        ${checkIconSvg(false)}<span>Mark read</span>
+      </button>`;
+    }
+
+    /* ---------------------------------------------------------------
+       VERSION 01: Index Slips & Wax-Sealed Dispatch
+       --------------------------------------------------------------- */
+    function renderV1(unread, visible) {
+      const clear = unread.length === 0;
+      const comingUp = `
+        <section aria-label="Coming up">
+          <div class="section-head">
+            <h2>Coming up</h2>
+            <span class="rework-count-pill">Sunday · 2 classes</span>
+            <a class="quiet-link section-head-right" href="./index.html?page=my-schedule&role=advisingStudent&preview=live">Full timetable</a>
+          </div>
+          <div class="v1-slips">
+            ${UPCOMING.map(c => `
+              <a href="./index.html?page=my-schedule&role=advisingStudent&preview=live" class="v1-slip course-tone-${c.tone}">
+                <div class="v1-slip-time">
+                  <strong>${c.time}</strong>
+                  <small>${c.day}</small>
+                </div>
+                <div class="v1-slip-body">
+                  <div class="v1-slip-title">
+                    <strong>${c.title}</strong>
+                    ${c.next ? '<span class="v1-next-tag">Next</span>' : ''}
+                  </div>
+                  <span class="v1-slip-meta">${c.code} · ${c.kind} · ${c.room}</span>
+                </div>
+                <span class="v1-slip-art" aria-hidden="true">${courseSvg(c.symbol)}</span>
+              </a>
+            `).join('')}
+          </div>
+        </section>`;
+
+      const envelopeSvg = `
+        <svg class="v1-envelope-svg" viewBox="0 0 86 60" fill="none" stroke="#38352f" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 22 43 7l31 15-1 29-60 1Z" fill="#9fb6ae"/>
+          <g class="v1-env-letter">
+            <path d="m18 28-1-17 49-2 1 20Z" fill="#f6f0df"/>
+            <path class="v1-env-ink-line" d="M24 20q10-.6 21-.2m-21 4.5q8-.4 15 0" stroke="#5c564b" stroke-width="1.3"/>
+            <circle cx="57" cy="18" r="3.4" fill="#f09978" stroke="#854533" stroke-width="1.1"/>
+          </g>
+          <path d="M12 22q16 10 31 18 16-8 31-18l-1 30q-31 1.5-60 0Z" fill="#bcd1ca"/>
+          <path d="m16 50 17-12m37 12-17-12" stroke="#5f7970" stroke-width="1.15"/>
+        </svg>`;
+
+      const sealClearedSvg = `
+        <svg viewBox="0 0 96 68" fill="none" stroke="#38352f" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 18 82 14l2 39-70 3Z" fill="#bcd1ca"/>
+          <path d="m12 18 36 22 34-26" fill="#d5e4de"/>
+          <path d="m15 53 20-16m45 14-18-15" stroke="#617a70" stroke-width="1.15"/>
+          <path d="M41 37c0-6 5-9 10-8 6 1 9 5 8 10-1 6-6 9-11 8-5-1-8-5-7-10Z" fill="#e2bd7c"/>
+          <path class="drawn-tick-path" pathLength="1" d="m45.5 37.5 3.2 3.1 6-6.2" stroke="#38352f" stroke-width="1.75"/>
+        </svg>`;
+
+      const notifications = `
+        <section aria-label="Notifications">
+          <div class="section-head">
+            <h2>Notifications</h2>
+            <span class="rework-count-pill ${clear ? 'is-clear' : ''}">${clear ? 'All caught up' : `${unread.length} unread`}</span>
+            <span class="section-head-right">
+              ${!clear ? `<button type="button" class="rework-quiet-btn" data-mark-all>Mark all read</button>` : ''}
+              <a class="quiet-link" href="./index.html?page=notifications&role=advisingStudent&preview=live">Open inbox</a>
+            </span>
+          </div>
+          ${clear ? `
+            <div class="v1-caught-up is-just-read">
+              ${sealClearedSvg}
+              <div>
+                <h3>Your desk is clear</h3>
+                <p>No unread notices. Timetable and registration updates appear here first.</p>
+              </div>
+            </div>
+          ` : `
+            <div class="v1-dispatch-head ${state.v1Opened ? 'is-open' : ''}">
+              <button type="button" class="v1-envelope-trigger" data-v1-peek aria-label="Inspect unread dispatch envelope">
+                ${envelopeSvg}
+              </button>
+              <div class="v1-dispatch-copy">
+                <strong>${unread.length} unread ${unread.length === 1 ? 'dispatch' : 'dispatches'} on your desk</strong>
+                <span>Hover or click the envelope to preview · mark individual slips read below</span>
+              </div>
+              <button type="button" class="rework-mark-btn" data-v1-peek>${state.v1Opened ? 'Tuck slip' : 'Peek slip'}</button>
+            </div>
+            <div class="v1-notice-list">
+              ${visible.map(n => `
+                <article class="v1-notice ${n.read ? 'is-read' : ''}">
+                  <span class="v1-notice-seal">${noticeKindSvg(n.id)}</span>
+                  <div class="v1-notice-copy">
+                    <h3>${!n.read ? '<span class="unread-dot" aria-hidden="true"></span>' : ''}${n.title}</h3>
+                    <p>${n.body}</p>
+                  </div>
+                  <div class="v1-notice-side">
+                    <time>${n.time}</time>
+                    ${n.read ? `<span class="rework-read-tag is-just-read">${checkIconSvg(true)}Read</span>` : markButton(n.id)}
+                  </div>
+                </article>
+              `).join('')}
+            </div>
+          `}
+        </section>`;
+
+      return `<div class="rework-pair study-v1">${comingUp}${notifications}</div>`;
+    }
+
+    /* ---------------------------------------------------------------
+       VERSION 02: Margin Timeline & Brass Letter Rack
+       --------------------------------------------------------------- */
+    function renderV2(unread, visible) {
+      const clear = unread.length === 0;
+      const comingUp = `
+        <section aria-label="Coming up">
+          <div class="section-head">
+            <h2>Coming up</h2>
+            <a class="quiet-link section-head-right" href="./index.html?page=my-schedule&role=advisingStudent&preview=live">Full timetable</a>
+          </div>
+          <div class="v2-rail">
+            ${UPCOMING.map(c => `
+              <a href="./index.html?page=my-schedule&role=advisingStudent&preview=live" class="v2-rail-row course-tone-${c.tone}">
+                <div class="v2-rail-time">
+                  <strong>${c.time}</strong>
+                  <small>${c.shortDay}</small>
+                </div>
+                <span class="v2-rail-axis" aria-hidden="true"><span class="v2-rail-dot"></span></span>
+                <div class="v2-rail-main">
+                  <strong>${c.title}</strong>
+                  <span>${c.code} · ${c.kind}</span>
+                </div>
+                <span class="v2-rail-room"><i aria-hidden="true"></i>${c.room}</span>
+              </a>
+            `).join('')}
+          </div>
+        </section>`;
+
+      const rackSvg = `
+        <svg class="v2-rack-svg" viewBox="0 0 82 62" fill="none" stroke="#38352f" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M10 47 20 35l50-2 4 14-64 3Z" fill="#7c5d4a"/>
+          ${unread.length >= 2 ? `<g class="v2-rack-env v2-rack-env-2"><path d="m24 38-2-23 36-3 2 24Z" fill="#e2bd7c"/><path d="m26 19 16 7 15-9" stroke="#614e35" stroke-width="1.15"/></g>` : ''}
+          ${unread.length >= 1 ? `<g class="v2-rack-env v2-rack-env-1"><path d="m17 41 1-23 38-2 1 23Z" fill="#f4eedc"/><path d="m19 22 18 8 18-9" stroke="#5c564b" stroke-width="1.15"/><path d="m23 32 18-1" stroke="#6da7ec" stroke-width="2"/></g>` : ''}
+          ${unread.length === 0 ? `<path d="m22 39 36-8 4 2-36 9Z" fill="#bcd1ca"/><path d="m58 31 6-2-2 4Z" fill="#f4eedc"/>` : ''}
+          <path d="M10 47q16-11 32-11t32 11l-2 7-61 1Z" fill="#99735b"/>
+          <path d="M18 48q13-6 24-6t24 5" stroke="#e2bd7c" stroke-width="1.35"/>
+        </svg>`;
+
+      const notifications = `
+        <section aria-label="Notifications">
+          <div class="section-head">
+            <h2>Notifications</h2>
+            <span class="rework-count-pill ${clear ? 'is-clear' : ''}">${clear ? 'Tray clear' : `${unread.length} in tray`}</span>
+            <span class="section-head-right">
+              ${!clear ? `<button type="button" class="rework-quiet-btn" data-mark-all>Clear tray</button>` : ''}
+              <a class="quiet-link" href="./index.html?page=notifications&role=advisingStudent&preview=live">Open inbox</a>
+            </span>
+          </div>
+          <div class="v2-tray-banner">
+            ${rackSvg}
+            <div class="v2-tray-meta">
+              <strong>${clear ? 'All correspondence filed' : `${unread.length} ${unread.length === 1 ? 'letter' : 'letters'} standing in the tray`}</strong>
+              <span>${clear ? 'New schedule and term notices will arrive in the desk rack.' : 'Each unread envelope lifts from the walnut rack until marked read.'}</span>
+            </div>
+          </div>
+          ${clear ? '' : `
+            <div class="v2-postcards">
+              ${visible.map(n => `
+                <article class="v2-postcard">
+                  <span class="v2-post-stamp">${noticeKindSvg(n.id)}</span>
+                  <div class="v2-post-copy">
+                    <h3>
+                      <span>${n.title}</span>
+                      <span class="v2-kind-chip ${n.tone === 'amber' ? 'is-amber' : ''}">${n.kindLabel}</span>
+                    </h3>
+                    <p>${n.body}</p>
+                  </div>
+                  <div class="v2-post-actions">
+                    <time>${n.time}</time>
+                    ${n.read ? `<span class="rework-read-tag is-just-read">${checkIconSvg(true)}Filed</span>` : markButton(n.id)}
+                  </div>
+                </article>
+              `).join('')}
+            </div>
+          `}
+        </section>`;
+
+      return `<div class="rework-pair study-v2">${comingUp}${notifications}</div>`;
+    }
+
+    /* ---------------------------------------------------------------
+       VERSION 03: Single-Contour Drawn Paper Cards
+       --------------------------------------------------------------- */
+    function renderV3(unread, visible) {
+      const clear = unread.length === 0;
+      const comingUp = `
+        <section aria-label="Coming up">
+          <div class="section-head">
+            <h2>Coming up</h2>
+            <a class="quiet-link section-head-right" href="./index.html?page=my-schedule&role=advisingStudent&preview=live">Full timetable</a>
+          </div>
+          <div class="v3-tickets">
+            ${UPCOMING.map(c => `
+              <a href="./index.html?page=my-schedule&role=advisingStudent&preview=live" class="v3-ticket course-tone-${c.tone}">
+                <svg class="v3-card-edge" viewBox="0 0 300 168" preserveAspectRatio="none" aria-hidden="true">
+                  <path class="card-tab" d="M20 11 24 2.5Q25 2 28 2h54q3 0 4 .5L90 11Z"/>
+                  <path class="card-shell" d="M10 11Q110 9.8 210 10.6L290 10.2Q297.5 10.4 297.6 19L297 156Q297 164.5 289 164.8L12 165.2Q3 165 2.8 156L3 19Q3 11.2 10 11Z"/>
+                </svg>
+                <div class="v3-ticket-top">
+                  <span class="v3-ticket-time"><b>${c.time}</b> ${c.kind}</span>
+                  <span class="v3-emblem">${courseSvg(c.symbol)}</span>
+                </div>
+                <div class="v3-ticket-body">
+                  <h3>${c.title}</h3>
+                  <p>${c.day} · ${c.code} · Room ${c.room}</p>
+                </div>
+              </a>
+            `).join('')}
+          </div>
+        </section>`;
+
+      const clipSvg = `
+        <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M11 22V10a5 5 0 0 1 10 0v13a3.5 3.5 0 0 1-7 0V11a2 2 0 0 1 4 0v10" stroke="#e2bd7c"/>
+        </svg>`;
+
+      const folioClearSvg = `
+        <svg viewBox="0 0 84 62" fill="none" stroke="#38352f" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M10 14q30-4 62-1l2 36q-30 3-62 1Z" fill="#f4eedc"/>
+          <path d="m36 11 11-1 1 42-6-3-5 4Z" fill="#bcd1ca"/>
+          <path d="M20 26h12m-12 6h10m22-5h11" stroke="#6b6457" stroke-width="1.2"/>
+        </svg>`;
+
+      const notifications = `
+        <section aria-label="Notifications">
+          <div class="section-head">
+            <h2>Notifications</h2>
+            <span class="rework-count-pill ${clear ? 'is-clear' : ''}">${clear ? 'Caught up' : `${unread.length} unread`}</span>
+            <span class="section-head-right">
+              ${!clear ? `<button type="button" class="rework-quiet-btn" data-mark-all>Mark all read</button>` : ''}
+              <a class="quiet-link" href="./index.html?page=notifications&role=advisingStudent&preview=live">Open inbox</a>
+            </span>
+          </div>
+          ${clear ? `
+            <div class="v3-caught-up">
+              <svg class="v3-notice-edge" viewBox="0 0 554 96" preserveAspectRatio="none" aria-hidden="true">
+                <path class="notice-sheet" d="M8 2.4Q180 1.7 360 2.4L542 2.2Q550 2.2 550 10L550 84Q550 92 542 92L10 92Q2.4 92 2.2 84L2.4 10Q2.2 2.4 8 2.4Z"/>
+              </svg>
+              ${folioClearSvg}
+              <div>
+                <h3>Nothing waiting for your review</h3>
+                <p>No unread notices. Your schedule and dates are up to date.</p>
+              </div>
+            </div>
+          ` : `
+            <div class="v3-notices">
+              ${visible.map(n => `
+                <article class="v3-notice">
+                  <svg class="v3-notice-edge" viewBox="0 0 554 96" preserveAspectRatio="none" aria-hidden="true">
+                    <path class="notice-sheet" d="M8 2.4Q180 1.7 360 2.4L542 2.2Q550 2.2 550 10L550 84Q550 92 542 92L10 92Q2.4 92 2.2 84L2.4 10Q2.2 2.4 8 2.4Z"/>
+                  </svg>
+                  <span class="v3-clip-icon">${n.id === 'schedule' ? noticeKindSvg('schedule') : clipSvg}</span>
+                  <div class="v3-notice-copy">
+                    <h3>${n.title}</h3>
+                    <p>${n.body}</p>
+                  </div>
+                  <div class="v3-notice-right">
+                    <time>${n.time}</time>
+                    ${n.read ? `<span class="rework-read-tag is-just-read">${checkIconSvg(true)}Read</span>` : markButton(n.id)}
+                  </div>
+                </article>
+              `).join('')}
+            </div>
+          `}
+        </section>`;
+
+      return `<div class="rework-pair study-v3">${comingUp}${notifications}</div>`;
+    }
+
+    /* ---------------------------------------------------------------
+       VERSION 04: Unified Desk Folio (Shared Axis & Bookmark)
+       --------------------------------------------------------------- */
+    function renderV4(unread, visible) {
+      const clear = unread.length === 0;
+      const list = state.v4Filter === 'unread' ? unread : state.notices;
+      const showEmpty = list.length === 0;
+
+      const flourishSvg = `
+        <svg viewBox="0 0 82 54" fill="none" stroke="#38352f" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path class="v4-flourish-line" pathLength="1" d="M8 40q12-7 19-2t16-3" stroke="#bcd1ca" stroke-width="2.1"/>
+          <path d="m42 36 5-12 20-16q3-2 6 1t1 5L54 31Z" fill="#e2bd7c"/>
+          <path d="m42 36 5-12 6 5Z" fill="#f4eedc"/>
+          <path d="m42 36 2-5 2 2Z" fill="#38352f"/>
+        </svg>`;
+
+      return `
+        <div class="v4-folio study-v4">
+          <section aria-label="Coming up">
+            <div class="section-head">
+              <h2>Coming up</h2>
+              <a class="quiet-link section-head-right" href="./index.html?page=my-schedule&role=advisingStudent&preview=live">Full timetable</a>
+            </div>
+            <div class="v4-list">
+              ${UPCOMING.map(c => `
+                <a href="./index.html?page=my-schedule&role=advisingStudent&preview=live" class="v4-class-row course-tone-${c.tone}">
+                  <span class="v4-emblem-tile" aria-hidden="true">${courseSvg(c.symbol)}</span>
+                  <span class="v4-class-info">
+                    <strong>${c.title}</strong>
+                    <span>${c.code} · ${c.kind} · ${c.room}</span>
+                  </span>
+                  <span class="v4-class-when">
+                    <strong>${c.time}</strong>
+                    <small>${c.next ? 'Next · ' : ''}${c.shortDay}</small>
+                  </span>
+                  ${c.next ? '<span class="v4-bookmark-ribbon" aria-hidden="true"></span>' : ''}
+                </a>
+              `).join('')}
+            </div>
+          </section>
+
+          <section class="v4-folio-gap" aria-label="Notifications">
+            <div class="section-head">
+              <h2>Notifications</h2>
+              <div class="v4-view-pills" role="group" aria-label="Filter notifications">
+                <button type="button" data-v4-filter="unread" aria-pressed="${state.v4Filter === 'unread'}">Unread (${unread.length})</button>
+                <button type="button" data-v4-filter="all" aria-pressed="${state.v4Filter === 'all'}">All (${state.notices.length})</button>
+              </div>
+              <a class="quiet-link section-head-right" href="./index.html?page=notifications&role=advisingStudent&preview=live">Open inbox</a>
+            </div>
+
+            ${showEmpty ? `
+              <div class="v4-caught-up">
+                ${flourishSvg}
+                <div>
+                  <h3>All caught up</h3>
+                  <p>No unread notices. Switch to All to review recent messages.</p>
+                </div>
+              </div>
+            ` : `
+              <div class="v4-list">
+                ${list.map(n => `
+                  <article class="v4-notice-row">
+                    <span class="v4-notice-icon">${noticeKindSvg(n.id)}</span>
+                    <div class="v4-notice-text">
+                      <h3>${n.title}</h3>
+                      <p>${n.body}</p>
+                    </div>
+                    <div class="v4-notice-end">
+                      <time>${n.time}</time>
+                      ${n.read ? `<span class="rework-read-tag is-just-read">${checkIconSvg(true)}Read</span>` : markButton(n.id)}
+                    </div>
+                  </article>
+                `).join('')}
+              </div>
+            `}
+          </section>
+        </div>`;
+    }
+
+    /* ---------------------------------------------------------------
+       VERSION 05: Campus Class Passes & Silent Desk Stamp
+       --------------------------------------------------------------- */
+    function renderV5(unread, visible) {
+      const clear = unread.length === 0;
+      const comingUp = `
+        <section aria-label="Coming up">
+          <div class="section-head">
+            <h2>Coming up</h2>
+            <a class="quiet-link section-head-right" href="./index.html?page=my-schedule&role=advisingStudent&preview=live">Full timetable</a>
+          </div>
+          <div class="v5-passes">
+            ${UPCOMING.map(c => `
+              <a href="./index.html?page=my-schedule&role=advisingStudent&preview=live" class="v5-pass course-tone-${c.tone}">
+                <div class="v5-pass-stub">
+                  <strong>${c.time}</strong>
+                  <small>${c.shortDay}</small>
+                </div>
+                <div class="v5-pass-copy">
+                  <strong>${c.title}</strong>
+                  <span>${c.code} · ${c.kind} · Room ${c.room}</span>
+                </div>
+                <span class="v5-pass-symbol" aria-hidden="true">${courseSvg(c.symbol)}</span>
+              </a>
+            `).join('')}
+          </div>
+        </section>`;
+
+      const stampSvg = `
+        <svg class="v5-stamp-svg" viewBox="0 0 132 96" fill="none" stroke="#38352f" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <!-- Desk tray base -->
+          <path d="M12 63 32 49h72l16 14-14 21-80 1Z" fill="#7c968b"/>
+          <path d="M18 65q38-4 88-2l-10 15-68 1Z" fill="#f4eedc"/>
+          <!-- Slip inside tray -->
+          <path d="M27 59q30-3 66-2l8 16-66 3Z" fill="#faf4e4"/>
+          <path d="m34 64 25-1m-23 5 18-1" stroke="#6b6457" stroke-width="1.2"/>
+          <!-- Stamped coral/sage SEEN check impression -->
+          <g class="v5-stamp-imprint">
+            <circle cx="72" cy="65" r="7.5" fill="none" stroke="#b95c46" stroke-width="1.45"/>
+            <path d="m68.5 65.2 2.4 2.4 5-5.2" stroke="#b95c46" stroke-width="1.65"/>
+          </g>
+          <!-- Front tray lip -->
+          <path d="M12 63q19 0 28-1l5 7 34-1 5-6 36 1-14 21-80 1Z" fill="#bcd1ca"/>
+          <path d="M47 71h30v5H47Z" fill="#f4eedc" stroke="#5d756b" stroke-width="1.1"/>
+          <!-- Articulated wooden/brass stamp -->
+          <g class="v5-stamp-arm">
+            <path d="M60 39q0-5-5-8-9-6-4-13 5-5 14-4 10 0 11 8 1 6-6 9-4 3-3 8Z" fill="#d88b6d"/>
+            <path d="M51 39q15-2 27-2l7 6v4l-37 2-2-5Z" fill="#e2bd7c"/>
+            <path d="M56 20q3-3 9-2" stroke="#f6dac8" stroke-width="1.2"/>
+            <path class="v5-stamp-pad" d="M47 47q18-2 38-2l-1 4q-19 2-36 2Z" fill="#6f4f42"/>
+          </g>
+        </svg>`;
+
+      const notifications = `
+        <section aria-label="Notifications">
+          <div class="section-head">
+            <h2>Notifications</h2>
+            <span class="rework-count-pill ${clear ? 'is-clear' : ''}">${clear ? 'All stamped' : `${unread.length} unread`}</span>
+            <span class="section-head-right">
+              <a class="quiet-link" href="./index.html?page=notifications&role=advisingStudent&preview=live">Open inbox</a>
+            </span>
+          </div>
+          <div class="v5-inbox-stage">
+            <button type="button" class="v5-stamp-widget ${state.v5Stamping ? 'is-stamping' : ''} ${state.v5Stamped ? 'has-stamped' : ''} ${clear ? 'is-cleared' : ''}" data-v5-stamp>
+              ${stampSvg}
+              <span class="v5-stamp-label">${clear ? 'Replay stamp' : 'Stamp all read'}</span>
+              <span class="v5-stamp-sub">${clear ? 'Silent cel ink mark' : `${unread.length} waiting`}</span>
+            </button>
+
+            ${clear ? `
+              <div class="v5-caught-up-panel">
+                <h3>Inbox stamped and clear</h3>
+                <p>No unread notifications. Click the desk stamp anytime to replay the ink impression.</p>
+              </div>
+            ` : `
+              <div class="v5-notice-stack">
+                ${visible.map(n => `
+                  <article class="v5-notice-card">
+                    <span class="v5-notice-card-glyph">${noticeKindSvg(n.id)}</span>
+                    <div>
+                      <div class="v5-notice-card-head">
+                        <h3>${n.title}</h3>
+                        <span class="v5-status-tag ${n.tone === 'amber' ? 'is-amber' : ''}">${n.kindLabel}</span>
+                      </div>
+                      <p>${n.body}</p>
+                      <div class="v5-notice-card-foot">
+                        <time>${n.time}</time>
+                        ${n.read ? `<span class="rework-read-tag is-just-read">${checkIconSvg(true)}Stamped</span>` : markButton(n.id)}
+                      </div>
+                    </div>
+                  </article>
+                `).join('')}
+              </div>
+            `}
+          </div>
+        </section>`;
+
+      return `<div class="rework-pair study-v5">${comingUp}${notifications}</div>`;
+    }
+
+    function renderVersion(versionId) {
+      const unread = state.notices.filter(n => !n.read);
+      const visible = unread.length ? unread : state.notices;
+      switch (versionId) {
+        case 1: return renderV1(unread, visible);
+        case 2: return renderV2(unread, visible);
+        case 3: return renderV3(unread, visible);
+        case 4: return renderV4(unread, visible);
+        case 5: return renderV5(unread, visible);
+        default: return renderV1(unread, visible);
+      }
+    }
+
+    /* ---------------------------------------------------------------
+       Surrounding Advising Student Dashboard Chrome (Claude Study)
+       --------------------------------------------------------------- */
+    function renderDashboard() {
+      const unreadCount = state.notices.filter(n => !n.read).length;
+      const currentMeta = VERSIONS.find(v => v.id === state.version);
+
+      return `
+        <div class="shell">
+          <aside class="sidebar">
+            <div class="brand">
+              <a class="wordmark" href="./index.html?page=overview&role=advisingStudent&preview=live">
+                <img class="portal-brand-mark" src="portal-card-index.svg" width="34" height="34" alt="">Portal
+              </a>
+            </div>
+            <nav aria-label="Main navigation">
+              <details class="study-nav-group" open>
+                <summary>Home <svg class="icon" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></summary>
+                <ul>
+                  <li><a class="navlink active" href="#" aria-current="page"><svg class="icon" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10 12 3l9 7v10H6V10m3 10v-7h6v7"/></svg><span>Overview</span></a></li>
+                </ul>
+              </details>
+              <details class="study-nav-group" open>
+                <summary>Classes <svg class="icon" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></summary>
+                <ul>
+                  <li><a class="navlink" href="./index.html?page=my-schedule&role=advisingStudent&preview=live"><span>My schedule</span></a></li>
+                  <li><a class="navlink" href="./index.html?page=my-courses&role=advisingStudent&preview=live"><span>Registered courses</span></a></li>
+                  <li><a class="navlink" href="./index.html?page=preferences&role=advisingStudent&preview=live"><span>Schedule preferences</span></a></li>
+                </ul>
+              </details>
+              <details class="study-nav-group" open>
+                <summary>Support <svg class="icon" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></summary>
+                <ul>
+                  <li><a class="navlink" href="./index.html?page=my-advisor&role=advisingStudent&preview=live"><span>My advisor</span></a></li>
+                  <li><a class="navlink" href="./index.html?page=calendar-sync&role=advisingStudent&preview=live"><span>Calendar sync</span></a></li>
+                  <li><a class="navlink" href="./index.html?page=records&role=advisingStudent&preview=live"><span>Academic records</span></a></li>
+                  <li><a class="navlink" href="./index.html?page=extra-hours&role=advisingStudent&preview=live"><span>Extra-hours requests</span></a></li>
+                </ul>
+              </details>
+            </nav>
+            <div class="sidebar-foot"><span class="term-dot"></span><span>Winter 2026/2027<span class="side-sub">German University in Cairo</span></span></div>
+          </aside>
+
+          <div class="workspace">
+            <header class="topbar">
+              <span class="term"><small class="study-crumb">Academic workspace &nbsp; / &nbsp;</small>Overview</span>
+              <div class="topactions">
+                <a class="icon-button" href="./index.html?page=notifications&role=advisingStudent&preview=live" aria-label="Notifications" title="Notifications">
+                  <svg class="icon notice-bell" aria-hidden="true" viewBox="0 0 28 28" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                    <path class="bell-body" d="M8 12c0-4 2.1-6.6 6-6.6s6 2.8 6 6.6c0 3.6 1.2 5.4 2.4 7.1-4.7.8-12.3.8-16.8 0C7 17.4 8 15.4 8 12Z"/>
+                    <path class="bell-clapper" d="M12 22q2 2 4-.2"/>
+                  </svg>
+                  ${unreadCount > 0 ? '<span class="notification-dot"></span>' : ''}
+                </a>
+                <button type="button" class="account-button" aria-label="Account menu for Omar Hassan">
+                  <span class="avatar" data-portrait="9" data-tone="sky" aria-hidden="true">OH</span>
+                  <span>Omar Hassan</span>
+                  <svg class="icon" aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+              </div>
+            </header>
+
+            <main class="content" data-screen="overview" id="content">
+              <div class="study-note-strip">
+                <div>
+                  <strong>${currentMeta.name}</strong>
+                  <p>${currentMeta.summary}</p>
+                </div>
+                <div class="study-note-actions">
+                  <button type="button" data-step-version="-1">← Prev</button>
+                  <button type="button" data-step-version="1">Next →</button>
+                </div>
+              </div>
+
+              <div class="page-head">
+                <div>
+                  <div class="illustrated-greeting">
+                    <h1>Good evening, <span class="greeting-name">Omar<svg class="greeting-sun night-sky" viewBox="4 3 59 52" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="moon-face" d="M40 8c-17 0-27 17-20 29 6 11 23 14 33 3-12 4-23-4-22-15 0-7 4-13 9-17Z"/><g class="sky-rays"><path d="m52 11 .8 3.5 3.4 1-3.4 1-.8 3.4-1-3.4-3.2-1 3.2-1Z"/><path d="m58 24 .7 2.3 2.3 .7-2.3 .7-.7 2.3-.7-2.3-2.3-.7 2.3-.7Z"/></g><path class="sky-horizon" d="M11 47q10-4 21-3t24 0"/><path d="m19 50 10 1m6 0 13-1" opacity=".5"/></svg></span></h1>
+                  </div>
+                  <p><span class="workspace-term"><svg class="icon" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 2v4m8-4v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2"/></svg><strong>Winter 2026/2027</strong></span><span class="workspace-term-context">Computer Engineering</span></p>
+                </div>
+                <div class="actions">
+                  <a class="quiet-link study-schedule-link" href="./index.html?page=my-schedule&role=advisingStudent&preview=live">Open schedule<svg class="icon" aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m9 5 7 7-7 7"/></svg></a>
+                </div>
+              </div>
+
+              <div class="work-grid" style="--columns:minmax(0,1fr) minmax(0,1fr);--areas:'queue queue' 'week week' 'review activity'">
+                <section class="work-module module-queue student-object-host" style="--area:queue">
+                  <svg class="student-desk-art" data-object="bag" viewBox="0 0 110 92" aria-hidden="true">
+                    <path class="sa-sage" d="M23 48q-5-18 10-22 18-5 27-4l10 13-8 22z"/>
+                    <path class="sa-paper" d="m36 45-7-29q17-9 35-9l6 34z"/>
+                    <path d="m35 20 24-7m-22 13 26-7m-24 13 15-4"/>
+                    <g class="sa-pendulum"><path class="sa-coral" d="m81 44 5-32 4-8 3 9-6 33z"/><path d="m86 13 7 1m-5 2-4 25"/></g>
+                    <path class="sa-blue" d="m22 39 65-10q6-1 8 5l6 33q1 7-7 8l-57 9q-9 1-11-6l-9-33z"/>
+                    <path class="sa-blue" d="m19 38 67-10q6-1 7 6l-2 16-61 11q-7 2-8-4z"/>
+                    <path d="m27 54 62-10m-54 18 2 12m49-19 2 13" stroke-dasharray="2 3"/>
+                    <path class="sa-gold" d="m34 48 8-1 3 19-8 2zm41-6 8-2 3 20-8 2z"/>
+                    <path d="m37 58 6-1m36-6 6-1m-24-2 8-1"/>
+                    <path class="sa-ground" d="m37 88 60-9m-74 10 8-1"/>
+                  </svg>
+                  <div class="section-head">
+                    <h2>Schedule changes</h2>
+                    <a class="quiet-link" href="./index.html?page=preferences&role=advisingStudent&preview=live">Set schedule preferences</a>
+                  </div>
+                  <p>Review your preferred days and groups with your advisor.</p>
+                </section>
+
+                <section class="work-module module-week" style="--area:week">
+                  <div class="timetable-heading">
+                    <h2>Teaching week</h2>
+                    <a class="quiet-link" href="./index.html?page=my-schedule&role=advisingStudent&preview=live">Full timetable</a>
+                  </div>
+                  <div class="week-columns compact-week" aria-label="Weekly course schedule">
+                    <section class="week-day" aria-label="Sunday">
+                      <h2>Sunday</h2>
+                      <div class="week-class ice">${courseSvg('chip').replace('<svg', '<svg class="course-drawing course-symbol"')}<time datetime="08:30">08:30</time><strong>Embedded Systems</strong><small>CSEN 701<span class="study-place">Lecture · C2.301</span></small></div>
+                      <div class="week-class cherry"><img class="course-drawing course-symbol" src="images/symbols/algorithms.svg" alt=""><time datetime="12:00">12:00</time><strong>Analysis &amp; Design of Algorithms</strong><small>CSEN 703<span class="study-place">Tutorial · C3.104</span></small></div>
+                    </section>
+                    <section class="week-day" aria-label="Monday">
+                      <h2>Monday</h2>
+                      <div class="week-class teal"><img class="course-drawing course-symbol" src="images/symbols/advanced-lab.svg" alt=""><time datetime="10:00">10:00</time><strong>Advanced Computer Lab</strong><small>CSEN 704<span class="study-place">Lab · C7.102</span></small></div>
+                    </section>
+                    <section class="week-day" aria-label="Tuesday">
+                      <h2>Tuesday</h2>
+                      <div class="week-class cherry"><img class="course-drawing course-symbol" src="images/symbols/algorithms.svg" alt=""><time datetime="08:30">08:30</time><strong>Analysis &amp; Design of Algorithms</strong><small>CSEN 703<span class="study-place">Lecture · C3.202</span></small></div>
+                      <div class="week-class ice">${courseSvg('chip').replace('<svg', '<svg class="course-drawing course-symbol"')}<time datetime="10:00">10:00</time><strong>Embedded Systems</strong><small>CSEN 701<span class="study-place">Tutorial · C2.204</span></small></div>
+                      <div class="week-class teal"><img class="course-drawing course-symbol" src="images/symbols/advanced-lab.svg" alt=""><time datetime="14:00">14:00</time><strong>Advanced Computer Lab</strong><small>CSEN 704<span class="study-place">Lecture · C7.301</span></small></div>
+                    </section>
+                    <section class="week-day" aria-label="Wednesday">
+                      <h2>Wednesday</h2>
+                      <div class="week-class clay"><img class="course-drawing course-symbol" src="images/symbols/graphics.svg" alt=""><time datetime="12:00">12:00</time><strong>Computer Graphics</strong><small>DMET 701<span class="study-place">Lecture · C1.201</span></small></div>
+                    </section>
+                    <section class="week-day" aria-label="Thursday">
+                      <h2>Thursday</h2>
+                      <div class="week-day-off">
+                        <svg viewBox="0 0 90 68" aria-hidden="true" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                          <g class="coffee-saucer" stroke="#504339" stroke-width="1.6">
+                            <path fill="#d6bd9f" d="M13 52c5-5 23-7 43-5 11 1 18 3 19 6-1 4-18 7-35 6-14 0-26-2-27-7Z"/>
+                            <path fill="#faf0d8" d="M18 51c12-4 34-4 49 1-4 4-34 7-49-1Z"/>
+                          </g>
+                          <g class="coffee-cup" stroke="#504339" stroke-width="1.6">
+                            <path fill="#a7c3bc" fill-rule="evenodd" d="M55 33c13-8 20-2 16 6-2 5-8 8-17 7l1-13Zm3 3-1 6c5 0 9-2 10-5 1-3-3-4-9-1Z"/>
+                            <path fill="#adc8c0" d="M22 30q18-5 37 0c-1 12-3 22-16 24-14 2-20-8-21-24Z"/>
+                            <ellipse cx="40.5" cy="30" rx="18.5" ry="5.4" fill="#f6ecd6" stroke-width="1.35"/>
+                            <ellipse class="coffee-surface" cx="40.5" cy="30.4" rx="15.8" ry="3.3" fill="#705044" stroke="none"/>
+                            <path d="M27 37q1 8 5 11" stroke="#dfede2"/>
+                          </g>
+                          <g class="cup-steam" fill="none" stroke="currentColor" stroke-width="1.55">
+                            <path d="M35 23c-7-7 7-9 2-16M46 21c-3-5 5-6 4-12"/>
+                            <path d="M35 22c-4-7 8-10 1-17M46 21c-5-5 6-7 3-13"/>
+                            <path d="M36 22c-7-7 5-11-1-17M46 22c-4-6 4-9 2-13"/>
+                          </g>
+                        </svg>
+                        <span>No classes scheduled</span>
+                      </div>
+                    </section>
+                  </div>
+                </section>
+
+                <!-- LOWER LEFT: REWORKED COMING UP + NOTIFICATIONS -->
+                <section class="work-module module-review" style="--area:review">
+                  ${renderVersion(state.version)}
+                </section>
+
+                <!-- LOWER RIGHT: ACADEMIC CALENDAR (CONCERTINA REFERENCE) -->
+                <section class="work-module module-activity" style="--area:activity">
+                  ${renderCalendar()}
+                  <div class="student-calendar-action">
+                    <a class="quiet-link" href="./index.html?page=calendar-sync&role=advisingStudent&preview=live">Calendar sync</a>
+                  </div>
+                </section>
+              </div>
+            </main>
+          </div>
+        </div>`;
+    }
+
+    function renderCalendar() {
+      const months = [
+        {
+          name: 'OCTOBER', year: '2026', sheet: '#dcb09c', back: '#b68a75', startDay: 4, days: 31, marked: null, agenda: '<p>No academic deadlines this month.</p>',
+          art: `<svg class="season-drawing" viewBox="0 0 68 50" fill="none" stroke="#3e3940" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 33c7-13 22-17 31-10-4 13-18 19-31 10Z" fill="#d9946b"/><path d="M15 35q16-6 34-12" stroke="#53473e"/></svg>`
+        },
+        {
+          name: 'NOVEMBER', year: '2026', sheet: '#d1bfdc', back: '#ab98b9', startDay: 0, days: 30, marked: 22, agenda: '<ul><li><time datetime="2026-11-22">22 Nov</time>Registration opens</li></ul>',
+          art: `<svg class="season-drawing" viewBox="0 0 68 50" fill="none" stroke="#3e3940" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 36c6-3 21-4 32-1 7 2 10 5 5 8-12 4-30 4-39 0-4-2-3-5 2-7Z" fill="#9bc2d4" stroke="#536873"/><path d="M35 28V40q0 3-3 3" stroke="#47413a"/><path d="M18 27c2-9 10-14 18-13 9 1 15 6 16 14q-17-3-34-1Z" fill="#d4896f"/></svg>`
+        },
+        {
+          name: 'DECEMBER', year: '2026', sheet: '#bfc6dd', back: '#9ba6c2', startDay: 2, days: 31, marked: 6, agenda: '<ul><li><time datetime="2026-12-06">06 Dec</time>Registration closes</li><li><time datetime="2026-12-13">13 Dec</time>Schedule swaps close</li></ul>',
+          art: `<svg class="season-drawing" viewBox="0 0 68 50" fill="none" stroke="#3e3940" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M35 8 24 25h8l-9 13h24l-9-13h8Z" fill="#89a896"/><path d="M35 38v6" stroke="#5a4a3f"/></svg>`
+        }
+      ];
+      const idx = Math.max(0, Math.min(months.length - 1, 1 + state.calendarOffset));
+      const m = months[idx];
+      const blanks = Array.from({ length: m.startDay }, () => '<span></span>');
+      const dayCells = Array.from({ length: m.days }, (_, i) => {
+        const d = i + 1;
+        const isMarked = d === m.marked || (idx === 2 && d === 13);
+        const isToday = idx === 1 && d === 24;
+        if (isMarked) {
+          return `<span class="folio-date marked"><b>${d}</b><svg class="deadline-ring" viewBox="0 0 36 26" aria-hidden="true"><path class="ring-pencil" d="M29 4C20 0 6 3 4 11c-4 9 7 14 18 12 10-2 13-9 9-15-2-3-6-4-8-4"/><path d="M6 19q5 5 13 4"/></svg></span>`;
+        }
+        if (isToday) return `<span class="folio-date" aria-current="date"><b>24</b></span>`;
+        return `<span class="folio-date"><b>${d}</b></span>`;
+      });
+      const cells = [...blanks, ...dayCells].join('');
+
+      return `
+        <section class="desk-calendar teaching-pad" aria-label="Academic calendar" data-calendar-style="bellows" data-concertina="true" style="--season-sheet:${m.sheet};--season-back:${m.back}">
+          <header class="calendar-heading"><h2 id="academic-calendar">Academic calendar</h2></header>
+          <div class="binder-body">
+            <div class="calendar-feature">
+              <div class="binder-row"><span></span><span></span><span></span></div>
+            </div>
+            <div class="folio-stack">
+              <div class="folio-paper">
+                <div class="folio-inner">
+                  <div class="folio-month">
+                    <strong>${m.name}</strong>
+                    <small>${m.year}</small>
+                    ${m.art}
+                  </div>
+                  <div class="folio-days">
+                    <small>Su</small><small>Mo</small><small>Tu</small><small>We</small><small>Th</small><small>Fr</small><small>Sa</small>
+                    ${cells}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="folio-nav">
+            <button type="button" class="folio-today" data-calendar-nav="today">Today · 24 Nov</button>
+            <button type="button" data-calendar-nav="-1" ${idx === 0 ? 'disabled' : ''} aria-label="Previous month">Previous</button>
+            <button type="button" data-calendar-nav="1" ${idx === months.length - 1 ? 'disabled' : ''} aria-label="Next month">Next</button>
+          </div>
+          <div class="folio-agenda">${m.agenda}</div>
+        </section>`;
+    }
+
+    function renderCompare() {
+      return `
+        <main class="compare-shell">
+          <div class="compare-intro">
+            <div>
+              <h1>Five rework directions · Coming up &amp; Notifications</h1>
+              <p>All five versions replace the bell-ringer cartoon and cramped notice list with Portal Studio desk artifacts, timetable stock colors, and silent stepped animations. Click any control inside the specimens to test Mark read and Caught-up transitions.</p>
+            </div>
+          </div>
+          <div class="compare-grid">
+            ${VERSIONS.map(v => `
+              <article class="compare-specimen ${state.version === v.id ? 'is-chosen' : ''}">
+                <div class="compare-specimen-head">
+                  <div>
+                    <h2>${v.name}</h2>
+                    <p>${v.summary}</p>
+                  </div>
+                  <button type="button" class="compare-use-btn" data-pick-version="${v.id}">
+                    ${state.version === v.id ? 'Active in dashboard' : 'Preview in dashboard'}
+                  </button>
+                </div>
+                ${renderVersion(v.id)}
+              </article>
+            `).join('')}
+          </div>
+        </main>`;
+    }
+
+    function syncHeader() {
+      document.documentElement.dataset.theme = state.theme;
+      const studyBar = document.querySelector('.study-bar');
+      if (studyBar) {
+        document.body.style.setProperty('--study-bar-h', `${Math.ceil(studyBar.getBoundingClientRect().height)}px`);
+      }
+      document.querySelectorAll('[data-version]').forEach(btn => {
+        btn.setAttribute('aria-pressed', String(Number(btn.dataset.version) === state.version));
+      });
+      document.querySelectorAll('[data-view-mode]').forEach(btn => {
+        btn.setAttribute('aria-pressed', String(btn.dataset.viewMode === state.viewMode));
+      });
+      const clear = state.notices.every(n => n.read);
+      document.querySelectorAll('[data-inbox-state]').forEach(btn => {
+        btn.setAttribute('aria-pressed', String(btn.dataset.inboxState === (clear ? 'clear' : 'unread')));
+      });
+      document.querySelectorAll('[data-theme-mode]').forEach(btn => {
+        btn.setAttribute('aria-pressed', String(btn.dataset.themeMode === state.theme));
+      });
+    }
+
+    function renderApp() {
+      const root = document.querySelector('#study-root');
+      root.innerHTML = state.viewMode === 'compare' ? renderCompare() : renderDashboard();
+      syncHeader();
+      if (window.drawInputEdges) drawInputEdges(root);
+    }
+
+    new ResizeObserver(syncHeader).observe(document.querySelector('.study-bar'));
+
+    document.addEventListener('click', event => {
+      const calBtn = event.target.closest('[data-calendar-nav]');
+      if (calBtn) {
+        const dir = calBtn.dataset.calendarNav;
+        state.calendarOffset = dir === 'today' ? 0 : Math.max(-1, Math.min(1, state.calendarOffset + Number(dir)));
+        renderApp();
+        return;
+      }
+      const versionBtn = event.target.closest('[data-version]');
+      if (versionBtn) {
+        state.version = Number(versionBtn.dataset.version);
+        renderApp();
+        return;
+      }
+      const pickBtn = event.target.closest('[data-pick-version]');
+      if (pickBtn) {
+        state.version = Number(pickBtn.dataset.pickVersion);
+        state.viewMode = 'dashboard';
+        renderApp();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+      const stepBtn = event.target.closest('[data-step-version]');
+      if (stepBtn) {
+        state.version = ((state.version - 1 + Number(stepBtn.dataset.stepVersion) + 5) % 5) + 1;
+        renderApp();
+        return;
+      }
+      const viewBtn = event.target.closest('[data-view-mode]');
+      if (viewBtn) {
+        state.viewMode = viewBtn.dataset.viewMode;
+        renderApp();
+        return;
+      }
+      const inboxBtn = event.target.closest('[data-inbox-state]');
+      if (inboxBtn) {
+        const makeClear = inboxBtn.dataset.inboxState === 'clear';
+        state.notices = INITIAL_NOTICES.map(n => ({ ...n, read: makeClear }));
+        state.v5Stamped = makeClear;
+        renderApp();
+        return;
+      }
+      const themeBtn = event.target.closest('[data-theme-mode]');
+      if (themeBtn) {
+        state.theme = themeBtn.dataset.themeMode;
+        renderApp();
+        return;
+      }
+      if (event.target.closest('[data-reset-demo]')) {
+        state.notices = structuredClone(INITIAL_NOTICES);
+        state.v1Opened = false;
+        state.v4Filter = 'unread';
+        state.v5Stamping = false;
+        state.v5Stamped = false;
+        renderApp();
+        toast('Demo notices restored.', 'info');
+        return;
+      }
+      const markOne = event.target.closest('[data-mark-read]');
+      if (markOne) {
+        const id = markOne.dataset.markRead;
+        const target = state.notices.find(n => n.id === id);
+        if (target && !target.read) {
+          target.read = true;
+          renderApp();
+          toast('Notification marked as read.');
+        }
+        return;
+      }
+      if (event.target.closest('[data-mark-all]')) {
+        state.notices.forEach(n => { n.read = true; });
+        renderApp();
+        toast('All notifications marked as read.');
+        return;
+      }
+      if (event.target.closest('[data-v1-peek]')) {
+        state.v1Opened = !state.v1Opened;
+        renderApp();
+        return;
+      }
+      const v4Btn = event.target.closest('[data-v4-filter]');
+      if (v4Btn) {
+        state.v4Filter = v4Btn.dataset.v4Filter;
+        renderApp();
+        return;
+      }
+      if (event.target.closest('[data-v5-stamp]')) {
+        const hasUnread = state.notices.some(n => !n.read);
+        state.v5Stamping = true;
+        state.v5Stamped = true;
+        renderApp();
+        setTimeout(() => {
+          state.v5Stamping = false;
+          if (hasUnread) {
+            state.notices.forEach(n => { n.read = true; });
+            toast('All notifications stamped read.');
+          }
+          renderApp();
+        }, 720);
+      }
+    });
+
+    document.addEventListener('keydown', event => {
+      if (event.target.closest('input, textarea, select')) return;
+      if (['1', '2', '3', '4', '5'].includes(event.key)) {
+        state.version = Number(event.key);
+        renderApp();
+      } else if (event.key === 'ArrowRight' && state.viewMode === 'dashboard') {
+        state.version = (state.version % 5) + 1;
+        renderApp();
+      } else if (event.key === 'ArrowLeft' && state.viewMode === 'dashboard') {
+        state.version = ((state.version + 3) % 5) + 1;
+        renderApp();
+      }
+    });
+
+    renderApp();
+  </script>
+</body>
+</html>

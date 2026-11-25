@@ -40,10 +40,6 @@
 .workspace-empty > button { margin-top: 18px; }
 .workspace-page .feedback { margin: 0; font-size: 13px; }
 .workspace-page .feedback p:last-child { margin-bottom: 0; }
-.workspace-tabs { display: flex; flex-wrap: wrap; gap: 4px; width: fit-content; padding: 4px; border: 1px solid var(--line); border-radius: 9px; background: var(--raised); }
-.workspace-tabs button { min-height: 38px; padding: 8px 15px; border: 1px solid transparent; border-radius: 6px; color: var(--muted); background: transparent; font-size: 13px; font-weight: 600; cursor: pointer; }
-.workspace-tabs button[aria-pressed="true"] { border-color: var(--line); color: var(--ink); background: var(--paper); }
-.workspace-tabs button:hover:not(:disabled) { color: var(--ink); }
 .pending-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 155px), 1fr)); gap: 12px; }
 .pending-summary-card { padding: 18px; border: 1px solid var(--line); border-radius: 9px; background: var(--paper); }
 .pending-summary-card strong { display: block; margin-bottom: 9px; font-size: 27px; line-height: 1; font-variant-numeric: tabular-nums; font-weight: 600; }
@@ -88,7 +84,7 @@
   .workspace-page .panel-heading, .workspace-page .results-heading { flex-wrap: wrap; }
   .calendar-layout { grid-template-columns: minmax(0, 1fr); }
   .workspace-page button { touch-action: manipulation; }
-  .workspace-page .primary-button, .workspace-page .outline-button, .workspace-tabs button { min-height: 44px; }
+  .workspace-page .primary-button, .workspace-page .outline-button { min-height: 44px; }
   .workspace-page .text-button { min-height: 44px; }
   .workspace-page .slot-request-filters { grid-template-columns: minmax(0, 1fr); }
 }

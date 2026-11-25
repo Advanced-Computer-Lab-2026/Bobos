@@ -151,11 +151,11 @@
 .action-feedback-card .action-feedback-icon::after { inline-size:17px; block-size:17px; }
 .action-feedback-dismiss { inline-size:28px; block-size:32px; }
 .action-feedback-message { max-inline-size:44ch; line-height:1.55; }
-.action-feedback-card[data-variant=bookmark] { padding-inline-start:53px; grid-template-columns:minmax(0,1fr) 28px; }
+.action-feedback-card[data-variant=bookmark] { padding-inline-start:58px; grid-template-columns:minmax(0,1fr) 28px; }
 .action-feedback-card[data-variant=bookmark] .action-feedback-icon {
-  position:absolute; inset-inline-start:15px; inset-block-start:-1px; inline-size:27px; block-size:47px;
+  position:absolute; inset-inline-start:13px; inset-block-start:-1px; inset-block-end:7px; inline-size:32px; block-size:auto;
   border-radius:0; padding-block-end:8px;
-  clip-path:polygon(0 0,100% 0,100% 100%,50% 86%,0 100%);
+  clip-path:polygon(0 0,100% 0,100% 100%,50% calc(100% - 7px),0 100%);
 }
 .action-feedback-card.feedback-enter { animation:feedback-dock-arrive 260ms cubic-bezier(.22,1,.36,1) both; }
 .action-feedback-card[data-variant=bookmark].feedback-enter .action-feedback-icon { animation:feedback-bookmark-drop 430ms cubic-bezier(.22,1,.36,1) both; }
@@ -179,3 +179,19 @@
 .action-feedback-card strong { color:var(--feedback-accent); }
 .action-feedback-card[data-result=deleted] { --feedback-symbol:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 5h14M7 5V3h6v2M5 5l1 12h8l1-12M8 8v6m4-6v6'/%3E%3C/svg%3E"); }
 .action-feedback-card[data-variant=dock] { border-inline-start:1px solid var(--line); }
+
+/* The dock reads like a small filed receipt. The bookmark variant keeps its ribbon. */
+.action-feedback-card[data-variant=dock] {
+  border-block-start:2px solid var(--feedback-accent);
+  border-radius:5px 5px 10px 10px;
+  gap:9px;padding-block:10px;
+}
+.action-feedback-card[data-variant=dock] .action-feedback-icon {
+  background:none;align-self:start;
+}
+.action-feedback-card[data-compact] {padding-block:6px}
+.action-feedback-card[data-compact] .action-feedback-message {display:none}
+.action-feedback-card[data-compact][data-variant=bookmark] {padding-inline-start:50px}
+.action-feedback-card[data-compact][data-variant=bookmark] .action-feedback-icon {
+  inset-inline-start:11px;inline-size:29px;inset-block-end:4px;padding-block-end:5px;
+}

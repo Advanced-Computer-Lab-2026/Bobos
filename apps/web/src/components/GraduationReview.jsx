@@ -137,7 +137,7 @@ export default function GraduationReview({ token, role }) {
         setIssues([]);
         setRefresh((value) => value + 1);
       }}>Refresh</button>} />
-    {coordinator && <div className="workspace-tabs" role="group" aria-label="Review queue">
+    {coordinator && <div className="tabs" role="group" aria-label="Review queue">
       <button aria-pressed={plans}
         disabled={busy} onClick={() => changeView("plans")}>Graduation plans</button>
       <button aria-pressed={!plans}

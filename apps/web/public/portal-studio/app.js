@@ -2,8 +2,10 @@
 // Portal Studio with authenticated calendar and student service integrations.
 const params = new URLSearchParams(location.search);
 const comparePageDesigns = params.get('designs') === 'compare';
+const requestedFeedLayout = params.get('feed-layout');
+const studentFeedLayout = /^(?:[1-9]|10)$/.test(requestedFeedLayout) ? requestedFeedLayout : '1';
 const pages = {
-  'academic-services':'Academic services', 'graduation-plans':'Graduation plans', overview:'Overview', notifications:'Notifications', profile:'My profile',
+  'graduation-plans':'Graduation plans', overview:'Overview', notifications:'Notifications', profile:'My profile',
   directory:'Student directory', 'extra-hours':'Extra-hours requests', 'student-detail':'Student details', advising:'Advising students',
   'pending-work':'Pending work', 'schedule-activity':'Schedule activity',
   'financial-records':'Financial records', 'mandatory-removals':'Course removals',
@@ -34,8 +36,6 @@ const readNotifications = new Set();
 const notificationKey = id => `${role}:${id}`;
 const isNotificationUnread = id => !readNotifications.has(notificationKey(id));
 let connected = true;
-let inboxArtObserver;
-let bellAudio;
 let returnFocus;
 const studentPreferences = new Map([[0,{days:['Thursday'],groups:Array(4).fill('Group 4'),notes:'I would prefer to keep Thursday free.'}]]);
 const preferenceDrafts = new Map();
@@ -108,6 +108,7 @@ const readyStudents = names.map((name, index) => ({name, index})).filter(({index
 const statusTone = state => state === 'Ready for review' ? 'ready' : state === 'Draft' ? 'draft' : 'neutral';
 function icon(name) {
   const paths = {
+    close:'M6 6l12 12M18 6 6 18',
     home:'M3 10 12 3l9 7v10H6V10m3 10v-7h6v7',
     people:'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2m14-10a4 4 0 0 0 0-8m6 18v-2a4 4 0 0 0-3-3.87M13 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0',
     calendar:'M8 2v4m8-4v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2',
@@ -209,6 +210,11 @@ const termMilestones = [
 ];
 const calendarDate = iso => new Date(iso+'T12:00:00');
 const formatCalendarDay = (iso, options) => calendarDate(iso).toLocaleDateString('en-GB',options);
+const campusDay = (date = new Date()) => date.toLocaleDateString('sv-SE',{timeZone:'Africa/Cairo'});
+const studentDashboard = () => page==='overview' && student() && workspaces[lab.layout].name==='Claude Study';
+const milestonesFor = term => termMilestones.map(([key,label,,short]) => ({
+  day:calendarDate(term[key]).getDate(), iso:term[key], label, short, term:term.name
+}));
 let calendarMonth = 0;
 const previewMonth=new URLSearchParams(location.search).get('month');
 if (!productionPreview && /^20\d{2}-(0[1-9]|1[0-2])$/.test(previewMonth)){
@@ -217,16 +223,25 @@ if (!productionPreview && /^20\d{2}-(0[1-9]|1[0-2])$/.test(previewMonth)){
   calendarMonth=(year-today.getFullYear())*12+month-1-today.getMonth();
 }
 function calendarDates() {
-  const today = calendarDate(new Date().toLocaleDateString('sv-SE',{timeZone:'Africa/Cairo'}));
+  const todayISO = campusDay();
+  const today = calendarDate(todayISO);
   const month = new Date(today.getFullYear(),today.getMonth()+calendarMonth,1,12);
   const prefix = month.getFullYear()+'-'+String(month.getMonth()+1).padStart(2,'0')+'-';
-  const deadlines = academicTerms.flatMap(term => termMilestones.filter(([key]) => term[key].startsWith(prefix))
-    .map(([key,label,,short]) => ({day:calendarDate(term[key]).getDate(),iso:term[key],label,short,term:term.name})))
-    .sort((a,b)=>a.day-b.day);
+  const deadlines = academicTerms.flatMap(milestonesFor)
+    .filter(({iso}) => iso.startsWith(prefix) && (!studentDashboard() || iso >= todayISO))
+    .sort((a,b)=>a.iso.localeCompare(b.iso));
   return {today,month,deadlines};
 }
 function calendarAgenda() {
   const {deadlines} = calendarDates();
+  if (studentDashboard()) {
+    const upcoming = calendarMonth===0
+      ? milestonesFor(currentAcademicTerm).filter(({iso}) => iso >= campusDay()).slice(0,2)
+      : deadlines;
+    return `<h3>${calendarMonth===0?'Upcoming deadlines':'Deadlines this month'}</h3>${upcoming.length
+      ? `<ul>${upcoming.map(({iso,label})=>`<li><strong>${label}</strong><time datetime="${iso}">${formatCalendarDay(iso,{day:'numeric',month:'short'})}</time></li>`).join('')}</ul>`
+      : '<p>No upcoming deadlines.</p>'}`;
+  }
   return deadlines.length ? `<ul>${deadlines.map(({iso,label})=>`<li><time datetime="${iso}">${formatCalendarDay(iso,{day:'numeric',month:'short'})}</time>${label}</li>`).join('')}</ul>` : '<p>No academic deadlines this month.</p>';
 }
 const deadlineRing = '<svg class="deadline-ring" viewBox="0 0 36 26" aria-hidden="true"><path class="ring-pencil" d="M29 4C20 0 6 3 4 11c-4 9 7 14 18 12 10-2 13-9 9-15-2-3-6-4-8-4"/><path d="M6 19q5 5 13 4"/></svg>';
@@ -346,7 +361,7 @@ function flipSpeedControl(){
     </div></div>`;
 }
 function deskCalendar(teaching=false) {
-  return `<section class="desk-calendar${teaching?' teaching-pad':''}" aria-label="Academic calendar" ${teaching?`data-calendar-style="${calendarStyle}" data-concertina="${isConcertina(calendarStyle)}" data-sketch="${Object.hasOwn(sketchEditions,calendarStyle)}" data-season-month="${calendarDates().month.getMonth()}" style="--season-sheet:${seasonalPaper[calendarDates().month.getMonth()][0]};--season-back:${seasonalPaper[calendarDates().month.getMonth()][1]}"`:''}>${teaching?`<header class="calendar-heading"><h2 id="academic-calendar">Academic calendar</h2>${productionPreview?'':calendarStylePicker()}</header>`:''}${teaching?`<div class="binder-body"><div class="calendar-feature">${calendarFeature()}</div>`:''}<div class="folio-stack">${teaching ? binderRow('wires') : ''}
+  return `<section class="desk-calendar${teaching?' teaching-pad':''}${studentDashboard()?' student-overview-calendar':''}" aria-label="Academic calendar" ${teaching?`data-calendar-style="${calendarStyle}" data-concertina="${isConcertina(calendarStyle)}" data-sketch="${Object.hasOwn(sketchEditions,calendarStyle)}" data-season-month="${calendarDates().month.getMonth()}" style="--season-sheet:${seasonalPaper[calendarDates().month.getMonth()][0]};--season-back:${seasonalPaper[calendarDates().month.getMonth()][1]}"`:''}>${teaching?`<header class="calendar-heading"><h2 id="academic-calendar">Academic calendar</h2>${studentDashboard()?link('calendar-sync',icon('calendar')+'Calendar sync','btn calendar-sync-link'):''}${productionPreview?'':calendarStylePicker()}</header>`:''}${teaching?`<div class="binder-body"><div class="calendar-feature">${calendarFeature()}</div>`:''}<div class="folio-stack">${teaching ? binderRow('wires') : ''}
     ${teaching ? '' : `<svg class="folio-stand" viewBox="0 0 300 200" preserveAspectRatio="none" aria-hidden="true" stroke="#302f2c" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
       <path fill="#8fabbd" d="M6 0Q108-4 276-3q8 0 12 9l20 159q0 5-3 8l-15 26Q163 205-4 200l1-10Z"/>
       <path fill="#607d8d" d="M281 1q6 0 7 6l20 158-16 25Z"/>
@@ -360,8 +375,8 @@ function deskCalendar(teaching=false) {
     <div class="folio-paper" aria-live="polite">${calendarPage(teaching && calendarStyle!=='clean')}</div>
     ${teaching ? '' : `<svg class="folio-wires" viewBox="0 0 300 200" preserveAspectRatio="none" aria-hidden="true" fill="none" stroke-linecap="round">
       ${[48,63,220,235].map((x,i)=>`<g transform="translate(${x} ${i%2})"><ellipse cx="1" cy="6" rx="3.6" ry="2.3" fill="#3f5360"/><path d="M1 6C-5 3-6-12-1-14c5-2 9 5 8 12" stroke="#353938" stroke-width="3.7"/><path d="M0 4C-3 0-4-8-1-11" stroke="#cbd4c9" stroke-width="1.2"/></g>`).join('')}
-    </svg>`}</div>${teaching?'</div>':''}<div class="folio-nav"><button type="button" class="folio-today" data-calendar-nav="today" aria-label="Go to current month">Today · ${calendarDates().today.toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</button><button type="button" data-calendar-nav="-1" aria-label="Previous month">${teaching?'Previous':'‹'}</button><button type="button" data-calendar-nav="1" aria-label="Next month">${teaching?'Next':'›'}</button></div>
-    ${teaching&&!productionPreview?flipSpeedControl():''}<div class="folio-agenda" aria-label="Academic deadlines this month">${calendarAgenda()}</div></section>`;
+    </svg>`}</div>${teaching?'</div>':''}<div class="folio-nav">${studentDashboard()?'':`<button type="button" class="folio-today" data-calendar-nav="today" aria-label="Go to current month">Today · ${calendarDates().today.toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</button>`}<button type="button" data-calendar-nav="-1" aria-label="Previous month">${teaching?'Previous':'‹'}</button><button type="button" data-calendar-nav="1" aria-label="Next month">${teaching?'Next':'›'}</button></div>
+    ${teaching&&!productionPreview?flipSpeedControl():''}<div class="folio-agenda" aria-live="polite">${calendarAgenda()}</div></section>`;
 }
 function workQueue(tasks, separateCalendar=false) {
   const entries = tasks.map(([symbol,tone,count,subject,phrase,desc,target,cta],index)=>`
@@ -402,12 +417,12 @@ function groups(){
   const managesAcademics = role === 'coordinator' || role === 'administrator';
   const advises = role === 'coordinator' || role === 'advisor';
   if (student()) return [
-    ['Home', ['overview','academic-services']],
+    ['Home', ['overview']],
     ['Classes', ['my-schedule','my-courses', ...(role === 'normalStudent' ? ['schedule-swap'] : ['preferences'])]],
     ['Support', ['my-advisor','calendar-sync', ...(role === 'advisingStudent' ? ['records','extra-hours','graduation-plans'] : [])]]
   ];
   return [
-    ['Home', ['overview','academic-services', ...(role === 'coordinator' ? ['pending-work'] : [])]],
+    ['Home', ['overview', ...(role === 'coordinator' ? ['pending-work'] : [])]],
     ['Student services', [
       ...(managesAcademics ? ['directory','financial-records'] : []),
       ...(advises ? ['advising','extra-hours','graduation-plans'] : [])
@@ -460,18 +475,17 @@ function head(title, subtitle='', action='', kicker=''){
 function stats(items){return `<div class="stats">${items.map(([label,value,foot])=>`<div class="stat"><span>${label}</span><strong>${value}</strong><small>${foot}</small></div>`).join('')}</div>`;}
 function table(headers,rows,search=true){
   const numeric = ['Amount','Credits','Semester','Groups','Courses','Balance','Grade'];
-  return `<div class="tablewrap"><table><thead><tr>${headers.map(h=>`<th scope="col" class="${numeric.includes(h)?'num':''}">${h}</th>`).join('')}</tr></thead><tbody>${rows.map(row=>`<tr ${search?'data-search-row':''}>${row.map((cell,i)=>`<td class="${numeric.includes(headers[i])?'num':''}">${cell}</td>`).join('')}</tr>`).join('')}</tbody></table><p class="search-empty" hidden>No matching records. Try a different search.</p></div><div class="tablefoot"><span id="result-count">${rows.length} records</span><span>Sample data</span></div>`;
+  return `<div class="tablewrap"><table><thead><tr>${headers.map(h=>`<th scope="col" class="${numeric.includes(h)?'num':''}">${h}</th>`).join('')}</tr></thead><tbody>${rows.map(row=>`<tr ${search?'data-search-row':''}>${row.map((cell,i)=>`<td class="${numeric.includes(headers[i])?'num':''}">${cell}</td>`).join('')}</tr>`).join('')}</tbody></table><p class="search-empty" hidden>No matching records. Try a different search.</p></div><div class="tablefoot"><span id="result-count">${rows.length} records</span></div>`;
 }
 
 function filterbar(placeholder,options=[],action=''){
   const chips=options.length?'<ul class="filter-chips" id="filter-chips" aria-label="Active filters" hidden></ul>':'';
   return `<div class="toolbar"><div class="filters"><input aria-label="${placeholder}" placeholder="${placeholder}" id="search" type="search">${options.map(([label,values,field,defaultLabel])=>`<span class="filter-tab"><svg class="filter-mark" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="m2.8 7.5 6-.3m3.7.1 6.3-.3m-16 8 10.2-.3m3.6-.1 2.7-.1"/><path d="M12.4 7a2 2 0 1 1-4 .2 2 2 0 1 1 4-.2Zm4 7.5a2 2 0 1 1-4 .2 2 2 0 1 1 4-.2Z"/></svg><select aria-label="${label}" data-filter="${field||''}"><option value="">${defaultLabel||label}</option>${values.map(value=>`<option>${value}</option>`).join('')}</select></span>`).join('')}${chips}</div>${action?`<div class="actions">${action}</div>`:''}</div>`;
 }
-function tabs(items,defaultTab,style='file'){
+function tabs(items,defaultTab){
   if(!items.some(([id])=>id===tab)) tab=defaultTab||items[0][0];
-  const edge = '<svg class="file-tab-edge" viewBox="0 0 140 40" preserveAspectRatio="none" aria-hidden="true"><path vector-effect="non-scaling-stroke" d="M2 37.5 2.3 11.5Q2.3 8 6 8l7.5-.1q3 0 5-2.8l1.3-1.5Q21.4 2 24 2l107.5.4q6 0 6.2 6l.3 29.3Q69 37 2 37.5Z"/></svg>';
-  return `<div class="tabs${style==='file'?' file-tabs':''}" role="tablist" aria-label="${pages[page]} views">${items.map(([id,title])=>
-    `<button type="button" role="tab" aria-selected="${tab===id}" tabindex="${tab===id?0:-1}" class="${tab===id?'active':''}" data-tab="${id}">${style==='file'?edge:''}<span>${title}</span></button>`
+  return `<div class="tabs" role="tablist" aria-label="${pages[page]} views">${items.map(([id,title])=>
+    `<button type="button" role="tab" aria-selected="${tab===id}" tabindex="${tab===id?0:-1}" class="${tab===id?'active':''}" data-tab="${id}">${title}</button>`
   ).join('')}</div>`;
 }
 const activeTerm = 'Winter 2026/2027';
@@ -614,6 +628,17 @@ function studentOverview(){
   const normal = role==='normalStudent';
   const nextAction = normal?'schedule-swap':'preferences';
   const nextLabel = normal?'Explore swap groups':'Set schedule preferences';
+  if (studentDashboard()) {
+    const heading = head(studyGreeting(),termContext('Computer Engineering'));
+    const timetable = `<div class="timetable-heading"><h2>Teaching week</h2></div>${weekly()}`;
+    const feed = studentFeed();
+    const study = params.get('feed-only');
+    const rows = studentFeedLayout==='10' ? ['week week','review review','activity activity'] : ['week week','review activity'];
+    return `<div class="student-dashboard"${study?' data-feed-only':''}>
+       ${study==='calendar' ? `<div class="notification-study-pair">${feed}${deskCalendar(true)}</div>` : study==='1' ? feed : heading + workspaceGrid({...view,rows},
+        {week:timetable,review:feed,activity:deskCalendar(true)})}
+    </div>`;
+  }
   const advisorCard = `<div class="event">${avatar('Salma Adel')}<div><p><strong>Dr. Salma Adel</strong></p><time>Tuesday, 12:00–14:00 · C3.204</time></div></div>`;
   const courseRows = coursesThisTerm.map(([code,name])=>`<div class="review-person"><div><strong>${name}</strong><span>${code}</span></div></div>`).join('');
   const modules = {
@@ -621,8 +646,7 @@ function studentOverview(){
     cover:`<div><h2>Winter semester</h2><p>${coursesThisTerm.length} registered courses · ${credits} credit hours</p>${link('my-schedule','My timetable','btn primary')}</div><img src="images/window-desk.webp" alt="Open books on a desk by a window">`,
     command:`<div class="command-box"><button type="button" class="workspace-search" data-action="quick-find">${icon('search')}<span>Find a page or action</span><kbd>/</kbd>${icon('chevron')}</button><div class="task-shortcuts">${[['calendar','my-schedule','My timetable'],['book','my-courses','My courses'],['people','my-advisor','My advisor']].map(([symbol,target,label])=>link(target,icon(symbol)+label,'btn')).join('')}</div></div>`,
     capacity:workspaceSection('Course load','my-courses','My courses',`<p>${coursesThisTerm.length} courses · ${credits} credit hours · Semester 7</p>`),
-    review:workspaceSection('Coming up','my-schedule','Full timetable',`<div class="review-person"><div><strong>Embedded Systems</strong><span>Sunday · 08:30 · Lecture · C2.301</span></div></div><div class="review-person"><div><strong>Analysis & Design of Algorithms</strong><span>Sunday · 12:00 · Tutorial · C3.104</span></div></div>`)
-      + (view.name==='Claude Study' ? studentNotificationPanel() : ''),
+    review:workspaceSection('Coming up','my-schedule','Full timetable',`<div class="review-person"><div><strong>Embedded Systems</strong><span>Sunday · 08:30 · Lecture · C2.301</span></div></div><div class="review-person"><div><strong>Analysis & Design of Algorithms</strong><span>Sunday · 12:00 · Tutorial · C3.104</span></div></div>`),
     queue:workspaceSection('Schedule changes',nextAction,nextLabel,`<p>${normal?'Review swap groups before schedule swaps close on 13 December.':'Review your preferred days and groups with your advisor.'}</p>`),
     dates:workspaceSection('Registration dates','my-schedule','My timetable',`<ol class="milestones"><li><time><strong>22</strong><span>Nov</span></time><span>Registration opens</span></li><li><time><strong>06</strong><span>Dec</span></time><span>Registration closes</span></li><li><time><strong>13</strong><span>Dec</span></time><span>Schedule swaps close</span></li></ol>`),
     activity:`${deskCalendar(true)}<div class="student-calendar-action">${link('calendar-sync','Calendar sync','quiet-link')}</div>`,
@@ -633,7 +657,7 @@ function studentOverview(){
     courses:workspaceSection('Winter courses','my-courses','My courses',`<div class="course-map">${coursesThisTerm.map(([code,name,,credit])=>`<article><span>${code}</span><h3>${name}</h3><p>${credit} credits</p></article>`).join('')}</div>`),
   };
   const title = ['Your semester','My courses','My timetable','Teaching week','My courses','Schedule changes','Student services','My timetable','Winter courses','Teaching week','What do you need today?','My timetable','Schedule overview','My courses','Calendar','My teaching week','Winter courses','Find a page','Schedule changes','Semester overview',studyGreeting()][lab.layout];
-  return head(title,termContext('Computer Engineering'),link('my-schedule','Open schedule'+(view.name==='Claude Study' ? icon('chevron') : ''),view.name==='Claude Study' ? 'quiet-link study-schedule-link' : 'btn primary')) + workspaceGrid(view,modules);
+  return head(title,termContext('Computer Engineering'),link('my-schedule','Open schedule','btn primary')) + workspaceGrid(view,modules);
 }
 
 function staffIdentity(name, id) {
@@ -721,11 +745,16 @@ function notificationEntries(){
   const testEntries = Array.from({length:testCount}, (_, i) => [`test-${i}`, 'Test notification', 'This is a test notification for your account.', 'Just now']);
   if (role==='normalStudent') return testEntries;
   const registration = ['term', 'Winter 2026 dates updated', 'The registration window opens on 22 November.', 'Yesterday'];
-  if (student()) return [
-    ...testEntries,
-    ['schedule', 'Your timetable is ready', 'Check the teaching week for your class times and rooms.', 'Today, 10:42'],
-    registration,
-  ];
+  if (student()) {
+    const date = campusDay();
+    const upcoming = milestonesFor(currentAcademicTerm).filter(({iso}) => iso >= date);
+    return [
+      ...testEntries,
+      ['schedule', 'Your timetable is ready', 'Class times and rooms are in My schedule.', 'Today, 10:42'],
+      ...(upcoming.length ? [['term', 'Winter 2026 dates updated', upcoming.map(({iso,label}) =>
+        `${label} ${formatCalendarDay(iso,{day:'numeric',month:'long'})}.`).join(' '), currentAcademicTerm.name]] : []),
+    ];
+  }
   return [
     ...testEntries,
     ['schedule', 'Schedule ready for review', 'Omar Hassan’s advising schedule is ready for your review.', 'Today, 10:42', names[0]],
@@ -734,76 +763,51 @@ function notificationEntries(){
   ];
 }
 
-function inboxBellRinger(){
-  return button(`<svg class="student-inbox-bell" viewBox="0 0 180 126" aria-hidden="true" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path class="inbox-bell-frame" d="M87 23h79M102 23V12m48 11V12M11 115h154"/>
-    <path class="inbox-ringer-boot" d="M32 98h11l-1 13 5 4H29Zm18 0h10l1 13 5 4H49Z"/>
-    <path class="inbox-ringer-skin" d="M22 83l8 2-1 8-4 2-4-3Z"/>
-    <path class="inbox-ringer-back-sleeve" d="M32 52q-7 1-9 10l-5 16q-1 5 3 8l9 2 4-10 5-18Z"/>
-    <path class="inbox-ringer-coat" d="M31 54q7-6 17-5 11 0 14 12l-3 20 7 21q-20 9-40 0l6-20-4-17q-2-6 3-11Z"/>
-    <path class="inbox-ringer-collar" d="M32 53l6-4 10 2 5 5-9 5-5-4-4 2Z"/>
-    <path class="inbox-ringer-detail" d="m44 61-2 42m-5-28h1m-2 9h1m-2 9h1"/>
-    <path class="inbox-ringer-skin" d="M34 30q14-9 22 0v6l5 5-5 2v4q-7 7-17 1l-2 7-8-5 4-8Z"/>
-    <path class="inbox-ringer-hat" d="M25 32q3-6 7-7l2-14q9-4 19 0l5 13 7 4q-16 8-40 4Z"/>
-    <path class="inbox-ringer-detail" d="M33 24q13 1 24-2m-7 13h1m-5 12q4 1 6-1"/>
-    <g class="inbox-bell-swing">
-      <path class="inbox-bell-body" d="M99 72c8-9 10-18 10-29 0-11 8-17 18-17 11 0 18 6 18 17 0 11 2 21 10 29l3 5H96Z"/>
-      <path d="M125 26v-3m-24 48h52m-38-22c0-7 3-12 8-14m0 42v4m8-4v4"/>
-      <path class="inbox-bell-body" d="M123 81q4-4 8 0l2 4q-6 5-12 0Z"/>
-    </g>
-    <g class="inbox-ringer-arm">
-      <path class="inbox-mallet" d="m80 74 13-9m-3-7 8-4 7 12-8 5Z"/>
-      <path class="inbox-ringer-coat" d="M52 51q5-1 9 4l7 12 9-1 3 10-13 3q-4 1-7-3L48 62q-4-6 4-11Z"/>
-      <path class="inbox-ringer-sleeve-fold" d="m56 61 6 9q2 3 5 3l4-1"/>
-      <path class="inbox-ringer-collar" d="m73 66 6-1 3 11-7 1Z"/>
-      <path class="inbox-ringer-skin" d="M79 67q3-4 7-3l3 4-3 5-5 1Z"/>
-    </g>
-    <path class="inbox-bell-rays" d="m158 36 8-6m-4 15 11-2m-11 11 8 3"/>
-  </svg><span>Ring bell</span>`,'ring-student-bell','student-bell-control');
-}
-
 function studentNotificationPanel(){
   const unread = notificationEntries().filter(([id]) => isNotificationUnread(id));
-  const content = unread.length
-    ? `<div class="student-inbox-unread">
-        ${inboxBellRinger()}
-        <ul class="student-inbox-list" role="list">${unread.slice(0,3).map(([,title,description,time])=>`
-          <li><strong>${title}</strong><p>${description}</p><small>${time}</small></li>`).join('')}</ul>
-      </div>`
-    : `<div class="student-inbox-empty">
-        <div class="student-tumbleweed-scene" aria-hidden="true">
-          <svg class="student-desert-line" viewBox="0 0 260 32" preserveAspectRatio="none" fill="none" stroke="currentColor" stroke-linecap="round">
-            <path d="M0 26q64-6 125 0t135-3M0 19q19-3 38-14 16-9 43 7m99 9q14-10 27-12 13-3 31 9M22 30h19m45-2h9m114 2h15"/>
-          </svg>
-          <svg class="student-wind student-wind-near" viewBox="0 0 180 38" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-            <path d="M2 18h68c15 0 22-8 15-13-5-4-12-2-13 3M28 27h118c20 0 27-11 18-16-5-3-11-1-12 3M108 35h41"/>
-          </svg>
-          <svg class="student-wind student-wind-far" viewBox="0 0 180 38" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-            <path d="M3 13h111c15 0 20-9 13-11-4-2-10 0-10 4M21 25h139c15 0 23-8 15-14M81 35h55"/>
-          </svg>
-          <div class="student-tumbleweed-track">
-            <div class="student-tumbleweed-bounce">
-          <svg class="student-tumbleweed" viewBox="0 0 88 88" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-            <path class="tumbleweed-shape" d="M10 42c-2-10 4-21 14-23 5-10 18-15 27-9 10-3 23 4 25 14 8 7 10 19 4 27 2 11-6 22-18 24-6 8-20 11-29 5-11 0-22-7-23-17-6-5-6-14 0-21Z"/>
-            <path d="M13 52 28 48l14 7 15-7 19 6M24 20l4 14 14 21 5 22M51 11l-3 20 9 17 3 24M76 25 63 28l-15 3-20 3-16 9M75 43l-12-15-3-13M18 64l16 2 8-11M34 66l-2 12M60 72l8-10 8-8M30 22l12-5 6 14"/>
-            <path d="m22 45-8-9m16 5 12-5m-8 30-9-10m22 15 7-9m3-14 10-7 7 1m-21-7 5-12m9 38 7 4m-56-1 3 5m20-51 1-6"/>
-          </svg>
-            </div>
-          </div>
-        </div>
-        <p class="student-inbox-message">The inbox is quiet.<br>Go touch grass.</p>
-        <div class="student-inbox-empty-footer">
-          <p>No unread notifications.</p>
-          ${button('Replay wind','replay-tumbleweed','btn text')}
-        </div>
-      </div>`;
   return `<section class="student-inbox" aria-labelledby="student-inbox-heading">
     <div class="section-head">
       <h2 id="student-inbox-heading">Notifications${unread.length ? ` <span class="student-inbox-count">${unread.length} unread</span>` : ''}</h2>
       ${link('notifications','Open inbox','quiet-link')}
     </div>
-    ${content}
+    ${notificationScenes(params.get('notice-scene'),unread.length>0)}
+    ${unread.length
+      ? `<ul class="student-inbox-list" role="list">${unread.slice(0,3).map(([id,title])=>`
+        <li data-kind="${id}">
+          <h3>${id==='schedule'?'New timetable':title}</h3></li>`).join('')}</ul>`
+      : `<div class="student-inbox-empty"><span class="student-notice-icon">${icon('check')}</span><div><strong>You're all caught up</strong><p>No unread notifications.</p></div></div>`}
   </section>`;
+}
+
+function upcomingClasses(now = new Date()){
+  const today = calendarDate(campusDay(now));
+  const clock = now.toLocaleTimeString('en-GB',{timeZone:'Africa/Cairo',hour:'2-digit',minute:'2-digit'});
+  const meetings = [];
+  for (let offset = 0; offset <= 7 && meetings.length < 2; offset++) {
+    const date = new Date(today.getFullYear(),today.getMonth(),today.getDate()+offset,12);
+    const day = weeklyMeetings[date.getDay()];
+    if (!day) continue;
+    for (const [time,code,detail] of day[1]) {
+      if (offset===0 && time<=clock) continue;
+      meetings.push({time,code,detail,date,day:offset===0?'Today':offset===1?'Tomorrow':day[0]});
+    }
+  }
+  return meetings.slice(0,2);
+}
+
+function studentFeed(){
+  const meetings = upcomingClasses();
+  return `<div class="student-feed" id="student-feed" data-feed-layout="${studentFeedLayout}">
+    <section class="student-upcoming" aria-labelledby="student-upcoming-heading">
+      <div class="section-head"><h2 id="student-upcoming-heading">Coming up</h2></div>
+      <ul class="student-upcoming-list" role="list">${meetings.map(({time,code,detail,date,day})=>`
+        <li>${courseEmblem(code)}
+          <div class="student-class-copy"><h3>${resolveCourse(code)[1]}</h3><p>${detail}</p></div>
+          <time datetime="${date.toLocaleDateString('sv-SE')}T${time}"><span>${day}</span><strong>${time}</strong></time>
+        </li>`).join('')}</ul>
+    </section>
+    ${studentNotificationPanel()}
+  </div>`;
 }
 
 function notificationViews(unreadCount) {
@@ -811,11 +815,10 @@ function notificationViews(unreadCount) {
   const openMail = '<path d="M3.5 13.8 13 5.7q1-.8 2 .1l9 7.1-1 10.9-18.4.7Z" fill="#bba184"/><path d="m6.8 15-.6-11 14-.8 1 11.8" fill="#f5eee0"/><path d="m9.6 8.3 7.4-.6m-7.1 4.2 5.1-.4" fill="none"/><path d="m3.5 13.8 10.4 5.5L24 12.9l-1 10.9-18.4.7Z" fill="#d8b79a"/><path d="m6.5 22 5.2-4m9.2 3.7-4.5-3.8" fill="none"/>';
   const sealedMail = '<path d="m3.3 8 20.6-1 .5 15.2-20.2 1Z" fill="#c2d2cd"/><path d="m3.7 8.7 10.4 8 9.4-9.2m-17 13.2 6-5.3m9.8 4.6-6.2-4.9" fill="none"/>';
   const unreadDot = '<path d="M17.8 6.7q-.3-4.1 3.9-4.5 4.2-.2 4.5 3.8.2 4.3-3.9 4.7-4 .3-4.5-4Z" fill="#e9a38b"/>';
-  const loop = '<svg class="selection-loop" aria-hidden="true" viewBox="0 0 170 46" preserveAspectRatio="none"><path pathLength="1" vector-effect="non-scaling-stroke" d="M139 6.4C116 1.7 66 1.4 36 5.1 12 8 2.8 15.9 3.8 25.3 5.1 37.7 35 43.9 77 43.1c41.8.1 80.5-4.2 87.9-15.2 7.4-12.1-12.8-21.2-45.8-23.2"/></svg>';
   const views = [['all','All notifications',openMail],['unread','Unread',sealedMail+(unreadCount?unreadDot:'')]];
-  return `<div class="mail-views" role="tablist" aria-label="Notification views">${views.map(([id,label,drawing])=>
+  return `<div class="tabs mail-views" role="tablist" aria-label="Notification views">${views.map(([id,label,drawing])=>
     `<button type="button" id="notice-view-${id}" role="tab" aria-controls="notice-results" aria-selected="${id===tab}" tabindex="${id===tab?0:-1}" data-tab="${id}">
-      ${loop}<svg class="mail-drawing" viewBox="0 0 28 28" aria-hidden="true">${drawing}</svg><span>${label}</span>${id==='unread'?`<span class="mail-count">${unreadCount}</span>`:''}
+      <svg class="mail-drawing" viewBox="0 0 28 28" aria-hidden="true">${drawing}</svg><span>${label}</span>${id==='unread'?`<span class="mail-count">${unreadCount}</span>`:''}
     </button>`).join('')}</div>`;
 }
 
@@ -856,10 +859,64 @@ function courses(){return head('Course catalogue',academicStudy() ? `${courseDat
   filterbar('Search courses',[['All departments',['Computer Engineering','Digital Media Engineering','Electronics Engineering']],['All seasons',['Winter','Spring']]])+
   table(academicStudy() ? ['Course','Department','Credits','Season',''] : ['Code','Course','Department','Credits','Season',''],courseData.map(c=>[
     ...(academicStudy() ? [academicCourse(c)] : [c[0],`<strong>${c[1]}</strong>`]),...c.slice(2),courseLink(c[0],'View course','btn row-control')]));}
+function courseDetailArt(symbol, tone) {
+  return `<span class="course-detail-art" data-art-tone="${tone}">
+    <svg aria-hidden="true" width="30" height="30" viewBox="0 0 36 36">
+      <use href="images/symbols/course-detail.svg#${symbol}"/>
+    </svg>
+  </span>`;
+}
 function courseDetail(){
   const [code,title,department,credits,season] = selectedCourse;
   const first = code==='CSEN 701';
   const facts = [['Course code',code],['Credit hours',credits],['Department',department],['Semester','7'],['Type','Mandatory'],['Offering seasons',first?'Winter, Spring':season]];
+  if (student()) {
+    const factIcons = {
+      'Credit hours': ['pocket-watch', 'blue'],
+      Semester: ['semester-index', 'lilac'],
+      Type: ['course-type', 'coral'],
+      'Offering seasons': ['seasons', 'gold'],
+    };
+    const sectionArt = {Lecture: ['lecture', 'blue'], Tutorial: ['tutorial', 'lilac'], Lab: ['lab', 'sage']};
+    const meetings = weeklyMeetings.flatMap(([day,classes]) =>
+      classes.filter(([,course])=>course===code).map(([time,,detail])=>({day,time,detail})));
+    return `<div class="student-course-detail">
+      ${link('my-courses','← Registered courses','course-back')}
+      <header class="course-detail-identity">
+        ${courseEmblem(code)}
+        <div><h1>${title}</h1><p>${code} · ${department}</p></div>
+      </header>
+      <div class="course-detail-columns">
+      <section aria-labelledby="course-offering-heading">
+        <h2 id="course-offering-heading">Your sections</h2>
+        ${meetings.length?`<ul class="course-meetings">${meetings.map(({day,time,detail})=>{
+          const [type,room] = detail.split(' · ');
+          return `<li>${courseDetailArt(...(sectionArt[type] ?? sectionArt.Tutorial))}
+            <div><strong>${type}</strong><small>${day} · ${room}</small></div><time>${time}</time></li>`;
+        }).join('')}</ul>`:'<p>No sections on your timetable.</p>'}
+        ${link('my-schedule','View schedule','btn schedule-sections-link course-schedule-link')}
+      </section>
+      <div class="course-detail-reference">
+      <section aria-labelledby="course-facts-heading"><h2 id="course-facts-heading">Course information</h2>
+        <dl class="course-facts">${facts.filter(([label])=>label in factIcons).map(([label, value])=>{
+          const [symbol, tone] = factIcons[label];
+          return `<div>
+          <dt>${courseDetailArt(symbol, tone)}${label}</dt>
+          <dd>${value}</dd>
+        </div>`;
+        }).join('')}</dl>
+      </section>
+      <section class="course-prerequisites" aria-labelledby="course-prerequisites-heading">
+        <h2 id="course-prerequisites-heading">Prerequisites</h2>
+        ${first ? `<div class="course-prerequisite">
+          ${courseDetailArt('prerequisite', 'sage')}
+          <div><strong>Introduction to Computer Architecture</strong><small>CSEN 501</small></div>
+        </div>` : '<p>No prerequisites listed.</p>'}
+      </section>
+      </div>
+      </div>
+    </div>`;
+  }
   const actions = student() ? link('my-courses','My courses','btn') : button('Edit course','edit-course','btn primary')+link('courses','Back to catalogue','btn');
   return head(title,`${code} · ${department}`,actions,'Course details')+
     `<div class="split"><section class="panel academic-facts"><h2>Course information</h2><dl class="details">${facts.map(([label,value])=>`<div><dt>${label}</dt><dd>${value}</dd></div>`).join('')}</dl></section>
@@ -940,14 +997,14 @@ function timetableDrawing(code) {
       return courseDrawing(code);
   }
 }
+const weeklyMeetings = [
+  ['Sunday', [['08:30','CSEN 701','Lecture · C2.301','ice'], ['12:00','CSEN 703','Tutorial · C3.104','cherry']]],
+  ['Monday', [['10:00','CSEN 704','Lab · C7.102','teal']]],
+  ['Tuesday', [['08:30','CSEN 703','Lecture · C3.202','cherry'], ['10:00','CSEN 701','Tutorial · C2.204','ice'], ['14:00','CSEN 704','Lecture · C7.301','teal']]],
+  ['Wednesday', [['12:00','DMET 701','Lecture · C1.201','clay']]],
+  ['Thursday', []]
+];
 function weekly(){
-  const days = [
-    ['Sunday', [['08:30','CSEN 701','Lecture · C2.301','ice'], ['12:00','CSEN 703','Tutorial · C3.104','cherry']]],
-    ['Monday', [['10:00','CSEN 704','Lab · C7.102','teal']]],
-    ['Tuesday', [['08:30','CSEN 703','Lecture · C3.202','cherry'], ['10:00','CSEN 701','Tutorial · C2.204','ice'], ['14:00','CSEN 704','Lecture · C7.301','teal']]],
-    ['Wednesday', [['12:00','DMET 701','Lecture · C1.201','clay']]],
-    ['Thursday', []]
-  ];
   const illustrated = workspaces[lab.layout].name === 'Claude Study';
   function classCard([time, code, detail, color]) {
     return `<div class="week-class ${color}">${illustrated ? timetableDrawing(code) : ''}<time datetime="${time}">${time}</time>
@@ -972,7 +1029,7 @@ function weekly(){
       <path d="M36 22c-7-7 5-11-1-17M46 22c-4-6 4-9 2-13"/>
       </g></svg><span>No classes scheduled</span></div>`;
   }
-  return `<div class="week-columns${illustrated ? ' compact-week' : ''}" aria-label="Weekly course schedule">${days.map(([day, meetings]) =>
+  return `<div class="week-columns${illustrated ? ' compact-week' : ''}" aria-label="Weekly course schedule">${weeklyMeetings.map(([day, meetings]) =>
     `<section class="week-day" aria-label="${day}"><h2>${day}</h2>${dayContents(meetings)}</section>`).join('')}</div>`;
 }
 function schedule(staff=false){
@@ -1014,18 +1071,24 @@ function draft(){
   if (removed) return head(`${names[selectedStudent].split(' ')[0]}’s advising draft`, 'The draft has been deleted in this preview.', deleteControl) + '<section class="panel"><h2>No draft</h2><p>Use the restore button to bring back this preview draft.</p></section>';
   return head(`${names[selectedStudent].split(' ')[0]}’s advising draft`, `70-${71577+selectedStudent} · ${selectedStudent===3?'Digital Media Engineering':'Computer Engineering'} · Semester 7`,button('Save draft','save-draft')+button('Process schedule','process','btn primary')+deleteControl,'Winter 2026')+
   `<div class="split academic-plan"><section class="panel"><h2>Selected courses</h2><div class="smallstats"><div><strong>19</strong><span>Credit hours</span></div><div><strong>4</strong><span>Courses selected</span></div><div><strong>0</strong><span>Time conflicts</span></div></div>${courseData.slice(0,4).map(c=>`<div class="task">${academicCourse(c,`<div><h3>${c[0]}</h3><p>${c[1]}</p></div>`)}<label><span class="sr-only">${c[0]} group</span><select aria-label="${c[0]} group"><option>Group 4</option><option>Group 2</option></select></label></div>`).join('')}</section><aside><section class="note"><div class="kicker">Student preferences</div><h2>Thursday off.</h2><p>Preferred group: 4<br>Earliest class: 08:30<br>Preferences updated 12 November.</p>${link('preferences','View preferences','btn text')}</section><section class="panel" style="margin-top:24px"><h2>Validation</h2><p>No time conflicts. Credit load is within the allowed range.</p></section></aside></div>`+(academicStudy() ? '<h2 class="academic-week-title">Proposed timetable</h2>' : '')+weekly()+`<section class="panel draft-workflow" style="margin-top:24px"><h2>Workflow</h2>${workflow()}<div class="draft-workflow-actions">${button('Reopen schedule','reopen','btn desk-action')}</div></section>`;}
-function registeredTable(){return table(['Course','Type','Credits','Group',''],courseData.slice(0,4).map(c=>[`<strong>${c[1]}</strong><small>${c[0]}</small>`,'Mandatory',c[3],'4',courseLink(c[0],'View sections','btn row-control')]));}
+function registeredTable(){
+  const illustrated = workspaces[lab.layout].name === 'Claude Study';
+  return '<div class="schedule-course-list">'+table(['Course','Type','Credits',''],courseData.slice(0,4).map(([code,title,,credits])=>[
+    `<div class="schedule-course-cell">${illustrated?courseEmblem(code):''}<div><strong>${title}</strong><small>${code}</small></div></div>`,
+    'Mandatory',credits,courseLink(code,'View sections','btn schedule-sections-link')
+  ]))+'</div>';
+}
 function courseEmblem(code) {
   const courseTone = {'CSEN 701':'blue','CSEN 703':'coral','CSEN 704':'sage','DMET 701':'ivory','ELCT 701':'sage','MATH 701':'ivory'};
   return `<span class="student-course-emblem" data-course-tone="${courseTone[code]}">${courseDrawing(code)}</span>`;
 }
 function registered(){
-  const due = [['Assignment due 12 Nov','review'], ['Reading due 10 Nov','ice'], ['Project due 19 Nov',''], ['Quiz on 18 Nov','pending']];
   const study = workspaces[lab.layout].name==='Claude Study';
-  return head('My courses',study ? termContext('4 courses · 19 credit hours') : '4 courses · 19 credit hours',button('Request course removal','request-removal'),'')+
-    `<div class="course-list">${courseData.slice(0,4).map(([code,title,,credits], i) =>
-      `<article>${study?courseEmblem(code):''}<div><small>${code} · ${credits} credit hours</small><h2>${title}</h2></div>
-      <div class="course-due">${badge(...due[i])}${courseLink(code,'View sections','btn row-control')}</div></article>`).join('')}</div>`;
+  return head('Registered courses',study ? termContext('4 courses · 19 credit hours') : '4 courses · 19 credit hours')+
+    `<div class="course-list">${courseData.slice(0,4).map(([code,title,,credits]) =>
+      `<article>${study?courseEmblem(code):''}<div class="registered-course-title"><h2>${title}</h2><small>${code} · ${credits} credits</small></div>
+      ${courseLink(code,'View sections','btn schedule-sections-link')}</article>`).join('')}</div>
+    <div class="registered-course-actions">${button('Request course removal','request-removal','btn text')}</div>`;
 }
 function assignments(){
   const indices = names.map((_,i)=>i);
@@ -1078,7 +1141,7 @@ function financial(){
     </li>`).join('')}</ul>${listFoot(6)}`;
 }
 function removals(){return head('Course removals','Review mandatory-course removal requests.',student()?button('Request removal','request-removal','btn primary'):'')+
-  tabs([['pending','Pending · 3'],['approved','Approved'],['rejected','Rejected']],'pending','plain')+
+  tabs([['pending','Pending · 3'],['approved','Approved'],['rejected','Rejected']],'pending')+
   filterbar('Search student or course')+
   `<ul class="request-queue">${names.slice(0,3).map((name,i)=>`<li data-search-row>
     ${academicCourse(courseData[i],courseData[i][1])}<div class="request-person"><strong>${name}</strong><small>70-${71577+i}</small></div>
@@ -1579,11 +1642,10 @@ function render(focus=false){
     destination.searchParams.set('screen', 'schedule-swap');
     history.replaceState(history.state, '', destination);
   }
-  document.title=`Portal — ${layoutNames[lab.layout]} · ${pages[page]}`;
+  document.title=productionPreview ? `Portal · ${pages[page]}` : `Portal — ${layoutNames[lab.layout]} · ${pages[page]}`;
   document.body.classList.toggle('auth-screen',authPages.has(page));
   const body=authPages.has(page)?auth():`<div class="shell">${sidebar()}<div class="workspace"><header class="topbar">${link('overview',portalWordmark(),'mobile-nav wordmark')}<span class="term">${workspaces[lab.layout].name==='Claude Study'?'<small class="study-crumb">Academic workspace &nbsp; / &nbsp;</small>':''}${pages[page]}<span>Winter 2026 / 2027</span></span><div class="topactions">${button(icon('menu')+'<span class="sr-only">Menu</span>','mobile-menu','mobile-menu')}${themeControl()}${accountControls()}</div></header><main class="content" data-screen="${page}" id="content" tabindex="-1">${renderers[page]()}</main></div></div>`;
   arrivalObserver?.disconnect();
-  inboxArtObserver?.disconnect();
   app.innerHTML=body;
   if (authPages.has(page)) {
     const themeTools = document.createElement('div');
@@ -1610,6 +1672,7 @@ function render(focus=false){
     observer.observe(root);
     serviceFrame.contentWindow.addEventListener('pagehide', () => observer.disconnect(), { once:true });
   });
+  observeNotificationPlate(app.querySelector('.notification-plate'));
   drawInputEdges(app);
   if (page === "preferences") syncPreferenceSaveButton();
   const main = app.querySelector('main');
@@ -1618,16 +1681,7 @@ function render(focus=false){
     window.addStaffArt?.(page,main,role);
   }
   syncControls(role, page);
-  if(page==='overview' && workspaces[lab.layout].name==='Claude Study') stageOverview(app.querySelector('main'));
-  const inboxArt = app.querySelector('.student-tumbleweed-scene,.student-bell-control');
-  if (inboxArt) {
-    inboxArtObserver = new IntersectionObserver(([entry], observer) => {
-      if (!entry.isIntersecting) return;
-      inboxArt.classList.add('is-playing');
-      observer.disconnect();
-    }, { threshold: 0.5 });
-    inboxArtObserver.observe(inboxArt);
-  }
+  if(page==='overview' && workspaces[lab.layout].name==='Claude Study' && main.querySelector('.page-head')) stageOverview(main);
   const lamp = app.querySelector('.desk-lamp-scene');
   if (lamp) mountDeskLamp(lamp);
   binderMotion.mount(app.querySelector('[data-concertina=true] .folio-stack'));
@@ -1686,43 +1740,13 @@ async function choosePreviewRole(el){
     picker.disabled = false;
   }
 }
-function replayInboxArt(scene){
-  if (!scene) return;
-  inboxArtObserver?.disconnect();
-  scene.classList.remove('is-playing', 'is-replaying');
-  void scene.offsetWidth;
-  scene.classList.add('is-replaying');
-}
-
-async function chimeAtStrike(){
-  const Audio = window.AudioContext || window.webkitAudioContext;
-  if (!Audio) return;
-  try {
-    bellAudio ??= new Audio();
-    if (bellAudio.state === 'suspended') await bellAudio.resume();
-    const strike = bellAudio.currentTime + 0.48;
-    for (const [frequency, volume, decay] of [[440, .065, 1.45], [708, .032, 1.15], [1184, .018, .7], [1756, .009, .38]]) {
-      const tone = bellAudio.createOscillator();
-      const envelope = bellAudio.createGain();
-      tone.frequency.value = frequency;
-      envelope.gain.setValueAtTime(.0001, strike);
-      envelope.gain.exponentialRampToValueAtTime(volume, strike + .012);
-      envelope.gain.exponentialRampToValueAtTime(.0001, strike + decay);
-      tone.connect(envelope).connect(bellAudio.destination);
-      tone.start(strike);
-      tone.stop(strike + decay + .02);
-    }
-  } catch {
-    // The illustration still plays when audio is unavailable.
-  }
-}
-function toast(text, tone = 'success') {
-  document.querySelector('portal-action-feedback').show(tone, text);
+function toast(text, tone = 'success', options) {
+  document.querySelector('portal-action-feedback').show(tone, text, options);
 }
 function modal(title,content,submit='Save changes',action='save-modal'){
   returnFocus=document.activeElement;
   const form=submit===null?'':`<form id="modal-form" data-submit-action="${action}"><div id="modal-fields"></div><div class="form-footer">${button('Cancel','close-dialog')}<button class="btn primary" type="submit">${submit}</button></div></form>`;
-  dialog.innerHTML=`<div class="modal-head"><h2 id="portal-dialog-title">${title}</h2>${form?button('Close','close-dialog',''):''}</div>${content}${form}`;
+  dialog.innerHTML=`<div class="modal-head"><h2 id="portal-dialog-title">${title}</h2>${action==='navigation'?button(icon('close'),'close-dialog','menu-close','aria-label="Close menu"'):form?button('Close','close-dialog','modal-close'):''}</div>${content}${form}`;
   dialog.setAttribute('aria-labelledby','portal-dialog-title');
   // Keep all form controls inside the form so native validation works.
   const fields=dialog.querySelectorAll(':scope > .modal-fields');
@@ -1785,14 +1809,6 @@ function action(name,el){
     return;
   }
   switch(name){
-    case 'replay-tumbleweed': {
-      replayInboxArt(el.closest('.student-inbox')?.querySelector('.student-tumbleweed-scene'));
-      break;
-    }
-    case 'ring-student-bell':
-      replayInboxArt(el);
-      void chimeAtStrike();
-      break;
     case 'toggle-filters':{
       const panel=document.querySelector('#filter-panel');if(!panel)break;
       panel.hidden=!panel.hidden;el.setAttribute('aria-expanded',String(!panel.hidden));
@@ -1825,7 +1841,14 @@ function action(name,el){
       break;
     case 'pick-review':selectedStudent=Number(el.dataset.student);render();document.querySelector('.dispatch-person[aria-pressed=true]')?.focus();break;
     case 'quick-find':modal('Find a page',fields('<label>Search pages<input id="page-finder" type="search" placeholder="Schedule, students, courses…" autofocus></label>')+`<nav class="page-results">${groups().flatMap(([,ids])=>ids).map(id=>navigationLink(id,navigationLabel(id),'navlink')).join('')}</nav>`,'Close','close');break;
-    case 'mobile-menu':modal('Navigation',`<nav aria-label="Mobile navigation">${groups().map(([name,items])=>`<div class="navgroup"><p class="navlabel">${name}</p>${items.map(id=>navigationLink(id,navigationLabel(id),`navlink ${id===page?'active':''}`)).join('')}</div>`).join('')}${link('profile','My profile','navlink')}</nav>`,'Close','close');break;
+    case 'mobile-menu': {
+      const sections = [...groups(), ['Account', ['profile']]];
+      const menu = sections.map(([name,items])=>`<section><h3>${name}</h3><ul>${items.map(id=>
+        `<li><a href="${href(id)}" data-page="${id}"${id===page?' aria-current="page"':''}>${navigationLabel(id)}</a></li>`
+      ).join('')}</ul></section>`).join('');
+      modal('Menu',`<nav class="workspace-menu" aria-label="Main navigation">${menu}</nav>`,null,'navigation');
+      break;
+    }
     case 'test-notification':testCount++;render();toast('Test notification created in this preview.');break;
     case 'refresh':toast('Preview refreshed.', 'info');break;
     case 'read-all':notificationEntries().forEach(([id]) => readNotifications.add(notificationKey(id)));render();document.querySelector('[aria-selected=true]')?.focus();toast('All notifications marked as read.');break;
@@ -1843,7 +1866,7 @@ function action(name,el){
         savedPreferenceSignatures.delete(index);
         preferenceDrafts.set(index, current);
         syncPreferenceSaveButton(true);
-        toast('Preference save undone in this preview. Your selections are kept for editing.', 'info');
+        toast('Save undone', 'info', {title:'Save undone', variant:'bookmark', compact:true});
       } else if (current.days.length > 2) {
         toast('Choose up to two preferred days.', 'warning');
       } else {
@@ -1851,7 +1874,7 @@ function action(name,el){
         studentPreferences.set(index, structuredClone(current));
         savedPreferenceSignatures.set(index, JSON.stringify(current));
         syncPreferenceSaveButton(true);
-        toast('Preferences saved in this preview. Press Saved again to undo this save.');
+        toast('Preferences saved', 'success', {title:'Preferences saved', compact:true});
       }
       break;
     }
@@ -2083,7 +2106,6 @@ function selectView(id) {
   render();
   const selected = document.querySelector(`[role="tab"][data-tab="${tab}"]`);
   selected?.focus({preventScroll:true});
-  if (page === 'notifications') selected?.classList.add('draw-selection');
 }
 document.addEventListener('click',async event=>{
   const target=event.target.closest('[data-page],[data-action],[data-tab]');if(!target)return;

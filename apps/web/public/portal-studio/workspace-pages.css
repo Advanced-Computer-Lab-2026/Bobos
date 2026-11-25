@@ -120,14 +120,7 @@
 @supports (appearance:base-select) {
   [data-workspace] .content:not([data-screen=overview]) .filters .filter-tab select {appearance:base-select}
   .filter-tab select::picker-icon {display:none}
-  .filter-tab select::picker(select) {
-    appearance:base-select;margin-block:5px;padding:5px;min-width:180px;
-    background:var(--paper);color:var(--ink);border:1px solid var(--control);border-radius:8px;
-    box-shadow:0 5px 15px #0002;
-  }
-  .filter-tab option {display:flex;align-items:center;gap:8px;min-height:38px;padding:8px 12px;border-radius:4px;font-size:14px}
-  .filter-tab option::checkmark {content:"✓";color:var(--ink)}
-  .filter-tab option:is(:hover,:focus-visible,:checked) {background:var(--raised);color:var(--ink)}
+  .filter-tab select::picker(select) {min-width:180px}
 }
 @media(max-width:640px){.filters > .ink-field {flex-basis:100%}}
 /* Button study 06: the paper tab settles just inside the upper edge. */
@@ -161,7 +154,7 @@
   transition:transform 430ms cubic-bezier(.17,1.45,.46,1);
 }
 .portal-studio .bookmark-save:is(:hover,:focus-visible,:active) {
-  border-color:color-mix(in srgb,var(--bookmark-sage) 65%,var(--line));
+  border-color:transparent;
 }
 .bookmark-save:is(:hover,:focus-visible,:active) .bookmark-tab {transform:translateY(16px)}
 .portal-studio .bookmark-save:active {transform:translateY(1px) scale(.987)}
@@ -292,12 +285,13 @@
   position:absolute;inset:0;width:100%;height:100%;pointer-events:none;
   fill:none;stroke:currentColor;stroke-width:1.5;opacity:0;
 }
+.btn > .ink-contour rect {width:calc(100% - 3px);height:calc(100% - 3px)}
 .filter-tab > .ink-contour {stroke:var(--muted);opacity:.55;stroke-width:1.1}
 .filter-tab:has(select:focus-visible) > .ink-contour {stroke:var(--ink);stroke-width:2}
 @media (forced-colors:none) {
   .filter-tab:has(> .ink-contour) select:focus-visible {outline:none}
 }
-:is(.btn,.filter-tab) > .ink-contour path:not(:first-child) {opacity:0}
+:is(.btn,.filter-tab) > .ink-contour :is(path,rect):not(:first-child) {opacity:0}
 :is(.btn,.filter-tab):is(:hover,:focus-visible,:focus-within) > .ink-contour {opacity:1}
 .portal-studio[data-workspace] :is(.content,dialog) .btn:has(> .ink-contour) {transition-property:transform}
 /* Draw the entire hovered face with a single exposure. A filled primary
@@ -315,11 +309,11 @@
 .btn.primary:focus-visible > .ink-contour {fill:var(--raised);stroke:var(--ink)}
 
 @media(prefers-reduced-motion:no-preference){
-  :is(.btn,.filter-tab):is(:hover,:focus-visible,:focus-within) > .ink-contour path {
+  :is(.btn,.filter-tab):is(:hover,:focus-visible,:focus-within) > .ink-contour :is(path,rect) {
     transform-origin:center;transform-box:view-box;animation:ink-field-exposure .51s steps(1,end) infinite;
   }
-  :is(.btn,.filter-tab):is(:hover,:focus-visible,:focus-within) > .ink-contour path:nth-child(2) {animation-delay:-.17s;transform:rotate(.2deg)}
-  :is(.btn,.filter-tab):is(:hover,:focus-visible,:focus-within) > .ink-contour path:nth-child(3) {animation-delay:-.34s;transform:rotate(.1deg)}
+  :is(.btn,.filter-tab):is(:hover,:focus-visible,:focus-within) > .ink-contour :is(path,rect):nth-child(2) {animation-delay:-.17s;transform:rotate(.2deg)}
+  :is(.btn,.filter-tab):is(:hover,:focus-visible,:focus-within) > .ink-contour :is(path,rect):nth-child(3) {animation-delay:-.34s;transform:rotate(.1deg)}
 }
 /* Give each stage a heading of its own above the student rows. */
 .schedule-roster {max-width:1000px}
@@ -375,57 +369,16 @@
 }
 
 
-/* Index tabs lift at the shoulder and settle against one common edge. */
-[data-workspace] .content:not([data-screen=overview]) .file-tabs {
-  display:flex;gap:3px;padding:3px 0;border:0;border-radius:0;background:none;
-}
-[data-workspace] .content:not([data-screen=overview]) .file-tabs button {
-  position:relative;isolation:isolate;padding:8px 16px 6px;min-height:40px;flex:none;
-  color:var(--muted);background:none;border:0;box-shadow:none;border-radius:0;font:500 14px/1.4 Styrene,system-ui,sans-serif;
-}
-.file-tab-edge {position:absolute;z-index:-1;inset:0;width:100%;height:100%;fill:var(--raised);stroke:var(--control);stroke-width:1.15;pointer-events:none}
-[data-workspace] .content:not([data-screen=overview]) .file-tabs button[aria-selected=true] {color:#303930;background:none}
-.file-tabs [aria-selected=true] .file-tab-edge {fill:#c3d3c7;stroke:#899e91}
-.file-tabs button:hover .file-tab-edge {stroke:var(--muted)}
-.file-tabs button:focus-visible {outline:2px solid var(--ink);outline-offset:-2px}
 @media(forced-colors:active){
-  .file-tab-edge {fill:Canvas;stroke:ButtonText}
-  .file-tabs [aria-selected=true] .file-tab-edge {fill:Highlight;stroke:Highlight}
-  .portal-studio .btn:focus-visible,.file-tabs button:focus-visible {outline:2px solid Highlight!important}
+  .portal-studio .btn:focus-visible {outline:2px solid Highlight!important}
 }
 
-/* The selected mailbox is circled with one pencil stroke. */
-.mail-views {
-  display:inline-flex;align-items:center;gap:4px;max-width:100%;
-  margin:0 0 20px;
-}
-.mail-views [role=tab] {
-  position:relative;display:inline-flex;align-items:center;justify-content:center;gap:7px;
-  min-height:46px;padding:8px 18px;margin:0;border:0;border-radius:50%;
-  background:transparent;color:var(--muted);box-shadow:none;cursor:pointer;
-  font:500 15px/1.35 Styrene,system-ui,sans-serif;white-space:nowrap;
-}
-.mail-views [role=tab]:is(:hover,[aria-selected=true]) {color:var(--ink)}
+/* Envelope icons identify the two inbox views. */
 .mail-views .mail-drawing {
-  width:26px;height:26px;flex:none;stroke:#49433c;stroke-width:1.4;
+  width:22px;height:22px;flex:none;stroke:#49433c;stroke-width:1.4;
   stroke-linejoin:round;stroke-linecap:round;
 }
 .mail-count {font-variant-numeric:tabular-nums}
-.selection-loop {
-  position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;
-  fill:none;stroke:var(--muted);stroke-linecap:round;stroke-width:1.35;opacity:0;
-}
-.mail-views [aria-selected=true] .selection-loop {opacity:1}
-.mail-views button:focus-visible {outline:2px dashed var(--ink);outline-offset:2px}
-@media(prefers-reduced-motion:no-preference){
-  .mail-views .draw-selection .selection-loop path {stroke-dasharray:1;animation:circle-mail-view 310ms cubic-bezier(.32,.02,.26,1) both}
-  @keyframes circle-mail-view {from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
-}
-@media(max-width:400px){
-  .mail-views {gap:1px}
-  .mail-views [role=tab] {padding-inline:12px}
-}
-@media(forced-colors:active){.selection-loop {stroke:Highlight}}
 
 .profile-desk {display:grid;grid-template-columns:minmax(245px,.76fr) minmax(0,1.24fr);align-items:start;gap:clamp(28px,4vw,56px);max-width:1050px}
 .profile-identity,.profile-pane {min-width:0}
@@ -582,8 +535,8 @@ dialog:has(> .transaction-detail) .modal-head {margin-bottom:24px}
 /* Save is a reversible, explicitly labelled bookmark state. */
 .portal-studio .btn.bookmark-save { --bookmark-sage:var(--muted); min-width:174px; }
 .bookmark-save .bookmark-tab { background:var(--muted); opacity:.6; transform:translateY(0); transition:transform 430ms cubic-bezier(.22,1,.36,1),background-color 180ms ease,opacity 180ms ease; }
-.portal-studio .btn.bookmark-save[data-saved=true] { --bookmark-sage:#3d6249; color:#3d6249; border-color:#3d6249; }
-:root[data-theme=dark] .portal-studio .btn.bookmark-save[data-saved=true] { --bookmark-sage:#bcd1ca; color:#bcd1ca; border-color:#bcd1ca; }
+.portal-studio .btn.bookmark-save[data-saved=true] { --bookmark-sage:#3d6249; color:var(--bookmark-sage); }
+:root[data-theme=dark] .portal-studio .btn.bookmark-save[data-saved=true] { --bookmark-sage:#bcd1ca; color:var(--bookmark-sage); }
 .bookmark-save[data-saved=true] .bookmark-tab { background:var(--bookmark-sage);opacity:1;transform:translateY(16px); }
 .bookmark-save[data-saved=false]:is(:hover,:focus-visible,:active) .bookmark-tab { background:var(--muted);transform:translateY(5px); }
 .bookmark-save[data-saved=true].bookmark-changed .bookmark-tab { animation:preference-bookmark-save 430ms cubic-bezier(.22,1,.36,1) both; }
@@ -591,3 +544,36 @@ dialog:has(> .transaction-detail) .modal-head {margin-bottom:24px}
 @keyframes preference-bookmark-save {0%{transform:translateY(0)}70%{transform:translateY(19px)}100%{transform:translateY(16px)}}
 @keyframes preference-bookmark-undo {from{transform:translateY(16px)}to{transform:translateY(0)}}
 @media(prefers-reduced-motion:reduce){.bookmark-save .bookmark-tab,.bookmark-save.bookmark-changed .bookmark-tab{animation:none!important;transition:none!important}}
+
+.graduation-frame {display:block;width:100%;height:200px;border:0;background:transparent}
+
+.portal-studio .btn.bookmark-save[data-saved=true]:not(:is(:hover,:focus-visible,:focus-within)) {
+  border-color:var(--bookmark-sage);
+}
+.portal-studio dialog .modal-close {
+  align-self:start;min-height:36px;padding:6px 10px;border-radius:8px;
+  color:var(--danger-ink,#9b3c32);
+}
+[data-theme=dark] .portal-studio dialog .modal-close {color:var(--danger-ink,#edb1a5)}
+.portal-studio dialog .modal-close:hover {background:var(--raised)}
+
+.portal-studio dialog:has(> .workspace-menu)[open] {
+  display:grid;grid-template-rows:auto minmax(0,1fr);
+  width:min(370px,calc(100% - 32px));max-height:min(84dvh,680px);
+  padding:16px;overflow:hidden;
+}
+dialog:has(> .workspace-menu) .modal-head {align-items:center;margin:0 0 9px;padding-inline:9px 0}
+dialog .menu-close {display:grid;place-items:center;width:44px;height:44px;border-radius:9px}
+dialog .menu-close:hover {background:var(--raised);color:var(--ink)}
+.workspace-menu {overflow-y:auto;overscroll-behavior:contain}
+.workspace-menu section + section {margin-top:7px;padding-top:9px;border-top:1px solid var(--rule)}
+.workspace-menu h3 {margin:0 0 3px;padding-inline:9px;color:var(--muted);font-size:12px;font-weight:500}
+.workspace-menu ul {margin:0;padding:0;list-style:none}
+.workspace-menu a {
+  display:flex;align-items:center;min-height:40px;padding:6px 9px;
+  border-radius:7px;color:var(--ink);font-size:14px;text-decoration:none;
+}
+.workspace-menu a:is(:hover,[aria-current=page]) {background:var(--raised)}
+.workspace-menu a[aria-current=page] {font-weight:600}
+.workspace-menu a:focus-visible,dialog .menu-close:focus-visible {outline:2px solid currentColor;outline-offset:-3px}
+@media(pointer:coarse) {.workspace-menu a {min-height:44px}}

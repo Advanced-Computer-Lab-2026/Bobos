@@ -14,15 +14,6 @@
 [data-workspace=claude-study] .content:not([data-screen=overview]) .filters :is(input,select){
   min-height:36px;border-radius:7px;border-color:var(--surface-edge);background-color:var(--paper);
 }
-[data-workspace=claude-study] .content:not([data-screen=overview]) .tabs{
-  padding:3px;gap:2px;border:1px solid var(--surface-edge);background:transparent;
-}
-[data-workspace=claude-study] .content:not([data-screen=overview]) .tabs button{
-  min-height:32px;padding:5px 12px;
-}
-[data-workspace=claude-study] .content:not([data-screen=overview]) .tabs button[aria-selected=true]{
-  box-shadow:none;background:var(--raised);color:var(--ink)
-}
 [data-workspace=claude-study] .content:not([data-screen=overview]) .tablewrap{
   border-color:var(--surface-edge);background:transparent;border-radius:10px;
 }

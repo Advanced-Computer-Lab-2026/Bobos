@@ -63,13 +63,17 @@
       <path class="sa-paper" d="m46 62 27-9 21 6-28 10z"/><path d="m53 62 16-5m2 7 13-4"/>
       <path class="sa-ground" d="m9 80 18 4 72-14m-63 15 8-1"/> `,
     week: `
-      <path class="sa-sage" d="m12 41 72-20 15 45-71 19z"/>
-      <path class="sa-paper" d="m10 35 70-19 16 46-70 19z"/>
-      <path class="sa-blue" d="m10 35 70-19 3 10-70 19z"/>
-      <path d="M19 35q-5-13 0-14 4-1 6 11m7-1q-6-14-1-14 5-1 8 12m8-3q-6-13-1-14 5-2 8 12m8-3q-5-13-1-14 5-1 8 12"/>
-      <path d="m20 51 66-18m-62 29 65-18m-58 29 61-17m-61-13 9 28m5-32 9 29m6-33 9 28m5-31 9 28" opacity=".50"/>
-      <g class="sa-lift"><path class="sa-coral" d="m34 48 10-3 2 7-10 3z"/><path class="sa-gold" d="m52 54 10-3 2 6-10 3z"/></g>
-      <path class="sa-ground" d="m36 85 51-14"/> `,
+      <g transform="rotate(-8 55 46)">
+        <rect class="sa-sage" x="18" y="25" width="78" height="52" rx="5"/>
+        <rect class="sa-paper" x="14" y="20" width="78" height="52" rx="5"/>
+        <path class="sa-blue" d="M14 33v-8a5 5 0 0 1 5-5h68a5 5 0 0 1 5 5v8Z"/>
+        <path d="M32 16v9m21-9v9m21-9v9" stroke-width="3"/>
+        <path d="M30 33v39m15-39v39m16-39v39m15-39v39M14 53h78" opacity=".35"/>
+        <rect class="sa-coral" x="18" y="39" width="8" height="9" rx="2"/>
+        <rect class="sa-blue" x="49" y="39" width="8" height="9" rx="2"/>
+        <rect class="sa-gold" x="65" y="58" width="8" height="9" rx="2"/>
+        <rect class="sa-sage" x="34" y="58" width="8" height="9" rx="2"/>
+      </g>`,
     exchange: `
       <g class="sa-exchange-back"><path class="sa-sage" d="m14 40 37-21 17 31-36 22z"/><path class="sa-paper" d="m22 43 12-7 7 11-13 7z"/><path d="m39 34 10-6m-7 11 11-7m-19 25 20-11"/></g>
       <g class="sa-exchange-front"><path class="sa-blue" d="m57 32 38 13-12 36-38-15z"/><path class="sa-paper" d="m62 42 14 5-4 13-14-6z"/><path d="m79 49 8 3m-10 4 8 3m-31 2 21 8"/></g>
@@ -86,13 +90,18 @@
         <path d="m65 44 23-24"/></g>
       </g>`,
     transcript: `
-      <path class="sa-blue" d="m19 28 42-10 27 4 5 46-48 11-21-8z"/>
-      <path class="sa-paper" d="m16 22 41-10 27 6 5 45-45 11-23-8z"/>
-      <path d="m56 13 5 47-18 8m-20-40 25-6m-24 14 25-6m-24 13 24-6m-22 17 20-6m16-18 13 2m-12 4 13 2"/>
-      <g class="sa-pendulum"><path class="sa-coral" d="m65 54 7 2 3 16-5-4-4 4zm6 0 7-3 8 15-6-1-2 6z"/>
-      <path class="sa-gold" d="m60 48 2-4 1-4 5-1 3-2 4 2 5 1 1 4 3 4-2 5-1 4-5 1-4 2-4-2-4-1-1-5z"/>
-      <circle cx="72" cy="48" r="6"/></g>
-      <path class="sa-ground" d="m34 81 12 3 42-10"/> `,
+      <g transform="rotate(-9 50 46)">
+        <rect class="sa-blue" x="25" y="17" width="51" height="65" rx="3"/>
+        <path class="sa-paper" d="M22 10h33l15 15v47a3 3 0 0 1-3 3H22a3 3 0 0 1-3-3V13a3 3 0 0 1 3-3Z"/>
+        <path fill="#dac6a3" d="M55 10v12a3 3 0 0 0 3 3h12Z"/>
+        <path d="M29 26h15" stroke-width="2.6"/>
+        <path d="M29 38h31m-31 9h31m-31 9h18" opacity=".72"/>
+      </g>
+      <g class="sa-pendulum">
+        <path class="sa-coral" d="m65 54 7 2 3 16-5-4-4 4zm6 0 7-3 8 15-6-1-2 6z"/>
+        <path class="sa-gold" d="m60 48 2-4 1-4 5-1 3-2 4 2 5 1 1 4 3 4-2 5-1 4-5 1-4 2-4-2-4-1-1-5z"/>
+        <circle cx="72" cy="48" r="6"/>
+      </g>`,
     receipt: `
       <g transform="rotate(-8 50 50)">
         <path class="sa-paper" d="m14 16 42-1 1 54-5-3-5 3-5-3-5 3-5-3-6 3-6-3-5 3Z"/>
@@ -154,7 +163,7 @@
   window.addStudentArt = (page, root, role) => {
     const entry = placements[page];
     if (!entry || !root || root.querySelector('.student-desk-art,.campus-id')) return;
-    if (page === 'overview' && !['advisingStudent', 'normalStudent'].includes(role)) return;
+    if (page === 'overview' && (root.querySelector('.student-dashboard') || !['advisingStudent', 'normalStudent'].includes(role))) return;
     const [name, selector] = entry;
     const target = (selector && root.querySelector(selector)) || root.querySelector('.page-head > div');
     if (!target) return;
