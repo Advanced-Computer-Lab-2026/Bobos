@@ -8,6 +8,7 @@
       const destination = new URL("portal-studio/index.html", location.href);
       destination.search = location.search;
       destination.hash = location.hash;
+      destination.searchParams.set("preview", "live");
       if (destination.searchParams.has("calendar")) {
         destination.searchParams.set("page", "calendar-sync");
         if (!destination.searchParams.has("role")) destination.searchParams.set("role", "normalStudent");
