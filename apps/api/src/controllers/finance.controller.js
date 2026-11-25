@@ -3,6 +3,7 @@ import { FinancialTransaction, FinancialReversalRequest } from "../models/financ
 import { StudentProfile, User } from "../models/identity.js";
 import { AcademicTerm } from "../models/catalogue.js";
 import { ExtraHoursRequest } from "../models/requests.js";
+import { StudentSchedule } from "../models/academics.js";
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -15,6 +16,28 @@ const statusMap = {
   cancelled: ["cancelled", "CANCELLED"],
 };
 
+const typeMap = {
+  tuition: ["TUITION", "tuition"],
+  extra_hours: ["EXTRA_HOURS", "extra_hours", "extraHoursWalletPayment", "gatewayPayment", "deferredCharge"],
+  fee: ["FEE", "fee"],
+  refund: ["REFUND", "refund", "deferredChargeCancellation"],
+};
+
+const typeDisplayMap = {
+  tuition: "TUITION",
+  TUITION: "TUITION",
+  fee: "FEE",
+  FEE: "FEE",
+  extra_hours: "EXTRA_HOURS",
+  EXTRA_HOURS: "EXTRA_HOURS",
+  extraHoursWalletPayment: "EXTRA_HOURS",
+  gatewayPayment: "EXTRA_HOURS",
+  deferredCharge: "EXTRA_HOURS",
+  refund: "REFUND",
+  REFUND: "REFUND",
+  deferredChargeCancellation: "REFUND",
+};
+
 function formatCSVField(val) {
   if (val === null || val === undefined) return "";
   const str = String(val);
@@ -24,12 +47,21 @@ function formatCSVField(val) {
   return str;
 }
 
+const extraHoursPopulate = {
+  path: "extraHoursRequest",
+  populate: [
+    { path: "term", select: "code season academicYear" },
+    { path: "courses.course", select: "code name creditHours" },
+  ],
+};
+
 /**
  * Build MongoDB query for financial records based on query parameters and user role.
  */
 async function buildFinancialQuery(req) {
   const { search, type, status, term, startDate, endDate, settlementOption } = req.query;
   const query = {};
+  const andConditions = [];
 
   // Role-based scoping: advisingStudent can only see their own records
   if (req.user.role === "advisingStudent") {
@@ -77,28 +109,22 @@ async function buildFinancialQuery(req) {
       }
     }
 
-    if (query.student) {
-      // If already scoped to a student, ensure we don't widen the scope
-      query.$and = query.$and || [];
-      query.$and.push({ $or: searchConditions });
-    } else {
-      query.$or = searchConditions;
-    }
+    andConditions.push({ $or: searchConditions });
   }
 
   // Filter by Type / Kind (Req 99)
   if (type && typeof type === "string" && type.trim()) {
-    const typePattern = new RegExp(`^${escapeRegex(type.trim())}$`, "i");
-    const typeCondition = {
-      $or: [{ type: typePattern }, { kind: typePattern }],
-    };
-    if (query.$and) {
-      query.$and.push(typeCondition);
-    } else if (query.$or) {
-      query.$and = [{ $or: query.$or }, typeCondition];
-      delete query.$or;
+    const typeClean = type.trim();
+    const mappedTypes = typeMap[typeClean.toLowerCase()];
+    if (mappedTypes) {
+      andConditions.push({
+        $or: [{ type: { $in: mappedTypes } }, { kind: { $in: mappedTypes } }],
+      });
     } else {
-      query.$or = typeCondition.$or;
+      const typePattern = new RegExp(`^${escapeRegex(typeClean)}$`, "i");
+      andConditions.push({
+        $or: [{ type: typePattern }, { kind: typePattern }],
+      });
     }
   }
 
@@ -124,20 +150,19 @@ async function buildFinancialQuery(req) {
       $or: [{ code: termPattern }, { academicYear: termPattern }],
     }).select("_id");
     const termIds = matchingTerms.map((t) => t._id);
+    const allTermIds = isTermObjectId ? [...termIds, new mongoose.Types.ObjectId(termClean)] : termIds;
 
-    const termConditions = [{ term: termClean }, { term: { $in: termIds } }];
-    if (isTermObjectId) {
-      termConditions.push({ term: new mongoose.Types.ObjectId(termClean) });
-    }
+    const matchingExtraRequests = allTermIds.length > 0
+      ? await ExtraHoursRequest.find({ term: { $in: allTermIds } }).select("_id")
+      : [];
+    const extraRequestIds = matchingExtraRequests.map((r) => r._id);
 
-    if (query.$and) {
-      query.$and.push({ $or: termConditions });
-    } else if (query.$or) {
-      query.$and = [{ $or: query.$or }, { $or: termConditions }];
-      delete query.$or;
-    } else {
-      query.$or = termConditions;
-    }
+    const termConditions = [
+      { term: termPattern },
+      ...(allTermIds.length > 0 ? [{ term: { $in: allTermIds } }] : []),
+      ...(extraRequestIds.length > 0 ? [{ extraHoursRequest: { $in: extraRequestIds } }] : []),
+    ];
+    andConditions.push({ $or: termConditions });
   }
 
   // Filter by Date Range (Req 99)
@@ -160,18 +185,14 @@ async function buildFinancialQuery(req) {
     }
 
     if (Object.keys(dateRange).length > 0) {
-      const dateCondition = {
+      andConditions.push({
         $or: [{ occurredAt: dateRange }, { createdAt: dateRange }],
-      };
-      if (query.$and) {
-        query.$and.push(dateCondition);
-      } else if (query.$or) {
-        query.$and = [{ $or: query.$or }, dateCondition];
-        delete query.$or;
-      } else {
-        query.$or = dateCondition.$or;
-      }
+      });
     }
+  }
+
+  if (andConditions.length > 0) {
+    query.$and = andConditions;
   }
 
   return { query };
@@ -194,11 +215,28 @@ function formatTransactionRecord(record) {
     };
   }
 
-  doc.type = doc.type || doc.kind || "";
-  doc.kind = doc.kind || doc.type || "";
+  const rawType = doc.type || doc.kind || "";
+  doc.kind = doc.kind || rawType;
+  doc.type = typeDisplayMap[rawType] || typeDisplayMap[doc.kind] || rawType;
   doc.referenceNumber = doc.referenceNumber || doc.transactionReference || doc.deferredChargeReference || "";
   doc.receiptId = doc.receiptId || doc.transactionReference || "";
-  doc.lineItems = doc.lineItems || [];
+  doc.term = doc.term || doc.extraHoursRequest?.term || null;
+
+  if ((!Array.isArray(doc.lineItems) || doc.lineItems.length === 0)
+    && Array.isArray(doc.extraHoursRequest?.courses)
+    && doc.extraHoursRequest.courses.length > 0) {
+    doc.lineItems = doc.extraHoursRequest.courses.map((item) => ({
+      description: item.course?.code
+        ? `${item.course.code}${item.course.name ? ` — ${item.course.name}` : ""}`
+        : "Extra-hours course charge",
+      quantity: item.hours,
+      rate: item.pricePerHour,
+      amount: item.subtotal,
+    }));
+  } else {
+    doc.lineItems = doc.lineItems || [];
+  }
+
   doc.timestamps = {
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
@@ -239,7 +277,7 @@ export async function getRecords(req, res) {
         select: "studentId faculty major currentSemester user",
         populate: { path: "user", select: "fullName email role" },
       })
-      .populate("extraHoursRequest")
+      .populate(extraHoursPopulate)
       .populate("refundedBy", "fullName email role")
       .populate("relatedTransaction");
 
@@ -273,7 +311,7 @@ export async function getRecordById(req, res) {
         select: "studentId faculty major currentSemester user",
         populate: { path: "user", select: "fullName email role" },
       })
-      .populate("extraHoursRequest")
+      .populate(extraHoursPopulate)
       .populate("refundedBy", "fullName email role")
       .populate("relatedTransaction");
 
@@ -308,7 +346,8 @@ export async function processRefund(req, res) {
       return res.status(403).json({ message: "Insufficient permissions to process refunds." });
     }
 
-    const id = req.params.id || req.body.transactionId || req.body.id;
+    const body = req.body || {};
+    const id = req.params.id || body.transactionId || body.id;
     if (!id || !mongoose.isValidObjectId(id)) {
       return res.status(404).json({ message: "Transaction not found." });
     }
@@ -317,18 +356,41 @@ export async function processRefund(req, res) {
       const transaction = await FinancialTransaction.findById(id).session(session);
       if (!transaction) return { status: 404, message: "Transaction not found." };
 
+      if (["refund", "REFUND", "deferredChargeCancellation"].includes(transaction.kind)
+        || ["REFUND", "refund", "deferredChargeCancellation"].includes(transaction.type)) {
+        return { status: 400, message: "Refund or cancellation entries cannot be refunded." };
+      }
+
       const existingRefund = await FinancialTransaction.exists({
-        relatedTransaction: transaction._id, kind: "refund",
+        relatedTransaction: transaction._id,
+        kind: { $in: ["refund", "deferredChargeCancellation"] },
       }).session(session);
       if (["REFUNDED", "refunded"].includes(transaction.status) || transaction.refundedAt || existingRefund) {
         return { status: 400, message: "Transaction has already been refunded." };
       }
-      if (!["COMPLETED", "succeeded", "completed"].includes(transaction.status)) {
+
+      let linkedReq = null;
+      let reversalReq = null;
+      if (transaction.extraHoursRequest) {
+        linkedReq = await ExtraHoursRequest.findById(transaction.extraHoursRequest).session(session);
+        reversalReq = await FinancialReversalRequest.findOne({ originalTransaction: transaction._id }).session(session);
+        if (linkedReq && linkedReq.decisionStatus === "approved" && !reversalReq) {
+          return { status: 400, message: "Cannot refund an active extra-hours request that has not been cancelled or withdrawn." };
+        }
+      }
+
+      const isDeferred = transaction.kind === "deferredCharge" || transaction.settlementOption === "deferred";
+      const isCompleted = ["COMPLETED", "succeeded", "completed"].includes(transaction.status);
+      const isEligibleDeferred = isDeferred
+        && (Boolean(linkedReq) || Boolean(reversalReq))
+        && ["pending", "PENDING", "succeeded", "COMPLETED", "completed"].includes(transaction.status);
+
+      if (!isCompleted && !isEligibleDeferred) {
         return { status: 400, message: "Only completed transactions are eligible for refund." };
       }
 
-      const refundReason = (req.body.reason || req.body.refundReason || "Administrative refund").trim();
-      const refundAmount = Number(req.body.amount) || transaction.amount;
+      const refundReason = String(body.reason || body.refundReason || "Administrative refund").trim();
+      const refundAmount = Number(body.amount) || transaction.amount;
       if (refundAmount <= 0 || refundAmount > transaction.amount) {
         return { status: 400, message: "Invalid refund amount." };
       }
@@ -344,12 +406,12 @@ export async function processRefund(req, res) {
       const [refundRecord] = await FinancialTransaction.create([{
         student: transaction.student,
         extraHoursRequest: transaction.extraHoursRequest || null,
-        kind: "refund",
+        kind: isDeferred ? "deferredChargeCancellation" : "refund",
         type: "REFUND",
         amount: refundAmount,
         currency: transaction.currency || "EGP",
         status: "succeeded",
-        settlementOption: "wallet",
+        settlementOption: isDeferred ? "deferred" : "wallet",
         transactionReference: refundRef,
         relatedTransaction: transaction._id,
         refundedAt: now,
@@ -363,19 +425,36 @@ export async function processRefund(req, res) {
         { status: "completed", decidedBy: req.user._id, decidedAt: now },
         { session },
       );
-      if (transaction.extraHoursRequest) {
+
+      if (linkedReq) {
+        const nextSettlementStatus = isDeferred ? "cancelled" : "refunded";
         await ExtraHoursRequest.updateOne(
-          { _id: transaction.extraHoursRequest, student: transaction.student, settlementStatus: "paid" },
+          { _id: linkedReq._id, student: transaction.student },
           {
-            $set: { settlementStatus: "refunded" },
-            $push: { history: {
-              action: "refunded", actor: req.user._id, note: refundReason.slice(0, 1000),
-              settlementOption: transaction.settlementOption, settlementStatus: "refunded",
-              amount: refundAmount, occurredAt: now,
-            } },
+            $set: { settlementStatus: nextSettlementStatus },
+            $push: {
+              history: {
+                action: "refunded",
+                actor: req.user._id,
+                note: refundReason.slice(0, 1000),
+                settlementOption: transaction.settlementOption,
+                settlementStatus: nextSettlementStatus,
+                amount: refundAmount,
+                occurredAt: now,
+              },
+            },
           },
           { session, runValidators: true },
         );
+
+        const revokedCourseIds = (linkedReq.courses || []).map((c) => c.course).filter(Boolean);
+        if (revokedCourseIds.length > 0) {
+          await StudentSchedule.updateMany(
+            { student: transaction.student, term: linkedReq.term, status: "draft" },
+            { $pull: { courses: { course: { $in: revokedCourseIds } } } },
+            { session },
+          );
+        }
       }
 
       return { transaction, refundRecord };
@@ -417,7 +496,7 @@ export async function exportRecords(req, res) {
         select: "studentId faculty major currentSemester user",
         populate: { path: "user", select: "fullName email role" },
       })
-      .populate("extraHoursRequest");
+      .populate(extraHoursPopulate);
 
     const records = rawRecords.map(formatTransactionRecord);
 

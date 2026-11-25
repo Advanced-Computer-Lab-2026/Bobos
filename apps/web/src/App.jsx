@@ -370,7 +370,7 @@ export default function App() {
           {activeScreen === "records" && profile.role !== "normalStudent" && <StudentRecordsPage token={token} profile={profile} notify={notify} />}
           {activeScreen === "preferences" && <PreferencesPage token={token} profile={profile} profileId={screenContext?.id || screenContext?._id || profile.studentProfileId} studentTarget={screenContext?._id ? screenContext : undefined} notify={notify} onOpenDraftSchedule={(student, selectedTermId) => openScreen("student-schedules", { draftStudent: student, termId: selectedTermId })} />}
           {activeScreen === "directory" && <StudentDirectoryPage token={token} role={profile.role} notify={notify} />}
-          {activeScreen === "financial-records" && <FinancialRecordsPage token={token} role={profile.role} notify={notify} />}
+          {activeScreen === "financial-records" && ["coordinator", "administrator"].includes(profile.role) && <FinancialRecordsPage token={token} role={profile.role} notify={notify} />}
           {activeScreen === "advising" && <AdvisingPage token={token} role={profile.role} notify={notify} onOpenPreferences={(student) => openScreen("preferences", student)} />}
           {activeScreen === "graduation-review" && ["advisor", "coordinator"].includes(profile.role) && <GraduationReview token={token} role={profile.role} />}
           {activeScreen === "my-graduation" && profile.role === "advisingStudent" && <StudentGraduation token={token} />}

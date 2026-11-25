@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api, explainApiError } from "../api.js";
 import { WorkspaceEmpty } from "./WorkspaceUI.jsx";
 
@@ -94,10 +94,15 @@ export default function FinancialRecordsPage({ token, role, notify }) {
   const [exporting, setExporting] = useState(false);
 
   // Debounce search input
+  const lastSearchRef = useRef("");
   useEffect(() => {
+    const trimmed = search.trim();
     const handler = setTimeout(() => {
-      setDebouncedSearch(search.trim());
-      setPage(1);
+      if (trimmed !== lastSearchRef.current) {
+        lastSearchRef.current = trimmed;
+        setDebouncedSearch(trimmed);
+        setPage(1);
+      }
     }, 300);
     return () => clearTimeout(handler);
   }, [search]);
@@ -119,6 +124,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
   };
 
   const handleClearFilters = () => {
+    lastSearchRef.current = "";
     setSearch("");
     setDebouncedSearch("");
     setType("");
@@ -222,7 +228,8 @@ export default function FinancialRecordsPage({ token, role, notify }) {
   const handleExportCSV = async () => {
     setExporting(true);
     const params = new URLSearchParams();
-    if (debouncedSearch) params.set("search", debouncedSearch);
+    const activeSearch = search.trim() || debouncedSearch;
+    if (activeSearch) params.set("search", activeSearch);
     if (type) params.set("type", type);
     if (status) params.set("status", status);
     if (term) params.set("term", term);
@@ -251,7 +258,13 @@ export default function FinancialRecordsPage({ token, role, notify }) {
   };
 
   const isEligibleForRefund = (r) => {
-    const s = String(r.status).toUpperCase();
+    if (!r) return false;
+    const s = String(r.status || "").toUpperCase();
+    const kind = String(r.kind || "").toUpperCase();
+    const txType = String(r.type || "").toUpperCase();
+    if (["REFUND", "DEFERREDCHARGECANCELLATION"].includes(kind) || txType === "REFUND") {
+      return false;
+    }
     return (s === "COMPLETED" || s === "SUCCEEDED") && !r.refundedAt;
   };
 
@@ -402,7 +415,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
                       </td>
                       <td>
                         <span className={`status-pill ${formatStatusClass(r.status)}`}>
-                          {String(r.status).toUpperCase()}
+                          {String(r.status || "—").toUpperCase()}
                         </span>
                       </td>
                       <td>
@@ -522,7 +535,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
                     label="Status"
                     value={
                       <span className={`status-pill ${formatStatusClass(viewRecord.status)}`}>
-                        {String(viewRecord.status).toUpperCase()}
+                        {String(viewRecord.status || "—").toUpperCase()}
                       </span>
                     }
                   />
@@ -532,7 +545,23 @@ export default function FinancialRecordsPage({ token, role, notify }) {
                   />
                   <DetailItem
                     label="Academic Term"
-                    value={viewRecord.term?.code || (typeof viewRecord.term === "string" ? viewRecord.term : "—")}
+                    value={
+                      viewRecord.term?.code ||
+                      viewRecord.extraHoursRequest?.term?.code ||
+                      (typeof viewRecord.term === "string" ? viewRecord.term : "—")
+                    }
+                  />
+                  <DetailItem
+                    label="Linked Request"
+                    value={
+                      typeof (viewRecord.linkedRequest || viewRecord.extraHoursRequest) === "object" && (viewRecord.linkedRequest || viewRecord.extraHoursRequest)
+                        ? `${(viewRecord.linkedRequest || viewRecord.extraHoursRequest)._id}${
+                            (viewRecord.linkedRequest || viewRecord.extraHoursRequest).decisionStatus
+                              ? ` (${(viewRecord.linkedRequest || viewRecord.extraHoursRequest).decisionStatus})`
+                              : ""
+                          }`
+                        : viewRecord.linkedRequest || viewRecord.extraHoursRequest || "—"
+                    }
                   />
                   <DetailItem
                     label="Created Date"
