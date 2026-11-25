@@ -54,7 +54,7 @@ function syncPreferenceSaveButton(animate = false) {
   save.dataset.saved = String(saved);
   save.setAttribute('aria-pressed', String(saved));
   save.setAttribute('aria-label', saved ? 'Preferences saved. Press again to undo this save.' : 'Save preferences');
-  save.querySelector('.preference-save-label').textContent = saved ? 'Saved · Undo' : 'Save preferences';
+  save.querySelector('.preference-save-label').textContent = saved ? 'Saved' : 'Save preferences';
   if (animate) {
     save.classList.remove('bookmark-changed');
     void save.offsetWidth;
@@ -1805,7 +1805,7 @@ function action(name,el){
         studentPreferences.set(index, structuredClone(current));
         savedPreferenceSignatures.set(index, JSON.stringify(current));
         syncPreferenceSaveButton(true);
-        toast('Preferences saved in this preview. Press Saved · Undo to undo this save.');
+        toast('Preferences saved in this preview. Press Saved again to undo this save.');
       }
       break;
     }

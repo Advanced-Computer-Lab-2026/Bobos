@@ -304,3 +304,11 @@ body:has(.extra-hours-embedded) { background: transparent; }
   --raised: var(--embedded-raised, transparent);
   --paper: var(--embedded-paper, transparent);
 }
+
+.extra-hours-empty { padding:50px 20px 44px; text-align:center; border-top:1px solid var(--line); }
+.extra-empty-folder { width:96px; height:72px; margin:0 auto 18px; }
+.extra-hours-empty h3 { margin:0 0 9px; font-size:19px; font-weight:500; }
+.extra-hours-empty p { max-width:48ch; margin:0 auto 22px; color:var(--muted); line-height:1.7; }
+.extra-sample-list { display:grid;gap:18px; }
+.extra-sample-list h2 small { font-size:13px;color:var(--muted);font-weight:400; }
+.extra-hours-empty .outline-button { width:max-content;max-width:100%; }

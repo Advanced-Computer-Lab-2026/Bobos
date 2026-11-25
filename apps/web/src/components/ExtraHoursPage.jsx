@@ -18,6 +18,7 @@ export default function ExtraHoursPage({
   notify,
   embedded = false,
 }) {
+  const [sampleView, setSampleView] = useState(false);
   const student = role === "advisingStudent";
   const [composing, setComposing] = useState(false);
   const [rows, setRows] = useState([]);
@@ -352,16 +353,27 @@ export default function ExtraHoursPage({
           {error}
         </div>
       )}
-      {loading ? (
+      {sampleView ? <section className="extra-sample-list" aria-label="Sample extra-hours requests">
+        <div className="results-heading"><p className="helper-text">Sample requests for layout review</p><button type="button" className="outline-button" onClick={() => setSampleView(false)}>Show empty state</button></div>
+        {[
+          {name:"Omar Hassan",id:"70-71577",course:"CSEN 701 · Embedded Systems",hours:3,cost:2400,status:"Pending",note:"Awaiting coordinator review",tone:"muted"},
+          {name:"Mariam Adel",id:"70-71578",course:"CSEN 703 · Algorithms",hours:2,cost:1600,status:"Approved",note:"Awaiting payment choice",tone:"good"},
+          {name:"Youssef Karim",id:"70-71579",course:"CSEN 704 · Advanced Computer Lab",hours:3,cost:2400,status:"Paid",note:"Paid through wallet",tone:"good"}
+        ].map(row => <article className="extra-request" key={row.id}>
+          <header className="extra-request-row"><div><h2>{row.name} <small>· {row.id}</small></h2><p className="helper-text">Winter 2026 / 2027 · Advisor Dr. Salma Adel</p></div><span className={`status-pill ${row.tone}`}>{row.status}</span></header>
+          <div className="detail-grid"><div className="detail-item"><span>Course</span><strong>{row.course}</strong></div><div className="detail-item"><span>Requested hours</span><strong>{row.hours} credit hours</strong></div><div className="detail-item"><span>Total cost</span><strong>{money(row.cost)}</strong></div><div className="detail-item"><span>Next step</span><strong>{row.note}</strong></div></div>
+        </article>)}
+      </section> : loading ? (
         <section className="panel loading-state" role="status">
           <span className="loader" />
           Loading requests…
         </section>
       ) : rows.length === 0 ? (
-        <section className="panel empty-state">
-          <span aria-hidden="true">◌</span>
-          <h3>No extra-hours requests</h3>
-          <p>Requests will appear here when they are submitted.</p>
+        <section className="extra-hours-empty" aria-labelledby="extra-empty-title">
+          <svg className="extra-empty-folder" viewBox="0 0 96 72" fill="none" aria-hidden="true"><path d="M7 19q0-5 5-5h22l8 7h43v40H7Z" fill="#b7c8b7" stroke="#7d8779"/><path d="m18 26 58-2 2 35-61 1Z" fill="#f8f6ef" stroke="#aaa394"/><path d="m26 34 37-1m-37 8 30-1m-30 8 35-1" stroke="#aaa394" strokeWidth="2"/><path d="M7 36q0-4 5-4h72q5 0 5 4l-3 25H10Z" fill="#eee5cf" stroke="#aaa394"/></svg>
+          <h3 id="extra-empty-title">All clear for now</h3>
+          <p>{student ? "Your advisor’s extra-hours requests will appear here. You can review costs and choose a payment option after approval." : "New extra-hours requests will appear here, ready to review with their course load, eligibility and costs."}</p>
+          <button type="button" className="outline-button" onClick={() => setSampleView(true)}>Preview sample requests</button>
         </section>
       ) : (
         rows.map((row) => (
