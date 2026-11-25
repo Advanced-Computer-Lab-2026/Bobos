@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, explainApiError } from "../api.js";
-import { WorkspaceHeader, WorkspaceEmpty } from "./WorkspaceUI.jsx";
+import { GraduationEmpty, WorkspaceHeader } from "./WorkspaceUI.jsx";
 
 const root = "/api/graduation";
 const emptyFilters = { search: "", status: "", advisor: "", from: "", to: "" };
@@ -180,9 +180,12 @@ export default function GraduationReview({ token, role }) {
     {notice && <div className="feedback success" role="status">{notice}</div>}
     {error && <div className="feedback error" role="alert">{error}{issues.length > 0 &&
       <ul>{issues.map((issue, index) => <li key={index}>{issue}</li>)}</ul>}</div>}
-    <section className="panel">
-      <div className="results-heading"><h2>{plans ? "Submitted plans" : "Exit-exam requests"}</h2><span className="result-count" aria-live="polite">{loading ? "Loading…" : `${plans ? result?.total ?? rows.length : rows.length} ${plans ? "plans" : "requests"}`}</span></div>
-      {loading ? <p role="status">Loading…</p> : !rows.length ? <WorkspaceEmpty icon="document" title={plans ? "No submitted plans" : "No exit-exam requests"} description={plans ? "Submitted graduation plans will appear here for review. Clear your filters if you expected to see a plan." : "Requests submitted by advisors will appear here with the course and student details."} /> :
+    <section aria-busy={loading}>
+      {loading ? <p role="status">Loading…</p> : !rows.length ? !error && <GraduationEmpty heading="h2" submitted={plans}
+        title={plans ? "No submitted plans" : "No exit-exam requests"}
+        description={plans
+          ? coordinator ? "Plans will appear here when advisors submit them." : "Plans you send for coordinator review will appear here."
+          : "Requests will appear here when advisors submit them."} /> :
         <div className="table-scroll"><table>
           <thead><tr><th>Student</th>{coordinator && <th>Advisor</th>}{!plans && <th>Course</th>}
             <th>Status</th><th>Submitted</th><th>Action</th></tr></thead>

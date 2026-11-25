@@ -112,15 +112,14 @@
         <path class="sa-gold" d="M17 64q9-5 18-1l1 9q-7 7-19 1Z"/>
         <ellipse class="sa-gold" cx="26" cy="64" rx="10" ry="4"/><path d="m18 69q8 4 16-1"/>
       </g>`,
-    timeTicket: `
-      <g transform="translate(8 7) scale(1.2)">
-        <path fill="#eec59c" d="m9 17 51-4 1 10a5 5 0 0 0 1 10l1 11-51 5-1-11a5 5 0 0 0-1-10z"/>
-        <path stroke-dasharray="1 4" d="m25 17 2 30"/>
-        <path d="m15 23 5-.4m-4 19 5-.4"/>
-        <circle fill="#f6ecda" cx="44" cy="30" r="12"/>
-        <path d="M44 23v7l5 3"/>
-        <circle fill="#b9d0bd" cx="61" cy="43" r="9"/>
-        <path d="M61 39v8m-4-4h8"/>
+    extraHoursSlip: `
+      <g transform="translate(7 4)">
+        <path class="sa-sage" d="m16 23 46-5 6 49-48 5z"/>
+        <path class="sa-paper" d="m12 17 46-5 7 48-48 6z"/>
+        <path d="m23 27 24-3m-23 12 17-2m-15 11 12-1"/>
+        <path class="sa-gold" d="M76 46q9 7 5 19-5 11-18 9-13-3-13-16 1-13 14-15 7-1 12 3Z"/>
+        <path d="m65 51 .5 15m-8-7 16-1"/>
+        <path class="sa-ground" d="m17 76 33-2"/>
       </g>`,
     sync: `
       <path class="sa-blue" d="m10 28 45-10 7 40-46 11z"/>
@@ -148,7 +147,7 @@
     overview: ['bag', '.module-queue'],
     directory: ['index'],
     advising: ['advising'],
-    'extra-hours': ['timeTicket'],
+    'extra-hours': ['extraHoursSlip'],
     'student-detail': ['badge', '.person-title'],
     'my-schedule': ['week'],
     'my-courses': ['books'],

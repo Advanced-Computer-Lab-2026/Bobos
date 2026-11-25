@@ -94,3 +94,17 @@
 .portal-signin .auth .signin-copy header {display:block}
 .portal-signin .portal-auth-tools {position:absolute;top:1rem;right:1rem}
 .portal-signin .portal-demo {margin-top:1rem}
+
+.graduation-empty {
+  display:flex;align-items:center;gap:16px;padding:22px 0;
+  border-block-start:1px solid var(--line);
+}
+.graduation-empty img { flex:none;object-fit:contain }
+.graduation-empty :is(h2,h3) { margin:0;font-size:16px;font-weight:600 }
+.graduation-empty p { margin:5px 0 0;color:var(--muted);font-size:13px }
+
+.graduation-empty-submitted {
+  display:grid;justify-items:center;gap:10px;padding:34px 16px 28px;text-align:center;
+}
+.graduation-empty-submitted img { width:100px;height:74px }
+.graduation-empty-submitted h2 { font-size:18px }

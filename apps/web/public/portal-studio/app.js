@@ -5,7 +5,7 @@ const comparePageDesigns = params.get('designs') === 'compare';
 const requestedFeedLayout = params.get('feed-layout');
 const studentFeedLayout = /^(?:[1-9]|10)$/.test(requestedFeedLayout) ? requestedFeedLayout : '1';
 const pages = {
-  'graduation-plans':'Graduation plans', overview:'Overview', notifications:'Notifications', profile:'My profile',
+  'academic-services':'Academic services', 'graduation-plans':'Graduation plans', overview:'Overview', notifications:'Notifications', profile:'My profile',
   directory:'Student directory', 'extra-hours':'Extra-hours requests', 'student-detail':'Student details', advising:'Advising students',
   'pending-work':'Pending work', 'schedule-activity':'Schedule activity',
   'financial-records':'Financial records', 'mandatory-removals':'Course removals',
@@ -70,8 +70,10 @@ const href = (target,index=selectedStudent,course=selectedCourse) => {
   const destination = authPages.has(target) ? returnAfterSignIn : target;
   const preserveStudent = ['draft-schedule','student-detail'].includes(destination) || (destination === 'preferences' && !student());
   const look = productionPreview ? '&preview=live' : `&layout=${lab.layout+1}&palette=${lab.palette+1}&mode=${lab.dark?'dark':'light'}`;
-  const serviceScreen = destination === 'academic-services' && new URLSearchParams(location.search).get('screen');
-  return `?page=${target}&role=${role}${look}${comparePageDesigns?'&designs=compare':''}${target==='login' && comparePageDesigns && params.has('image')?`&image=${signinImage.id}`:''}${authPages.has(target)&&destination!=='overview'?`&next=${destination}`:''}${preserveStudent?`&student=${index}`:''}${destination==='course-detail'?`&course=${encodeURIComponent(course[0])}`:''}${serviceScreen?`&screen=${encodeURIComponent(serviceScreen)}`:''}`;
+  const current = new URLSearchParams(location.search);
+  const serviceScreen = destination === 'academic-services' && current.get('screen');
+  const submittedPlans = destination === 'graduation-plans' && current.get('view') === 'submitted';
+  return `?page=${target}&role=${role}${look}${comparePageDesigns?'&designs=compare':''}${target==='login' && comparePageDesigns && params.has('image')?`&image=${signinImage.id}`:''}${authPages.has(target)&&destination!=='overview'?`&next=${destination}`:''}${preserveStudent?`&student=${index}`:''}${destination==='course-detail'?`&course=${encodeURIComponent(course[0])}`:''}${serviceScreen?`&screen=${encodeURIComponent(serviceScreen)}`:''}${submittedPlans?'&view=submitted':''}`;
 };
 
 const link = (target, text, cls='', index) => `<a class="${cls}" href="${href(target,index)}" data-page="${target}"${index===undefined?'':` data-student="${index}"`}>${text}</a>`;
@@ -1357,25 +1359,26 @@ function extraHours(){
       : table(['Student', 'Term', 'Credits', 'Status'], [['Omar Hassan', ...request]], false);
     return head('Extra-hours requests', 'Demo preview · Sample requests') + sampleTable;
   }
-  return head('Extra-hours requests') +
-    `<iframe class="extra-hours-frame" style="border:0;background:transparent;color-scheme:${lab.dark ? 'dark' : 'light'}" title="Extra-hours request workspace" src="../workspace.html?screen=extra-hours&amp;embedded=1&amp;theme=${lab.dark ? 'dark' : 'light'}&amp;role=${role}"></iframe>`;
+  return head('Extra-hours requests') + portalService('extra-hours');
+}
+
+function portalService(screen, section = '') {
+  const query = new URLSearchParams({screen, section, role});
+  const view = new URLSearchParams(location.search).get('view');
+  if (view === 'submitted') query.set('view', view);
+  return `<div data-portal-service="${escapeHtml(query)}"><p role="status">Loading…</p></div>`;
 }
 
 function academicServices() {
   const screen = new URLSearchParams(location.search).get('screen') || 'overview';
-  const query = new URLSearchParams({ screen, embedded:'1', section:'academic-services', theme:lab.dark ? 'dark' : 'light', role });
-  return head('Academic services') +
-    `<iframe class="academic-services-frame" title="Academic services workspace" src="../academic-services.html?${query.toString().replaceAll('&', '&amp;')}"></iframe>`;
+  return head('Academic services') + portalService(screen, 'academic-services');
 }
 
 function graduationPlans() {
   if (!['advisor', 'coordinator', 'advisingStudent'].includes(role)) {
     return head('Graduation plans') + '<p>This page is unavailable for your role.</p>';
   }
-  const query = new URLSearchParams({ screen:'graduation-plans', embedded:'1', theme:lab.dark ? 'dark' : 'light', role });
-  if (role === 'advisor' && new URLSearchParams(location.search).get('view') === 'submitted') query.set('view', 'submitted');
-  return head('Graduation plans') +
-    `<iframe class="graduation-frame" title="Graduation plan workspace" src="../academic-services.html?${query.toString().replaceAll('&', '&amp;')}"></iframe>`;
+  return portalService('graduation-plans');
 }
 
 const renderers = {'academic-services':academicServices,'extra-hours':extraHours,overview,notifications,profile, directory, 'student-detail':()=>profile(true),advising,'pending-work':pending,'schedule-activity':activity,'financial-records':financial,'mandatory-removals':removals,'student-schedules':()=>schedule(true),'draft-schedule':draft,courses,'course-detail':courseDetail,terms,offerings,'copy-offerings':copyOfferings,templates,'template-detail':templateDetail,'group-assignments':assignments,'my-schedule':schedule,'my-courses':registered,'schedule-swap':swap,preferences,records,'my-advisor':advisor,'calendar-sync':calendarSync,'graduation-plans':graduationPlans};
@@ -1617,14 +1620,13 @@ motionPreference.addEventListener('change',()=>{
   document.getAnimations().filter(animation=>animation.id==='overview-arrival').forEach(animation=>animation.cancel());
 });
 
-function applyServiceFrameTheme(frame, documentElement) {
-  documentElement.dataset.theme = lab.dark ? 'dark' : 'light';
-  frame.style.colorScheme = documentElement.dataset.theme;
-  const theme = getComputedStyle(frame);
-  for (const [target, source] of Object.entries({ canvas:'canvas', ink:'ink', muted:'muted', line:'rule', raised:'raised', paper:'paper' })) {
-    const value = theme.getPropertyValue('--' + source).trim();
-    if (value) documentElement.style.setProperty('--embedded-' + target, value);
-  }
+let disposePortalService;
+function mountPortalService(host) {
+  import('/portal-services.js').then(({mount}) => {
+    if (host.isConnected) disposePortalService = mount(host);
+  }).catch(() => {
+    if (host.isConnected) host.innerHTML = '<p role="alert">This page couldn’t load. Try refreshing.</p>';
+  });
 }
 
 function render(focus=false){
@@ -1646,6 +1648,8 @@ function render(focus=false){
   document.body.classList.toggle('auth-screen',authPages.has(page));
   const body=authPages.has(page)?auth():`<div class="shell">${sidebar()}<div class="workspace"><header class="topbar">${link('overview',portalWordmark(),'mobile-nav wordmark')}<span class="term">${workspaces[lab.layout].name==='Claude Study'?'<small class="study-crumb">Academic workspace &nbsp; / &nbsp;</small>':''}${pages[page]}<span>Winter 2026 / 2027</span></span><div class="topactions">${button(icon('menu')+'<span class="sr-only">Menu</span>','mobile-menu','mobile-menu')}${themeControl()}${accountControls()}</div></header><main class="content" data-screen="${page}" id="content" tabindex="-1">${renderers[page]()}</main></div></div>`;
   arrivalObserver?.disconnect();
+  disposePortalService?.();
+  disposePortalService = undefined;
   app.innerHTML=body;
   if (authPages.has(page)) {
     const themeTools = document.createElement('div');
@@ -1661,17 +1665,8 @@ function render(focus=false){
   const liveCalendar = app.querySelector('[data-live-calendar]');
   if (liveCalendar) mountLiveCalendar(liveCalendar);
   if (comparePageDesigns) attachPageDesign(page,role,render);
-  const serviceFrame = app.querySelector('.extra-hours-frame, .graduation-frame, .academic-services-frame');
-  serviceFrame?.addEventListener('load', () => {
-    const root = serviceFrame.contentDocument?.getElementById('root');
-    if (!root) return;
-    applyServiceFrameTheme(serviceFrame, root.ownerDocument.documentElement);
-    const observer = new ResizeObserver(() => {
-      serviceFrame.style.height = Math.ceil(root.getBoundingClientRect().height) + 'px';
-    });
-    observer.observe(root);
-    serviceFrame.contentWindow.addEventListener('pagehide', () => observer.disconnect(), { once:true });
-  });
+  const service = app.querySelector('[data-portal-service]');
+  if (service) mountPortalService(service);
   observeNotificationPlate(app.querySelector('.notification-plate'));
   drawInputEdges(app);
   if (page === "preferences") syncPreferenceSaveButton();
@@ -1793,18 +1788,6 @@ function action(name,el){
       localStorage.setItem('portal.theme', lab.dark ? 'dark' : 'light');
       applyLook();
       el.outerHTML = themeControl();
-      const serviceFrame = app.querySelector('.graduation-frame, .academic-services-frame');
-      if (serviceFrame?.contentDocument?.documentElement) {
-        applyServiceFrameTheme(serviceFrame, serviceFrame.contentDocument.documentElement);
-      }
-      const frame = app.querySelector('.extra-hours-frame');
-      if (frame) {
-        const url = new URL(frame.src);
-        url.searchParams.set('theme', lab.dark ? 'dark' : 'light');
-        frame.classList.remove('is-ready');
-        frame.style.colorScheme = lab.dark ? 'dark' : 'light';
-        frame.src = url;
-      }
     });
     return;
   }
