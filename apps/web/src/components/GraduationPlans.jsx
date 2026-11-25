@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, explainApiError } from "../api.js";
-import { WorkspaceEmpty } from "./WorkspaceUI.jsx";
+import { GraduationEmpty } from "./WorkspaceUI.jsx";
 import PaperTossButton, { waitForPaperToss } from "./PaperTossButton.jsx";
 
 function assignmentsFor(plan) {
@@ -150,12 +150,12 @@ export default function GraduationPlans({ student, token, onBack }) {
     </div>}
     {!workspace && !error && <div className="loading-state" role="status">Loading graduation plans…</div>}
     {workspace && <>
-      {!editing && <section className="panel">
+      {!editing && <section>
         <div className="results-heading">
           <h2>Your plans</h2>
           <button className="primary-button" type="button" onClick={() => openPlan(null)} disabled={busy}>New plan</button>
         </div>
-        {workspace.plans.length === 0 && !editing && <WorkspaceEmpty icon="document" title="No graduation plans yet" description="Create a private draft to arrange this student’s remaining courses across upcoming terms. Submit it when it is ready for review." />}
+        {workspace.plans.length === 0 && <GraduationEmpty title="No graduation plans yet" description="Create a private draft to arrange this student’s remaining courses by term." />}
         {workspace.plans.length > 0 && <div className="table-scroll"><table>
           <thead><tr><th>Status</th><th>Last updated</th><th>Action</th></tr></thead>
           <tbody>{workspace.plans.map((item) => <tr key={item._id}>

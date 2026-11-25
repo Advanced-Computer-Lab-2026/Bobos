@@ -66,10 +66,22 @@ function localPortalDemo() {
 }
 
 export default defineConfig(({ command, isPreview }) => ({
-  plugins: [react(), localPortalDemo()],
+  plugins: [react(), localPortalDemo(), {
+    name: "portal-services-entry",
+    configureServer(server) {
+      server.middlewares.use((req, _res, next) => {
+        if (req.url === "/portal-services.js") req.url = "/src/portal-services.jsx";
+        next();
+      });
+    },
+  }],
   // Concurrent dev servers must keep their optimized dependencies separate.
   ...(command === "serve" && !isPreview && { cacheDir: `node_modules/.vite/dev-${process.pid}` }),
-  build: { rollupOptions: { input: ["index.html", "academic-services.html", "workspace.html"] } },
+  build: { rollupOptions: {
+    preserveEntrySignatures: "exports-only",
+    input: { index: "index.html", "academic-services": "academic-services.html", workspace: "workspace.html", "portal-services": "src/portal-services.jsx" },
+    output: { entryFileNames: (entry) => entry.name === "portal-services" ? "portal-services.js" : "assets/[name]-[hash].js" },
+  } },
   envDir: "../..",
   server: {
     proxy: {

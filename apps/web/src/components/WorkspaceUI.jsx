@@ -14,6 +14,13 @@ export function WorkspaceEmpty({ title, description, icon = "inbox", action }) {
   </div>;
 }
 
+export function GraduationEmpty({ title, description, heading: Heading = "h3", submitted = false }) {
+  return <div className={submitted ? "graduation-empty graduation-empty-submitted" : "graduation-empty"}>
+    <img src={submitted ? "/portal-studio/images/submitted-plan.svg" : "/portal-studio/variants/05-operations/assets/extra-hours-folder.svg"} alt="" width="76" height="60" />
+    <div><Heading>{title}</Heading><p>{description}</p></div>
+  </div>;
+}
+
 export function displayLabel(value = "") {
   const labels = {
     advising: "Advising student", normal: "Normal student", advisor: "Advisor",

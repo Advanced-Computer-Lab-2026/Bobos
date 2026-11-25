@@ -1,4 +1,3 @@
-import "./paper-toss-button.css";
 
 export default function PaperTossButton({ children, disabled, onClick, tossing = false, label, width }) {
   return (

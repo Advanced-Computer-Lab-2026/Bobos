@@ -1,7 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "./api.js";
-import { ChromeIcon, ThemeControl, Wordmark } from "./components/PortalChrome.jsx";
-import AuthPage from "./components/AuthPage.jsx";
 import {
   OverviewPage,
   ProfilePage,
@@ -19,14 +17,6 @@ import { CalendarSyncPage, PendingWorkPage, ScheduleActivityPage } from "./compo
 import MandatoryRemovalDashboard from "./components/MandatoryRemovalDashboard.jsx";
 import ExtraHoursPage from "./components/ExtraHoursPage.jsx";
 import GraduationReview, { StudentGraduation } from "./components/GraduationReview.jsx";
-
-const roleNames = {
-  normalStudent: "Normal student",
-  advisingStudent: "Advising student",
-  advisor: "Advisor",
-  coordinator: "Coordinator",
-  administrator: "Administrator",
-};
 
 const notify = (tone, text) => document.querySelector("portal-action-feedback")?.show(tone, text);
 
@@ -71,21 +61,6 @@ const navGroups = (role) => {
   ];
 };
 
-const titleByScreen = {
-  overview: "Overview", profile: "My profile", notifications: "Notifications",
-  records: "Academic records", preferences: "Schedule preferences", directory: "Student directory",
-  "financial-records": "Financial records",
-  advising: "Advising students", "my-advisor": "My advisor", courses: "Course catalogue",
-  terms: "Academic terms", offerings: "Course offerings", templates: "Schedule templates",
-  "my-schedule": "My schedule", "my-courses": "Registered courses", "schedule-swap": "Eligible swap groups",
-  "slot-changes": "Slot change requests",
-  "student-schedules": "Student schedules", "group-assignments": "Schedule group assignments",
-  "calendar-sync": "Calendar sync", "pending-work": "Pending work", "schedule-activity": "Schedule activity",
-  "mandatory-removals": "Mandatory-course removals",
-  "extra-hours": "Extra-hours requests",
-  "my-graduation": "My graduation", "graduation-review": "Graduation plans",
-};
-
 const studioPageByScreen = {
   "calendar-sync": "calendar-sync",
   "my-graduation": "graduation-plans",
@@ -94,7 +69,7 @@ const studioPageByScreen = {
 };
 
 function illustratedUrl(screen, role, page = studioPageByScreen[screen] || "overview") {
-  const destination = new URL("./portal-studio/index.html", window.location.href);
+  const destination = new URL("/portal-studio/index.html", window.location.href);
   destination.search = new URLSearchParams({ page, role, preview: "live" });
   if (page === "academic-services" && screen !== "overview") destination.searchParams.set("screen", screen);
   if (screen === "graduation-review" && role === "advisor") destination.searchParams.set("view", "submitted");
@@ -105,22 +80,14 @@ function illustratedUrl(screen, role, page = studioPageByScreen[screen] || "over
   return destination;
 }
 
-export default function App() {
-  const workspaceParams = new URLSearchParams(window.location.search);
+export default function App({ service }) {
+  const workspaceParams = new URLSearchParams(service);
   const requestedScreen = workspaceParams.get("screen");
-  const embedded = window.parent !== window && workspaceParams.get("embedded") === "1";
-  const embeddedServices = embedded && workspaceParams.get("section") === "academic-services";
-  const embeddedCalendar = embedded && !embeddedServices && requestedScreen === "calendar-sync";
-  const embeddedExtraHours = embedded && !embeddedServices && requestedScreen === "extra-hours";
-  const embeddedGraduation = embedded && !embeddedServices && requestedScreen === "graduation-plans";
+  const embeddedServices = workspaceParams.get("section") === "academic-services";
+  const embeddedCalendar = !embeddedServices && requestedScreen === "calendar-sync";
+  const embeddedExtraHours = !embeddedServices && requestedScreen === "extra-hours";
+  const embeddedGraduation = !embeddedServices && requestedScreen === "graduation-plans";
   const embeddedPage = embeddedServices ? "academic-services" : embeddedGraduation ? "graduation-plans" : embeddedExtraHours ? "extra-hours" : null;
-  const hasCalendarResult = ["connected", "error"].includes(workspaceParams.get("calendar"));
-  const standaloneServices = window.parent === window && window.location.pathname.endsWith("/academic-services.html");
-  const studioScreen = window.parent === window ? (hasCalendarResult || workspaceParams.get("page") === "calendar-sync"
-    ? "calendar-sync"
-    : Object.hasOwn(studioPageByScreen, requestedScreen) ? requestedScreen : standaloneServices ? requestedScreen || "overview" : null) : null;
-  const studioPage = Object.hasOwn(studioPageByScreen, studioScreen) ? studioPageByScreen[studioScreen]
-    : studioScreen ? "academic-services" : null;
   const [token, setToken] = useState(() => window.localStorage.getItem("bobos.token"));
   const [previewExtraHours] = useState(() =>
     embeddedExtraHours && !token && workspaceParams.get("role") === "advisingStudent"
@@ -128,39 +95,11 @@ export default function App() {
   );
   const [profile, setProfile] = useState(null);
   const [profileLoading, setProfileLoading] = useState(Boolean(token));
-  useEffect(() => {
-    if (!embeddedExtraHours) return;
-    const frame = window.frameElement;
-    const hide = () => frame?.classList.remove("is-ready");
-    window.addEventListener("pagehide", hide);
-    let first, second;
-    if (!profileLoading) {
-      first = requestAnimationFrame(() => {
-        second = requestAnimationFrame(() => frame?.classList.add("is-ready"));
-      });
-    } else hide();
-    return () => {
-      cancelAnimationFrame(first);
-      cancelAnimationFrame(second);
-      window.removeEventListener("pagehide", hide);
-    };
-  }, [embeddedExtraHours, profileLoading]);
-  const [activeScreen, setActiveScreen] = useState(() => workspaceParams.get("page") === "calendar-sync" ? "calendar-sync" : "overview");
+  const [activeScreen, setActiveScreen] = useState("overview");
   const [embeddedProfileError, setEmbeddedProfileError] = useState("");
   const [screenContext, setScreenContext] = useState(null);
-  const [navQuery, setNavQuery] = useState("");
-  const navigation = useRef(null);
-  const account = useRef(null);
-  const freshLogin = useRef(false);
-
   useEffect(() => {
     if (!token) {
-      if (studioScreen) {
-        const role = studioPage === "graduation-plans" ? "advisingStudent" : "normalStudent";
-        window.localStorage.removeItem("portal-studio-preview-session");
-        window.location.replace(illustratedUrl(studioScreen, role, studioPage));
-        return;
-      }
       setProfile(null);
       setProfileLoading(false);
       return;
@@ -170,20 +109,6 @@ export default function App() {
     api("/api/identity/profile", { token })
       .then((data) => {
         if (!alive) return;
-        const requestedScreen = new URLSearchParams(window.location.search).get("screen");
-        if (studioScreen) {
-          window.localStorage.setItem("portal-studio-preview-session", "1");
-          window.location.replace(illustratedUrl(studioScreen, data.profile.role, studioPage));
-          return;
-        }
-        if (freshLogin.current) {
-          freshLogin.current = false;
-          if (!embeddedPage && !embeddedCalendar && (import.meta.env.DEV || requestedScreen === "extra-hours")) {
-            window.localStorage.setItem("portal-studio-preview-session", "1");
-            window.location.assign(illustratedUrl("overview", data.profile.role));
-            return;
-          }
-        }
         setProfile(data.profile);
         if (requestedScreen === "profile" || navGroups(data.profile.role).some(group => group.items.some(item => item.id === requestedScreen))) {
           setActiveScreen(requestedScreen);
@@ -204,7 +129,7 @@ export default function App() {
       })
       .finally(() => alive && setProfileLoading(false));
     return () => { alive = false; };
-  }, [token, embeddedPage, embeddedCalendar, studioScreen, studioPage]);
+  }, [token, embeddedPage, requestedScreen]);
 
   const groups = useMemo(() => navGroups(profile?.role), [profile?.role]);
   const allNavItems = groups.flatMap((group) => group.items);
@@ -213,25 +138,6 @@ export default function App() {
     if (activeScreen === "my-advisor" && profile?.role !== "advisingStudent") setActiveScreen("overview");
   }, [activeScreen, profile?.role]);
 
-  const acceptLogin = (newToken) => {
-    document.querySelector("portal-action-feedback")?.clear();
-    freshLogin.current = true;
-    window.localStorage.setItem("bobos.token", newToken);
-    setToken(newToken);
-    setActiveScreen(workspaceParams.get("page") === "calendar-sync" ? "calendar-sync" : "overview");
-    setScreenContext(null);
-  };
-
-  const signOut = async () => {
-    try { await api("/api/identity/logout", { token, method: "POST", body: {} }); } catch { /* Clear the local session even when the API is offline. */ }
-    window.localStorage.removeItem("bobos.token");
-    window.localStorage.removeItem("portal-studio-preview-session");
-    setToken(null);
-    setProfile(null);
-    setActiveScreen("overview");
-    document.querySelector("portal-action-feedback")?.clear();
-  };
-
   const openScreen = (screen, context = null) => {
     if (profile && ((!embeddedServices && screen === "overview") || Object.hasOwn(studioPageByScreen, screen))) {
       window.localStorage.setItem("portal-studio-preview-session", "1");
@@ -239,29 +145,16 @@ export default function App() {
       return;
     }
     const destination = new URL(window.location.href);
-    destination.searchParams.set("screen", screen);
-    window.history.replaceState({}, "", destination);
-    if (embeddedServices) {
-      const portalUrl = new URL(window.parent.location.href);
-      if (screen === "overview") portalUrl.searchParams.delete("screen");
-      else portalUrl.searchParams.set("screen", screen);
-      window.parent.history.replaceState(window.parent.history.state, "", portalUrl);
-      window.frameElement?.scrollIntoView({ block: "start" });
-    }
+    if (screen === "overview") destination.searchParams.delete("screen");
+    else destination.searchParams.set("screen", screen);
+    window.history.replaceState(window.history.state, "", destination);
     setActiveScreen(screen);
     setScreenContext(context);
-    navigation.current?.close();
-    if (account.current) account.current.open = false;
     window.scrollTo(0, 0);
   };
 
-  const openNavigation = () => {
-    setNavQuery("");
-    navigation.current?.showModal();
-  };
-
   if (profileLoading && embeddedExtraHours) return <div className="extra-hours-loading" aria-busy="true"><span className="sr-only">Loading extra-hours requests…</span></div>;
-  if (profileLoading || studioScreen) return <div className="app-loading"><span className="loader" />Loading your workspace…</div>;
+  if (profileLoading) return <div className="app-loading"><span className="loader" />Loading your workspace…</div>;
   if (embeddedPage && embeddedProfileError) {
     return <div className="feedback error" role="alert">{embeddedProfileError}</div>;
   }
@@ -271,16 +164,16 @@ export default function App() {
     </div>;
   }
   if (!token || !profile) {
-    if (!embeddedPage) return <AuthPage onLogin={acceptLogin} />;
-    const signIn = new URL("./portal-studio/index.html", window.location.href);
+    const signIn = new URL("/portal-studio/index.html", window.location.href);
     signIn.search = new URLSearchParams({
       page: "login",
       role: workspaceParams.get("role") || "",
       preview: "live",
-      next: embeddedPage,
+      next: embeddedPage || "overview",
     });
     if (embeddedServices && requestedScreen) signIn.searchParams.set("screen", requestedScreen);
-    return <p className="feedback error">Your session has ended. <a href={signIn.href} target="_top">Sign in to Portal</a>.</p>;
+    if (embeddedGraduation && workspaceParams.get("view") === "submitted") signIn.searchParams.set("view", "submitted");
+    return <p className="feedback error">Your session has ended. <a href={signIn.href}>Sign in to Portal</a>.</p>;
   }
 
   if (embeddedCalendar) {
@@ -305,7 +198,7 @@ export default function App() {
 
   if (embeddedExtraHours) {
     const notifyEmbedded = (tone, text) => {
-      const feedback = window.parent.document.querySelector("portal-action-feedback");
+      const feedback = document.querySelector("portal-action-feedback");
       if (feedback) feedback.show(tone, text);
       else notify(tone, text);
     };
@@ -317,43 +210,7 @@ export default function App() {
     </div>;
   }
 
-  const renderNavigation = (search = "", collapsible = false) => {
-    const query = search.trim().toLowerCase();
-    const matchingGroups = groups.map(({ title, items }) => ({
-      title,
-      items: items.filter((item) => item.label.toLowerCase().includes(query)),
-    })).filter((group) => group.items.length);
-    return matchingGroups.length ? matchingGroups.map(({ title, items }) => {
-      const links = items.map((item) => (
-          <button
-            className={`nav-item ${activeScreen === item.id ? "active" : ""}`}
-            aria-current={activeScreen === item.id ? "page" : undefined}
-            type="button"
-            key={item.id}
-            onClick={() => openScreen(item.id)}
-          >
-            {item.id === "overview" && <ChromeIcon name="home" />}
-            {item.label}
-          </button>
-      ));
-      return collapsible ? (
-        <details className="nav-group" key={title} open>
-          <summary className="nav-group-title">{title}<ChromeIcon name="chevron" /></summary>
-          {links}
-        </details>
-      ) : (
-        <div className="nav-group" key={title}>
-          <p className="nav-group-title">{title}</p>
-          {links}
-        </div>
-      );
-    }) : <p className="page-description">No pages match your search.</p>;
-  };
-
-  const report = (tone, text) => {
-    const host = embeddedServices ? window.parent.document : document;
-    host.querySelector("portal-action-feedback")?.show(tone, text);
-  };
+  const report = notify;
 
   const workspaceContent = (
     <div className="page-content" id="workspace-content" tabIndex={-1}>
@@ -383,6 +240,9 @@ export default function App() {
   );
 
   if (embeddedServices) {
+    if (workspaceParams.get("role") !== profile.role) {
+      return <p className="feedback error" role="alert">Sign in with the matching portal role to view academic services.</p>;
+    }
     return (
       <div className="extra-hours-shell extra-hours-embedded academic-services-embedded">
         <label className="field academic-services-picker">
@@ -401,58 +261,5 @@ export default function App() {
     );
   }
 
-  return (
-    <div className="app-shell extra-hours-shell">
-      <a className="portal-skip-link" href="#workspace-content">Skip to content</a>
-      <aside className="sidebar">
-        <button className="portal-home" type="button" onClick={() => openScreen("overview")}><Wordmark /></button>
-        <button className="portal-find outline-button" type="button" onClick={openNavigation}><ChromeIcon name="search" /> Find a page</button>
-        <nav aria-label="Main navigation">{renderNavigation("", true)}</nav>
-        <p className="extra-hours-sidebar-footer">German University in Cairo</p>
-      </aside>
-
-      <dialog ref={navigation} className="portal-navigation" aria-labelledby="portal-navigation-heading">
-        <header>
-          <h2 id="portal-navigation-heading">Navigation</h2>
-          <button type="button" className="outline-button" onClick={() => navigation.current.close()}>Close</button>
-        </header>
-        <label className="field"><span>Find a page</span><input type="search" value={navQuery} onChange={(event) => setNavQuery(event.target.value)} /></label>
-        <nav aria-label="Pages">{renderNavigation(navQuery)}</nav>
-      </dialog>
-
-      <main className="main-area">
-        <header className="topbar">
-          <button className="portal-home portal-mobile-brand" type="button" onClick={() => openScreen("overview")}><Wordmark /></button>
-          <div className="portal-screen-title">
-            <span className="extra-hours-crumb">Academic services <span aria-hidden="true">/</span></span>
-            <strong>{titleByScreen[activeScreen] || "Overview"}</strong>
-          </div>
-          <div className="topbar-actions">
-            <button className="icon-button portal-menu-button" type="button" aria-label="Open navigation" onClick={openNavigation}><ChromeIcon name="menu" /></button>
-            <ThemeControl />
-            <button className="icon-button portal-notifications" type="button" aria-label="Open notifications" title="Notifications" onClick={() => openScreen("notifications")}><ChromeIcon name="bell" /></button>
-            <details className="portal-account" ref={account} onKeyDown={(event) => {
-              if (event.key === "Escape") {
-                event.currentTarget.open = false;
-                event.currentTarget.querySelector("summary").focus();
-              }
-            }}>
-              <summary className="user-chip" aria-label="Account options">
-                <span className="avatar" aria-hidden="true">{(profile.fullName?.trim() || "U").split(/\s+/).slice(0, 2).map((name) => name[0]).join("").toUpperCase()}</span>
-                <strong>{profile.fullName}</strong>
-              </summary>
-              <div className="portal-account-menu">
-                <strong>{profile.fullName}</strong>
-                <small>{roleNames[profile.role] || profile.role}</small>
-                <button className="nav-item" type="button" onClick={() => openScreen("profile")}>My profile</button>
-                <button className="nav-item" type="button" onClick={signOut}>Sign out</button>
-              </div>
-            </details>
-          </div>
-        </header>
-
-        {workspaceContent}
-      </main>
-    </div>
-  );
+  return <p role="alert">This service is unavailable.</p>;
 }

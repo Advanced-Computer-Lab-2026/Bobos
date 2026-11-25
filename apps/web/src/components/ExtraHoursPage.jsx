@@ -418,9 +418,9 @@ export default function ExtraHoursPage({
         </section>
       ) : rows.length === 0 ? (
         <section className="extra-hours-empty" aria-labelledby="extra-empty-title">
-          <svg className="extra-empty-folder" viewBox="0 0 96 72" fill="none" aria-hidden="true"><path d="M7 19q0-5 5-5h22l8 7h43v40H7Z" fill="#b7c8b7" stroke="#7d8779"/><path d="m18 26 58-2 2 35-61 1Z" fill="#f8f6ef" stroke="#aaa394"/><path d="m26 34 37-1m-37 8 30-1m-30 8 35-1" stroke="#aaa394" strokeWidth="2"/><path d="M7 36q0-4 5-4h72q5 0 5 4l-3 25H10Z" fill="#eee5cf" stroke="#aaa394"/></svg>
-          <h3 id="extra-empty-title">All clear for now</h3>
-          <p>{student ? "Your advisor’s extra-hours requests will appear here. You can review costs and choose a payment option after approval." : "New extra-hours requests will appear here, ready to review with their course load, eligibility and costs."}</p>
+          <img className="extra-empty-art" src="/portal-studio/images/extra-hours-inbox.svg" width="100" height="74" alt="" />
+          <h3 id="extra-empty-title">No extra-hours requests</h3>
+          <p>{student ? "Requests from your advisor will appear here." : "Requests will appear here when they’re ready for your review."}</p>
           <button type="button" className="outline-button" onClick={() => setSampleView(true)}>Preview sample requests</button>
         </section>
       ) : (
