@@ -76,7 +76,8 @@ const href = (target,index=selectedStudent,course=selectedCourse) => {
 function serviceUrl(target) {
   const screen = target === 'academic-services' ? 'overview'
     : target === 'graduation-plans' ? ({advisor:'advising', coordinator:'graduation-review', advisingStudent:'my-graduation'})[role] || 'overview'
-    : target === 'calendar-sync' && localStorage.getItem(workspaceSessionKey) ? 'calendar-sync' : null;
+    : target === 'calendar-sync' && localStorage.getItem(workspaceSessionKey) ? 'calendar-sync'
+    : target === 'financial-records' && localStorage.getItem(workspaceSessionKey) ? 'financial-records' : null;
   return screen ? '../academic-services.html?' + new URLSearchParams({screen, theme:lab.dark?'dark':'light'}) : null;
 }
 const link = (target, text, cls='', index) => serviceUrl(target)
@@ -472,7 +473,7 @@ function table(headers,rows,search=true){
 
 function filterbar(placeholder,options=[],action=''){
   const chips=options.length?'<ul class="filter-chips" id="filter-chips" aria-label="Active filters" hidden></ul>':'';
-  return `<div class="toolbar"><div class="filters"><input aria-label="${placeholder}" placeholder="${placeholder}" id="search" type="search">${options.map(([label,values,field])=>`<span class="filter-tab"><svg class="filter-mark" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="m2.8 7.5 6-.3m3.7.1 6.3-.3m-16 8 10.2-.3m3.6-.1 2.7-.1"/><path d="M12.4 7a2 2 0 1 1-4 .2 2 2 0 1 1 4-.2Zm4 7.5a2 2 0 1 1-4 .2 2 2 0 1 1 4-.2Z"/></svg><select aria-label="${label}" data-filter="${field||''}"><option value="">${label}</option>${values.map(value=>`<option>${value}</option>`).join('')}</select></span>`).join('')}${chips}</div>${action?`<div class="actions">${action}</div>`:''}</div>`;
+  return `<div class="toolbar"><div class="filters"><input aria-label="${placeholder}" placeholder="${placeholder}" id="search" type="search">${options.map(([label,values,field,defaultLabel])=>`<span class="filter-tab"><svg class="filter-mark" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="m2.8 7.5 6-.3m3.7.1 6.3-.3m-16 8 10.2-.3m3.6-.1 2.7-.1"/><path d="M12.4 7a2 2 0 1 1-4 .2 2 2 0 1 1 4-.2Zm4 7.5a2 2 0 1 1-4 .2 2 2 0 1 1 4-.2Z"/></svg><select aria-label="${label}" data-filter="${field||''}"><option value="">${defaultLabel||label}</option>${values.map(value=>`<option>${value}</option>`).join('')}</select></span>`).join('')}${chips}</div>${action?`<div class="actions">${action}</div>`:''}</div>`;
 }
 function tabs(items,defaultTab,style='file'){
   if(!items.some(([id])=>id===tab)) tab=defaultTab||items[0][0];
@@ -1077,7 +1078,7 @@ function preferences(){
 
 function financial(){
   return head('Financial records','',button('Export CSV','export-csv'))+`<dl class="account-totals">${[['Received','22,500'],['Pending','15,000'],['Refunded','2,500']].map(([label,amount])=>`<div><dt>${label}</dt><dd>${amount} <small>EGP</small></dd></div>`).join('')}</dl>`+
-    filterbar('Search name or transaction ID',[['All types',['Payment','Refund']],['All statuses',['Completed','Pending']]])+
+    filterbar('Search by Student ID, Student Name, Receipt ID, or Reference...',[['Type',['TUITION','EXTRA_HOURS','FEE','REFUND'],'','All'],['Status',['COMPLETED','PENDING','REFUNDED','FAILED'],'','All'],['Term',['W25','S26'],'','All']])+
     `<ul class="transactions">${names.slice(0,6).map((name,i)=>`<li data-search-row>${staffIdentity(name,`70-${71577+i}`)}
       <p>${i===4?'Refund':'Payment'} · TXN-${1042+i}<small>14 Nov 2026</small></p><strong class="amount">${i===4?'2,500':'7,500'} <small>EGP</small></strong>
       ${badge([1,5].includes(i)?'Pending':'Completed',[1,5].includes(i)?'payment-pending':'payment-complete')}

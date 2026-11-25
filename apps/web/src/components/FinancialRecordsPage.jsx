@@ -3,25 +3,25 @@ import { api, explainApiError } from "../api.js";
 import { WorkspaceEmpty } from "./WorkspaceUI.jsx";
 
 const TYPE_OPTIONS = [
-  { value: "", label: "All Types" },
-  { value: "TUITION", label: "Tuition" },
-  { value: "EXTRA_HOURS", label: "Extra Hours" },
-  { value: "FEE", label: "Fee" },
-  { value: "REFUND", label: "Refund" },
+  { value: "", label: "All" },
+  { value: "TUITION", label: "TUITION" },
+  { value: "EXTRA_HOURS", label: "EXTRA_HOURS" },
+  { value: "FEE", label: "FEE" },
+  { value: "REFUND", label: "REFUND" },
 ];
 
 const STATUS_OPTIONS = [
-  { value: "", label: "All Statuses" },
-  { value: "COMPLETED", label: "Completed" },
-  { value: "PENDING", label: "Pending" },
-  { value: "REFUNDED", label: "Refunded" },
-  { value: "FAILED", label: "Failed" },
+  { value: "", label: "All" },
+  { value: "COMPLETED", label: "COMPLETED" },
+  { value: "PENDING", label: "PENDING" },
+  { value: "REFUNDED", label: "REFUNDED" },
+  { value: "FAILED", label: "FAILED" },
 ];
 
 const TERM_OPTIONS = [
-  { value: "", label: "All Terms" },
-  { value: "W25", label: "Winter 2025/26 (W25)" },
-  { value: "S26", label: "Spring 2025/26 (S26)" },
+  { value: "", label: "All" },
+  { value: "W25", label: "W25" },
+  { value: "S26", label: "S26" },
 ];
 
 function formatDate(dateString) {
@@ -307,7 +307,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
               onChange={(e) => setSearch(e.target.value)}
               name="financial-search"
               autoComplete="off"
-              placeholder="Student ID, name, receipt or reference…"
+              placeholder="Search by Student ID, Student Name, Receipt ID, or Reference..."
             />
           </label>
 
