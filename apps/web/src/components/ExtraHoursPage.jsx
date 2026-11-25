@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../api.js";
-import { WorkspaceHeader, WorkspaceEmpty } from "./WorkspaceUI.jsx";
+import { WorkspaceHeader } from "./WorkspaceUI.jsx";
 import ExtraHoursRequestForm from "./ExtraHoursRequestForm.jsx";
 
 const pretty = (value = "—") =>
@@ -358,15 +358,10 @@ export default function ExtraHoursPage({
           Loading requests…
         </section>
       ) : rows.length === 0 ? (
-        <section className="panel">
-          <WorkspaceEmpty
-            title="No extra-hours requests"
-            description={
-              student
-                ? "Your advisor’s requests will appear here. Once approved, you can choose how to settle the cost."
-                : "Submitted requests will appear here with their eligibility details and cost breakdown. Clear any active filters to see all requests."
-            }
-          />
+        <section className="panel empty-state">
+          <span aria-hidden="true">◌</span>
+          <h3>No extra-hours requests</h3>
+          <p>Requests will appear here when they are submitted.</p>
         </section>
       ) : (
         rows.map((row) => (

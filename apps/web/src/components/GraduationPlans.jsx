@@ -1,3 +1,4 @@
+import PaperDeleteButton from "./PaperDeleteButton.jsx";
 import { useEffect, useState } from "react";
 import { api, explainApiError } from "../api.js";
 import { WorkspaceEmpty } from "./WorkspaceUI.jsx";
@@ -49,9 +50,11 @@ export default function GraduationPlans({ student, token, onBack }) {
     try {
       await action();
       setNotice(message);
+      return true;
     } catch (requestError) {
       setError(explainApiError(requestError, "Graduation plans"));
       setIssues(requestError.data?.issues ?? []);
+      return false;
     } finally {
       setBusy(false);
     }
@@ -247,7 +250,7 @@ export default function GraduationPlans({ student, token, onBack }) {
           {confirmDelete && <div className="feedback" role="group" aria-label="Confirm draft deletion">
             <p>Delete this private draft?</p>
             <button className="outline-button" type="button" disabled={busy} onClick={() => setConfirmDelete(false)}>Cancel</button>{" "}
-            <button className="primary-button" type="button" disabled={busy} onClick={deletePlan}>Confirm delete</button>
+            <PaperDeleteButton label="Delete draft" disabled={busy} onDelete={deletePlan} />
           </div>}
         </>}
       </section>}

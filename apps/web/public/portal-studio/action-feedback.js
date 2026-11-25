@@ -7,6 +7,26 @@
   };
   const duration = 7000;
 
+  function resultFor(tone, text) {
+    if (tone === "error") return { name: "failed", title: "Action failed" };
+    if (tone === "warning") return { name: "warning", title: "Needs attention" };
+    if (/\b(?:deleted|removed|discarded)\b/i.test(text)) return { name: "deleted", title: /draft/i.test(text) ? "Draft deleted" : /request/i.test(text) ? "Request deleted" : "Item deleted" };
+    if (tone === "success") {
+      const labels = [
+        [/decision.*(?:saved|recorded)|^submit decision\b/i, "Decision saved"],
+        [/^save sections\b|sections.*(?:saved|updated)/i, "Sections saved"],
+        [/preferences.*(?:saved|updated)/i, "Preferences saved"],
+        [/draft.*saved|^save draft\b/i, "Draft saved"],
+        [/\brestored\b/i, "Item restored"],
+        [/\b(?:synced|synchronized)\b/i, "Calendar synced"],
+        [/\bsaved\b/i, "Changes saved"],
+        [/\bupdated\b/i, "Changes updated"],
+      ];
+      return { name: "saved", title: labels.find(([pattern]) => pattern.test(text))?.[1] || "Done" };
+    }
+    return { name: "info", title: "Update" };
+  }
+
   class PortalActionFeedback extends HTMLElement {
     #timer;
     #returnFocus;
@@ -37,16 +57,24 @@
 
     disconnectedCallback() { clearTimeout(this.#timer); }
 
-    show(tone, text) {
+    show(tone, text, options = {}) {
       if (!text) return;
       const kind = Object.hasOwn(titles, tone) ? tone : "info";
       if (!this.card.contains(document.activeElement)) this.#returnFocus = document.activeElement;
       this.card.dataset.tone = kind;
-      this.heading.textContent = titles[kind];
-      this.message.textContent = text;
+      const result = resultFor(kind, text);
+      this.card.dataset.result = result.name;
+      const bookmark = kind === "success" && /(?:draft|preferences?|bookmark|favourites?|favorites?).*(?:saved|updated)|(?:saved|updated).*(?:draft|preferences?|bookmark|favourites?|favorites?)/i.test(text);
+      this.card.dataset.variant = options.variant || (bookmark ? "bookmark" : "dock");
+      this.card.getAnimations().forEach(animation => animation.cancel());
+      this.card.classList.remove("feedback-enter");
+      void this.card.offsetWidth;
+      this.card.classList.add("feedback-enter");
+      this.heading.textContent = options.title || result.title;
+      this.message.textContent = text.replace(/^Save sections\s*[—–-]\s*completed in this preview\.?$/i, "Section changes are saved in this preview.");
       this.card.hidden = false;
 
-      const announcement = `${titles[kind]}. ${text}`;
+      const announcement = `${this.heading.textContent}. ${this.message.textContent}`;
       const error = kind === "error";
       this.statusRegion.textContent = error ? "" : announcement;
       this.alertRegion.textContent = error ? announcement : "";

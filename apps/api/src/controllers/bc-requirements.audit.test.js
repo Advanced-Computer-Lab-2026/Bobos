@@ -11,6 +11,9 @@ import {
 } from "../models/index.js";
 import { generateToken } from "../middleware/auth.middleware.js";
 import { getWallet } from "../models/academics.js";
+import { startCalendarWorker } from "../services/calendar-worker.js";
+import { setTimeout as delay } from "node:timers/promises";
+import { EventEmitter } from "node:events";
 
 // Known gaps still execute their assertions. Strict mode makes them ordinary failures.
 // This keeps the regression suite usable while exposing unmet acceptance criteria explicitly.
@@ -94,6 +97,7 @@ test("B1 Req 116: OAuth requires student auth/config; invalid state cannot creat
   const url = new URL(connect.body.authorizationUrl);
   assert.equal(url.origin, "https://accounts.google.com");
   assert.match(url.searchParams.get("scope"), /calendar.events/);
+  assert.equal(url.searchParams.get("prompt"), "select_account consent");
   assert.equal(url.searchParams.get("client_secret"), null);
   const failed = await call("/calendar/oauth/callback?state=invalid&code=bad", { role: null });
   assert.equal(failed.status, 302);
@@ -110,7 +114,7 @@ test("B1 Req 116: OAuth encrypts tokens; recurring sync includes all slot types,
   const events = [], removals = [], requests = [];
   globalThis.fetch = async (url, options = {}) => {
     const address = String(url); requests.push({ address, options });
-    if (address.includes("oauth2.googleapis.com/token")) return Response.json({ access_token: "secret-access", refresh_token: "secret-refresh", expires_in: 3600, scope: "calendar.events" });
+    if (address.includes("oauth2.googleapis.com/token")) return Response.json({ access_token: "secret-access", refresh_token: "secret-refresh", expires_in: 3600, scope: "https://www.googleapis.com/auth/calendar.events" });
     if (address.includes("userinfo")) return Response.json({ email: "calendar@example.com" });
     if (address.includes("/events")) {
       if (options.method === "PUT") return new Response("missing", { status: 404 });
@@ -143,7 +147,7 @@ test("B1 Req 116: OAuth encrypts tokens; recurring sync includes all slot types,
       assert.match(event.description, /Dr Audit/);
       assert.ok(event.location);
       assert.equal(event.start.timeZone, "Africa/Cairo");
-      assert.match(event.recurrence[0], /FREQ=WEEKLY;BYDAY=.+;UNTIL=/);
+      assert.match(event.recurrence[0], /FREQ=WEEKLY;BYDAY=.+;COUNT=/);
       assert.ok(event.start.dateTime >= "2026-10-05");
     }
     assert.equal(new Set(events.map((event) => event.id)).size, 3);
@@ -153,7 +157,7 @@ test("B1 Req 116: OAuth encrypts tokens; recurring sync includes all slot types,
     assert.equal(again.status, 200);
     assert.equal(again.body.synced, 1);
     assert.equal(removals.length, 2);
-    assert.equal(events[0].id, events[3].id, "event IDs remain stable across resyncs");
+    assert.ok(events.slice(0, 3).some(event => event.id === events[3].id), "event IDs remain stable across resyncs regardless of event order");
     assert.ok(requests.some(({ options }) => String(options.body).includes("grant_type=refresh_token")));
     assert.equal((await call("/calendar/connection", { role: "advisingStudent", method: "DELETE" })).status, 200);
     assert.equal(await CalendarConnection.countDocuments(), 0);
@@ -455,4 +459,105 @@ test("GAP B1 Req 122: dashboard includes graduation, exit-exam and financial rev
   const result = await call("/admin/pending-work");
   const row = result.body.students.find((item) => item.id === String(student._id));
   for (const type of ["graduationPlan", "exitExam", "financialReversal"]) assert.ok(row.requests.some((item) => item.type === type), `missing ${type}`);
+});
+
+
+async function eventually(check, message) {
+  const deadline = Date.now() + 7000;
+  while (!await check()) {
+    if (Date.now() > deadline) assert.fail(message);
+    await delay(30);
+  }
+}
+
+async function calendarFixture() {
+  process.env.GOOGLE_CLIENT_ID = "fixture-client";
+  process.env.GOOGLE_CLIENT_SECRET = "fixture-secret";
+  process.env.GOOGLE_REDIRECT_URI = "http://localhost/callback";
+  process.env.CALENDAR_TOKEN_ENCRYPTION_KEY = "42".repeat(32);
+  const events = new Map();
+  const state = { writes: 0, failNextWrite: false, refreshRevoked: false, refreshes: 0 };
+  globalThis.fetch = async (url, options = {}) => {
+    const address = String(url);
+    if (address.endsWith("/token")) {
+      if (String(options.body).includes("grant_type=refresh_token")) {
+        state.refreshes++;
+        if (state.refreshRevoked) return Response.json({ error: "invalid_grant" }, { status: 400 });
+      }
+      return Response.json({ access_token: "test-access", refresh_token: "test-refresh", expires_in: 3600, scope: "https://www.googleapis.com/auth/calendar.events" });
+    }
+    if (address.endsWith("/userinfo")) return Response.json({ email: "real-protocol-fixture@example.test" });
+    assert.match(address, /googleapis.com\/calendar\/v3\/calendars\/primary\/events/);
+    const id = address.split("/").at(-1);
+    if (options.method === "DELETE") {
+      if (!events.has(id)) return new Response(null, { status: 410 });
+      events.delete(id);
+      return new Response(null, { status: 204 });
+    }
+    if (options.method === "PUT" && !events.has(id)) return new Response(null, { status: 404 });
+    if (state.failNextWrite) {
+      state.failNextWrite = false;
+      return new Response(null, { status: 503 });
+    }
+    const event = JSON.parse(options.body);
+    events.set(event.id, event);
+    state.writes++;
+    return Response.json({ id: event.id });
+  };
+  const connect = await call("/calendar/connect", { role: "advisingStudent" });
+  const oauthState = new URL(connect.body.authorizationUrl).searchParams.get("state");
+  const callback = await call(`/calendar/oauth/callback?state=${encodeURIComponent(oauthState)}&code=fixture`, { role: null });
+  assert.match(callback.headers.get("location"), /portal-studio\/index\.html\?page=calendar-sync&role=advisingStudent&preview=live&calendar=connected/);
+  return { events, state };
+}
+
+test("B1 Req 116: real MongoDB change streams sync processed changes without an open browser", async () => {
+  const { events, state } = await calendarFixture();
+  const saved = await schedule(student, "draft");
+  const stop = startCalendarWorker();
+  try {
+    await delay(200);
+    assert.equal(events.size, 0, "draft schedules must never reach Google");
+    await StudentSchedule.updateOne({ _id: saved._id }, { $set: { status: "processed" } });
+    await eventually(() => events.size === 3, "processing did not trigger automatic sync");
+    const original = [...events.values()].find(event => event.description.startsWith("Type: lecture"));
+    assert.equal(original.start.timeZone, "Africa/Cairo");
+    assert.match(original.recurrence[0], /COUNT=/);
+    await CourseOffering.updateOne({ _id: offering._id }, { $set: { "slots.0.room": "LIVE-ROOM" } });
+    await eventually(() => events.get(original.id)?.location === "LIVE-ROOM", "offering room changes did not update the same event");
+    assert.equal(events.size, 3, "room changes must not create duplicate classes");
+    await eventually(async () => Boolean((await CalendarConnection.findOne().select("+syncFingerprint"))?.syncFingerprint), "fingerprint was not committed");
+    const count = state.writes;
+    await StudentSchedule.updateOne({ _id: saved._id }, { $inc: { version: 1 } });
+    await delay(250);
+    assert.equal(state.writes, count, "unrelated metadata must not rewrite Google events");
+    await StudentSchedule.updateOne({ _id: saved._id }, { $set: { courses: [] } });
+    await eventually(() => events.size === 0, "removed classes remained in Google");
+    const publicState = await call("/calendar/connection", { role: "advisingStudent" });
+    assert.equal(publicState.body.connected, true);
+    assert.ok(publicState.body.lastSyncedAt);
+    assert.equal(publicState.body.syncFingerprint, undefined);
+    assert.equal(publicState.body.encryptedAccessToken, undefined);
+  } finally { await stop(); }
+});
+
+test("B1 Req 116: reconciliation recovers missed changes and Google errors; revoked refresh requires reconnect", async t => {
+  const { events, state } = await calendarFixture();
+  const saved = await schedule(student, "processed");
+  state.failNextWrite = true;
+  const silentStream = new EventEmitter();
+  silentStream.close = async () => silentStream.emit("close");
+  t.mock.method(mongoose.connection.db, "watch", () => silentStream);
+  const stop = startCalendarWorker({ recoveryIntervalMs: 100 });
+  try {
+    await eventually(() => events.size === 3, "automatic retry did not recover from Google 503");
+    await StudentSchedule.updateOne({ _id: saved._id }, { $set: { "courses.0.slots": saved.courses[0].slots.slice(0, 1) } });
+    await eventually(() => events.size === 1, "fallback poll did not recover a missed database event");
+    await CalendarConnection.updateOne({}, { $set: { tokenExpiresAt: new Date(0), syncFingerprint: "" } });
+    state.refreshRevoked = true;
+    await eventually(async () => (await CalendarConnection.findOne())?.syncEnabled === false, "revoked credentials were not disabled");
+    const response = await call("/calendar/connection", { role: "advisingStudent" });
+    assert.equal(response.body.connected, false);
+    assert.ok(state.refreshes >= 1);
+  } finally { await stop(); }
 });

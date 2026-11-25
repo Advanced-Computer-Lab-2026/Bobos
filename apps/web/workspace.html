@@ -5,18 +5,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#faf8f4" />
     <meta name="description" content="Portal for university scheduling and academic services portal" />
+    <style>
+      html[data-embedded="true"], html[data-embedded="true"] body {
+        background: transparent !important;
+        margin: 0;
+      }
+    </style>
     <link rel="icon" type="image/svg+xml" href="/portal-studio/portal-card-index.svg" />
     <script>
       const workspaceUrl = new URL(window.location.href);
       if (window.parent !== window && workspaceUrl.searchParams.get("embedded") === "1") {
         document.documentElement.dataset.embedded = "true";
       }
+      const isCalendarLink = ["page", "screen"].some(key => workspaceUrl.searchParams.get(key) === "calendar-sync") || workspaceUrl.searchParams.has("calendar");
+      if (window.top === window && isCalendarLink && !localStorage.getItem("bobos.token")) {
+        location.replace("./portal-studio/index.html?page=login&next=calendar-sync&role=normalStudent&preview=live");
+      }
       const linkedTheme = workspaceUrl.searchParams.get("theme");
       if (linkedTheme === "dark" || linkedTheme === "light") {
         document.documentElement.dataset.theme = linkedTheme;
+        document.documentElement.style.colorScheme = linkedTheme;
         try { if (!workspaceUrl.searchParams.has("embedded")) localStorage.setItem("portal.theme", linkedTheme); } catch { /* Apply the theme for this page. */ }
-        workspaceUrl.searchParams.delete("theme");
-        window.history.replaceState(window.history.state, "", workspaceUrl);
+        if (!workspaceUrl.searchParams.has("embedded")) {
+          workspaceUrl.searchParams.delete("theme");
+          window.history.replaceState(window.history.state, "", workspaceUrl);
+        }
       } else {
         try {
           if (localStorage.getItem("portal.theme") === "dark") document.documentElement.dataset.theme = "dark";
@@ -24,15 +37,16 @@
       }
     </script>
     <link rel="stylesheet" href="/portal-studio/login-art.css" />
-    <link rel="stylesheet" href="/portal-studio/action-feedback.css" />
+    <link rel="stylesheet" href="/portal-studio/action-feedback.css?v=dock-colors-3" />
     <script defer src="/portal-studio/lamp-cord.js"></script>
     <script defer src="/portal-studio/desk-lamp.js"></script>
     <title>Portal · Academic workspace</title>
-  </head>
+  <script defer src="/portal-studio/paper-delete.js"></script>
+</head>
   <body>
     <div id="root"></div>
     <portal-action-feedback></portal-action-feedback>
-    <script src="/portal-studio/action-feedback.js"></script>
+    <script src="/portal-studio/action-feedback.js?v=dock-colors-3"></script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

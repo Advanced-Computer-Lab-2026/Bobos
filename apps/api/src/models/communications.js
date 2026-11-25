@@ -49,6 +49,8 @@ const calendarConnectionSchema = withTimestamps({
   lastSyncedAt: Date,
   calendarId: { type: String, default: "primary" },
   lastSyncedEventIds: { type: [String], default: [] },
+  syncFingerprint: { type: String, default: "", select: false },
+  lastSyncError: { type: String, default: "" },
 });
 
 calendarConnectionSchema.index({ user: 1, provider: 1 }, { unique: true });

@@ -297,3 +297,16 @@ html[data-theme=light] body.v5{--feature-muted:#395650;--muted:#615e56}
     scrollbar-color: var(--muted) transparent;
   }
 }
+
+/* Use the academic workspace theme switch and circular theme reveal. */
+.theme-toggle { cursor:pointer; color:var(--ink); }
+.theme-toggle:active { transform:scale(.97); }
+.theme-toggle:focus-visible { outline:2px solid var(--ink); outline-offset:3px; }
+.theme-toggle > span { transition:background-color 160ms ease, color 160ms ease; }
+::view-transition-old(root), ::view-transition-new(root) { animation:none; mix-blend-mode:normal; }
+::view-transition-new(root) { z-index:1; }
+@media (prefers-reduced-motion:reduce) {
+  .theme-toggle > span { transition:none; }
+}
+
+.portal-auth-theme { position:fixed; top:20px; right:24px; z-index:10; }

@@ -22,7 +22,8 @@
     "test:offering-year": "node --test --test-concurrency=1 apps/api/src/controllers/offering-year.integration.test.js apps/api/src/controllers/scheduling.integration.test.js apps/api/src/controllers/records.integration.test.js apps/api/src/models/models.test.js",
     "migrate:offering-years": "node --env-file-if-exists=.env apps/api/src/migrations/remove-offering-academic-year.js",
     "test:a": "node scripts/test-group-a.mjs",
-    "test:a:regression": "node scripts/test-group-a.mjs --regression"
+    "test:a:regression": "node scripts/test-group-a.mjs --regression",
+    "test:calendar": "node scripts/test-calendar.mjs"
   },
   "devDependencies": {
     "concurrently": "^10.0.6"

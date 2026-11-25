@@ -1,5 +1,5 @@
 'use strict';
-// Review-only prototypes. All records and state stay in this page; no API calls.
+// Portal Studio with authenticated calendar and student service integrations.
 const params = new URLSearchParams(location.search);
 const comparePageDesigns = params.get('designs') === 'compare';
 const pages = {
@@ -38,6 +38,29 @@ let inboxArtObserver;
 let bellAudio;
 let returnFocus;
 const studentPreferences = new Map([[0,{days:['Thursday'],groups:Array(4).fill('Group 4'),notes:'I would prefer to keep Thursday free.'}]]);
+const preferenceDrafts = new Map();
+const preferenceUndo = new Map();
+const savedPreferenceSignatures = new Map([...studentPreferences].map(([index, value]) => [index, JSON.stringify(value)]));
+function readPreferenceForm() {
+  return {days:[...document.querySelectorAll('.dayoff:checked')].map(input=>input.value), groups:[...document.querySelectorAll('[data-course-group]')].map(select=>select.value), notes:document.querySelector('#preference-notes').value};
+}
+function syncPreferenceSaveButton(animate = false) {
+  const save = document.querySelector('[data-action="save-preferences"]');
+  if (!save) return;
+  const index = student() ? 0 : selectedStudent;
+  const current = readPreferenceForm();
+  preferenceDrafts.set(index, current);
+  const saved = savedPreferenceSignatures.get(index) === JSON.stringify(current);
+  save.dataset.saved = String(saved);
+  save.setAttribute('aria-pressed', String(saved));
+  save.setAttribute('aria-label', saved ? 'Preferences saved. Press again to undo this save.' : 'Save preferences');
+  save.querySelector('.preference-save-label').textContent = saved ? 'Saved · Undo' : 'Save preferences';
+  if (animate) {
+    save.classList.remove('bookmark-changed');
+    void save.offsetWidth;
+    save.classList.add('bookmark-changed');
+  }
+}
 const app = document.querySelector('#app');
 const dialog = document.querySelector('#dialog');
 const escapeHtml = value => String(value).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
@@ -983,7 +1006,12 @@ function workflow() {
   return stages.map(([label,description,status])=>`<div class="task"><div><h3>${label}</h3><p>${description}</p></div>
     ${badge(status,status==='Awaiting decision'?'pending':statusTone(status))}</div>`).join('');
 }
-function draft(){return head(`${names[selectedStudent].split(' ')[0]}’s advising draft`, `70-${71577+selectedStudent} · ${selectedStudent===3?'Digital Media Engineering':'Computer Engineering'} · Semester 7`,button('Save draft','save-draft')+button('Process schedule','process','btn primary'),'Winter 2026')+
+const removedPreviewDrafts = new Set();
+function draft(){
+  const removed = removedPreviewDrafts.has(selectedStudent);
+  const deleteControl = `<portal-paper-delete label="Delete draft" demo data-delete-preview-draft ${removed?'deleted':''}></portal-paper-delete>`;
+  if (removed) return head(`${names[selectedStudent].split(' ')[0]}’s advising draft`, 'The draft has been deleted in this preview.', deleteControl) + '<section class="panel"><h2>No draft</h2><p>Use the restore button to bring back this preview draft.</p></section>';
+  return head(`${names[selectedStudent].split(' ')[0]}’s advising draft`, `70-${71577+selectedStudent} · ${selectedStudent===3?'Digital Media Engineering':'Computer Engineering'} · Semester 7`,button('Save draft','save-draft')+button('Process schedule','process','btn primary')+deleteControl,'Winter 2026')+
   `<div class="split academic-plan"><section class="panel"><h2>Selected courses</h2><div class="smallstats"><div><strong>19</strong><span>Credit hours</span></div><div><strong>4</strong><span>Courses selected</span></div><div><strong>0</strong><span>Time conflicts</span></div></div>${courseData.slice(0,4).map(c=>`<div class="task">${academicCourse(c,`<div><h3>${c[0]}</h3><p>${c[1]}</p></div>`)}<label><span class="sr-only">${c[0]} group</span><select aria-label="${c[0]} group"><option>Group 4</option><option>Group 2</option></select></label></div>`).join('')}</section><aside><section class="note"><div class="kicker">Student preferences</div><h2>Thursday off.</h2><p>Preferred group: 4<br>Earliest class: 08:30<br>Preferences updated 12 November.</p>${link('preferences','View preferences','btn text')}</section><section class="panel" style="margin-top:24px"><h2>Validation</h2><p>No time conflicts. Credit load is within the allowed range.</p></section></aside></div>`+(academicStudy() ? '<h2 class="academic-week-title">Proposed timetable</h2>' : '')+weekly()+`<section class="panel draft-workflow" style="margin-top:24px"><h2>Workflow</h2>${workflow()}<div class="draft-workflow-actions">${button('Reopen schedule','reopen','btn desk-action')}</div></section>`;}
 function registeredTable(){return table(['Course','Type','Credits','Group',''],courseData.slice(0,4).map(c=>[`<strong>${c[1]}</strong><small>${c[0]}</small>`,'Mandatory',c[3],'4',courseLink(c[0],'View sections','btn row-control')]));}
 function courseEmblem(code) {
@@ -1008,11 +1036,11 @@ function assignments(){
 }
 function preferences(){
   const index=student()?0:selectedStudent;
-  const preferencesState=studentPreferences.get(index) || {days:[],groups:Array(4).fill('No preference'),notes:''};
+  const preferencesState=preferenceDrafts.get(index) || studentPreferences.get(index) || {days:[],groups:Array(4).fill('No preference'),notes:''};
   const identity=`${names[index]} · 70-${71577+index}`;
   const summary = student()?'Winter 2026 / 2027':identity+' · Winter 2026 / 2027';
   const study = workspaces[lab.layout].name==='Claude Study';
-  return head('Schedule preferences',study ? termContext(student()?'Group 4':identity) : summary,button('Save preferences<span class="bookmark-tab" aria-hidden="true"></span>','save-preferences','btn bookmark-save'))+
+  return head('Schedule preferences',study ? termContext(student()?'Group 4':identity) : summary,button('<span class="preference-save-label">Save preferences</span><span class="bookmark-tab" aria-hidden="true"></span>','save-preferences','btn bookmark-save'))+
     `<div class="preference-workspace">
       <div class="preference-stack">
         <section class="preference-block" aria-labelledby="preferred-days">
@@ -1133,7 +1161,79 @@ function advisor(){
       </aside>
     </div>`;
 }
+function mountLiveCalendar(panel) {
+  const status = panel.querySelector('[role=status]');
+  let token = localStorage.getItem(workspaceSessionKey);
+  const controls = document.createElement('div');
+  controls.className = 'calendar-last-sync';
+  panel.append(controls);
+  function control(label, run) {
+    const el = document.createElement('button');
+    el.className = 'btn row-control';
+    el.textContent = label;
+    controls.append(el);
+    el.onclick = async () => {
+      controls.querySelectorAll('button').forEach(button => button.disabled = true);
+      try { await run(); }
+      catch (error) { status.textContent = error.message; }
+      finally { controls.querySelectorAll('button').forEach(button => button.disabled = false); }
+    };
+  }
+  function signIn() {
+    returnAfterSignIn = 'calendar-sync';
+    navigate('login');
+  }
+  async function request(path, method = 'GET') {
+    const response = await fetch('../api/calendar/' + path, { method, headers: { Authorization: 'Bearer ' + token } });
+    const data = await response.json();
+    if (!response.ok) {
+      if ([401, 403].includes(response.status)) {
+        controls.replaceChildren();
+        control('Sign in as a student', signIn);
+      }
+      throw new Error(data.message || 'Calendar request failed.');
+    }
+    return data;
+  }
+  async function refresh() {
+    const data = await request('connection');
+    controls.replaceChildren();
+    if (data.connected) {
+      status.textContent = 'Connected as ' + data.providerAccountId + '. ' +
+        (data.lastSyncError || (data.lastSyncedAt ? 'Last synced ' + new Date(data.lastSyncedAt).toLocaleString() : 'Waiting for the first sync.'));
+      control('Sync now', async () => { await request('sync', 'POST'); await refresh(); });
+      control('Change Google account', async () => location.assign((await request('connect')).authorizationUrl));
+      control('Disconnect', async () => { await request('connection', 'DELETE'); await refresh(); });
+    } else {
+      status.textContent = data.configured ? 'Choose the Google account for your classes.' : 'Google Calendar setup is incomplete.';
+      if (data.configured) control('Connect Google Calendar', async () => location.assign((await request('connect')).authorizationUrl));
+    }
+  }
+  if (!token) {
+    status.textContent = 'Sign in with your Bobos student account to access your calendar.';
+    if (['localhost','127.0.0.1'].includes(location.hostname) && ['normalStudent','advisingStudent'].includes(role)) {
+      status.textContent = 'Connect Google Calendar using the ' + roleNames[role].toLowerCase() + ' demo account.';
+      control('Connect Google Calendar', async () => {
+        if (!await signInDemoWorkspace(role)) { signIn(); return; }
+        token = localStorage.getItem(workspaceSessionKey);
+        const data = await request('connection');
+        if (data.connected) await refresh();
+        else location.assign((await request('connect')).authorizationUrl);
+      });
+    } else control('Sign in as a student', signIn);
+    return;
+  }
+  refresh().catch(error => { status.textContent = error.message; });
+  const timer = setInterval(() => {
+    if (!panel.isConnected) { clearInterval(timer); return; }
+    if (!document.hidden && !controls.querySelector(':disabled')) refresh().catch(error => { status.textContent = error.message; });
+  }, 15000);
+}
 function calendarSync(){
+  if (!comparePageDesigns) {
+    return head('Calendar sync', 'Keep your processed timetable in Google Calendar.') +
+      '<section class="student-calendar" data-live-calendar aria-label="Google Calendar"><h2>Google Calendar</h2><p role="status">Loading connection…</p></section>';
+  }
   if(workspaces[lab.layout].name==='Claude Study') {
     return head('Calendar sync',termContext('Group 4 · Africa/Cairo'))+
       `<div class="student-calendar"><section aria-label="Google Calendar"><div class="calendar-provider">${icon('calendar')}<div><h2>Google Calendar</h2><p>${connected?'Connected as omar.hassan@student.guc.edu.eg':'Connect an account to sync course meetings.'}</p></div>${button(connected?'Disconnect':'Connect account','toggle-calendar','btn row-control')}</div>
@@ -1183,10 +1283,14 @@ function auth(){
 }
 function extraHours(){
   return head('Extra-hours requests') +
-    `<iframe class="extra-hours-frame" title="Extra-hours request workspace" src="../workspace.html?screen=extra-hours&amp;embedded=1&amp;theme=${lab.dark ? 'dark' : 'light'}&amp;role=${role}"></iframe>`;
+    `<iframe class="extra-hours-frame" style="border:0;background:transparent;color-scheme:${lab.dark ? 'dark' : 'light'}" title="Extra-hours request workspace" src="../workspace.html?screen=extra-hours&amp;embedded=1&amp;theme=${lab.dark ? 'dark' : 'light'}&amp;role=${role}"></iframe>`;
 }
 
 const renderers = {'extra-hours':extraHours,overview,notifications,profile, directory, 'student-detail':()=>profile(true),advising,'pending-work':pending,'schedule-activity':activity,'financial-records':financial,'mandatory-removals':removals,'student-schedules':()=>schedule(true),'draft-schedule':draft,courses,'course-detail':courseDetail,terms,offerings,'copy-offerings':copyOfferings,templates,'template-detail':templateDetail,'group-assignments':assignments,'my-schedule':schedule,'my-courses':registered,'schedule-swap':swap,preferences,records,'my-advisor':advisor,'calendar-sync':calendarSync};
+function themeControl(){
+  return button('<span class="' + (!lab.dark ? 'theme-light' : '') + '">' + icon('sun') + '</span><span class="' + (lab.dark ? 'theme-light' : '') + '">' + icon('moon') + '</span>',
+    'toggle-theme', 'theme-toggle', 'aria-label="Switch to ' + (lab.dark ? 'light' : 'dark') + ' mode"');
+}
 function accountControls(){
   const bell = `<svg class="icon notice-bell" aria-hidden="true" viewBox="0 0 28 28" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
     <path class="bell-body" d="M8 12c0-4 2.1-6.6 6-6.6s6 2.8 6 6.6c0 3.6 1.2 5.4 2.4 7.1-4.7.8-12.3.8-16.8 0C7 17.4 8 15.4 8 12Z"/>
@@ -1424,37 +1528,48 @@ motionPreference.addEventListener('change',()=>{
 function render(focus=false){
   closeDeadline();
   clearFlipExposure();
-  if (!authPages.has(page) && !signedIn()) {
+  if (!authPages.has(page) && (!signedIn() || (page === 'extra-hours' && !localStorage.getItem(workspaceSessionKey)))) {
     returnAfterSignIn = page;
     page = 'login';
     history.replaceState({},'',href(page));
   }
   document.title=`Portal — ${layoutNames[lab.layout]} · ${pages[page]}`;
   document.body.classList.toggle('auth-screen',authPages.has(page));
-  const body=authPages.has(page)?auth():`<div class="shell">${sidebar()}<div class="workspace"><header class="topbar">${link('overview',portalWordmark(),'mobile-nav wordmark')}<span class="term">${workspaces[lab.layout].name==='Claude Study'?'<small class="study-crumb">Academic workspace &nbsp; / &nbsp;</small>':''}${pages[page]}<span>Winter 2026 / 2027</span></span><div class="topactions">${button(icon('menu')+'<span class="sr-only">Menu</span>','mobile-menu','mobile-menu')}${accountControls()}</div></header><main class="content" data-screen="${page}" id="content" tabindex="-1">${renderers[page]()}</main></div></div>`;
+  const body=authPages.has(page)?auth():`<div class="shell">${sidebar()}<div class="workspace"><header class="topbar">${link('overview',portalWordmark(),'mobile-nav wordmark')}<span class="term">${workspaces[lab.layout].name==='Claude Study'?'<small class="study-crumb">Academic workspace &nbsp; / &nbsp;</small>':''}${pages[page]}<span>Winter 2026 / 2027</span></span><div class="topactions">${button(icon('menu')+'<span class="sr-only">Menu</span>','mobile-menu','mobile-menu')}${themeControl()}${accountControls()}</div></header><main class="content" data-screen="${page}" id="content" tabindex="-1">${renderers[page]()}</main></div></div>`;
   arrivalObserver?.disconnect();
   inboxArtObserver?.disconnect();
   app.innerHTML=body;
+  if (authPages.has(page)) {
+    const themeTools = document.createElement('div');
+    themeTools.className = 'portal-auth-theme';
+    themeTools.innerHTML = themeControl();
+    app.append(themeTools);
+  }
+  const deletePreview = app.querySelector('[data-delete-preview-draft]');
+  if (deletePreview) {
+    deletePreview.perform = async () => { removedPreviewDrafts.add(selectedStudent); render(); toast('Draft deleted in this preview.'); return true; };
+    deletePreview.restore = async () => { removedPreviewDrafts.delete(selectedStudent); render(); toast('Draft restored in this preview.'); return true; };
+  }
+  const liveCalendar = app.querySelector('[data-live-calendar]');
+  if (liveCalendar) mountLiveCalendar(liveCalendar);
   if (comparePageDesigns) attachPageDesign(page,role,render);
   const extraHoursFrame = app.querySelector('.extra-hours-frame');
   extraHoursFrame?.addEventListener('load', () => {
-    const frameDocument = extraHoursFrame.contentDocument;
-    const root = frameDocument?.getElementById('root');
+    const root = extraHoursFrame.contentDocument?.getElementById('root');
     if (!root) return;
-    const portalStyle = getComputedStyle(extraHoursFrame);
-    for (const [target, source] of Object.entries({
-      canvas: 'canvas', ink: 'ink', muted: 'muted', line: 'rule', raised: 'raised', paper: 'paper'
-    })) {
-      const value = portalStyle.getPropertyValue(`--${source}`).trim();
-      if (value) frameDocument.documentElement.style.setProperty(`--embedded-${target}`, value);
+    const theme = getComputedStyle(extraHoursFrame);
+    for (const [target, source] of Object.entries({ canvas:'canvas', ink:'ink', muted:'muted', line:'rule', raised:'raised', paper:'paper' })) {
+      const value = theme.getPropertyValue('--' + source).trim();
+      if (value) extraHoursFrame.contentDocument.documentElement.style.setProperty('--embedded-' + target, value);
     }
-    const resize = new ResizeObserver(() => {
-      extraHoursFrame.style.height = `${Math.ceil(root.getBoundingClientRect().height)}px`;
+    const observer = new ResizeObserver(() => {
+      extraHoursFrame.style.height = Math.ceil(root.getBoundingClientRect().height) + 'px';
     });
-    resize.observe(root);
-    extraHoursFrame.contentWindow.addEventListener('pagehide', () => resize.disconnect(), { once: true });
+    observer.observe(root);
+    extraHoursFrame.contentWindow.addEventListener('pagehide', () => observer.disconnect(), { once:true });
   });
   drawInputEdges(app);
+  if (page === "preferences") syncPreferenceSaveButton();
   const main = app.querySelector('main');
   if (main && !authPages.has(page) && (!comparePageDesigns || !Number(localStorage.getItem('portal-page-design:'+page)))) {
     window.addStudentArt?.(page,main,role);
@@ -1499,7 +1614,12 @@ async function signInWorkspace(credentials, expectedRole){
 
 async function signInDemoWorkspace(demoRole){
   const response = await fetch(`../__bobos_local_demo?role=${encodeURIComponent(demoRole)}`);
-  if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) return false;
+  if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) {
+    const accounts = { normalStudent:'karim.normal@student.guc.edu.eg', advisingStudent:'layla.advising@student.guc.edu.eg', coordinator:'nadia.coordinator@guc.edu.eg', advisor:'sherif.advisor@guc.edu.eg', administrator:'admin@guc.edu.eg' };
+    if (!['localhost','127.0.0.1'].includes(location.hostname) || !accounts[demoRole]) return false;
+    await signInWorkspace({email:accounts[demoRole], password:'Password123!'},demoRole);
+    return true;
+  }
   await signInWorkspace(await response.json(),demoRole);
   return true;
 }
@@ -1510,9 +1630,14 @@ async function choosePreviewRole(el){
   const picker = el.closest('.preview-role-picker');
   picker.disabled = true;
   try {
-    await signInDemoWorkspace(selected);
+    const authenticated = await signInDemoWorkspace(selected);
+    if (!authenticated && returnAfterSignIn === 'calendar-sync') {
+      const studentEmail = {normalStudent:'karim.normal@student.guc.edu.eg', advisingStudent:'layla.advising@student.guc.edu.eg'}[selected];
+      if (!studentEmail || !['localhost','127.0.0.1'].includes(location.hostname)) throw new Error('Enter your Bobos student email and password to access Calendar sync.');
+      await signInWorkspace({email:studentEmail, password:'Password123!'}, selected);
+    }
     role = selected;
-    startPreview('overview');
+    startPreview(returnAfterSignIn);
   } catch (error) {
     toast(error.message);
   } finally {
@@ -1596,6 +1721,23 @@ function syncFilterChips(){
   const count=document.querySelector('.filter-toggle .filter-count');if(count){count.textContent=active.length;count.hidden=!active.length;}
 }
 function action(name,el){
+  if (name === 'toggle-theme') {
+    window.revealPortalTheme(el, () => {
+      lab.dark = !lab.dark;
+      localStorage.setItem('portal.theme', lab.dark ? 'dark' : 'light');
+      applyLook();
+      el.outerHTML = themeControl();
+      const frame = app.querySelector('.extra-hours-frame');
+      if (frame) {
+        const url = new URL(frame.src);
+        url.searchParams.set('theme', lab.dark ? 'dark' : 'light');
+        frame.classList.remove('is-ready');
+        frame.style.colorScheme = lab.dark ? 'dark' : 'light';
+        frame.src = url;
+      }
+    });
+    return;
+  }
   switch(name){
     case 'replay-tumbleweed': {
       replayInboxArt(el.closest('.student-inbox')?.querySelector('.student-tumbleweed-scene'));
@@ -1644,7 +1786,29 @@ function action(name,el){
     case 'read-one':readNotifications.add(notificationKey(el.dataset.notification));render();document.querySelector('[aria-selected=true]')?.focus();toast('Notification marked as read.');break;
     case 'close-dialog':closeDialog();break;
     case 'save-draft':toast('Draft saved in this preview.');break;
-    case 'save-preferences':if(document.querySelectorAll('.dayoff:checked').length>2)toast('Choose up to two preferred days.', 'warning');else {studentPreferences.set(student()?0:selectedStudent,{days:Array.from(document.querySelectorAll('.dayoff:checked')).map(el=>el.value),groups:Array.from(document.querySelectorAll('[data-course-group]')).map(el=>el.value),notes:document.querySelector('#preference-notes').value});toast('Preferences saved in this preview.');}break;
+    case 'save-preferences': {
+      const index = student() ? 0 : selectedStudent;
+      const current = readPreferenceForm();
+      if (el.getAttribute('aria-pressed') === 'true') {
+        const previous = preferenceUndo.get(index);
+        if (previous) studentPreferences.set(index, previous);
+        else studentPreferences.delete(index);
+        preferenceUndo.delete(index);
+        savedPreferenceSignatures.delete(index);
+        preferenceDrafts.set(index, current);
+        syncPreferenceSaveButton(true);
+        toast('Preference save undone in this preview. Your selections are kept for editing.', 'info');
+      } else if (current.days.length > 2) {
+        toast('Choose up to two preferred days.', 'warning');
+      } else {
+        preferenceUndo.set(index, studentPreferences.has(index) ? structuredClone(studentPreferences.get(index)) : undefined);
+        studentPreferences.set(index, structuredClone(current));
+        savedPreferenceSignatures.set(index, JSON.stringify(current));
+        syncPreferenceSaveButton(true);
+        toast('Preferences saved in this preview. Press Saved · Undo to undo this save.');
+      }
+      break;
+    }
     case 'toggle-calendar':connected=!connected;render();toast(connected?'Sample calendar connected.':'Sample calendar disconnected.');break;
     case 'sync-now':toast(connected?'Sample schedule synced.':'Connect your calendar first.', connected ? 'success' : 'warning');break;
     case 'export-csv':download('sample-financial-records.csv','Transaction,Student,Type,Amount,Status\n'+names.slice(0,6).map((name,i)=>`TXN-${1042+i},${name},${i===4?'Refund':'Payment'},${i===4?2500:7500},${[1,5].includes(i)?'Pending':'Completed'}`).join('\n'),'text/csv');break;
@@ -1972,7 +2136,7 @@ document.addEventListener('submit',async event=>{
     else if(page==='forgot'){navigate('reset');toast('Sample reset code: 123456.', 'info');}
     else{navigate('login');toast('Reset preview complete.');}
   }else if(event.target.id==='modal-form'){
-    const label=event.submitter?.textContent||'Saved';const close=event.target.dataset.submitAction==='close';closeDialog();if(!close)toast(`${label} — completed in this preview.`);
+    const label=event.submitter?.textContent||'Saved';const close=event.target.dataset.submitAction==='close';closeDialog();if(!close)toast(label === 'Submit decision' ? 'Decision saved in this preview.' : `${label} — completed in this preview.`);
   }
 });
 dialog.addEventListener('click',event=>{if(event.target===dialog){const box=dialog.getBoundingClientRect();if(event.clientX<box.left||event.clientX>box.right||event.clientY<box.top||event.clientY>box.bottom)closeDialog();}});
@@ -2001,3 +2165,16 @@ mountControls(roleNames, pages, () => {
   else render();
 });
 render();
+if (page === 'calendar-sync' && ['connected', 'error'].includes(params.get('calendar'))) {
+  const success = params.get('calendar') === 'connected';
+  toast(success ? 'Google Calendar connected.' : 'Google Calendar connection could not be completed.', success ? 'success' : 'error');
+  const cleanUrl = new URL(location.href);
+  cleanUrl.searchParams.delete('calendar');
+  history.replaceState(history.state, '', cleanUrl);
+}
+document.addEventListener('input', event => {
+  if (page === 'preferences' && event.target.matches('#preference-notes,.dayoff,[data-course-group]')) syncPreferenceSaveButton();
+});
+document.addEventListener('change', event => {
+  if (page === 'preferences' && event.target.matches('.dayoff,[data-course-group]')) syncPreferenceSaveButton();
+});

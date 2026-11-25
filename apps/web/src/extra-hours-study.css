@@ -199,6 +199,7 @@
   background: transparent;
   padding-bottom: 4px;
 }
+.extra-hours-loading { min-height: 80px; background: transparent; border: 0; }
 body:has(.extra-hours-embedded) { background: transparent; }
 .extra-hours-toolbar,
 .extra-hours-toolbar-actions {

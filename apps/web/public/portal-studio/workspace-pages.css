@@ -465,8 +465,6 @@
 .profile-pane > .profile-facts:has(a:only-child) {grid-template-columns:1fr}
 .profile-facts a {color:var(--ink);text-underline-offset:3px}
 
-.extra-hours-frame { display:block; width:100%; height:200px; border:0; }
-
 /* The personal profile's ID card and links to the signed-in workspace. */
 .personal-profile .campus-id {
   padding:32px 0 0;
@@ -578,3 +576,17 @@ dialog:has(> .transaction-detail) .modal-head {margin-bottom:24px}
 @media(max-width:340px) {
   .transaction-total {grid-template-columns:1fr}
 }
+.extra-hours-frame { display:block; width:100%; height:200px; border:0; outline:0; background:transparent; visibility:hidden; }
+.extra-hours-frame.is-ready { visibility:visible; }
+/* Save is a reversible, explicitly labelled bookmark state. */
+.portal-studio .btn.bookmark-save { --bookmark-sage:var(--muted); min-width:174px; }
+.bookmark-save .bookmark-tab { background:var(--muted); opacity:.6; transform:translateY(0); transition:transform 430ms cubic-bezier(.22,1,.36,1),background-color 180ms ease,opacity 180ms ease; }
+.portal-studio .btn.bookmark-save[data-saved=true] { --bookmark-sage:#3d6249; color:#3d6249; border-color:#3d6249; }
+:root[data-theme=dark] .portal-studio .btn.bookmark-save[data-saved=true] { --bookmark-sage:#bcd1ca; color:#bcd1ca; border-color:#bcd1ca; }
+.bookmark-save[data-saved=true] .bookmark-tab { background:var(--bookmark-sage);opacity:1;transform:translateY(16px); }
+.bookmark-save[data-saved=false]:is(:hover,:focus-visible,:active) .bookmark-tab { background:var(--muted);transform:translateY(5px); }
+.bookmark-save[data-saved=true].bookmark-changed .bookmark-tab { animation:preference-bookmark-save 430ms cubic-bezier(.22,1,.36,1) both; }
+.bookmark-save[data-saved=false].bookmark-changed .bookmark-tab { animation:preference-bookmark-undo 300ms cubic-bezier(.22,1,.36,1) both; }
+@keyframes preference-bookmark-save {0%{transform:translateY(0)}70%{transform:translateY(19px)}100%{transform:translateY(16px)}}
+@keyframes preference-bookmark-undo {from{transform:translateY(16px)}to{transform:translateY(0)}}
+@media(prefers-reduced-motion:reduce){.bookmark-save .bookmark-tab,.bookmark-save.bookmark-changed .bookmark-tab{animation:none!important;transition:none!important}}

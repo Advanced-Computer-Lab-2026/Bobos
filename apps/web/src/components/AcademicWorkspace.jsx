@@ -1,3 +1,4 @@
+import PaperDeleteButton from "./PaperDeleteButton.jsx";
 import { useCallback, useEffect, useState } from "react";
 import { api, explainApiError } from "../api.js";
 
@@ -47,7 +48,7 @@ function CoursesWorkspace({ token, role, notify }) {
       notify("success", `${confirmingDelete.code} deleted.`);
       setConfirmingDelete(null);
       await load();
-    } catch (e) { setDeleteError(e.message); }
+    } catch (e) { setDeleteError(e.message); return false; }
     finally { setDeleting(false); }
   };
   const [viewing, setViewing] = useState(null);
@@ -81,7 +82,7 @@ function CoursesWorkspace({ token, role, notify }) {
     {confirmingDelete && <Modal title="Delete this course?" eyebrow="REMOVE FROM CATALOGUE" onClose={() => !deleting && setConfirmingDelete(null)}>
       <div className="confirmation-content"><span className="confirmation-icon" aria-hidden="true">!</span><div><p>Delete <strong>{confirmingDelete.code} · {confirmingDelete.name}</strong> from the course catalogue?</p><p className="helper-text">A course cannot be deleted while another course lists it as a prerequisite.</p></div></div>
       {deleteError && <div className="feedback error" role="alert">{deleteError}</div>}
-      <div className="form-footer"><button type="button" className="outline-button" disabled={deleting} onClick={() => setConfirmingDelete(null)}>Cancel</button><button type="button" className="primary-button destructive-action" disabled={deleting} onClick={removeCourse}>{deleting ? "Deleting…" : "Delete course"}</button></div>
+      <div className="form-footer"><button type="button" className="outline-button" disabled={deleting} onClick={() => setConfirmingDelete(null)}>Cancel</button><PaperDeleteButton label="Delete course" disabled={deleting} onDelete={removeCourse} /></div>
     </Modal>}
   </div>;
 }
@@ -428,7 +429,7 @@ function OfferingsWorkspace({ token, notify }) {
   const load = async (event, identifier = termId.trim()) => { event?.preventDefault(); if (!identifier) { setError("Enter an academic term code or ID."); return; } window.localStorage.setItem("bobos.lastTermId", identifier); setLoading(true); setError(""); try { const data = await api(`/api/catalogue/offerings?termId=${encodeURIComponent(identifier)}`, { token }); setOfferings(data.offerings || []); setTermSummary(data.term); } catch (e) { setError(explainApiError(e, "Course offerings")); setOfferings([]); setTermSummary(null); } finally { setLoading(false); } };
   const openDetails = async (offering) => { setDetails({ loading: true }); try { setDetails(await api(`/api/catalogue/offerings/${offering._id}`, { token })); } catch (e) { setDetails({ error: e.message }); } };
   const togglePublish = async (offering) => { try { await api(`/api/catalogue/offerings/${offering._id}/publish`, { token, method: "PATCH", body: { isPublished: !offering.isPublished } }); notify("success", `${offering.course?.code || "Offering"} ${offering.isPublished ? "unpublished" : "published"}.`); load(); } catch (e) { setError(e.message); } };
-  const removeOffering = async () => { if (!confirmingDelete) return; setDeleting(true); setDeleteError(""); try { await api(`/api/catalogue/offerings/${confirmingDelete._id}`, { token, method: "DELETE" }); notify("success", `${confirmingDelete.course?.code || "Offering"} deleted.`); setConfirmingDelete(null); load(); } catch (e) { setDeleteError(e.message); } finally { setDeleting(false); } };
+  const removeOffering = async () => { if (!confirmingDelete) return; setDeleting(true); setDeleteError(""); try { await api(`/api/catalogue/offerings/${confirmingDelete._id}`, { token, method: "DELETE" }); notify("success", `${confirmingDelete.course?.code || "Offering"} deleted.`); setConfirmingDelete(null); load(); } catch (e) { setDeleteError(e.message); return false; } finally { setDeleting(false); } };
   const afterSave = (message) => { notify("success", message); setCreating(false); setDetails(null); load(); };
   return <div className="page-stack"><div className="page-title-row"><div><p className="eyebrow">OFFERINGS</p><h1>Course offerings</h1><p className="page-description">Create term offerings, manage course groups, and publish the catalogue.</p></div><button className="primary-button" type="button" disabled={!termSummary || loading} onClick={() => setCreating(true)}>＋ Create offering</button></div>
     <section className="panel term-picker"><form className="inline-controls" onSubmit={load}><label className="field"><span>Academic term code or ID</span><input required value={termId} onChange={(event) => setTermId(event.target.value)} placeholder="e.g. 61-" /></label><button className="outline-button" type="submit" disabled={loading}>{loading ? "Loading…" : "Load offerings"}</button></form><p className="helper-text">Use the official MET/DMET term code, such as 61-, or a MongoDB term ID.</p></section>
@@ -440,7 +441,7 @@ function OfferingsWorkspace({ token, notify }) {
     {confirmingDelete && <Modal title="Delete course offering?" eyebrow="REMOVE OFFERING" onClose={() => !deleting && setConfirmingDelete(null)}>
       <div className="confirmation-content"><span className="confirmation-icon" aria-hidden="true">!</span><div><p>Remove <strong>{confirmingDelete.course?.code || "this course"}</strong> from <strong>{confirmingDelete.term?.code || termSummary?.code || "the selected term"}</strong>?</p><p className="helper-text">This also removes its lecture, tutorial, and lab groups. The API will block deletion if the offering is still referenced by schedules or templates.</p></div></div>
       {deleteError && <div className="feedback error" role="alert">{deleteError}</div>}
-      <div className="form-footer"><button type="button" className="outline-button" disabled={deleting} onClick={() => setConfirmingDelete(null)}>Cancel</button><button type="button" className="primary-button destructive-action" disabled={deleting} onClick={removeOffering}>{deleting ? "Deleting…" : "Delete offering"}</button></div>
+      <div className="form-footer"><button type="button" className="outline-button" disabled={deleting} onClick={() => setConfirmingDelete(null)}>Cancel</button><PaperDeleteButton label="Delete offering" disabled={deleting} onDelete={removeOffering} /></div>
     </Modal>}
   </div>;
 }
@@ -644,7 +645,7 @@ function TemplatesWorkspace({ token, notify }) {
       if (editingTemplate?._id === confirmingDelete._id) clearEditor();
       setConfirmingDelete(null);
       await load();
-    } catch (e) { setDeleteError(e.message); }
+    } catch (e) { setDeleteError(e.message); return false; }
     finally { setDeleting(false); }
   };
 
@@ -681,7 +682,7 @@ function TemplatesWorkspace({ token, notify }) {
     {confirmingDelete && <Modal title="Delete schedule template?" eyebrow="REMOVE STANDARD PLAN" onClose={() => !deleting && setConfirmingDelete(null)}>
       <div className="confirmation-content"><span className="confirmation-icon" aria-hidden="true">!</span><div><p>Delete the template for <strong>{confirmingDelete.major}</strong>, semester <strong>{confirmingDelete.semester}</strong>, group <strong>{confirmingDelete.studyGroup}</strong>?</p><p className="helper-text">Templates assigned to student schedules cannot be deleted. Reassign those students first.</p></div></div>
       {deleteError && <div className="feedback error" role="alert">{deleteError}</div>}
-      <div className="form-footer"><button type="button" className="outline-button" disabled={deleting} onClick={() => setConfirmingDelete(null)}>Cancel</button><button type="button" className="primary-button destructive-action" disabled={deleting} onClick={deleteTemplate}>{deleting ? "Deleting…" : "Delete template"}</button></div>
+      <div className="form-footer"><button type="button" className="outline-button" disabled={deleting} onClick={() => setConfirmingDelete(null)}>Cancel</button><PaperDeleteButton label="Delete template" disabled={deleting} onDelete={deleteTemplate} /></div>
     </Modal>}
   </div>;
 }

@@ -95,11 +95,29 @@ function openIllustratedHome(role) {
 
 export default function App() {
   const workspaceParams = new URLSearchParams(window.location.search);
+  const embeddedCalendar = window.parent !== window && workspaceParams.get("embedded") === "1" && workspaceParams.get("screen") === "calendar-sync";
   const embeddedExtraHours = window.parent !== window && workspaceParams.get("embedded") === "1" && workspaceParams.get("screen") === "extra-hours";
   const [token, setToken] = useState(() => window.localStorage.getItem("bobos.token"));
   const [profile, setProfile] = useState(null);
   const [profileLoading, setProfileLoading] = useState(Boolean(token));
-  const [activeScreen, setActiveScreen] = useState("overview");
+  useEffect(() => {
+    if (!embeddedExtraHours) return;
+    const frame = window.frameElement;
+    const hide = () => frame?.classList.remove("is-ready");
+    window.addEventListener("pagehide", hide);
+    let first, second;
+    if (profile && !profileLoading) {
+      first = requestAnimationFrame(() => {
+        second = requestAnimationFrame(() => frame?.classList.add("is-ready"));
+      });
+    } else hide();
+    return () => {
+      cancelAnimationFrame(first);
+      cancelAnimationFrame(second);
+      window.removeEventListener("pagehide", hide);
+    };
+  }, [embeddedExtraHours, profile, profileLoading]);
+  const [activeScreen, setActiveScreen] = useState(() => workspaceParams.get("page") === "calendar-sync" ? "calendar-sync" : "overview");
   const [screenContext, setScreenContext] = useState(null);
   const [navQuery, setNavQuery] = useState("");
   const navigation = useRef(null);
@@ -118,9 +136,16 @@ export default function App() {
       .then((data) => {
         if (!alive) return;
         const requestedScreen = new URLSearchParams(window.location.search).get("screen");
+        if (new URLSearchParams(window.location.search).get("page") === "calendar-sync" && ["normalStudent", "advisingStudent"].includes(data.profile.role)) {
+          const destination = new URL("./portal-studio/index.html", window.location.href);
+          destination.search = new URLSearchParams({ page: "calendar-sync", role: data.profile.role, preview: "live" });
+          window.localStorage.setItem("portal-studio-preview-session", "1");
+          window.location.replace(destination);
+          return;
+        }
         if (freshLogin.current) {
           freshLogin.current = false;
-          if (!embeddedExtraHours && (import.meta.env.DEV || requestedScreen === "extra-hours")) {
+          if (!embeddedExtraHours && !embeddedCalendar && new URLSearchParams(window.location.search).get("page") !== "calendar-sync" && (import.meta.env.DEV || requestedScreen === "extra-hours")) {
             openIllustratedHome(data.profile.role);
             return;
           }
@@ -139,7 +164,7 @@ export default function App() {
       })
       .finally(() => alive && setProfileLoading(false));
     return () => { alive = false; };
-  }, [token, embeddedExtraHours]);
+  }, [token, embeddedExtraHours, embeddedCalendar]);
 
   const groups = useMemo(() => navGroups(profile?.role), [profile?.role]);
   const allNavItems = groups.flatMap((group) => group.items);
@@ -153,7 +178,7 @@ export default function App() {
     freshLogin.current = true;
     window.localStorage.setItem("bobos.token", newToken);
     setToken(newToken);
-    setActiveScreen("overview");
+    setActiveScreen(workspaceParams.get("page") === "calendar-sync" ? "calendar-sync" : "overview");
     setScreenContext(null);
   };
 
@@ -189,16 +214,30 @@ export default function App() {
 
   useEffect(() => {
     const result = new URLSearchParams(window.location.search).get("calendar");
-    if (!result) return;
+    if (!["connected", "error"].includes(result)) return;
     setActiveScreen("calendar-sync");
     if (result === "connected") notify("success", "Google Calendar connected.");
     else notify("error", "Google Calendar connection could not be completed.");
-    window.history.replaceState({}, "", window.location.pathname);
+    window.history.replaceState({}, "", window.location.pathname + "?page=calendar-sync");
   }, []);
 
+  if (embeddedExtraHours && !profileLoading && (!token || !profile)) {
+    const destination = new URL("./portal-studio/index.html", window.location.href);
+    destination.search = new URLSearchParams({page:"login", next:"extra-hours", role:workspaceParams.get("role") || "advisingStudent", preview:"live"});
+    window.top.location.replace(destination);
+    return <p role="status">Opening Portal sign-in…</p>;
+  }
   if (!token) return <AuthPage onLogin={acceptLogin} />;
+  if (profileLoading && embeddedExtraHours) return <div className="extra-hours-loading" aria-busy="true"><span className="sr-only">Loading extra-hours requests…</span></div>;
   if (profileLoading) return <div className="app-loading"><span className="loader" />Loading your workspace…</div>;
   if (!profile) return <AuthPage onLogin={acceptLogin} />;
+
+  if (embeddedCalendar) {
+    if (!["normalStudent", "advisingStudent"].includes(profile.role)) {
+      return <p role="alert">Sign in with a Bobos student account to connect Google Calendar.</p>;
+    }
+    return <div className="extra-hours-embedded"><CalendarSyncPage token={token} /></div>;
+  }
 
   if (embeddedExtraHours) {
     const notifyEmbedded = (tone, text) => {

@@ -45,7 +45,7 @@ const family = () => layoutFamily(lab.layout);
 const lastLayouts = [0,10];
 function restoreLook(params) {
   if (productionPreview) {
-    Object.assign(lab, {layout:workspaces.findIndex(view=>view.name==='Claude Study'),palette:9,dark:true});
+    Object.assign(lab, {layout:workspaces.findIndex(view=>view.name==='Claude Study'),palette:9,dark:localStorage.getItem('portal.theme') !== 'light'});
     applyLook();
     return;
   }
