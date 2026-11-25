@@ -1,0 +1,80 @@
+.paper-toss-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: max-content;
+  min-width: 0;
+  max-width: 100%;
+  flex-shrink: 0;
+  min-height: 42px;
+  padding: 7px 10px;
+  border: 1px solid #d9cbb4;
+  border-radius: 7px;
+  background: #eee4cf;
+  color: #372c24;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.paper-toss-button:hover:not(:disabled) { background: #f8efdc; }
+.paper-toss-button:focus-visible { outline: 2px solid var(--accent, #73958c); outline-offset: 3px; }
+.paper-toss-button:disabled { cursor: default; }
+
+:root:not([data-theme="dark"]) .paper-toss-button {
+  border-color: var(--danger-ink);
+  background: var(--danger-bg);
+  color: var(--danger-ink);
+}
+
+:root:not([data-theme="dark"]) .paper-toss-button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--danger-bg) 90%, var(--danger-ink));
+}
+
+.paper-toss-icon {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+}
+
+.paper-toss-sheet,
+.paper-toss-bin {
+  width: 17px;
+  height: 18px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.35;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.paper-toss-sheet {
+  position: absolute;
+  top: 0;
+  left: 0;
+  fill: #eee4cf;
+  opacity: 0;
+  pointer-events: none;
+}
+.paper-toss-lid { transform-origin: 8.5px 5.4px; }
+@media (prefers-reduced-motion: no-preference) {
+  .paper-toss-button[data-tossing] .paper-toss-sheet {
+    animation: paper-toss-flight 580ms both;
+  }
+  .paper-toss-button[data-tossing] .paper-toss-lid {
+    animation: paper-toss-bin-catch 580ms both;
+  }
+}
+@keyframes paper-toss-flight {
+  0% { opacity: 0; transform: translate(62px, 6px) rotate(-26deg) scale(.8); }
+  20% { opacity: 1; transform: translate(59px, -25px) rotate(-16deg); }
+  47% { opacity: 1; transform: translate(35px, -43px) rotate(7deg); }
+  82% { opacity: 1; transform: translate(6px, -11px) rotate(20deg) scale(.8); }
+  96%, 100% { opacity: 0; transform: translate(0, 13px) scale(.25); }
+}
+@keyframes paper-toss-bin-catch {
+  0%, 64%, 100% { transform: rotate(0); }
+  80%, 88% { transform: rotate(-23deg); }
+}

@@ -17,10 +17,6 @@
       if (window.parent !== window && workspaceUrl.searchParams.get("embedded") === "1") {
         document.documentElement.dataset.embedded = "true";
       }
-      const isCalendarLink = ["page", "screen"].some(key => workspaceUrl.searchParams.get(key) === "calendar-sync") || workspaceUrl.searchParams.has("calendar");
-      if (window.top === window && isCalendarLink && !localStorage.getItem("bobos.token")) {
-        location.replace("./portal-studio/index.html?page=login&next=calendar-sync&role=normalStudent&preview=live");
-      }
       const linkedTheme = workspaceUrl.searchParams.get("theme");
       if (linkedTheme === "dark" || linkedTheme === "light") {
         document.documentElement.dataset.theme = linkedTheme;

@@ -86,17 +86,41 @@ const titleByScreen = {
   "my-graduation": "My graduation", "graduation-review": "Graduation plans",
 };
 
-function openIllustratedHome(role) {
-  const home = new URL("./portal-studio/index.html", window.location.href);
-  home.search = new URLSearchParams({ page: "overview", role, preview: "live" });
-  window.localStorage.setItem("portal-studio-preview-session", "1");
-  window.location.assign(home);
+const studioPageByScreen = {
+  "calendar-sync": "calendar-sync",
+  "my-graduation": "graduation-plans",
+  "graduation-review": "graduation-plans",
+  "graduation-plans": "graduation-plans",
+};
+
+function illustratedUrl(screen, role, page = studioPageByScreen[screen] || "overview") {
+  const destination = new URL("./portal-studio/index.html", window.location.href);
+  destination.search = new URLSearchParams({ page, role, preview: "live" });
+  if (page === "academic-services" && screen !== "overview") destination.searchParams.set("screen", screen);
+  if (screen === "graduation-review" && role === "advisor") destination.searchParams.set("view", "submitted");
+  if (page === "calendar-sync") {
+    const result = new URLSearchParams(window.location.search).get("calendar");
+    if (["connected", "error"].includes(result)) destination.searchParams.set("calendar", result);
+  }
+  return destination;
 }
 
 export default function App() {
   const workspaceParams = new URLSearchParams(window.location.search);
-  const embeddedCalendar = window.parent !== window && workspaceParams.get("embedded") === "1" && workspaceParams.get("screen") === "calendar-sync";
-  const embeddedExtraHours = window.parent !== window && workspaceParams.get("embedded") === "1" && workspaceParams.get("screen") === "extra-hours";
+  const requestedScreen = workspaceParams.get("screen");
+  const embedded = window.parent !== window && workspaceParams.get("embedded") === "1";
+  const embeddedServices = embedded && workspaceParams.get("section") === "academic-services";
+  const embeddedCalendar = embedded && !embeddedServices && requestedScreen === "calendar-sync";
+  const embeddedExtraHours = embedded && !embeddedServices && requestedScreen === "extra-hours";
+  const embeddedGraduation = embedded && !embeddedServices && requestedScreen === "graduation-plans";
+  const embeddedPage = embeddedServices ? "academic-services" : embeddedGraduation ? "graduation-plans" : embeddedExtraHours ? "extra-hours" : null;
+  const hasCalendarResult = ["connected", "error"].includes(workspaceParams.get("calendar"));
+  const standaloneServices = window.parent === window && window.location.pathname.endsWith("/academic-services.html");
+  const studioScreen = window.parent === window ? (hasCalendarResult || workspaceParams.get("page") === "calendar-sync"
+    ? "calendar-sync"
+    : Object.hasOwn(studioPageByScreen, requestedScreen) ? requestedScreen : standaloneServices ? requestedScreen || "overview" : null) : null;
+  const studioPage = Object.hasOwn(studioPageByScreen, studioScreen) ? studioPageByScreen[studioScreen]
+    : studioScreen ? "academic-services" : null;
   const [token, setToken] = useState(() => window.localStorage.getItem("bobos.token"));
   const [previewExtraHours] = useState(() =>
     embeddedExtraHours && !token && workspaceParams.get("role") === "advisingStudent"
@@ -131,6 +155,12 @@ export default function App() {
 
   useEffect(() => {
     if (!token) {
+      if (studioScreen) {
+        const role = studioPage === "graduation-plans" ? "advisingStudent" : "normalStudent";
+        window.localStorage.removeItem("portal-studio-preview-session");
+        window.location.replace(illustratedUrl(studioScreen, role, studioPage));
+        return;
+      }
       setProfile(null);
       setProfileLoading(false);
       return;
@@ -141,17 +171,16 @@ export default function App() {
       .then((data) => {
         if (!alive) return;
         const requestedScreen = new URLSearchParams(window.location.search).get("screen");
-        if (new URLSearchParams(window.location.search).get("page") === "calendar-sync" && ["normalStudent", "advisingStudent"].includes(data.profile.role)) {
-          const destination = new URL("./portal-studio/index.html", window.location.href);
-          destination.search = new URLSearchParams({ page: "calendar-sync", role: data.profile.role, preview: "live" });
+        if (studioScreen) {
           window.localStorage.setItem("portal-studio-preview-session", "1");
-          window.location.replace(destination);
+          window.location.replace(illustratedUrl(studioScreen, data.profile.role, studioPage));
           return;
         }
         if (freshLogin.current) {
           freshLogin.current = false;
-          if (!embeddedExtraHours && !embeddedCalendar && new URLSearchParams(window.location.search).get("page") !== "calendar-sync" && (import.meta.env.DEV || requestedScreen === "extra-hours")) {
-            openIllustratedHome(data.profile.role);
+          if (!embeddedPage && !embeddedCalendar && (import.meta.env.DEV || requestedScreen === "extra-hours")) {
+            window.localStorage.setItem("portal-studio-preview-session", "1");
+            window.location.assign(illustratedUrl("overview", data.profile.role));
             return;
           }
         }
@@ -162,8 +191,8 @@ export default function App() {
       })
       .catch((error) => {
         if (!alive) return;
-        if (embeddedExtraHours && error.status !== 401) {
-          setEmbeddedProfileError("Extra-hours requests couldn’t load. Try refreshing the page.");
+        if (embeddedPage && error.status !== 401) {
+          setEmbeddedProfileError("Your workspace couldn’t load. Try refreshing the page.");
           return;
         }
         if (window.localStorage.getItem("bobos.token") === token) {
@@ -175,7 +204,7 @@ export default function App() {
       })
       .finally(() => alive && setProfileLoading(false));
     return () => { alive = false; };
-  }, [token, embeddedExtraHours, embeddedCalendar]);
+  }, [token, embeddedPage, embeddedCalendar, studioScreen, studioPage]);
 
   const groups = useMemo(() => navGroups(profile?.role), [profile?.role]);
   const allNavItems = groups.flatMap((group) => group.items);
@@ -204,13 +233,21 @@ export default function App() {
   };
 
   const openScreen = (screen, context = null) => {
-    if (screen === "overview" && profile) {
-      openIllustratedHome(profile.role);
+    if (profile && ((!embeddedServices && screen === "overview") || Object.hasOwn(studioPageByScreen, screen))) {
+      window.localStorage.setItem("portal-studio-preview-session", "1");
+      window.top.location.assign(illustratedUrl(screen, profile.role));
       return;
     }
     const destination = new URL(window.location.href);
     destination.searchParams.set("screen", screen);
     window.history.replaceState({}, "", destination);
+    if (embeddedServices) {
+      const portalUrl = new URL(window.parent.location.href);
+      if (screen === "overview") portalUrl.searchParams.delete("screen");
+      else portalUrl.searchParams.set("screen", screen);
+      window.parent.history.replaceState(window.parent.history.state, "", portalUrl);
+      window.frameElement?.scrollIntoView({ block: "start" });
+    }
     setActiveScreen(screen);
     setScreenContext(context);
     navigation.current?.close();
@@ -223,23 +260,9 @@ export default function App() {
     navigation.current?.showModal();
   };
 
-  useEffect(() => {
-    const destination = new URL(window.location.href);
-    const result = destination.searchParams.get("calendar");
-    if (!["connected", "error"].includes(result)) return;
-    setActiveScreen("calendar-sync");
-    if (result === "connected") notify("success", "Google Calendar connected.");
-    else notify("error", "Google Calendar connection could not be completed.");
-    destination.searchParams.delete("calendar");
-    if (destination.searchParams.get("screen") !== "calendar-sync") {
-      destination.searchParams.set("page", "calendar-sync");
-    }
-    window.history.replaceState(window.history.state, "", destination);
-  }, []);
-
   if (profileLoading && embeddedExtraHours) return <div className="extra-hours-loading" aria-busy="true"><span className="sr-only">Loading extra-hours requests…</span></div>;
-  if (profileLoading) return <div className="app-loading"><span className="loader" />Loading your workspace…</div>;
-  if (embeddedExtraHours && embeddedProfileError) {
+  if (profileLoading || studioScreen) return <div className="app-loading"><span className="loader" />Loading your workspace…</div>;
+  if (embeddedPage && embeddedProfileError) {
     return <div className="feedback error" role="alert">{embeddedProfileError}</div>;
   }
   if (previewExtraHours) {
@@ -248,14 +271,15 @@ export default function App() {
     </div>;
   }
   if (!token || !profile) {
-    if (!embeddedExtraHours) return <AuthPage onLogin={acceptLogin} />;
+    if (!embeddedPage) return <AuthPage onLogin={acceptLogin} />;
     const signIn = new URL("./portal-studio/index.html", window.location.href);
     signIn.search = new URLSearchParams({
       page: "login",
       role: workspaceParams.get("role") || "",
       preview: "live",
-      next: "extra-hours",
+      next: embeddedPage,
     });
+    if (embeddedServices && requestedScreen) signIn.searchParams.set("screen", requestedScreen);
     return <p className="feedback error">Your session has ended. <a href={signIn.href} target="_top">Sign in to Portal</a>.</p>;
   }
 
@@ -264,6 +288,19 @@ export default function App() {
       return <p role="alert">Sign in with a Bobos student account to connect Google Calendar.</p>;
     }
     return <div className="extra-hours-embedded"><CalendarSyncPage token={token} /></div>;
+  }
+
+  if (embeddedGraduation) {
+    const { role } = profile;
+    if (!["advisor", "coordinator", "advisingStudent"].includes(role) || workspaceParams.get("role") !== role) {
+      return <p className="feedback error" role="alert">Sign in with the matching portal role to view graduation plans.</p>;
+    }
+    return <div className="extra-hours-shell extra-hours-embedded">
+      {role === "advisingStudent" ? <StudentGraduation token={token} />
+        : role === "advisor" && workspaceParams.get("view") !== "submitted"
+          ? <AdvisingPage token={token} role={role} graduationOnly />
+          : <GraduationReview token={token} role={role} />}
+    </div>;
   }
 
   if (embeddedExtraHours) {
@@ -312,6 +349,57 @@ export default function App() {
       );
     }) : <p className="page-description">No pages match your search.</p>;
   };
+
+  const report = (tone, text) => {
+    const host = embeddedServices ? window.parent.document : document;
+    host.querySelector("portal-action-feedback")?.show(tone, text);
+  };
+
+  const workspaceContent = (
+    <div className="page-content" id="workspace-content" tabIndex={-1}>
+      {activeScreen === "overview" && <OverviewPage token={token} profile={profile} onOpen={openScreen} />}
+      {activeScreen === "profile" && <ProfilePage profile={profile} />}
+      {activeScreen === "notifications" && <NotificationsPage token={token} notify={report} />}
+      {activeScreen === "records" && profile.role !== "normalStudent" && <StudentRecordsPage token={token} profile={profile} notify={report} />}
+      {activeScreen === "preferences" && <PreferencesPage token={token} profile={profile} profileId={screenContext?.id || screenContext?._id || profile.studentProfileId} studentTarget={screenContext?._id ? screenContext : undefined} notify={report} onOpenDraftSchedule={(student, selectedTermId) => openScreen("student-schedules", { draftStudent: student, termId: selectedTermId })} />}
+      {activeScreen === "directory" && <StudentDirectoryPage token={token} role={profile.role} notify={report} />}
+      {activeScreen === "financial-records" && ["coordinator", "administrator"].includes(profile.role) && <FinancialRecordsPage token={token} role={profile.role} notify={report} />}
+      {activeScreen === "advising" && <AdvisingPage token={token} role={profile.role} notify={report} onOpenPreferences={(student) => openScreen("preferences", student)} />}
+      {activeScreen === "graduation-review" && ["advisor", "coordinator"].includes(profile.role) && <GraduationReview token={token} role={profile.role} />}
+      {activeScreen === "my-graduation" && profile.role === "advisingStudent" && <StudentGraduation token={token} />}
+      {activeScreen === "my-advisor" && profile.role === "advisingStudent" && <MyAdvisorPage token={token} />}
+      {activeScreen === "calendar-sync" && <CalendarSyncPage token={token} />}
+      {activeScreen === "pending-work" && profile.role === "coordinator" && <PendingWorkPage token={token} />}
+      {activeScreen === "schedule-activity" && ["coordinator", "administrator"].includes(profile.role) && <ScheduleActivityPage token={token} />}
+      {activeScreen === "mandatory-removals" && ["coordinator", "administrator", "advisor"].includes(profile.role) && <MandatoryRemovalDashboard token={token} role={profile.role} notify={report} />}
+      {activeScreen === "extra-hours" && ["advisingStudent", "coordinator", "advisor"].includes(profile.role) && <ExtraHoursPage token={token} role={profile.role} advisorId={profile._id} notify={report} />}
+      {activeScreen === "group-assignments" && <GroupAssignmentsPage token={token} canAssign={profile.role === "coordinator"} notify={report} />}
+      {activeScreen === "student-schedules" && <StaffSchedulesPage token={token} role={profile.role} notify={report} initialStudent={screenContext?.draftStudent} initialTermId={screenContext?.termId} />}
+      {activeScreen === "slot-changes" && <SlotChangesPage token={token} role={profile.role} onOpenSchedule={() => openScreen("my-schedule")} />}
+      {["my-schedule", "my-courses", "schedule-swap"].includes(activeScreen) && <StudentSchedulingPage token={token} section={activeScreen} onOpenSlotChanges={profile.role === "advisingStudent" ? () => openScreen("slot-changes") : undefined} />}
+      {["courses", "terms", "offerings", "templates"].includes(activeScreen) && <AcademicWorkspace token={token} role={profile.role} section={activeScreen} onNavigate={openScreen} notify={report} />}
+      {!["profile", "overview"].includes(activeScreen) && !allNavItems.some((item) => item.id === activeScreen) && <OverviewPage token={token} profile={profile} onOpen={openScreen} />}
+    </div>
+  );
+
+  if (embeddedServices) {
+    return (
+      <div className="extra-hours-shell extra-hours-embedded academic-services-embedded">
+        <label className="field academic-services-picker">
+          <span>Academic services page</span>
+          <select value={activeScreen} onChange={(event) => openScreen(event.target.value)}>
+            {groups.map((group) => (
+              <optgroup label={group.title} key={group.title}>
+                {group.items.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
+                {group.title === "Home" && <option value="profile">My profile</option>}
+              </optgroup>
+            ))}
+          </select>
+        </label>
+        {workspaceContent}
+      </div>
+    );
+  }
 
   return (
     <div className="app-shell extra-hours-shell">
@@ -363,30 +451,7 @@ export default function App() {
           </div>
         </header>
 
-        <div className="page-content" id="workspace-content" tabIndex={-1}>
-          {activeScreen === "overview" && <OverviewPage token={token} profile={profile} onOpen={openScreen} />}
-          {activeScreen === "profile" && <ProfilePage profile={profile} />}
-          {activeScreen === "notifications" && <NotificationsPage token={token} notify={notify} />}
-          {activeScreen === "records" && profile.role !== "normalStudent" && <StudentRecordsPage token={token} profile={profile} notify={notify} />}
-          {activeScreen === "preferences" && <PreferencesPage token={token} profile={profile} profileId={screenContext?.id || screenContext?._id || profile.studentProfileId} studentTarget={screenContext?._id ? screenContext : undefined} notify={notify} onOpenDraftSchedule={(student, selectedTermId) => openScreen("student-schedules", { draftStudent: student, termId: selectedTermId })} />}
-          {activeScreen === "directory" && <StudentDirectoryPage token={token} role={profile.role} notify={notify} />}
-          {activeScreen === "financial-records" && ["coordinator", "administrator"].includes(profile.role) && <FinancialRecordsPage token={token} role={profile.role} notify={notify} />}
-          {activeScreen === "advising" && <AdvisingPage token={token} role={profile.role} notify={notify} onOpenPreferences={(student) => openScreen("preferences", student)} />}
-          {activeScreen === "graduation-review" && ["advisor", "coordinator"].includes(profile.role) && <GraduationReview token={token} role={profile.role} />}
-          {activeScreen === "my-graduation" && profile.role === "advisingStudent" && <StudentGraduation token={token} />}
-          {activeScreen === "my-advisor" && profile.role === "advisingStudent" && <MyAdvisorPage token={token} />}
-          {activeScreen === "calendar-sync" && <CalendarSyncPage token={token} />}
-          {activeScreen === "pending-work" && profile.role === "coordinator" && <PendingWorkPage token={token} />}
-          {activeScreen === "schedule-activity" && ["coordinator", "administrator"].includes(profile.role) && <ScheduleActivityPage token={token} />}
-          {activeScreen === "mandatory-removals" && ["coordinator", "administrator", "advisor"].includes(profile.role) && <MandatoryRemovalDashboard token={token} role={profile.role} notify={notify} />}
-          {activeScreen === "extra-hours" && ["advisingStudent", "coordinator", "advisor"].includes(profile.role) && <ExtraHoursPage token={token} role={profile.role} advisorId={profile._id} notify={notify} />}
-          {activeScreen === "group-assignments" && <GroupAssignmentsPage token={token} canAssign={profile.role === "coordinator"} notify={notify} />}
-          {activeScreen === "student-schedules" && <StaffSchedulesPage token={token} role={profile.role} notify={notify} initialStudent={screenContext?.draftStudent} initialTermId={screenContext?.termId} />}
-          {activeScreen === "slot-changes" && <SlotChangesPage token={token} role={profile.role} onOpenSchedule={() => openScreen("my-schedule")} />}
-          {["my-schedule", "my-courses", "schedule-swap"].includes(activeScreen) && <StudentSchedulingPage token={token} section={activeScreen} onOpenSlotChanges={profile.role === "advisingStudent" ? () => openScreen("slot-changes") : undefined} />}
-          {["courses", "terms", "offerings", "templates"].includes(activeScreen) && <AcademicWorkspace token={token} role={profile.role} section={activeScreen} onNavigate={openScreen} notify={notify} />}
-          {!["profile", "overview"].includes(activeScreen) && !allNavItems.some((item) => item.id === activeScreen) && <OverviewPage token={token} profile={profile} onOpen={openScreen} />}
-        </div>
+        {workspaceContent}
       </main>
     </div>
   );

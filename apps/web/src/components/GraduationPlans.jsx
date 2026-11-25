@@ -1,7 +1,7 @@
-import PaperDeleteButton from "./PaperDeleteButton.jsx";
 import { useEffect, useState } from "react";
 import { api, explainApiError } from "../api.js";
 import { WorkspaceEmpty } from "./WorkspaceUI.jsx";
+import PaperTossButton, { waitForPaperToss } from "./PaperTossButton.jsx";
 
 function assignmentsFor(plan) {
   return Object.fromEntries((plan?.termPlans ?? []).flatMap(({ term, courses }) =>
@@ -101,6 +101,7 @@ export default function GraduationPlans({ student, token, onBack }) {
 
   function deletePlan() {
     return perform(async () => {
+      await waitForPaperToss();
       await api(`${path}/${plan._id}`, { token, method: "DELETE", body: { version: plan.version } });
       setWorkspace((previous) => ({ ...previous, plans: previous.plans.filter((item) => item._id !== plan._id) }));
       setConfirmDelete(false);
@@ -243,14 +244,14 @@ export default function GraduationPlans({ student, token, onBack }) {
             </select>
           </label>}
           <div className="form-actions planner-actions">
-            {plan && <button className="outline-button" type="button" disabled={busy} onClick={() => setConfirmDelete(true)}>Delete draft</button>}
+            {plan && <PaperTossButton width={120} disabled={busy} onClick={() => setConfirmDelete(true)}>Delete draft</PaperTossButton>}
             <button className="outline-button" type="button" disabled={busy} onClick={() => perform(savePlan, "Private draft saved.")}>Save draft</button>
             <button className="primary-button" type="button" disabled={busy} onClick={submitPlan}>Submit plan</button>
           </div>
           {confirmDelete && <div className="feedback" role="group" aria-label="Confirm draft deletion">
             <p>Delete this private draft?</p>
             <button className="outline-button" type="button" disabled={busy} onClick={() => setConfirmDelete(false)}>Cancel</button>{" "}
-            <PaperDeleteButton label="Delete draft" disabled={busy} onDelete={deletePlan} />
+            <PaperTossButton width={120} disabled={busy} onClick={deletePlan} tossing={busy}>{busy ? "Deleting…" : "Confirm delete"}</PaperTossButton>
           </div>}
         </>}
       </section>}

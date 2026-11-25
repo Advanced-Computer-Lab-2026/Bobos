@@ -9,6 +9,8 @@ From the repository root run `python3 -m http.server 8080 --bind 127.0.0.1 --dir
 The paths below refer to `apps/web/public/portal-studio/`. It is the runnable visual reference. The React application lives under `apps/web/src/`. When bringing artwork to a real workflow, keep its existing data, access controls, loading states and submission behavior.
 
 For local tests with seeded accounts, start Vite with `BOBOS_PORTAL_DEMO=standard` for the standard seed or `BOBOS_PORTAL_DEMO=extra-hours` for the extra-hours sandbox. Quick demo sign-in then signs in through the API and shares the session with the React workspace. Extra-hours requests retains its existing embedded workspace layout and shares the portal session and theme. If authentication is required, sign-in opens in the top-level portal rather than inside the embedded page. Overview and the Portal wordmark return to the illustrated home for the signed-in role.
+Academic services keeps the illustrated portal sidebar and theme. The Academic services page selector opens the tools available to the signed-in role. Graduation plans opens the advisor’s student list, the coordinator’s review queue, or the advising student’s plan. Signed-in students open Calendar sync from Support.
+
 ## Surface, type and composition
 
 Normal and advising students use the illustrated teaching week. Below it, Coming up and the notification preview share a column beside the academic calendar. A bell ringer accompanies unread notices. The mallet strikes first, then the bell swings and settles. A chime plays only when the user presses Ring bell. When the inbox is caught up, gust lines sweep across a desert ridge and a tumbleweed rolls above the break message. The scene plays once when it enters view and can be replayed. Reduced motion uses a gentle roll without bounces and keeps the bell ringer still until pressed. Coordinators see assignments and requests, advisors see advising work, and administrators see academic setup in the work queue.
@@ -42,6 +44,8 @@ The code uses alternate SVG paths, stepped CSS keyframes and timed JavaScript po
 | Staff and student pages | Apply illustrations to the particular workflow while preserving the arrangement people use to complete it. Compare coordinator and student routes. | `staff-art.js`, `student-art.js`, corresponding CSS, `desk-details.css`, `academic-pages.css` |
 
 ## Action feedback
+
+Use the paper toss button for actions that delete a saved record or remove a saved assignment. In a row where the record is identifiable, use Delete with an accessible name that includes the record. Use the action and record name in confirmations, and let the button fit the label. Keep confirmations in place and play the toss when the deletion starts. The graduation draft buttons retain their 120 px width. See `apps/web/src/components/PaperTossButton.jsx`.
 
 Use the shared feedback styles for success, error, warning and informational messages across all five roles. Show a short result for a completed action in the floating card. Keep form errors and detailed results beside the controls they relate to. Use the warning treatment when the next step needs attention, and use the error treatment when the requested operation fails.
 
