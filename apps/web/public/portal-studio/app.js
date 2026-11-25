@@ -1186,11 +1186,20 @@ function mountLiveCalendar(panel) {
     returnAfterSignIn = 'calendar-sync';
     navigate('login');
   }
-  async function request(path, method = 'GET') {
+  const localStudentDemo = ['localhost','127.0.0.1'].includes(location.hostname) && ['normalStudent','advisingStudent'].includes(role);
+  async function request(path, method = 'GET', retry = true) {
     const response = await fetch('../api/calendar/' + path, { method, headers: { Authorization: 'Bearer ' + token } });
     const data = await response.json();
     if (!response.ok) {
+      if (response.status === 401 && retry && localStudentDemo) {
+        localStorage.removeItem(workspaceSessionKey);
+        if (await signInDemoWorkspace(role)) {
+          token = localStorage.getItem(workspaceSessionKey);
+          return request(path, method, false);
+        }
+      }
       if ([401, 403].includes(response.status)) {
+        if (response.status === 401) localStorage.removeItem(workspaceSessionKey);
         controls.replaceChildren();
         control('Sign in as a student', signIn);
       }
@@ -1209,14 +1218,14 @@ function mountLiveCalendar(panel) {
       control('Disconnect', async () => { await request('connection', 'DELETE'); await refresh(); });
     } else {
       status.textContent = data.configured ? 'Choose the Google account for your classes.' : 'Google Calendar setup is incomplete.';
-      if (data.configured) control('Connect Google Calendar', async () => location.assign((await request('connect')).authorizationUrl));
+      if (data.configured) control('Sign in with Google', async () => location.assign((await request('connect')).authorizationUrl));
     }
   }
   if (!token) {
     status.textContent = 'Sign in with your Bobos student account to access your calendar.';
     if (['localhost','127.0.0.1'].includes(location.hostname) && ['normalStudent','advisingStudent'].includes(role)) {
-      status.textContent = 'Connect Google Calendar using the ' + roleNames[role].toLowerCase() + ' demo account.';
-      control('Connect Google Calendar', async () => {
+      status.textContent = 'Choose your Google account to sync this student’s timetable.';
+      control('Sign in with Google', async () => {
         if (!await signInDemoWorkspace(role)) { signIn(); return; }
         token = localStorage.getItem(workspaceSessionKey);
         const data = await request('connection');
