@@ -201,6 +201,8 @@
 }
 .extra-hours-loading { min-height: 80px; background: transparent; border: 0; }
 body:has(.extra-hours-embedded) { background: transparent; }
+.academic-services-embedded .page-content { padding: 0; }
+.academic-services-picker { width: min(100%, 280px); margin-bottom: 20px; }
 .extra-hours-toolbar,
 .extra-hours-toolbar-actions {
   display: flex;

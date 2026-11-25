@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api.js";
 import { WorkspaceEmpty } from "./WorkspaceUI.jsx";
+import PaperTossButton, { waitForPaperToss } from "./PaperTossButton.jsx";
 
 const WEEK = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"];
 const semesters = Array.from({ length: 10 }, (_, index) => index + 1);
@@ -87,6 +88,7 @@ export function GroupAssignmentsPage({ token, canAssign = false, notify }) {
     setBusy(true);
     setUnassignError("");
     try {
+      await waitForPaperToss();
       const result = await api(`/api/group-assignments/${encodeURIComponent(unassignTarget._id)}?termId=${encodeURIComponent(termId)}`, { token, method: "DELETE" });
       notify("success", result.message);
       setUnassignTarget(null);
@@ -113,14 +115,14 @@ export function GroupAssignmentsPage({ token, canAssign = false, notify }) {
         <td><strong>{student.fullName}</strong><span className="secondary-text">{student.studentId} · {student.email}</span></td>
         <td>{student.major}</td><td>{student.currentSemester}</td><td>{student.academicStanding === "probation" ? "Probation" : "Good standing"}</td>
         <td>{student.assignment ? `Group ${student.assignment.studyGroup} · ${student.assignment.courseCount} courses` : "Unassigned"}</td>
-        <td>{canAssign ? <div className="table-actions"><button className="small-button primary-button" type="button" disabled={busy || !student.isActive} onClick={() => { setTarget(student); setPickedGroup(student.assignment?.studyGroup || ""); }}>{student.assignment ? "Reassign" : "Assign"}</button>{student.assignment && <button className="small-button outline-button danger-button" type="button" disabled={busy} onClick={() => { setUnassignError(""); setUnassignTarget(student); }}>Unassign</button>}</div> : <span className="helper-text">Read only</span>}</td>
+        <td>{canAssign ? <div className="table-actions"><button className="small-button primary-button" type="button" disabled={busy || !student.isActive} onClick={() => { setTarget(student); setPickedGroup(student.assignment?.studyGroup || ""); }}>{student.assignment ? "Reassign" : "Assign"}</button>{student.assignment && <PaperTossButton disabled={busy} onClick={() => { setUnassignError(""); setUnassignTarget(student); }}>Unassign</PaperTossButton>}</div> : <span className="helper-text">Read only</span>}</td>
       </tr>)}</tbody></table></div> : <Empty title="No students match" text="Adjust the search or filters and try again." />}
     </section>
     {unassignTarget && <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && !busy && setUnassignTarget(null)}><section className="modal-card narrow-modal" role="dialog" aria-modal="true" aria-labelledby="unassign-heading">
       <div className="modal-heading"><div><p className="eyebrow">REMOVE GROUP ASSIGNMENT</p><h2 id="unassign-heading">Unassign this student?</h2></div><button className="icon-button" type="button" aria-label="Close" disabled={busy} onClick={() => setUnassignTarget(null)}>×</button></div>
       <div className="confirmation-content"><span className="confirmation-icon" aria-hidden="true">!</span><div><p>Remove <strong>{unassignTarget.fullName}</strong> from <strong>Group {unassignTarget.assignment.studyGroup}</strong>?</p><p className="helper-text">{unassignTarget.studentId} · {unassignTarget.major} · Semester {unassignTarget.currentSemester}</p><p className="helper-text">The student will become unassigned for this academic term.</p></div></div>
       {unassignError && <Feedback tone="error">{unassignError}</Feedback>}
-      <div className="form-footer"><button type="button" className="outline-button" disabled={busy} onClick={() => setUnassignTarget(null)}>Cancel</button><button type="button" className="primary-button destructive-action" disabled={busy} onClick={unassign}>{busy ? "Removing…" : "Unassign student"}</button></div>
+      <div className="form-footer"><button type="button" className="outline-button" disabled={busy} onClick={() => setUnassignTarget(null)}>Cancel</button><PaperTossButton disabled={busy} tossing={busy} onClick={unassign}>{busy ? "Removing…" : "Unassign student"}</PaperTossButton></div>
     </section></div>}
     {target && <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setTarget(null)}><section className="modal-card" role="dialog" aria-modal="true" aria-label="Assign schedule group">
       <div className="modal-heading"><div><p className="eyebrow">{target.studentId} · {target.major} semester {target.currentSemester}</p><h2>{target.assignment ? "Reassign schedule group" : "Assign schedule group"}</h2></div><button className="icon-button" type="button" aria-label="Close" onClick={() => setTarget(null)}>×</button></div>
@@ -1024,6 +1026,7 @@ function EligibleCoursesPanel({ token, student, termQuery, editable, notify, ver
   async function change(entry) {
     setBusyId(entry.courseOffering); setError("");
     try {
+      if (entry.inDraft) await waitForPaperToss();
       const response = entry.inDraft
         ? await api(`${base}/courses/${entry.courseOffering}${termQuery}`, { token, method: "DELETE" })
         : await api(`${base}/courses${termQuery}`, { token, method: "POST", body: { courseOffering: entry.courseOffering } });
@@ -1039,7 +1042,9 @@ function EligibleCoursesPanel({ token, student, termQuery, editable, notify, ver
     {!result ? <Loading /> : result.courses.length ? <div className="table-scroll"><table><thead><tr><th>Course</th><th>Credits</th><th>Type</th><th>Prerequisites</th><th /></tr></thead><tbody>{result.courses.map((entry) => <tr key={entry.courseOffering}>
       <td><strong>{entry.course.code}</strong><span className="secondary-text">{entry.course.name}</span></td><td>{entry.course.creditHours}</td><td>{entry.course.courseType}</td>
       <td>{entry.course.prerequisites.length ? entry.course.prerequisites.map((item) => item.code).join(", ") : "None"}</td>
-      <td>{editable && <button className={entry.inDraft ? "outline-button" : "primary-button"} type="button" disabled={Boolean(busyId)} onClick={() => change(entry)}>{busyId === entry.courseOffering ? "Working…" : entry.inDraft ? "Remove" : "Add to draft"}</button>}</td>
+      <td>{editable && (entry.inDraft
+        ? <PaperTossButton disabled={Boolean(busyId)} tossing={busyId === entry.courseOffering} onClick={() => change(entry)}>{busyId === entry.courseOffering ? "Removing…" : "Remove course"}</PaperTossButton>
+        : <button className="primary-button" type="button" disabled={Boolean(busyId)} onClick={() => change(entry)}>{busyId === entry.courseOffering ? "Adding…" : "Add to draft"}</button>)}</td>
     </tr>)}</tbody></table></div> : <Empty title="No eligible courses" text={search ? "No eligible course matches your search." : "There are no other eligible published courses for this student this term."} />}
     {result?.excluded?.length > 0 && <details className="excluded-courses"><summary>{result.excluded.length} courses not available to this student</summary><ul>{result.excluded.map((entry) => <li key={entry._id}>{entry.message}</li>)}</ul></details>}
   </section>;
@@ -1074,8 +1079,9 @@ function AdvisingOverviewPanel({ overview, token, student, termQuery, canEdit, n
   const [problem, setProblem] = useState("");
   const projectPath = `/api/schedules/advising/${encodeURIComponent(student._id)}/bachelor-project${termQuery}`;
   async function changeProject(remove) {
-    setBusy(true); setProblem("");
+    setBusy(remove ? "remove" : "save"); setProblem("");
     try {
+      if (remove) await waitForPaperToss();
       const result = await api(projectPath, { token, method: remove ? "DELETE" : "PUT", body: remove ? undefined : { season } });
       notify?.("success", result.message);
       await onChanged?.();
@@ -1096,7 +1102,7 @@ function AdvisingOverviewPanel({ overview, token, student, termQuery, canEdit, n
     {bachelor.eligible && canEdit && <div className="bachelor-project-actions">
       <label className="field"><span>Bachelor project season</span><select value={season} onChange={(event) => setSeason(event.target.value)} disabled={busy}><option value="winter">Winter</option><option value="spring">Spring</option></select></label>
       <button className="primary-button" type="button" disabled={busy} onClick={() => changeProject(false)}>{bachelor.selection ? "Change season" : "Add bachelor project"}</button>
-      {bachelor.selection && <button className="outline-button" type="button" disabled={busy} onClick={() => changeProject(true)}>Remove project</button>}
+      {bachelor.selection && <PaperTossButton disabled={Boolean(busy)} tossing={busy === "remove"} onClick={() => changeProject(true)}>{busy === "remove" ? "Removing…" : "Remove project selection"}</PaperTossButton>}
     </div>}
     {problem && <Feedback tone="error">{problem}</Feedback>}
     {overview.blockingStep && <p className="helper-text">Next step: {overview.blockingStep}</p>}

@@ -576,7 +576,8 @@ dialog:has(> .transaction-detail) .modal-head {margin-bottom:24px}
 @media(max-width:340px) {
   .transaction-total {grid-template-columns:1fr}
 }
-.extra-hours-frame { display:block; width:100%; height:200px; border:0; outline:0; background:transparent; visibility:hidden; }
+.extra-hours-frame, .graduation-frame, .academic-services-frame { display:block; width:100%; height:200px; border:0; background:transparent; }
+.extra-hours-frame { outline:0; visibility:hidden; }
 .extra-hours-frame.is-ready { visibility:visible; }
 /* Save is a reversible, explicitly labelled bookmark state. */
 .portal-studio .btn.bookmark-save { --bookmark-sage:var(--muted); min-width:174px; }

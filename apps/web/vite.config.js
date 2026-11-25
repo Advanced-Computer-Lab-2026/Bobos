@@ -65,8 +65,10 @@ function localPortalDemo() {
   };
 }
 
-export default defineConfig({
+export default defineConfig(({ command, isPreview }) => ({
   plugins: [react(), localPortalDemo()],
+  // Concurrent dev servers must keep their optimized dependencies separate.
+  ...(command === "serve" && !isPreview && { cacheDir: `node_modules/.vite/dev-${process.pid}` }),
   build: { rollupOptions: { input: ["index.html", "academic-services.html", "workspace.html"] } },
   envDir: "../..",
   server: {
@@ -74,4 +76,4 @@ export default defineConfig({
       "/api": "http://localhost:3000",
     },
   },
-});
+}));
