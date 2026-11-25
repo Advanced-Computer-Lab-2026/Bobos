@@ -3,7 +3,7 @@ import { api, explainApiError } from "../api.js";
 import { WorkspaceEmpty } from "./WorkspaceUI.jsx";
 
 const TYPE_OPTIONS = [
-  { value: "", label: "All" },
+  { value: "", label: "All types" },
   { value: "TUITION", label: "TUITION" },
   { value: "EXTRA_HOURS", label: "EXTRA_HOURS" },
   { value: "FEE", label: "FEE" },
@@ -11,7 +11,7 @@ const TYPE_OPTIONS = [
 ];
 
 const STATUS_OPTIONS = [
-  { value: "", label: "All" },
+  { value: "", label: "All statuses" },
   { value: "COMPLETED", label: "COMPLETED" },
   { value: "PENDING", label: "PENDING" },
   { value: "REFUNDED", label: "REFUNDED" },
@@ -19,7 +19,7 @@ const STATUS_OPTIONS = [
 ];
 
 const TERM_OPTIONS = [
-  { value: "", label: "All" },
+  { value: "", label: "All terms" },
   { value: "W25", label: "W25" },
   { value: "S26", label: "S26" },
 ];

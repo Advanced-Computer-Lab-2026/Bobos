@@ -1070,7 +1070,7 @@ function preferences(){
 
 function financial(){
   return head('Financial records','',button('Export CSV','export-csv'))+`<dl class="account-totals">${[['Received','22,500'],['Pending','15,000'],['Refunded','2,500']].map(([label,amount])=>`<div><dt>${label}</dt><dd>${amount} <small>EGP</small></dd></div>`).join('')}</dl>`+
-    filterbar('Search by Student ID, Student Name, Receipt ID, or Reference...',[['Type',['TUITION','EXTRA_HOURS','FEE','REFUND'],'','All'],['Status',['COMPLETED','PENDING','REFUNDED','FAILED'],'','All'],['Term',['W25','S26'],'','All']])+
+    filterbar('Search by Student ID, Student Name, Receipt ID, or Reference...',[['Type',['TUITION','EXTRA_HOURS','FEE','REFUND'],'','All types'],['Status',['COMPLETED','PENDING','REFUNDED','FAILED'],'','All statuses'],['Term',['W25','S26'],'','All terms']])+
     `<ul class="transactions">${names.slice(0,6).map((name,i)=>`<li data-search-row>${staffIdentity(name,`70-${71577+i}`)}
       <p>${i===4?'Refund':'Payment'} · TXN-${1042+i}<small>14 Nov 2026</small></p><strong class="amount">${i===4?'2,500':'7,500'} <small>EGP</small></strong>
       ${badge([1,5].includes(i)?'Pending':'Completed',[1,5].includes(i)?'payment-pending':'payment-complete')}
