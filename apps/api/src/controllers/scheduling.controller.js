@@ -2109,7 +2109,7 @@ export async function getAdvisingOverview(req, res, next) {
       student: studentView(student),
       advisingReason: student.advisingReason,
       academicStanding: student.academicStanding,
-      scheduleStatus: workflow?.status || schedule?.status || "notStarted",
+      scheduleStatus: schedule?.status || workflow?.status || "notStarted",
       blockingStep: workflow?.blockingStep ?? null,
       creditHours: {
         semester: policy.semester,

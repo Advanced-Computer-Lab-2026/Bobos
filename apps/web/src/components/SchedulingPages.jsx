@@ -436,7 +436,10 @@ export function StaffSchedulesPage({ token, role, notify, initialStudent = null,
   const [termId, setTermId] = useState(initialTermId);
   const [terms, setTerms] = useState([]);
   const [draftStudent, setDraftStudent] = useState(initialStudent);
+  const [overviewStudent, setOverviewStudent] = useState(null);
+  const [overview, setOverview] = useState(null);
   const scheduleResultRef = useRef(null);
+  const overviewRef = useRef(null);
 
   useEffect(() => {
     let alive = true;
@@ -461,6 +464,15 @@ export function StaffSchedulesPage({ token, role, notify, initialStudent = null,
     scheduleResultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [selected, schedule]);
 
+  async function openOverview(student) {
+    setOverviewStudent(student); setOverview(null); setError("");
+    const query = termId ? `?termId=${encodeURIComponent(termId)}` : "";
+    try {
+      setOverview(await api(`/api/schedules/advising/${encodeURIComponent(student._id)}/overview${query}`, { token }));
+      requestAnimationFrame(() => overviewRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    } catch (err) { setError(err.message); }
+  }
+
   async function openStudent(student) {
     setSelected(student); setSchedule(null); setError("");
     const query = termId ? `?termId=${encodeURIComponent(termId)}` : "";
@@ -472,15 +484,16 @@ export function StaffSchedulesPage({ token, role, notify, initialStudent = null,
 
   return <div className="page-stack scheduling-page workspace-page">
     <div className="workspace-header"><div><h1>Student schedules</h1><p className="page-description">Find a student to create, review or manage their advising schedule.</p></div>
-      {terms.length > 0 && <label className="field term-picker"><span>Academic term</span><select value={termId} onChange={(event) => { setTermId(event.target.value); setSelected(null); setSchedule(null); }}>{terms.map((term) => <option key={term._id} value={term.code}>Term {term.code} · {term.season}</option>)}</select></label>}
+      {terms.length > 0 && <label className="field term-picker"><span>Academic term</span><select value={termId} onChange={(event) => { setTermId(event.target.value); setSelected(null); setSchedule(null); setOverviewStudent(null); setOverview(null); }}>{terms.map((term) => <option key={term._id} value={term.code}>Term {term.code} · {term.season}</option>)}</select></label>}
     </div>
     {error && <Feedback tone="error">{error}</Feedback>}
     <section className="panel"><div className="results-heading"><div><h2>Student roster</h2></div><span className="result-count" aria-live="polite">{students.length} {students.length === 1 ? "student" : "students"}</span></div>
       <label className="field roster-search"><span>Search students</span><input type="search" name="roster-search" autoComplete="off" value={search} onChange={(event) => setSearch(event.target.value)} maxLength={100} placeholder="Student ID, name or email…" /></label>
       {loading ? <Loading /> : students.length ? <div className="table-scroll"><table><thead><tr><th>Student</th><th>Type</th><th>Major / semester</th><th>Schedule status</th><th /></tr></thead><tbody>{students.map((student) => <tr key={student._id}><td><strong>{student.fullName}</strong><span className="secondary-text">{student.studentId}</span></td><td>{student.studentType}</td><td>{student.major} · {student.currentSemester}</td><td><span className={`status-pill ${{
         readyForStudentReview: "ready", draft: "draft", processed: "completed",
-      }[student.scheduleStatus] || "muted"}`}>{prettyStatus(student.scheduleStatus)}</span></td><td><div className="table-actions">{student.studentType === "advising" && (["advisor", "coordinator"].includes(role) || (role === "administrator" && ["readyForStudentReview", "processed"].includes(student.scheduleStatus))) && <button className="small-button primary-button" type="button" onClick={() => { setSelected(null); setSchedule(null); setDraftStudent(student); }}>{role === "administrator" ? "Manage schedule" : student.scheduleStatus === "draft" ? "Edit draft" : !student.scheduleStatus ? "Create draft" : student.scheduleStatus === "readyForStudentReview" ? "Review & Process" : "Manage schedule"}</button>}{student.scheduleStatus && <button className="small-button outline-button" type="button" onClick={() => openStudent(student)}>View schedule</button>}</div></td></tr>)}</tbody></table></div> : <WorkspaceEmpty title="No students found" description="Try a different student ID, name or email." />}
+      }[student.scheduleStatus] || "muted"}`}>{prettyStatus(student.scheduleStatus)}</span></td><td><div className="table-actions">{student.studentType === "advising" && (["advisor", "coordinator"].includes(role) || (role === "administrator" && ["readyForStudentReview", "processed"].includes(student.scheduleStatus))) && <button className="small-button primary-button" type="button" onClick={() => { setSelected(null); setSchedule(null); setDraftStudent(student); }}>{role === "administrator" ? "Manage schedule" : student.scheduleStatus === "draft" ? "Edit draft" : !student.scheduleStatus ? "Create draft" : student.scheduleStatus === "readyForStudentReview" ? "Review & Process" : "Manage schedule"}</button>}{student.scheduleStatus && <button className="small-button outline-button" type="button" onClick={() => openStudent(student)}>View schedule</button>}{role === "administrator" && student.studentType === "advising" && <button className="small-button outline-button" type="button" onClick={() => openOverview(student)}>Advising overview</button>}</div></td></tr>)}</tbody></table></div> : <WorkspaceEmpty title="No students found" description="Try a different student ID, name or email." />}
     </section>
+    {overviewStudent && overview && <div ref={overviewRef} aria-label={`${overviewStudent.fullName} advising overview`}><AdvisingOverviewPanel overview={overview} token={token} student={overviewStudent} termQuery={termId ? `?termId=${encodeURIComponent(termId)}` : ""} canEdit={false} notify={notify} onChanged={() => openOverview(overviewStudent)} /></div>}
     {selected && schedule?.schedule && <section className="panel staff-schedule-result" ref={scheduleResultRef} tabIndex={-1} aria-label={`${schedule.student?.fullName ?? "Student"} schedule`}><div className="results-heading"><div><p className="eyebrow">{schedule.student?.studentId} · {schedule.term?.season} {schedule.term?.academicYear}</p><h2>{schedule.student?.fullName}’s schedule</h2></div><span className="status-pill">{prettyStatus(schedule.schedule.status)}</span></div>{schedule.schedule.courses?.length ? <WeeklySchedule week={schedule.schedule.week} daysOff={schedule.schedule.daysOff} /> : <Feedback tone="info">{schedule.schedule.status === "readyForStudentReview" ? "This schedule is empty and is not processed, so it cannot be reopened. Select a schedule marked Processed, or complete a valid schedule and process it first." : schedule.schedule.status === "processed" ? "This processed schedule has no course details." : "This draft is empty. Choose “Edit draft” in the student list to add course groups."}</Feedback>}</section>}
   </div>;
 }
@@ -782,11 +795,9 @@ function AdvisingDraftEditor({ token, role, student, termId, notify, onBack, onS
         <p className="helper-text">Choose or clear a group for each component. Saving reserves the selected seats and releases seats you remove. You can save with some groups still unassigned.</p>
         {creditPolicy && <dl className="draft-credit-grid" id="draft-credit-summary" tabIndex={-1}>
           <div><dt>Selected credits</dt><dd>{credits}</dd></div>
-          <div><dt>{creditPolicy.probation ? "Probation allowance" : "Standard allowance"}</dt><dd>{creditPolicy.baseAllowance ?? "—"}</dd></div>
-          <div><dt>Activated extra hours</dt><dd>{creditPolicy.approvedExtraHours}</dd></div>
-          <div><dt>Maximum credits</dt><dd>{creditPolicy.maximumCreditHours}</dd></div>
+          <div><dt>Credit-hour allowance</dt><dd>{creditPolicy.maximumCreditHours}</dd></div>
+          <div><dt>Standard allowance</dt><dd>{creditPolicy.standardAllowance ?? "—"}</dd></div>
           <div><dt>Remaining credits</dt><dd>{Math.max(0, creditPolicy.maximumCreditHours - credits)}</dd></div>
-          <div><dt>Extra credits used</dt><dd>{Math.max(0, credits - (creditPolicy.baseAllowance ?? creditPolicy.maximumCreditHours))}</dd></div>
         </dl>}
         {creditPolicy && !creditPolicy.policyConfigured && <p className="helper-text">Semester {creditPolicy.semester} uses the 34-hour overall ceiling until its standard allowance is defined.</p>}
         {!editable && <Feedback tone="warning">This schedule has moved beyond draft status and is read-only.</Feedback>}
@@ -1103,13 +1114,12 @@ function AdvisingOverviewPanel({ overview, token, student, termQuery, canEdit, n
     finally { setBusy(false); }
   }
   return <section className="panel advising-overview" aria-label="Advising overview">
-    <div className="panel-heading"><div><p className="eyebrow">ADVISING OVERVIEW</p><h2>{ADVISING_REASONS[overview.advisingReason] || overview.advisingReason}</h2></div><span className="status-pill good">{WORKFLOW_LABELS[overview.scheduleStatus] || overview.scheduleStatus}</span></div>
+    <div className="panel-heading"><div><p className="eyebrow">ADVISING OVERVIEW</p><h2>{overview.student?.fullName} · {overview.student?.studentId}</h2></div><span className="status-pill good">{WORKFLOW_LABELS[overview.scheduleStatus] || overview.scheduleStatus}</span></div>
     <dl className="overview-grid">
+      <div><dt>Advising reason</dt><dd>{ADVISING_REASONS[overview.advisingReason] || overview.advisingReason}</dd></div>
       <div><dt>Academic standing</dt><dd>{overview.academicStanding === "probation" ? "Probation" : "Good academic standing"}</dd></div>
+      <div><dt>Credit-hour allowance</dt><dd>{hours.maximumCreditHours} h</dd></div>
       <div><dt>Standard allowance</dt><dd>{hours.standardAllowance ?? "Not configured"}{hours.standardAllowance != null ? " h" : ""}</dd></div>
-      <div><dt>Allowed hours</dt><dd>{hours.allowedHours ?? "—"}{hours.probation ? ` (−${hours.reductionForProbation} probation)` : ""}</dd></div>
-      <div><dt>Approved extra hours</dt><dd>{hours.approvedExtraHours}{hours.probation ? " (not available)" : ""}</dd></div>
-      <div><dt>Maximum this term</dt><dd>{hours.maximumCreditHours} h</dd></div>
       <div><dt>Bachelor project</dt><dd><span className={`status-pill ${bachelor.eligible ? "good" : "warning"}`}>{bachelor.eligible ? "Eligible" : "Not eligible"}</span></dd></div>
     </dl>
     {bachelor.selection && <p className="helper-text"><strong>Bachelor project selected for {bachelor.selection.season === "winter" ? "Winter" : "Spring"}.</strong> Up to four courses may be taken with it: two core and two humanities (humanities count as extra hours).</p>}
