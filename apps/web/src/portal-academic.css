@@ -835,3 +835,13 @@
 .schedule-preferences-page .priority-item-label { flex: 1; }
 .academic-services-embedded .preference-remove-choice { flex: none; width: 32px; min-height: 32px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: var(--muted); font-size: 20px; cursor: pointer; }
 .academic-services-embedded .preference-remove-choice:hover { color: var(--ink); background: var(--raised); }
+
+.portal-advising-services .academic-services-embedded .schedule-preferences-page .preference-groups { gap: 12px; }
+.academic-services-embedded .schedule-preferences-page .preference-groups .preference-section-heading h2 { font-size: 16px; }
+.schedule-preferences-page .preference-groups .preference-section-icon { width: 34px; height: 34px; }
+.schedule-preferences-page .preference-groups .preference-section-icon svg { width: 22px; height: 22px; }
+.academic-services-embedded .preference-refresh-groups { display: inline-flex; justify-self: start; align-items: center; justify-content: center; gap: 8px; width: auto; min-height: 34px; padding: 7px 12px; font-size: 12px; }
+.preference-button-spinner { display: inline-block; width: 12px; height: 12px; border: 1.5px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: preference-spin .7s linear infinite; }
+.preference-group-feedback { margin: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; color: var(--ink); font-size: 13px; line-height: 1.5; }
+@keyframes preference-spin { to { transform: rotate(360deg); } }
+@media(prefers-reduced-motion: reduce) { .preference-button-spinner { animation: none; border-style: dotted; } }
