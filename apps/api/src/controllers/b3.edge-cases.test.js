@@ -1279,11 +1279,27 @@ describe('Part B3 Automated Test Suite (Reqs 64–69 and 80–82)', () => {
       });
       createdScheduleIds.push(schedMand._id);
 
+      const otherTerm = await AcademicTerm.create({
+        code: `T-OT-${Date.now().toString().slice(-4)}`,
+        academicYear: '2026/2027',
+        season: 'summer',
+        termStart: new Date('2027-06-01T00:00:00Z'),
+        termEnd: new Date('2027-08-01T00:00:00Z'),
+        teachingStart: new Date('2027-06-05T00:00:00Z'),
+        teachingEnd: new Date('2027-07-25T00:00:00Z'),
+        registrationStart: new Date('2027-05-15T00:00:00Z'),
+        registrationEnd: new Date('2027-06-01T00:00:00Z'),
+        advisingDeadline: new Date('2027-06-05T00:00:00Z'),
+        wholeScheduleSwapDeadline: new Date('2027-06-10T00:00:00Z'),
+        isActive: false,
+      });
+      const unrelatedCourse = await createTestCourse();
+
       const pendRemoval = await MandatoryCourseRemovalRequest.create({
         student: sMand._id,
-        course: cMand._id,
+        course: unrelatedCourse._id,
         advisor: advisorUser._id,
-        term: defaultTerm._id,
+        term: otherTerm._id,
         reason: 'other',
         explanation: 'Blocking final process while removal awaits decision',
         status: 'pending',
@@ -1296,7 +1312,10 @@ describe('Part B3 Automated Test Suite (Reqs 64–69 and 80–82)', () => {
         body: { termId: defaultTerm._id },
       });
       assert.equal(blockedRes.status, 400);
-      assert.match(blockedRes.body.message, /pending mandatory removal/i);
+      assert.equal(
+        blockedRes.body.message,
+        'Cannot process schedule while mandatory course removal requests remain pending.'
+      );
       assert.equal((await StudentSchedule.findById(schedMand._id)).status, 'readyForStudentReview');
 
       // Resolve pending mandatory removal request
