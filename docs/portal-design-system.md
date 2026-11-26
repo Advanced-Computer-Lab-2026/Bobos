@@ -100,3 +100,13 @@ Advising students, staff Graduation review and Student preferences share the aca
 Live academic tables reuse the Course catalogue treatment: 10px rounded frame, muted raised header, 13px records, 13px by 16px cell spacing, fine row rules and outlined actions. Keep complete column data horizontally scrollable on narrow screens. Slot change requests uses these tables and the shared Portal controls for both students and staff; preserve request, decision, replacement and withdrawal handlers.
 
 API teaching weeks preserve all six Saturday–Thursday columns in one horizontally scrollable row. Unknown courses reuse the existing processor emblem; schedule states display readable labels. Do not drop days or substitute another student’s courses to make the layout fit.
+
+Course offerings and the Copy offerings bookmark open the live academic offering workspace. Select and load an existing target term, then choose a previous Winter/Spring/Summer source term and source courses. Display the API-created draft count, skipped existing courses and resource conflicts; refresh the target listing after a copy. Never show a preview success dialog for this action.
+
+Course offerings uses the Catalogue register with the original processor, algorithms, beetle and graphics emblems. Keep Manage, Publish and paper-toss Delete actions attached to their original handlers. Duplicate offerings opens a Portal dialog from the header action or copy bookmark, with course emblems in its selection list; retain real API results and the target register. Do not repeat the copy form inline.
+
+Course offerings exposes Duplicate offerings beside Create offering; it opens the copy dialog. Create offering uses a wide Portal dialog with grouped fields, quiet meeting-group sections and a sticky action footer. Keep parsing, field validation and API submission unchanged.
+
+Course offerings loads the saved or active target on entry and reloads automatically when the target-term selection changes. There is no Load offerings button. Ignore stale responses from an earlier term selection so the listing and create/copy target stay consistent.
+
+The offering register empty state uses the existing folder illustration, No offerings yet heading and concise guidance toward the header actions. Historical offering fixtures can be added locally with `npm run seed:historical-offerings --workspace @bobos/api`; existing offerings are retained.

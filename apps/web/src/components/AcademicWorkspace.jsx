@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api, explainApiError } from "../api.js";
 import PaperTossButton, { waitForPaperToss } from "./PaperTossButton.jsx";
 
@@ -423,20 +423,45 @@ function TermStandingModal({ token, terms, selectedTerm, onClose, onSaved }) {
   </Modal>;
 }
 
+function OfferingCourseIcon({ code = "" }) {
+  const key = code.replace(/\s/g, "");
+  const symbol = { CSEN703: "algorithms", CSEN704: "advanced-lab", DMET701: "graphics" }[key];
+  const tone = { CSEN701: "blue", CSEN703: "coral", CSEN704: "sage", DMET701: "ivory" }[key] || "ivory";
+  return <span className="offering-course-emblem" data-tone={tone} aria-hidden="true">{symbol ? <img src={`/portal-studio/images/symbols/${symbol}.svg`} alt="" /> : <svg viewBox="0 0 30 24" fill="none" stroke="currentColor" strokeWidth="1.25"><path d="m9 6 11-.5.6 10.5-11 1z M12 9l5-.4.4 4.4-5 .4z M11 3v3m4-3v3m4-3v2m-8 12v3m4-3v3m4-4v3M6 9h3m-3 4h3m12-5h3m-3 5h3" /></svg>}</span>;
+}
+
 function OfferingsWorkspace({ token, notify }) {
   const [termId, setTermId] = useState(() => window.localStorage.getItem("bobos.lastTermId") || "");
+  const [terms, setTerms] = useState([]);
+  const [duplicating, setDuplicating] = useState(() => new URLSearchParams(window.location.search).get("page") === "copy-offerings");
+  const requestVersion = useRef(0);
   const [courses, setCourses] = useState([]); const [offerings, setOfferings] = useState([]); const [termSummary, setTermSummary] = useState(null); const [loading, setLoading] = useState(false); const [error, setError] = useState(""); const [creating, setCreating] = useState(false); const [details, setDetails] = useState(null); const [confirmingDelete, setConfirmingDelete] = useState(null); const [deleteError, setDeleteError] = useState(""); const [deleting, setDeleting] = useState(false);
   useEffect(() => { api("/api/catalogue/courses", { token }).then(setCourses).catch(() => {}); }, [token]);
-  const load = async (event, identifier = termId.trim()) => { event?.preventDefault(); if (!identifier) { setError("Enter an academic term code or ID."); return; } window.localStorage.setItem("bobos.lastTermId", identifier); setLoading(true); setError(""); try { const data = await api(`/api/catalogue/offerings?termId=${encodeURIComponent(identifier)}`, { token }); setOfferings(data.offerings || []); setTermSummary(data.term); } catch (e) { setError(explainApiError(e, "Course offerings")); setOfferings([]); setTermSummary(null); } finally { setLoading(false); } };
+  const load = async (event, identifier = termId.trim()) => { event?.preventDefault(); if (!identifier) { setError("Enter an academic term code or ID."); return; } const version = ++requestVersion.current; window.localStorage.setItem("bobos.lastTermId", identifier); setLoading(true); setError(""); try { const data = await api(`/api/catalogue/offerings?termId=${encodeURIComponent(identifier)}`, { token }); if (version !== requestVersion.current) return; setOfferings(data.offerings || []); setTermSummary(data.term); } catch (e) { if (version !== requestVersion.current) return; setError(explainApiError(e, "Course offerings")); setOfferings([]); setTermSummary(null); } finally { if (version === requestVersion.current) setLoading(false); } };
+  useEffect(() => {
+    let alive = true;
+    api("/api/academic-terms/academicTerm", { token }).then(rows => {
+      if (!alive) return;
+      setTerms(rows);
+      const selected = rows.find(term => term._id === termId || term.code === termId) || rows.find(term => term.isActive) || rows[0];
+      if (selected) { setTermId(selected.code); load(undefined, selected.code); }
+    }).catch(failure => { if (alive) setError(failure.message); });
+    return () => { alive = false; };
+  }, [token]);
   const openDetails = async (offering) => { setDetails({ loading: true }); try { setDetails(await api(`/api/catalogue/offerings/${offering._id}`, { token })); } catch (e) { setDetails({ error: e.message }); } };
   const togglePublish = async (offering) => { try { await api(`/api/catalogue/offerings/${offering._id}/publish`, { token, method: "PATCH", body: { isPublished: !offering.isPublished } }); notify("success", `${offering.course?.code || "Offering"} ${offering.isPublished ? "unpublished" : "published"}.`); load(); } catch (e) { setError(e.message); } };
   const removeOffering = async () => { if (!confirmingDelete) return; setDeleting(true); setDeleteError(""); try { await waitForPaperToss(); await api(`/api/catalogue/offerings/${confirmingDelete._id}`, { token, method: "DELETE" }); notify("success", `${confirmingDelete.course?.code || "Offering"} deleted.`); setConfirmingDelete(null); load(); } catch (e) { setDeleteError(e.message); } finally { setDeleting(false); } };
   const afterSave = (message) => { notify("success", message); setCreating(false); setDetails(null); load(); };
-  return <div className="page-stack"><div className="page-title-row"><div><p className="eyebrow">OFFERINGS</p><h1>Course offerings</h1><p className="page-description">Create term offerings, manage course groups, and publish the catalogue.</p></div><button className="primary-button" type="button" disabled={!termSummary || loading} onClick={() => setCreating(true)}>＋ Create offering</button></div>
-    <section className="panel term-picker"><form className="inline-controls" onSubmit={load}><label className="field"><span>Academic term code or ID</span><input required value={termId} onChange={(event) => setTermId(event.target.value)} placeholder="e.g. 61-" /></label><button className="outline-button" type="submit" disabled={loading}>{loading ? "Loading…" : "Load offerings"}</button></form><p className="helper-text">Use the official MET/DMET term code, such as 61-, or a MongoDB term ID.</p></section>
-    {termSummary && <DuplicateOfferings key={termSummary._id} token={token} target={termSummary} targetOfferings={offerings} loading={loading} onCopied={() => load(undefined, termSummary.code)} />}
+  return <div className="page-stack"><div className="page-title-row"><div><p className="eyebrow">OFFERINGS</p><h1>Course offerings</h1><p className="page-description">Create term offerings, manage course groups, and publish the catalogue.</p></div><div className="form-actions"><button className="outline-button" type="button" disabled={!termSummary || loading} onClick={() => setDuplicating(true)}>Duplicate offerings</button><button className="primary-button" type="button" disabled={!termSummary || loading} onClick={() => setCreating(true)}>Create offering</button></div></div>
+    <section className="panel term-picker"><form className="inline-controls" onSubmit={load}><label className="field"><span>Target academic term</span><select required value={termId} onChange={(event) => { setTermId(event.target.value); setTermSummary(null); setOfferings([]); load(undefined, event.target.value); }}><option value="">Select a target term</option>{terms.map(term => <option key={term._id} value={term.code}>{pretty(term.season)} {term.academicYear}</option>)}</select></label></form><p className="helper-text">Offerings load automatically for the selected term. Choose a previous source term below to duplicate courses.</p></section>
+    {termSummary && duplicating && <DuplicateOfferings key={termSummary._id} token={token} target={termSummary} targetOfferings={offerings} loading={loading} onClose={() => setDuplicating(false)} onCopied={() => load(undefined, termSummary.code)} />}
     {error && <div className="feedback error" role="alert">{error}</div>}
-    <section className="panel results-panel"><div className="results-heading"><div><p className="eyebrow">TERM OFFERINGS</p><h2>Course groups</h2></div><span className="result-count">{loading ? "Loading" : `${offerings.length} offerings`}</span></div>{loading ? <Loading /> : offerings.length === 0 ? <EmptyState title="No offerings loaded" text="Enter a term code and load offerings, or create the first offering." icon="▤" /> : <div className="offering-grid">{offerings.map((offering) => <article className="offering-card" key={offering._id}><div className="offering-card-top"><span className="course-code-pill">{offering.course?.code || "COURSE"}</span><span className={`status-pill ${offering.isPublished ? "good" : "muted"}`}>{offering.isPublished ? "Published" : "Draft"}</span></div><h3>{offering.course?.name || "Course offering"}</h3><p>{offering.course?.creditHours ?? "—"} credits <span>·</span> {pretty(offering.course?.courseType)}</p><p className="offering-term-year">{offering.term?.code || termSummary?.code} · Academic year {offering.term?.academicYear || termSummary?.academicYear}</p><div className="offering-meta"><span>▧ {(offering.slots || []).length} groups</span><span>♙ {(offering.instructors || []).length} instructors</span></div><div className="offering-slot-preview">{(offering.slots || []).slice(0, 3).map((slot) => <span key={slot._id}>{pretty(slot.componentType)} {slot.groupNumber} · {slot.day} {formatMinutes(slot.startMinute)}</span>)}</div><div className="offering-actions"><button type="button" className="text-button" onClick={() => openDetails(offering)}>Manage</button><button type="button" className="text-button" onClick={() => togglePublish(offering)}>{offering.isPublished ? "Unpublish" : "Publish"}</button><PaperTossButton label={`Delete ${offering.course?.code || 'course'} offering`} onClick={() => { setDeleteError(""); setConfirmingDelete(offering); }}>Delete</PaperTossButton></div></article>)}</div>}</section>
+    <section className="panel results-panel"><div className="results-heading"><div><p className="eyebrow">TERM OFFERINGS</p><h2>Course groups</h2></div><span className="result-count">{loading ? "Loading" : `${offerings.length} offerings`}</span></div>{loading ? <Loading /> : offerings.length === 0 ? <div className="offering-empty" role="status"><img src="/portal-studio/variants/05-operations/assets/extra-hours-folder.svg" alt="" width="100" height="76" /><h3>No offerings yet</h3><p>This term’s course register is empty. Use Create offering or Duplicate offerings above to get started.</p></div> : <div className="table-scroll offering-register"><table><thead><tr><th>Course</th><th>Credits</th><th>Groups</th><th>Instructors</th><th>Status</th><th>Actions</th></tr></thead><tbody>{offerings.map(offering => <tr key={offering._id}>
+      <td><div className="offering-course-identity"><OfferingCourseIcon code={offering.course?.code} /><div><strong>{offering.course?.name || "Course offering"}</strong><span className="secondary-text">{offering.course?.code}</span></div></div></td>
+      <td>{offering.course?.creditHours ?? "—"}</td><td>{(offering.slots || []).length}</td><td>{(offering.instructors || []).map(person => person.fullName).join(", ") || "Not assigned"}</td>
+      <td><span className={`status-pill ${offering.isPublished ? "good" : "muted"}`}>{offering.isPublished ? "Published" : "Draft"}</span></td>
+      <td><div className="table-actions"><button type="button" className="text-button" onClick={() => openDetails(offering)}>Manage</button><button type="button" className="text-button" onClick={() => togglePublish(offering)}>{offering.isPublished ? "Unpublish" : "Publish"}</button><PaperTossButton label={`Delete ${offering.course?.code || 'course'} offering`} onClick={() => { setDeleteError(""); setConfirmingDelete(offering); }}>Delete</PaperTossButton></div></td>
+    </tr>)}</tbody></table></div>}</section>
     {creating && <OfferingModal token={token} courses={courses} termId={termId} term={termSummary} onClose={() => setCreating(false)} onSaved={() => afterSave("Course offering created.")} />}
     {details && <OfferingDetailsModal token={token} offering={details} onClose={() => setDetails(null)} onChanged={afterSave} />}
     {confirmingDelete && <Modal title="Delete course offering?" eyebrow="REMOVE OFFERING" onClose={() => !deleting && setConfirmingDelete(null)}>
@@ -447,7 +472,7 @@ function OfferingsWorkspace({ token, notify }) {
   </div>;
 }
 
-function DuplicateOfferings({ token, target, targetOfferings, loading, onCopied }) {
+function DuplicateOfferings({ token, target, targetOfferings, loading, onCopied, onClose }) {
   const [terms, setTerms] = useState([]);
   const [sourceId, setSourceId] = useState("");
   const [fetching, setFetching] = useState(true);
@@ -500,8 +525,7 @@ function DuplicateOfferings({ token, target, targetOfferings, loading, onCopied 
     finally { setCopying(false); }
   }
 
-  return <section className="panel">
-    <h2>Duplicate offerings into {target.code}</h2>
+  return <Modal title="Duplicate course offerings" eyebrow="COURSE OFFERINGS" onClose={() => !copying && onClose()} wide><div className="offering-copy-dialog">
     <p className="helper-text">Choose which courses to copy as unpublished drafts. Existing offerings are skipped.</p>
     <form className="form-stack" onSubmit={copy}>
       <label className="field"><span>Source academic year and season</span><select required value={sourceId} disabled={fetching || copying} onChange={(event) => {
@@ -512,7 +536,7 @@ function DuplicateOfferings({ token, target, targetOfferings, loading, onCopied 
         setError("");
       }}>
         <option value="">{fetching ? "Loading terms…" : sources.length ? "Select a previous term" : "No previous terms found"}</option>
-        {sources.map((term) => <option key={term._id} value={term._id}>{term.academicYear} · {pretty(term.season)} ({term.code})</option>)}
+        {sources.map((term) => <option key={term._id} value={term._id}>{pretty(term.season)} {term.academicYear}</option>)}
       </select></label>
       {sourceId && !preview && <p role="status">Loading source offerings…</p>}
       {preview?.length === 0 && !error && <p>No offerings in this source term.</p>}
@@ -527,7 +551,7 @@ function DuplicateOfferings({ token, target, targetOfferings, loading, onCopied 
             const checked = event.target.checked;
             setSelectedIds((current) => checked ? [...current, offering._id] : current.filter((id) => id !== offering._id));
           }} />
-          {" "}<strong>{offering.course.code}</strong> · {offering.course.name} · {offering.slots.length} groups
+          {" "}<OfferingCourseIcon code={offering.course.code} /><strong>{offering.course.code}</strong> · {offering.course.name} · {offering.slots.length} groups
           {targetCourseIds.has(offering.course._id) && <span className="secondary-text">Already in target · will be skipped</span>}
         </label>)}
       </fieldset>}
@@ -539,7 +563,7 @@ function DuplicateOfferings({ token, target, targetOfferings, loading, onCopied 
       {result.skipped.length > 0 && <p className="helper-text">Skipped {result.skipped.join(", ")}.</p>}
       {result.conflicts.length > 0 && <div className="feedback warning"><strong>Conflicts to review</strong><ul>{result.conflicts.map((conflict, index) => <li key={index}>{conflict.courseCode} {conflict.componentType} {conflict.groupNumber} overlaps {conflict.otherCourseCode}. {conflict.message}</li>)}</ul></div>}
     </div>}
-  </section>;
+  </div></Modal>;
 }
 
 function TemplatesWorkspace({ token, notify }) {
@@ -703,7 +727,7 @@ function OfferingModal({ token, courses, termId, term, onClose, onSaved }) {
   }));
   const addSlot = () => setSlots((current) => [...current, emptySlot(nextGroupNumber(current, -1, "lecture"))]);
   const submit = async (event) => { event.preventDefault(); setSaving(true); setError(""); const form = new FormData(event.currentTarget); const instructors = splitLines(form.get("instructors")).map((line) => { const [fullName, email] = line.split("|").map((part) => part.trim()); return { fullName, ...(email ? { email } : {}) }; }); const eligibleGroups = splitLines(form.get("eligibleGroups")).map((line) => { const [major, semester, studyGroup] = line.split("|").map((part) => part.trim()); return { major, ...(semester ? { semester: Number(semester) } : {}), ...(studyGroup ? { studyGroup } : {}) }; }); const payload = { course: form.get("course"), term: termId.trim(), instructors, eligibleGroups, isPublished, slots: slots.map((slot) => ({ componentType: slot.componentType, groupNumber: slot.groupNumber.trim(), day: slot.day, startMinute: timeToMinutes(slot.startTime), endMinute: timeToMinutes(slot.endTime), room: slot.room.trim(), capacity: Number(slot.capacity) })) }; try { await api("/api/catalogue/offerings", { token, method: "POST", body: payload }); onSaved(); } catch (e) { setError(e.message); } finally { setSaving(false); } };
-  return <Modal title="Create course offering" eyebrow="COURSE OFFERING" onClose={onClose}><form className="form-stack" onSubmit={submit}><div className="form-grid"><Field label="Course"><select name="course" required defaultValue=""><option value="" disabled>Choose a course</option>{courses.map((course) => <option key={course._id} value={course._id}>{course.code} · {course.name}</option>)}</select></Field><Field label="Academic term"><input value={[term?.code || termId, term?.season, term?.academicYear].filter(Boolean).join(" · ")} readOnly /></Field><Field label="Publication status"><select value={isPublished ? "published" : "draft"} onChange={(event) => setIsPublished(event.target.value === "published")}><option value="draft">Draft</option><option value="published">Published</option></select></Field><Field label="Instructors · one per line: Name | email" className="span-two"><textarea name="instructors" rows={3} placeholder="Dr. Sara Hassan | sara.hassan@guc.edu.eg" /></Field><Field label="Eligible groups · one per line: Major | semester | group" className="span-two"><textarea name="eligibleGroups" rows={3} placeholder="Computer Science | 4 | G1" /></Field></div><div className="slot-editor-heading"><div><p className="eyebrow">MEETING TIMES</p><h3>Course groups</h3></div><button className="outline-button small-button" type="button" onClick={addSlot}>＋ Add group</button></div>{slots.map((slot, index) => <SlotFields key={index} index={index} slot={slot} onChange={setSlot} onRemove={() => setSlots((current) => current.filter((_, i) => i !== index))} canRemove={slots.length > 1} />)}{error && <div className="feedback error" role="alert">{error}</div>}<FormFooter onCancel={onClose} busy={saving} submitText="Create offering" /></form></Modal>;
+  return <Modal title="Create course offering" eyebrow="COURSE OFFERING" onClose={onClose} wide><form className="form-stack offering-create-form" onSubmit={submit}><div className="form-grid"><Field label="Course"><select name="course" required defaultValue=""><option value="" disabled>Choose a course</option>{courses.map((course) => <option key={course._id} value={course._id}>{course.code} · {course.name}</option>)}</select></Field><Field label="Academic term"><input value={[pretty(term?.season), term?.academicYear].filter(Boolean).join(" ")} readOnly /></Field><Field label="Publication status"><select value={isPublished ? "published" : "draft"} onChange={(event) => setIsPublished(event.target.value === "published")}><option value="draft">Draft</option><option value="published">Published</option></select></Field><Field label="Instructors"><textarea name="instructors" rows={3} placeholder="Dr. Sara Hassan | sara.hassan@guc.edu.eg" /><small>One instructor per line: Name | email</small></Field><Field label="Eligible student groups"><textarea name="eligibleGroups" rows={3} placeholder="Computer Science | 4 | G1" /><small>One group per line: Major | semester | group</small></Field></div><div className="slot-editor-heading"><div><p className="eyebrow">MEETING TIMES</p><h3>Course groups</h3></div><button className="outline-button small-button" type="button" onClick={addSlot}>＋ Add group</button></div>{slots.map((slot, index) => <SlotFields key={index} index={index} slot={slot} onChange={setSlot} onRemove={() => setSlots((current) => current.filter((_, i) => i !== index))} canRemove={slots.length > 1} />)}{error && <div className="feedback error" role="alert">{error}</div>}<FormFooter onCancel={onClose} busy={saving} submitText="Create offering" /></form></Modal>;
 }
 
 function OfferingDetailsModal({ token, offering, onClose, onChanged }) {

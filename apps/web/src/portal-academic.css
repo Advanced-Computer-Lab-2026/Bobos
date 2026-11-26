@@ -509,3 +509,62 @@
   .academic-services-embedded :is(.table-scroll, .table-wrap) > table :is(th, td) { padding: 12px; }
   .academic-services-embedded .slot-changes-page .slot-request-card { padding: 18px; }
 }
+
+/* Offering register reuses the catalogue's illustrated course identities. */
+.service-surface[data-service="offerings"] .eyebrow { display: none; }
+.service-surface[data-service="offerings"] .offering-course-identity { display: flex; align-items: center; gap: 12px; min-width: 220px; }
+.offering-course-emblem { display: inline-grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: 9px; background: #e8e4d9; color: #38342c; vertical-align: middle; }
+.offering-course-emblem[data-tone="blue"] { background: #a6c8e6; }
+.offering-course-emblem[data-tone="coral"] { background: #edb292; }
+.offering-course-emblem[data-tone="sage"] { background: #bdd2c7; }
+.offering-course-emblem :is(img,svg) { width: 28px; height: 28px; object-fit: contain; }
+.academic-services-embedded .offering-copy { padding: 18px 0; border-block: 1px solid var(--line); }
+.offering-copy > summary { width: fit-content; cursor: pointer; color: var(--ink); font: 500 15px/1.5 Styrene, system-ui, sans-serif; }
+.offering-copy[open] > summary { margin-bottom: 18px; }
+.offering-copy > .helper-text { margin-bottom: 18px; }
+.offering-copy fieldset { margin: 0; padding: 0; border: 0; }
+.offering-copy fieldset > label { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.offering-copy fieldset input { accent-color: #8aab99; }
+
+/* Offering creation is a quiet Portal form, with a stable action footer. */
+.service-surface[data-service="offerings"] .modal-card.wide-modal:has(.offering-create-form) {
+  width: min(1020px, calc(100vw - 40px));
+  max-width: 1020px;
+  max-height: calc(100dvh - 48px);
+  padding: 28px;
+  border-radius: 12px;
+  background: var(--paper);
+  color: var(--ink);
+  overflow-y: auto;
+}
+.service-surface[data-service="offerings"] .modal-card:has(.offering-create-form) .modal-heading {
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--line);
+}
+.service-surface[data-service="offerings"] .modal-card:has(.offering-create-form) .modal-heading h2 { font: 500 22px/1.25 Styrene,system-ui,sans-serif; letter-spacing: -.03em; }
+.offering-create-form { gap: 24px; }
+.offering-create-form > .form-grid { gap: 20px; }
+.offering-create-form .slot-editor-heading { margin: 8px 0 0; padding-top: 22px; border-top: 1px solid var(--line); align-items: center; }
+.offering-create-form .slot-editor-heading h3 { font: 500 17px/1.35 Styrene,system-ui,sans-serif; }
+.offering-create-form .slot-row { padding: 18px; border: 1px solid var(--line); background: transparent; border-radius: 10px; }
+.offering-create-form .slot-row .form-grid { gap: 14px; }
+.offering-create-form .slot-row-title { margin-bottom: 18px; }
+.offering-create-form .slot-row-title strong { font-size: 14px; font-weight: 500; }
+.offering-create-form > .form-footer { position: sticky; bottom: -28px; z-index: 2; margin: 0 -4px -4px; padding: 18px 4px; background: var(--paper); border-top: 1px solid var(--line); }
+.offering-create-form .field small { font-size: 12px; line-height: 1.5; color: var(--muted); }
+@media (max-width: 700px) {
+  .service-surface[data-service="offerings"] .modal-card.wide-modal:has(.offering-create-form) { width: calc(100vw - 24px); padding: 18px; max-height: calc(100dvh - 24px); }
+  .offering-create-form > .form-grid { grid-template-columns: minmax(0,1fr); }
+  .offering-create-form > .form-footer { bottom: -18px; }
+}
+
+.offering-empty { display: grid; justify-items: center; gap: 10px; padding: 40px 20px; border-top: 1px solid var(--line); text-align: center; }
+.offering-empty img { display: block; object-fit: contain; }
+.offering-empty h3 { margin: 0; color: var(--ink); font: 500 18px/1.35 Styrene, system-ui, sans-serif; }
+.offering-empty p { max-width: 48ch; margin: 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
+.offering-copy-dialog > .helper-text { margin-bottom: 20px; }
+.offering-copy-dialog fieldset { border: 0; margin: 0; padding: 0; }
+.offering-copy-dialog fieldset > label { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.offering-copy-dialog input[type="checkbox"] { accent-color: #8aab99; }

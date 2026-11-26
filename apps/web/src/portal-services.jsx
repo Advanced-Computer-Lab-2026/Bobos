@@ -34,7 +34,7 @@ export function mount(host) {
   // Reuse Portal's existing heading illustrations inside the service shadow root.
   const serviceParams = new URLSearchParams(host.dataset.portalService);
   surface.dataset.service = serviceParams.get("screen") || "";
-  const polishedServices = ["advising", "preferences", "graduation-plans", "graduation-review", "my-submitted-plans", "slot-changes"];
+  const polishedServices = ["advising", "preferences", "graduation-plans", "graduation-review", "my-submitted-plans", "slot-changes", "offerings"];
   surface.classList.toggle("portal-advising-services", polishedServices.includes(serviceParams.get("screen")));
   if (serviceParams.get("section") === "academic-services" || serviceParams.get("screen") === "graduation-plans") {
     const artHost = document.createElement("div");

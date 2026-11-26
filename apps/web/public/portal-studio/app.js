@@ -968,13 +968,8 @@ function terms(){
   table(['Term','Academic year','Registration','Swap deadline','Status',''],semesters.map(([name,year,range,end,state,tone,action])=>
     [name,year,range,end,badge(state,tone),button(action,'manage-term','btn text')]));
 }
-function offerings(){return head('Course offerings',academicStudy() ? termContext('Teaching groups and sections') : '',button('Add offering','add-offering','btn primary')+link('copy-offerings','Copy from another term','btn'))+
-  filterbar('Search offerings',[['Winter 2026',['Winter 2026','Spring 2027']]])+
-  table(['Course','Groups','Lecture sections','Tutorial sections','Status',''],courseData.slice(0,4).map((c,i)=>[academicCourse(c,`${c[0]}<small>${c[1]}</small>`),'4','2','4',badge(i===3?'Draft':'Published',i===3?'pending':''),button('Manage sections','manage-sections','btn text')]));}
-function copyOfferings(){return head('Copy course offerings','Choose a source term, then select the courses to copy.',link('offerings','Back to offerings','btn'))+
-  `<section class="panel academic-transfer"><div class="formgrid"><label>Source term<select><option>Winter 2025</option><option>Spring 2026</option></select></label>${academicStudy() ? `<span class="transfer-arrow" aria-hidden="true">${icon('chevron')}</span>` : ''}<label>Destination term<select><option>Winter 2026</option><option>Spring 2027</option></select></label></div></section>`+
-  table(['Select','Course','Groups','Sections'],courseData.map(c=>[`<input type="checkbox" aria-label="Copy ${c[0]}" checked>`,academicCourse(c,`${c[0]}<small>${c[1]}</small>`),'4','6']))+
-  `<div class="form-footer">${button('Copy selected offerings','copy-confirm','btn primary')}</div>`;}
+function offerings(){ return portalService('offerings', 'academic-services'); }
+function copyOfferings(){ return portalService('offerings', 'academic-services'); }
 function templates(){
   const groups = ['Group 1','Group 2','Group 3','Group 4'];
   return head('Schedule templates',academicStudy() ? termContext('Computer Engineering') : '',link('template-detail','Create template','btn primary'))+
@@ -1899,7 +1894,7 @@ function action(name,el){
     }
     case 'add-offering':modal('Add course offering',fields('<label>Course<select><option>CSEN 701 · Embedded Systems</option><option>CSEN 703 · Algorithms</option></select></label><div class="formgrid"><label>Term<select><option>Winter 2026</option></select></label><label>Number of groups<input type="number" min="1" value="4" required></label></div>'),'Add offering');break;
     case 'manage-sections':modal('CSEN 701 sections',table(['Section','Time','Room'],[['Lecture 1','Sun 08:30','C2.301'],['Tutorial 4','Tue 10:00','C2.204'],['Lab 4','Wed 12:00','C7.102']],false),'Save sections');break;
-    case 'copy-confirm':{const count=document.querySelectorAll('table input:checked').length;if(!count){toast('Select at least one offering.', 'warning');break;}modal('Copy selected offerings?',`<p>${count} offerings will be copied from Winter 2025 to Winter 2026 in this preview. Existing offerings will be kept.</p>`,'Copy offerings');break;}
+
     case 'publish':modal('Publish this template?',`<p>${templateGroup()} will become available for student assignments in this preview.</p>`,'Publish template');break;
     case 'process':modal(`Process ${names[selectedStudent].split(' ')[0]}’s schedule?`,'<p>The draft has 19 credit hours and no time conflicts. Processing sends it to the student for review.</p>','Process schedule');break;
     case 'reopen':modal('Reopen this schedule?',fields('<label>Reason<textarea required rows="3" placeholder="Explain why the schedule needs another review."></textarea></label>'),'Reopen schedule');break;
