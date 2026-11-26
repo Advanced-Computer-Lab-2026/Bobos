@@ -1,3 +1,4 @@
+import { termLabel } from "../term-label.js";
 import { useEffect, useState, useCallback } from "react";
 import { api, explainApiError } from "../api.js";
 
@@ -240,7 +241,7 @@ export default function RequestRemovalModal({
                 <option value="">— Select an academic term —</option>
                 {terms.map((t) => (
                   <option key={t._id} value={t._id}>
-                    {t.code} · {t.season} {t.academicYear} {t.isActive ? "(Active)" : ""}
+                    {termLabel(t)} {t.isActive ? "(Active)" : ""}
                   </option>
                 ))}
               </select>

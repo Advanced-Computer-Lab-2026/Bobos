@@ -11,7 +11,7 @@ if(!actor)throw new Error('Seed standard demo accounts first.');
 const specs=[['CSEN 701','Embedded Systems',5,[['lecture','Sunday',510,'C2.301'],['tutorial','Tuesday',600,'C2.204']]],
 ['CSEN 703','Analysis & Design of Algorithms',5,[['tutorial','Sunday',720,'C3.104'],['lecture','Tuesday',510,'C3.202']]],
 ['CSEN 704','Advanced Computer Lab',4,[['lab','Monday',600,'C7.102'],['lecture','Tuesday',840,'C7.301']]],
-['DMET 701','Computer Graphics',5,[['lecture','Wednesday',720,'C1.201']]]];
+['DMET502','Computer Graphics',6,[['lecture','Wednesday',720,'C1.201']]]];
 const entries=[];
 for(const [code,name,credits,meetings] of specs){
  let course=await Course.findOne({code});

@@ -55,10 +55,9 @@ try {
     normals.push(await ensure(StudentProfile, `normal:${i}`, { user: user._id, studentId: `92-${String(i).padStart(5, '0')}`,
       studentType: 'normal', major: 'CS', currentSemester: 5, gpa: 2.2, academicStanding: 'goodAcademicStanding', studyGroup: String(i) }));
   }
-  const course = await ensure(Course, 'course', { code: 'B1LAB501', name: 'B1 Calendar and Workflow Lab', creditHours: 4,
-    courseType: 'core', facultyMajors: ['CS'], recommendedSemester: 5, lectureHours: 1, tutorialHours: 1, labHours: 1,
-    offeringSeasons: ['winter', 'spring', 'summer'] });
-  const offering = await ensure(CourseOffering, `offering:${term.id}`, { course: course._id, term: term._id, isPublished: true,
+  const course = await Course.findOne({code:'CSEN704'});
+  if (!course) throw new Error('Import the curriculum first (CSEN704).');
+  const offering = await CourseOffering.findOne({course:course._id,term:term._id}) || await ensure(CourseOffering, `offering:${term.id}`, { course: course._id, term: term._id, isPublished: true,
     instructors: [{ fullName: 'B1 Test Faculty', email: 'b1.faculty@guc.edu.eg' }], eligibleGroups: [{ major: 'CS', semester: 5 }],
     slots: ['lecture', 'tutorial', 'lab'].flatMap((componentType, i) => [1, 2].map(group => ({
       _id: oid(`slot:${term.id}:${i}:${group}`), componentType, groupNumber: String(group), day: ['Monday', 'Tuesday', 'Wednesday'][i],

@@ -1,3 +1,4 @@
+import { termLabel } from "../term-label.js";
 import { useEffect, useState } from "react";
 import { api, explainApiError } from "../api.js";
 import { GraduationEmpty } from "./WorkspaceUI.jsx";
@@ -193,7 +194,7 @@ export default function GraduationPlans({ student, token, onBack }) {
               const extra = term.approvedExtraCourses.filter(({ courseId }) => assignments[courseId] === term._id)
                 .reduce((sum, item) => sum + item.hours, 0);
               return <tr key={term._id}>
-                <td>{term.code} · {term.season} · {term.academicYear}</td>
+                <td>{termLabel(term)}</td>
                 <td>{total}</td><td>{Math.min(term.maximumCreditHours, term.baseAllowance + extra)}</td>
               </tr>;
             })}</tbody>
@@ -214,7 +215,7 @@ export default function GraduationPlans({ student, token, onBack }) {
                 {assignments[course._id] && !course.termIds.includes(assignments[course._id]) &&
                   <option value={assignments[course._id]}>Previously assigned term (unavailable)</option>}
                 {terms.filter((term) => course.termIds.includes(term._id)).map((term) =>
-                  <option key={term._id} value={term._id}>{term.code} · {term.season}</option>)}
+                  <option key={term._id} value={term._id}>{termLabel(term)}</option>)}
               </select></td>
             </tr>)}{!visibleCourses.length && courses.length > 0 && <tr><td colSpan={4}>No courses match your search.</td></tr>}</tbody>
           </table></div>

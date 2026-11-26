@@ -1,3 +1,4 @@
+import { termLabel } from "../term-label.js";
 import { useEffect, useState } from "react";
 import { api, explainApiError } from "../api.js";
 import { GraduationEmpty, WorkspaceHeader } from "./WorkspaceUI.jsx";
@@ -18,7 +19,7 @@ function PlanCourses({ plan }) {
       <thead><tr><th>Term</th><th>Courses</th><th>Credit hours</th></tr></thead>
       <tbody>{[...plan.termPlans].sort((a, b) => (a.term?.termStart ?? "").localeCompare(b.term?.termStart ?? ""))
         .map(({ term, courses }, index) => <tr key={term?._id ?? index}>
-          <td>{term ? `${term.code} · ${term.academicYear}` : "Archived term"}</td>
+          <td>{term ? termLabel(term) : "Archived term"}</td>
           <td>{courses.map((course) => `${course.code} · ${course.name}`).join(", ") || "—"}</td>
           <td>{courses.reduce((sum, course) => sum + course.creditHours, 0)}</td>
         </tr>)}</tbody>

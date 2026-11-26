@@ -1,3 +1,4 @@
+import { termLabel } from "../term-label.js";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../api.js";
 import { WorkspaceHeader } from "./WorkspaceUI.jsx";
@@ -432,7 +433,7 @@ export default function ExtraHoursPage({
                   {row.student?.user?.fullName || "Your request"}{" "}
                   {row.student?.studentId ? `· ${row.student.studentId}` : ""}
                 </h2>
-                <p className="helper-text">{row.term?.code} · Request {row._id.slice(-8)}</p>
+                <p className="helper-text">{termLabel(row.term)} · Request {row._id.slice(-8)}</p>
                 <dl className="extra-request-meta">
                   <div><dt>Advisor</dt><dd>{row.advisor?.fullName || "—"}</dd></div>
                   <div><dt>Submitted</dt><dd>{date(row.createdAt)}</dd></div>

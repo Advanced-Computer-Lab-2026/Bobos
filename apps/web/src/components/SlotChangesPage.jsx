@@ -1,3 +1,4 @@
+import { termLabel } from "../term-label.js";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api.js";
 import { filterSlotChanges } from "../slot-change-filters.js";
@@ -102,7 +103,7 @@ export default function SlotChangesPage({ token, role, onOpenSchedule }) {
     {mine && data && <section className="panel form-stack">
       <h2>Request a slot change</h2>
       {data.issue ? <p>{data.issue}</p> : <>
-        <p className="helper-text">Term {data.term.code} · Advising deadline: {date(data.term.advisingDeadline)}</p>
+        <p className="helper-text">{termLabel(data.term)} · Advising deadline: {date(data.term.advisingDeadline)}</p>
         {eligibleSlots.length ? <form className="form-stack" onSubmit={(event) => {
           event.preventDefault();
           const slot = eligibleSlots.find((item) => item.slotId === slotId);
@@ -137,7 +138,7 @@ export default function SlotChangesPage({ token, role, onOpenSchedule }) {
         <tbody>{shown.map((item) => <tr key={item._id}>
           {!mine && <td><strong>{item.student?.user?.fullName}</strong><span className="secondary-text">{item.student?.studentId} · {item.student?.assignedAdvisor?.fullName || "Unassigned"}</span></td>}
           <td><strong>{item.course?.code} · {item.componentType}</strong><span className="secondary-text">{item.currentSlotLabel || item.course?.name}</span></td>
-          <td>{date(item.createdAt)}<span className="secondary-text">{item.term?.code}</span></td>
+          <td>{date(item.createdAt)}<span className="secondary-text">{termLabel(item.term)}</span></td>
           <td><Status status={item.status} /></td>
           {!mine && <td><button type="button" className="text-button" disabled={busy} id={`slot-request-${item._id}`} aria-label={`View request for ${item.student?.studentId}, ${item.course?.code}`} onClick={() => open(item._id)}>View request</button></td>}
           {mine && <td><button type="button" className="outline-button slot-request-view-button" id={`student-slot-request-${item._id}`} aria-label={`View ${item.componentType} change request for ${item.course?.code}`} onClick={() => {
@@ -160,7 +161,7 @@ export default function SlotChangesPage({ token, role, onOpenSchedule }) {
         }
       }}>
         <div className="modal-heading">
-          <div><p className="eyebrow">MY SLOT CHANGE REQUEST · {selectedRequest.term?.code}</p><h2 id="student-slot-request-title" ref={studentRequestHeading} tabIndex={-1}>{selectedRequest.course?.code} · {selectedRequest.componentType}</h2></div>
+          <div><p className="eyebrow">MY SLOT CHANGE REQUEST · {termLabel(selectedRequest.term)}</p><h2 id="student-slot-request-title" ref={studentRequestHeading} tabIndex={-1}>{selectedRequest.course?.code} · {selectedRequest.componentType}</h2></div>
           <div className="slot-request-dialog-status"><Status status={selectedRequest.status} /><button type="button" className="icon-button" aria-label="Close request details" onClick={() => {
             const id = selectedRequestId;
             setSelectedRequestId(null);
@@ -190,7 +191,7 @@ export default function SlotChangesPage({ token, role, onOpenSchedule }) {
       <div className="results-heading"><div>
         <h2 ref={heading} tabIndex={-1}>{currentRequest.course?.code} · {currentRequest.componentType}</h2>
         <p>{currentRequest.student?.user?.fullName} · {currentRequest.student?.studentId}</p>
-        <p className="helper-text">Term {currentRequest.term?.code} · Submitted {date(currentRequest.createdAt)} · Advisor: {currentRequest.student?.assignedAdvisor?.fullName || "Unassigned"}</p>
+        <p className="helper-text">{termLabel(currentRequest.term)} · Submitted {date(currentRequest.createdAt)} · Advisor: {currentRequest.student?.assignedAdvisor?.fullName || "Unassigned"}</p>
       </div><Status status={currentRequest.status} /></div>
       <div className="slot-request-summary">
         <div><strong>Current slot on the request</strong><p>{currentRequest.currentSlotLabel || (detail.current ? slotText(detail.current) : "Slot no longer listed")}</p></div>

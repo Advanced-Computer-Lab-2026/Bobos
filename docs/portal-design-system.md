@@ -110,3 +110,45 @@ Course offerings exposes Duplicate offerings beside Create offering; it opens th
 Course offerings loads the saved or active target on entry and reloads automatically when the target-term selection changes. There is no Load offerings button. Ignore stale responses from an earlier term selection so the listing and create/copy target stay consistent.
 
 The offering register empty state uses the existing folder illustration, No offerings yet heading and concise guidance toward the header actions. Historical offering fixtures can be added locally with `npm run seed:historical-offerings --workspace @bobos/api`; existing offerings are retained.
+
+Visible term labels use the shared `termLabel` formatter: season plus academic year, never the internal term code. Dropdown values and API references retain their original IDs/codes. New term codes are generated internally; existing terms are selected by season/year.
+
+Live schedule and advising roster identities use `PortalAvatar`, sharing Studio’s name-derived eleven-color portrait palette and two-letter initials. Keep the avatar decorative, names and student IDs visible, and row action buttons separately spaced and wrapping on narrow screens.
+
+Student details shows compact allowance, extra-hours and bachelor-eligibility facts; secondary allowance calculations and missing-course explanations are disclosures. An ineligible editable draft shows a disabled Add bachelor project control with its reason. Course selection always shows Mandatory courses, including a clear empty state when none exist. Preserve eligibility guards and mandatory-course handlers.
+
+The advising draft editor uses a compact term summary and an ink-filled active view tab. Mandatory requirements appear in a dedicated sage-accented section; an empty requirement list becomes a short notice. The credit allowance is one warm-paper sheet with selected/maximum hours, remaining hours and a progress meter. Course rows reuse `OfferingCourseIcon.jsx` from the offering register, with a course code, name and add/remove action. Group selectors, validation, saving and review permissions retain their existing behavior. Scoped styles live in `portal-academic.css`.
+
+Course selection keeps Mandatory courses and Other eligible courses visible without opening a disclosure. Exact section labels remain visible even when no mandatory courses exist. Sage required-course and sky eligible-course symbols distinguish the sections; the eligible list names its four filters and retains search, exclusions and existing add/remove handlers.
+
+Student details reuses the cream allowance sheet with large allowed hours, approved extra hours and the term maximum. The advising reason appears once in the sheet. Bachelor eligibility and existing project controls occupy a separate illustrated section, followed by a sky-marked scheduling-preferences section. Keep all eligibility guards, project season handlers and preferences refresh behavior intact.
+
+When selected credits exceed the existing credit-policy maximum, the allowance total and progress fill turn red on the cream paper. Show the number of hours over the limit alongside the total; return to the normal treatment at or below the maximum. Preserve the existing validation threshold and save guards.
+
+Bachelor-project requirements show a short eligibility rule and two collapsible categories with outstanding counts (English and semesters 1–6). Expand a category to read course codes and names in a compact list. Use the structured eligibility response and preserve other server reasons. Preferences show their optional state once, without a second No submission label.
+
+Excluded course rows show course identity and a separate Complete first group of prerequisite codes, using structured missingPrerequisites from the existing eligibility response. Other exclusion messages remain visible. `npm run seed:advising-manual --workspace @bobos/api` adds local, non-resetting Req 60 and 63 fixtures; reuses 91-00011 for Req 62 while it has no schedule/preferences, otherwise creates 93-00062. Req 60 has completed prerequisite history, six companion offerings and approved/deferred extra-hours coverage for two core and two humanities courses. Existing schedules and preferences are preserved.
+
+Student schedules uses the user-selected transparent graduation-cap, calendar and clock artwork in `images/student-schedules-calendar.png`. The embedded service frames its original raster as a CSS background at Portal heading size; other services retain their existing illustrations. Source: the user's shared ChatGPT image, https://chatgpt.com/s/m_6b087697ecec8191a3d7820b1981e7ff.
+
+Bachelor-project mutations refresh the draft and overview together without unmounting the active details panel. Keep unsaved course/group choices on project add/change/remove, synchronize the season selector with the saved project, and preserve the active tab. Every companion course, including core, is marked as extra hours and requires approved paid/deferred coverage before review/processing; incomplete drafts may still be saved. Server validation enforces at most four companions, two core and two humanities. Focused integration checks cover both seasons, count limits and activation states.
+
+Mandatory selection now saves on checkbox changes; omit the separate save button. Deselecting required courses while other courses remain is blocked. Existing bachelor-season changes save from the selector; retain Add bachelor project only before selection and label removal Remove bachelor. A missing/deleted student returns to the roster with a useful message. Student schedule heading art is larger while retaining responsive spacing.
+
+Local manual fixtures now use existing Excel curriculum courses: 93-00063 has CSEN501 and CSEN503 as mandatory repeats; 93-00062 is a fresh optional-preferences draft example. Curriculum cleanup removes non-explicit codes with a local backup and remaps applicable demo references to real courses. Seeds must not invent R60/R63/B1LAB or numbered ELEC courses. The curriculum CSV is the existing export of the workbook curriculum sheet.
+
+Student details has no manual preferences Refresh button. Preferences still load when opening/reloading the draft and after saved changes; retain the latest-submission timestamp and optional empty state.
+
+Unavailable course rows reuse OfferingCourseIcon and the catalogue identity hierarchy: decorative course emblem, muted code, prominent course name, and separate prerequisite badges. Theory, networks, media engineering and graphics have consistent shared symbols/tones across offering and eligible/unavailable lists. Exclusion rules and actions remain unchanged.
+
+Draft completion uses one action footer: secondary Save draft and primary Send for student review with a send icon. Remove the technical server-validation helper. Show a concise readiness hint (missing courses/groups, clash, credit limit or extra hours) beside the actions. The send action still saves and submits using the existing handler and guards.
+
+The student roster empty state uses Portal's folder illustration, a concise title and contextual guidance. An unmatched search offers Clear search; an empty term suggests selecting another term. Req 62 preferences remain visible in Student details while creating or reopening a draft; their absence does not block draft creation.
+
+Student details labels Advising reason and Schedule status explicitly in a compact two-column summary above the allowance sheet; stack on mobile. Avoid hiding the advising reason in an unlabeled badge. Bachelor eligibility remains beside project controls. These fields stay calculated/read-only and refresh after draft saves.
+
+Schedule preferences groups day and time inputs in paired illustrated sections, class groups in their existing full-width section, and the optional note in a separate section. Reuse shared course emblems for group identities. Keep input parsing, priorities, group selection/conflict checks, term loading, role restrictions and submit handlers unchanged.
+
+Preferences accept multiple comma-separated days/time ranges; Enter inserts a separator in ranked text fields and never submits the form. Normalize weekday case on save, preserve ordered entries and report duplicates/invalid names. Only the Save preferences button sends the update. Keep an inline saved confirmation beside the footer action and clear it when inputs or ranking/group choices change.
+
+Day preference fields use dropdowns containing all seven weekdays. Time fields use only the requested teaching slots: 08:15–09:45, 10:00–11:30, 11:45–13:15, 13:45–15:15 and 15:45–17:15. Selecting adds a ranked entry locally; hide already selected options, allow removal and reordering, and save only with Save preferences. Keep existing saved ranges visible until the user removes them, rather than silently rewriting saved data.

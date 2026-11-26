@@ -1012,6 +1012,7 @@ test("C1 Req 59 shows advising reason, credit allowance, status and bachelor-pro
 });
 
 test("C1 Req 60 adds the bachelor project for eligible students and applies the four-course rule", async () => {
+  await StudentProfile.updateOne({ _id: profiles.advising._id }, { $set: { academicStanding: "goodAcademicStanding", advisingReason: "transfer" } });
   const path = `/schedules/advising/${profiles.advising._id}/bachelor-project?termId=${term._id}`;
   const put = (role, body) => call(path, { role, method: "PUT", body });
   assert.equal((await put(undefined, { season: "winter" })).status, 401);
@@ -1053,6 +1054,28 @@ test("C1 Req 60 adds the bachelor project for eligible students and applies the 
   const humanities = await validate([offerings[0], germanOffering]);
   const extraIssue = humanities.body.validationIssues.find((issue) => issue.code === "bachelorProjectExtraHours");
   assert.ok(extraIssue && extraIssue.blocksSave === false, "humanities need extra hours but do not block saving a draft");
+
+  const coreNeedsApproval = await validate([coreOffering]);
+  assert.ok(coreNeedsApproval.body.validationIssues.some(issue => issue.code === "bachelorProjectExtraHours" && /CSEN 502/.test(issue.message)), "core companions require activation too");
+  const approval = await ExtraHoursRequest.create({
+    student: profiles.advising._id, advisor: users.advisor._id, term: term._id,
+    courses: [{ course: extraCore._id, hours: 4, isRepeated: false, pricePerHour: 800, subtotal: 3200 }],
+    requestedHours: 4, totalCost: 3200,
+    eligibilitySnapshot: { standardAllowance: 30, hoursBeforeRequest: 30, hoursAfterRequest: 34, isProbation: false, graduatingWithinOneYear: true },
+    decisionStatus: "approved", settlementStatus: "awaitingChoice",
+  });
+  assert.ok((await validate([coreOffering])).body.validationIssues.some(issue => issue.code === "bachelorProjectExtraHours"), "approval alone does not activate companion hours");
+  for (const settlementStatus of ["paid", "deferred"]) {
+    await ExtraHoursRequest.updateOne({ _id: approval._id }, { $set: { settlementStatus } });
+    assert.ok(!(await validate([coreOffering])).body.validationIssues.some(issue => issue.code === "bachelorProjectExtraHours"), `${settlementStatus} activates approved companion hours`);
+  }
+  const moreHumanities = await Course.create([
+    { code: "DE 202", name: "German 2", creditHours: 2, courseType: "huma", facultyMajors: [] },
+    { code: "DE 303", name: "German 3", creditHours: 2, courseType: "huma", facultyMajors: [] },
+  ]);
+  const humanOfferings = [germanOffering, await make(moreHumanities[0], "Wednesday"), await make(moreHumanities[1], "Thursday")];
+  assert.ok((await validate(humanOfferings)).body.validationIssues.some(issue => issue.code === "bachelorProjectLimit" && /humanities/.test(issue.message)));
+  assert.ok((await validate([coreOffering, offerings[0], ...humanOfferings])).body.validationIssues.some(issue => issue.code === "bachelorProjectLimit" && /at most 4 courses/.test(issue.message)));
 
   const removed = await call(path, { role: "advisor", method: "DELETE" });
   assert.equal(removed.status, 200);

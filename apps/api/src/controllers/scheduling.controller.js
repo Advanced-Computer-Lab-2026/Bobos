@@ -901,11 +901,11 @@ function applyBachelorProjectRules(courses, data, approvedExtraHours, addIssue) 
   if (courses.length > BACHELOR_PROJECT_LIMITS.total) addIssue("bachelorProjectLimit", `With the bachelor project a student may take at most ${BACHELOR_PROJECT_LIMITS.total} courses; ${courses.length} are selected.`);
   if (core.length > BACHELOR_PROJECT_LIMITS.core) addIssue("bachelorProjectLimit", `With the bachelor project a student may take at most ${BACHELOR_PROJECT_LIMITS.core} core courses; ${core.length} are selected.`);
   if (humanities.length > BACHELOR_PROJECT_LIMITS.humanities) addIssue("bachelorProjectLimit", `With the bachelor project a student may take at most ${BACHELOR_PROJECT_LIMITS.humanities} humanities courses; ${humanities.length} are selected.`);
-  for (const entry of humanities) {
+  for (const entry of courses) {
     entry.isExtraHours = true;
     if (!approvedExtraHours.has(idOf(entry.course))) {
       const course = byId.get(idOf(entry.course));
-      addIssue("bachelorProjectExtraHours", `${course?.code || "A humanities course"} is a humanities course taken with the bachelor project, so it counts as extra hours and needs an approved, paid or deferred extra-hours request.`, false);
+      addIssue("bachelorProjectExtraHours", `${course?.code || "A companion course"} is taken with the bachelor project, so it counts as extra hours and needs an approved, paid or deferred extra-hours request.`, false);
     }
   }
 }
@@ -1017,6 +1017,9 @@ export async function selectMandatoryCourses(req, res, next) {
       const offering = offeringByCourse.get(id);
       kept.push({ course: offering.course._id, courseOffering: offering._id, slots: [], isMandatory: true, isExtraHours: false, creditHoursSnapshot: offering.course.creditHours });
     }
+    if (kept.some(entry => !candidates.has(idOf(entry.course))) && data.mandatoryCourses.some(course => !wanted.includes(idOf(course._id)))) {
+      throw draftError(409, "Remove other courses before deselecting a mandatory course. Mandatory courses must be selected first.");
+    }
     const summary = mandatoryHoursSummary(kept, data.creditPolicy);
     if (summary.mandatoryHours > data.creditPolicy.maximumCreditHours + 1e-9) {
       throw draftError(409, `The selected mandatory courses total ${summary.mandatoryHours} credit hours, above the ${data.creditPolicy.maximumCreditHours} hours this student may take.`);
@@ -1080,7 +1083,7 @@ function computeEligibleCourses(data, term) {
     const seasons = course.offeringSeasons || [];
     if (seasons.length && !seasons.includes(term.season)) { excluded.push({ ...brief, reason: "notOfferedInSeason", message: `${course.code} is not offered in the ${term.season} season.` }); continue; }
     const missing = (course.prerequisites || []).filter((item) => !passed.has(idOf(item)));
-    if (missing.length) { excluded.push({ ...brief, reason: "unmetPrerequisites", message: `${course.code} requires ${missing.map((item) => item.code).join(", ")}.` }); continue; }
+    if (missing.length) { excluded.push({ ...brief, reason: "unmetPrerequisites", missingPrerequisites: missing.map(item => ({ code: item.code, name: item.name })), message: `${course.code} requires ${missing.map((item) => item.code).join(", ")}.` }); continue; }
     eligible.push({
       courseOffering: offering._id,
       course: { ...brief, prerequisites: (course.prerequisites || []).map((item) => ({ _id: item._id, code: item.code, name: item.name })) },

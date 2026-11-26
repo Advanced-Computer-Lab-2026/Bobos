@@ -1,3 +1,4 @@
+import { termLabel } from "../term-label.js";
 import { useCallback, useEffect, useState } from "react";
 import { api, explainApiError } from "../api.js";
 import RequestRemovalModal from "./RequestRemovalModal.jsx";
@@ -287,7 +288,7 @@ export default function MandatoryRemovalDashboard({ token, role, notify }) {
                   const courseCode = item.course?.code || "—";
                   const courseName = item.course?.name || "";
                   const advisorName = item.advisor?.fullName || item.advisor?.email || "—";
-                  const termCode = item.term?.code || "—";
+                  const termCode = termLabel(item.term);
                   const status = item.status || "pending";
 
                   const statusClass =
@@ -403,8 +404,7 @@ export default function MandatoryRemovalDashboard({ token, role, notify }) {
                 <div>
                   <small className="secondary-text">Term</small>
                   <p>
-                    {selectedDetail.term?.code} ({selectedDetail.term?.season}{" "}
-                    {selectedDetail.term?.academicYear})
+                    {termLabel(selectedDetail.term)}
                   </p>
                 </div>
                 <div>
@@ -550,7 +550,7 @@ export default function MandatoryRemovalDashboard({ token, role, notify }) {
                   <strong>Course:</strong> {reviewingRequest.course?.code} — {reviewingRequest.course?.name}
                 </p>
                 <p style={{ margin: "0 0 4px 0" }}>
-                  <strong>Term:</strong> {reviewingRequest.term?.code}
+                  <strong>Term:</strong> {termLabel(reviewingRequest.term)}
                 </p>
                 <p style={{ margin: "0 0 4px 0" }}>
                   <strong>Reason:</strong> {formatReason(reviewingRequest.reason)}

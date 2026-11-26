@@ -46,6 +46,9 @@ export function mount(host) {
       drawing.setAttribute("xmlns", "http://www.w3.org/2000/svg");
       surface.style.setProperty("--portal-heading-art", `url("data:image/svg+xml,${encodeURIComponent(drawing.outerHTML)}")`);
       surface.dataset.headingArt = "true";
+      if (serviceParams.get("screen") === "student-schedules") {
+        surface.style.setProperty("--portal-heading-art", 'url("/portal-studio/images/student-schedules-calendar.png")');
+      }
     }
   }
   const updateTheme = () => {

@@ -441,7 +441,7 @@ test("C1 Req 59: GPA 3.70 independently applies the probation credit reduction",
   assert.equal(response.body.creditHours.extraHoursAllowed, false);
 });
 
-test("GAP C1 Req 60: every course taken with the bachelor project requires extra-hours activation", gap("Only humanities are flagged as extra hours; accompanying core courses bypass approval/payment"), async () => {
+test("C1 Req 60: every course taken with the bachelor project requires extra-hours activation", async () => {
   // With only one catalogue course, an earlier failed course is a permitted bachelor exception.
   await CourseAttempt.create({ student: student._id, course: course._id, term: term._id, attendance: "attended", result: "failed", grade: "F" });
   assert.equal((await call(`${schedulePath()}/bachelor-project`, { method: "PUT", body: { season: "winter" } })).status, 201);

@@ -1,3 +1,4 @@
+import { termLabel } from "../term-label.js";
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
 
@@ -72,7 +73,7 @@ export default function ExtraHoursRequestForm({ token, advisorId, onClose, onSub
         <label className="field"><span>Academic term</span>
           <select name="termId" required defaultValue={data.terms.find((term) => term.isActive)?._id || ""} disabled={saving}>
             <option value="">Select a term</option>
-            {data.terms.map((term) => <option key={term._id} value={term._id}>{term.code}{term.isActive ? " (active)" : ""}</option>)}
+            {data.terms.map((term) => <option key={term._id} value={term._id}>{termLabel(term)}{term.isActive ? " (active)" : ""}</option>)}
           </select>
         </label>
         <label className="field"><span>Graduating within one year</span>

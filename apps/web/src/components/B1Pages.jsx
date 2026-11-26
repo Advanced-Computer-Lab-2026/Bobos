@@ -1,3 +1,4 @@
+import { termLabel } from "../term-label.js";
 import { useEffect, useState } from "react";
 import FilterDisclosure from "./FilterDisclosure.jsx";
 import { api } from "../api.js";
@@ -47,7 +48,7 @@ export function PendingWorkPage({ token }) {
     <SummaryGroup key="request-type" title="Requests by type" label="Requests by type" entries={Object.entries(data.groups.requestType || {})} />,
   ] : null;
   return <div className="workspace-page">
-    <WorkspaceHeader title="Pending work" description="Student workflow, blocking steps, requests awaiting action, and open or completed normal-student swaps." meta={<span className="workspace-meta">{data?.term?.code || "No active term"}</span>} action={<button className="outline-button" type="button" onClick={() => setReloadKey((key) => key + 1)} disabled={refreshing}>{refreshing ? "Refreshing…" : "Refresh"}</button>} />
+    <WorkspaceHeader title="Pending work" description="Student workflow, blocking steps, requests awaiting action, and open or completed normal-student swaps." meta={<span className="workspace-meta">{data?.term ? termLabel(data.term) : "No active term"}</span>} action={<button className="outline-button" type="button" onClick={() => setReloadKey((key) => key + 1)} disabled={refreshing}>{refreshing ? "Refreshing…" : "Refresh"}</button>} />
     {error && <div className="feedback error" role="alert">{error}</div>}
     {data && <>
       <section className="pending-work-groups" aria-labelledby="pending-work-groups-title">
