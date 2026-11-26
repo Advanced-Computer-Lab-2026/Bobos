@@ -374,8 +374,15 @@ async function changeAdvisingScheduleStatus(req, res, reopening) {
       if (await withSession(ExtraHoursRequest.exists({ student: student._id, term: term._id, $or: [{ decisionStatus: "pending" }, { settlementStatus: "awaitingChoice" }] }), session)) {
         throw draftError(400, "Cannot process: Student has an unresolved extra-hours approval or payment choice");
       }
-      if (await withSession(MandatoryCourseRemovalRequest.exists({ student: student._id, term: term._id, status: "pending" }), session)) {
-        throw draftError(400, "Cannot finalize schedule with pending mandatory removal requests");
+      const pending = await withSession(
+        MandatoryCourseRemovalRequest.findOne({
+          student: current.student,
+          status: { $regex: /^pending$/i },
+        }),
+        session,
+      );
+      if (pending) {
+        throw draftError(400, "Cannot process schedule while mandatory course removal requests remain pending.");
       }
       await revalidateScheduleForProcessing(student, term, current, session);
     }
@@ -2112,7 +2119,7 @@ export async function getAdvisingOverview(req, res, next) {
       student: studentView(student),
       advisingReason: student.advisingReason,
       academicStanding: student.academicStanding,
-      scheduleStatus: workflow?.status || schedule?.status || "notStarted",
+      scheduleStatus: schedule?.status || workflow?.status || "notStarted",
       blockingStep: workflow?.blockingStep ?? null,
       creditHours: {
         semester: policy.semester,

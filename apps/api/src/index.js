@@ -5,6 +5,7 @@ import { Notification } from "./models/communications.js";
 import { WholeScheduleSwapRequest } from "./models/requests.js";
 import { probationWarningsEnabled, startProbationWarnings } from "./services/probation-warnings.js";
 import { startCalendarWorker } from "./services/calendar-worker.js";
+import { startDeadlineReminders } from "./services/deadline-reminders.js";
 const port = Number(process.env.PORT || 3000);
 const mongoUri = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/bobos?replicaSet=rs0";
 
@@ -27,6 +28,7 @@ app.listen(port, () => {
   console.log(`API listening at http://localhost:${port}`);
   if (probationWarningsEnabled()) startProbationWarnings();
   startCalendarWorker();
+  startDeadlineReminders();
 });
 
 export default app;

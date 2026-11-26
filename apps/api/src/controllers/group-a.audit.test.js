@@ -234,31 +234,39 @@ test("Req 95: a completed refund is reflected in the request's status/history", 
   assert.ok(result.data.history.some((entry) => entry.action === "refunded"));
 });
 
-test("GAP A2 Req 120: submitted graduation plans notify coordinators", gap("No coordinator graduation submission alert"), async () => {
+async function assertCoordinatorAlert(type) {
+  for (let refresh = 0; refresh < 2; refresh++) {
+    const result = await inbox();
+    assert.equal(result.status, 200);
+    assert.equal(result.data.notifications.filter(notification => notification.type === type).length, 1);
+  }
+}
+
+test("A2 Req 120: submitted graduation plans notify coordinators", async () => {
   await submitPlan();
-  assert.ok((await inbox()).data.notifications.some((notification) => notification.type === "graduationPlanSubmitted"));
+  await assertCoordinatorAlert("graduationPlanSubmitted");
 });
 
-test("GAP A2 Req 120: new exit-exam requests notify coordinators", gap("No coordinator exit-exam request alert"), async () => {
+test("A2 Req 120: new exit-exam requests notify coordinators", async () => {
   await requestExam();
-  assert.ok((await inbox()).data.notifications.some((notification) => notification.type === "exitExamRequested"));
+  await assertCoordinatorAlert("exitExamRequested");
 });
 
-test("GAP A2 Req 120: mandatory-removal requests notify coordinators", gap("No coordinator mandatory-removal request alert"), async () => {
+test("A2 Req 120: mandatory-removal requests notify coordinators", async () => {
   await CourseAttempt.create({ student: student._id, course: courses[0]._id, term: past._id, attendance: "attended", result: "failed", grade: "F" });
   const result = await call("/mandatory-removals", { role: "advisor", method: "POST", body: { studentProfileId: String(student._id), courseId: String(courses[0]._id), termId: String(terms[0]._id), reason: "other", explanation: "Audit request" } });
   assert.equal(result.status, 201);
-  assert.ok((await inbox()).data.notifications.some((notification) => notification.type === "mandatoryCourseRemovalRequested"));
+  await assertCoordinatorAlert("mandatoryCourseRemovalRequested");
 });
 
-test("GAP A2 Req 120: pending financial reversals notify coordinators", gap("No coordinator financial-reversal alert"), async () => {
+test("A2 Req 120: pending financial reversals notify coordinators", async () => {
   const request = await extra();
   const paid = await FinancialTransaction.create({ student: student._id, extraHoursRequest: request._id, amount: 2400, kind: "gatewayPayment", status: "succeeded" });
   await FinancialReversalRequest.create({ student: student._id, extraHoursRequest: request._id, originalTransaction: paid._id, requestedBy: users.advisor._id, reversalType: "refundToWallet" });
-  assert.ok((await inbox()).data.notifications.some((notification) => notification.type === "financialReversalRequested"));
+  await assertCoordinatorAlert("financialReversalRequested");
 });
 
-test("GAP A2 Req 121: API startup produces reminders for assigned open schedules near the advising deadline", gap("No reminder sender, timer, or inbox reminder synchronization exists"), async () => {
+test("A2 Req 121: API startup produces reminders for assigned open schedules near the advising deadline", async () => {
   await AcademicTerm.updateOne({ _id: terms[0]._id }, { advisingDeadline: new Date(Date.now() + 3600000) });
   await StudentSchedule.create({ student: student._id, term: terms[0]._id, scheduleType: "advising", status: "draft", createdBy: users.advisor._id });
   const child = spawn(process.execPath, ["apps/api/src/index.js"], { env: { ...process.env, NODE_ENV: "production", JWT_SECRET: "group-a-child-test-only-secret", MONGODB_URI: database.getUri(), PORT: "0", PROBATION_WARNINGS_ENABLED: "false" }, stdio: ["ignore", "pipe", "pipe"] });
@@ -305,4 +313,33 @@ test("A3 Req 103,107,113: GPA-based probation limits are checked when saving, su
   await setGpa(3.69);
   const accepted = await accept();
   assert.equal(accepted.status, 200, JSON.stringify(accepted.data));
+});
+
+test("A2 Req 121: reminder window, open states, assignment and repeat delivery", async () => {
+  const { sendDeadlineReminders } = await import("../services/deadline-reminders.js");
+  const deadline = terms[0].advisingDeadline.getTime();
+  const schedule = await StudentSchedule.create({ student: student._id, term: terms[0]._id, scheduleType: "advising", status: "readyForStudentReview", createdBy: users.advisor._id });
+  const run = offset => sendDeadlineReminders(new Date(deadline + offset));
+  const reminders = { type: "advisingDeadlineReminder" };
+  await run(-86400001);
+  await run(0);
+  await run(1);
+  await StudentProfile.updateOne({ _id: student._id }, { assignedAdvisor: null });
+  await run(-3600000);
+  await StudentProfile.updateOne({ _id: student._id }, { assignedAdvisor: users.advisor._id });
+  schedule.status = "processed";
+  await schedule.save();
+  await run(-3600000);
+  schedule.scheduleType = "normal";
+  schedule.status = "draft";
+  await schedule.save();
+  await run(-3600000);
+  assert.equal(await Notification.countDocuments(reminders), 0);
+  schedule.scheduleType = "advising";
+  schedule.status = "readyForStudentReview";
+  await schedule.save();
+  await run(-86400000);
+  await run(-3600000);
+  const records = await Notification.find(reminders);
+  assert.deepEqual(records.map(record => String(record.recipient)).sort(), [users.advisor, users.coordinator].map(user => String(user._id)).sort());
 });
