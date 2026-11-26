@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { Notification } from "../models/communications.js";
 import { syncAdvisorNotifications } from "../services/advisor-notifications.js";
+import { syncCoordinatorNotifications } from "../services/coordinator-notifications.js";
 import { syncAdvisingNotifications } from "../services/student-notifications.js";
 
 /**
@@ -22,6 +23,7 @@ export const getMyNotifications = async (req, res) => {
 
     if (user.role === "advisingStudent") await syncAdvisingNotifications(user._id);
     if (user.role === "advisor") await syncAdvisorNotifications(user._id);
+    if (user.role === "coordinator") await syncCoordinatorNotifications(user._id);
 
     // Explicitly query ONLY for the authenticated user's notifications.
     const notifications = await Notification.find({
