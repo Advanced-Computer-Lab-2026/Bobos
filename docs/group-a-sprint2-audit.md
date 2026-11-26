@@ -73,17 +73,17 @@ The demo uses term **EHTEST**, courses **EHT101**, **EHT202**, **EHT301**, and *
 | A2 | 119 | Verified advisor assignment and slot-change submission/withdrawal alerts with assignment-time ownership and deduplication. |
 | A2 | 120 | **Partial:** extra-hours requests alert Coordinators; graduation, exit-exam, mandatory-removal and financial-reversal action alerts are absent. |
 | A2 | 121 | **Missing:** no reminder sender, timer or inbox synchronization. Production startup plus near-deadline open schedules produces no reminders. Only the enum exists. |
-| A3 | 103 | **Partial dependency:** complete planning, seasons, prerequisite order and activated course-specific limits work, but the shared C1 GPA-only probation defect allows too many hours. |
+| A3 | 103 | Verified complete planning, offering seasons, prerequisite order, activated course-specific limits, and GPA-based probation limits. |
 | A3 | 104 | Verified creator-only draft edits, stale-version conflicts and submitted read-only state. |
 | A3 | 105 | Verified creator-only deletion of drafts. |
 | A3 | 106 | Verified private unfinished drafts cannot be read by another Advisor, Coordinator or student. |
-| A3 | 107 | **Partial dependency:** completeness and exam substitution checks work, but the GPA-only credit-limit defect also passes submission. |
+| A3 | 107 | Verified completeness, approved exam substitution, GPA-based credit limits, and read-only submission. |
 | A3 | 108 | Verified exactly one unschedulable remaining failed course and feasible-placement checks. |
 | A3 | 109 | Verified Coordinator-only exam decisions, required response note and repeat-decision guard. |
 | A3 | 110 | Verified Advisor-owned submissions and Coordinator-wide submissions with private drafts excluded. |
 | A3 | 111 | Verified status/Advisor/date filters in combination. |
 | A3 | 112 | Verified student ID and Advisor name/email search. |
-| A3 | 113 | **Partial dependency:** rejection/resubmission and acceptance revalidation work, but the GPA-only limit defect permits invalid acceptance. |
+| A3 | 113 | Verified return and resubmission, acceptance revalidation, and credit limits. Current courses must finish within the planning year. |
 | A3 | 114 | Verified the subject student sees only accepted plans. |
 | A3 | 115 | Verified exit-exam statuses and Coordinator response are visible only to the subject student. |
 
@@ -96,4 +96,3 @@ The executable assertions are in `apps/api/src/controllers/group-a.audit.test.js
 9. **120:** creating a mandatory-removal request produces no Coordinator request alert.
 10. **120:** a pending financial reversal produces no Coordinator alert.
 11. **121:** starting the production API with an assigned open schedule and a deadline one hour away, then loading staff inboxes, still produces no Advisor/Coordinator reminder.
-12. **103/107/113:** a GPA-3.70 student with stale non-probation standing/reason can save, submit and receive acceptance for a 25-credit term despite the required 23-credit allowance. This is the shared C1 Req. 59 defect, not a missing A3 page.

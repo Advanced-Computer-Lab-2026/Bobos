@@ -58,7 +58,7 @@ The calendar tests use a real local API and MongoDB replica set, mocking only Go
 | B3 | 80 | Valid complete draft to Ready for Student Review; invalid/incomplete draft blocked | Verified |
 | B3 | 81 | Process schedule, pending slot/extra-hours guards | Partial: live validation, pending removal and atomic processing gaps |
 | B3 | 82 | Required reason, processed-to-draft, version increment, student visibility and automatic history | Verified for sequential workflow |
-| C1 | 59 | Reason, allowance, system status and bachelor eligibility | Partial: GPA-only probation and stale workflow projection |
+| C1 | 59 | Reason, allowance, system status and bachelor eligibility | GPA-based probation verified. Stale workflow projection remains. |
 | C1 | 60 | Bachelor selection Winter/Spring, eligibility and four-course/core/humanities limits | Partial: accompanying core courses bypass extra-hours activation |
 | C1 | 62 | One open draft per student/term; preferences shown and optional | Verified |
 | C1 | 63 | Mandatory-first selection and credit consumption | Verified |
@@ -92,7 +92,6 @@ The assertions are in `apps/api/src/controllers/bc-requirements.audit.test.js`. 
 3. **102 — revocation:** refunding does not change the extra-hours settlement state or remove unapplied additions from the draft.
 4. **102 — duplicate concurrency:** simultaneous requests can create multiple refund credits because checking, marking and creating the ledger entry are separate operations.
 5. **102 — wallet conservation:** refunding a wallet payment removes the original debit from the wallet calculation and adds a refund credit. A 5,000 balance minus a 3,200 payment should return to 5,000; the API produces 8,200.
-6. **59 — probation:** GPA 3.70 with stale non-probation standing/reason gets the full allowance. The implementation checks standing/reason only. An existing unit test explicitly expects GPA alone not to count; that assumption conflicts with the workbook's stated GPA threshold and is exposed here rather than silently changed.
 7. **60 — accompanying courses:** only humanities are flagged for bachelor-project extra-hours approval/payment; accompanying core courses bypass that rule. The workbook refers to the courses taken with the project collectively.
 8. **64 — removal grounds:** a student with zero completed hours can request `completedHours` deferral, which requires more than 157. The endpoint checks only failed/unattended history, enum and nonempty explanation, not the substantive eligibility rules for the reason.
 9. **69 — concurrent decisions:** multiple approvals can succeed; request decision, slot release and schedule edits are separate operations. Capacity can be released more than once.

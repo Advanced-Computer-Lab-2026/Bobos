@@ -70,9 +70,9 @@ const studioPageByScreen = {
 
 function illustratedUrl(screen, role, page = studioPageByScreen[screen] || "overview") {
   const destination = new URL("/portal-studio/index.html", window.location.href);
-  destination.search = new URLSearchParams({ page, role, preview: "live" });
+  const portalPage = screen === "graduation-review" && role === "advisor" ? "my-submitted-plans" : page;
+  destination.search = new URLSearchParams({ page: portalPage, role, preview: "live" });
   if (page === "academic-services" && screen !== "overview") destination.searchParams.set("screen", screen);
-  if (screen === "graduation-review" && role === "advisor") destination.searchParams.set("view", "submitted");
   if (page === "calendar-sync") {
     const result = new URLSearchParams(window.location.search).get("calendar");
     if (["connected", "error"].includes(result)) destination.searchParams.set("calendar", result);
@@ -165,14 +165,14 @@ export default function App({ service }) {
   }
   if (!token || !profile) {
     const signIn = new URL("/portal-studio/index.html", window.location.href);
+    const isSubmittedView = embeddedGraduation && workspaceParams.get("view") === "submitted";
     signIn.search = new URLSearchParams({
       page: "login",
       role: workspaceParams.get("role") || "",
       preview: "live",
-      next: embeddedPage || "overview",
+      next: isSubmittedView ? "my-submitted-plans" : embeddedPage || "overview",
     });
     if (embeddedServices && requestedScreen) signIn.searchParams.set("screen", requestedScreen);
-    if (embeddedGraduation && workspaceParams.get("view") === "submitted") signIn.searchParams.set("view", "submitted");
     return <p className="feedback error">Your session has ended. <a href={signIn.href}>Sign in to Portal</a>.</p>;
   }
 

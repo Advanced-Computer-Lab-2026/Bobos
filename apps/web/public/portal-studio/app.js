@@ -5,7 +5,7 @@ const comparePageDesigns = params.get('designs') === 'compare';
 const requestedFeedLayout = params.get('feed-layout');
 const studentFeedLayout = /^(?:[1-9]|10)$/.test(requestedFeedLayout) ? requestedFeedLayout : '1';
 const pages = {
-  'academic-services':'Academic services', 'graduation-plans':'Graduation plans', overview:'Overview', notifications:'Notifications', profile:'My profile',
+  'academic-services':'Academic services', 'graduation-plans':'Graduation plans', 'my-submitted-plans':'My submitted plans', overview:'Overview', notifications:'Notifications', profile:'My profile',
   directory:'Student directory', 'extra-hours':'Extra-hours requests', 'student-detail':'Student details', advising:'Advising students',
   'pending-work':'Pending work', 'schedule-activity':'Schedule activity',
   'financial-records':'Financial records', 'mandatory-removals':'Course removals',
@@ -22,6 +22,7 @@ const roleNames = {coordinator:'Coordinator', administrator:'Administrator', adv
 const authPages = new Set(['login','forgot','reset']);
 const previewSessionKey = 'portal-studio-preview-session';
 const workspaceSessionKey = 'bobos.token';
+const workspaceAccountNameKey = 'portal-account-name';
 const previewEmail = 'demo@portal.test';
 const signedIn = () => localStorage.getItem(previewSessionKey) === '1';
 const pageKey = key => Object.hasOwn(pages,key) ? key : 'overview';
@@ -72,12 +73,13 @@ const href = (target,index=selectedStudent,course=selectedCourse) => {
   const look = productionPreview ? '&preview=live' : `&layout=${lab.layout+1}&palette=${lab.palette+1}&mode=${lab.dark?'dark':'light'}`;
   const current = new URLSearchParams(location.search);
   const serviceScreen = destination === 'academic-services' && current.get('screen');
-  const submittedPlans = destination === 'graduation-plans' && current.get('view') === 'submitted';
-  return `?page=${target}&role=${role}${look}${comparePageDesigns?'&designs=compare':''}${target==='login' && comparePageDesigns && params.has('image')?`&image=${signinImage.id}`:''}${authPages.has(target)&&destination!=='overview'?`&next=${destination}`:''}${preserveStudent?`&student=${index}`:''}${destination==='course-detail'?`&course=${encodeURIComponent(course[0])}`:''}${serviceScreen?`&screen=${encodeURIComponent(serviceScreen)}`:''}${submittedPlans?'&view=submitted':''}`;
+  return `?page=${target}&role=${role}${look}${comparePageDesigns?'&designs=compare':''}${target==='login' && comparePageDesigns && params.has('image')?`&image=${signinImage.id}`:''}${authPages.has(target)&&destination!=='overview'?`&next=${destination}`:''}${preserveStudent?`&student=${index}`:''}${destination==='course-detail'?`&course=${encodeURIComponent(course[0])}`:''}${serviceScreen?`&screen=${encodeURIComponent(serviceScreen)}`:''}`;
 };
 
 const link = (target, text, cls='', index) => `<a class="${cls}" href="${href(target,index)}" data-page="${target}"${index===undefined?'':` data-student="${index}"`}>${text}</a>`;
-const navigationLabel = id => pages[id];
+const navigationLabel = id => id === 'graduation-plans'
+  ? ({coordinator:'Graduation review', advisingStudent:'My graduation'}[role] || pages[id])
+  : pages[id];
 const navigationLink = link;
 const button = (text, action, cls='btn', extra='') => `<button class="${cls}" type="button" data-action="${action}" ${extra}>${text}</button>`;
 // The outline names the state even when the timetable colors are unavailable.
@@ -396,7 +398,7 @@ function avatar(name) {
   const normalized = name.replace(/^Dr\. /,'');
   const hue = [...normalized].reduce((seed,char)=>(seed*37+char.charCodeAt(0)) | 0,0);
   const initials = normalized.split(' ').slice(0,2).map(part=>part[0]).join('');
-  return `<span class="avatar" data-portrait="${Math.abs(hue)%11}" data-tone="${tones[Math.abs(hue)%tones.length]}" aria-hidden="true">${initials}</span>`;
+  return `<span class="avatar" data-portrait="${Math.abs(hue)%11}" data-tone="${tones[Math.abs(hue)%tones.length]}" aria-hidden="true">${escapeHtml(initials)}</span>`;
 }
 
 
@@ -427,7 +429,8 @@ function groups(){
     ['Home', ['overview', ...(role === 'coordinator' ? ['pending-work'] : [])]],
     ['Student services', [
       ...(managesAcademics ? ['directory','financial-records'] : []),
-      ...(advises ? ['advising','extra-hours','graduation-plans'] : [])
+      ...(advises ? ['advising','extra-hours','graduation-plans'] : []),
+      ...(role === 'advisor' ? ['my-submitted-plans'] : [])
     ]],
     ['Scheduling', [
       'student-schedules', ...(advises ? ['preferences'] : []),
@@ -448,7 +451,7 @@ function sidebar(){
         if (id === 'extra-hours') return `<li>${navigationLink(id,`<span>${navigationLabel(id)}</span>`,'navlink')}</li>`;
         const current = page === id || parent[page] === id;
         const count = id === 'student-schedules' ? readyStudents.length : id === 'mandatory-removals' ? 3 : '';
-        return `<li><a class="navlink${current ? ' active' : ''}" href="${href(id)}" data-page="${id}" ${current ? 'aria-current="page"' : ''}>${study && groupIndex===0 ? icon(id==='overview'?'home':'inbox') : ''}<span>${pages[id]}</span>${count ? `<span class="nav-count">${count}</span>` : ''}</a></li>`;
+        return `<li><a class="navlink${current ? ' active' : ''}" href="${href(id)}" data-page="${id}" ${current ? 'aria-current="page"' : ''}>${study && groupIndex===0 ? icon(id==='overview'?'home':'inbox') : ''}<span>${navigationLabel(id)}</span>${count ? `<span class="nav-count">${count}</span>` : ''}</a></li>`;
       }).join('')}</ul>`;
       if (study) {
         const key = `portal-study-nav:${role}:${name}`;
@@ -677,6 +680,9 @@ function rosterSection(title, indices, row) {
 }
 
 function advising() {
+  if (role === 'advisor' && productionPreview && !comparePageDesigns && localStorage.getItem(workspaceSessionKey)) {
+    return portalService('advising', 'academic-services');
+  }
   const unassigned = [2,8];
   const row = i => `${staffIdentity(names[i],`70-${71577+i}`)}
     <p>${i===3?'Digital Media Engineering':'Computer Engineering'}<small>Semester 7</small></p>
@@ -1310,8 +1316,7 @@ function extraHours(){
 
 function portalService(screen, section = '') {
   const query = new URLSearchParams({screen, section, role});
-  const view = new URLSearchParams(location.search).get('view');
-  if (view === 'submitted') query.set('view', view);
+  if (page === 'my-submitted-plans') query.set('view', 'submitted');
   return `<div data-portal-service="${escapeHtml(query)}"><p role="status">Loading…</p></div>`;
 }
 
@@ -1321,25 +1326,29 @@ function academicServices() {
 }
 
 function graduationPlans() {
-  if (!['advisor', 'coordinator', 'advisingStudent'].includes(role)) {
-    return head('Graduation plans') + '<p>This page is unavailable for your role.</p>';
+  const allowedRoles = page === 'my-submitted-plans' ? ['advisor'] : ['advisor', 'coordinator', 'advisingStudent'];
+  if (!allowedRoles.includes(role)) {
+    return head(navigationLabel(page)) + '<p>This page is unavailable for your role.</p>';
   }
   return portalService('graduation-plans');
 }
 
-const renderers = {'academic-services':academicServices,'extra-hours':extraHours,overview,notifications,profile, directory, 'student-detail':()=>profile(true),advising,'pending-work':pending,'schedule-activity':activity,'financial-records':financial,'mandatory-removals':removals,'student-schedules':()=>schedule(true),'draft-schedule':()=>portalService('student-schedules','academic-services'),courses,'course-detail':courseDetail,terms,offerings,'copy-offerings':copyOfferings,templates,'template-detail':templateDetail,'group-assignments':assignments,'my-schedule':schedule,'my-courses':registered,'schedule-swap':swap,preferences,records,'my-advisor':advisor,'calendar-sync':calendarSync,'graduation-plans':graduationPlans};
+const renderers = {'academic-services':academicServices,'extra-hours':extraHours,overview,notifications,profile, directory, 'student-detail':()=>profile(true),advising,'pending-work':pending,'schedule-activity':activity,'financial-records':financial,'mandatory-removals':removals,'student-schedules':()=>schedule(true),'draft-schedule':()=>portalService('student-schedules','academic-services'),courses,'course-detail':courseDetail,terms,offerings,'copy-offerings':copyOfferings,templates,'template-detail':templateDetail,'group-assignments':assignments,'my-schedule':schedule,'my-courses':registered,'schedule-swap':swap,preferences,records,'my-advisor':advisor,'calendar-sync':calendarSync,'graduation-plans':graduationPlans,'my-submitted-plans':graduationPlans};
 function themeControl(){
   return button('<span class="' + (!lab.dark ? 'theme-light' : '') + '">' + icon('sun') + '</span><span class="' + (lab.dark ? 'theme-light' : '') + '">' + icon('moon') + '</span>',
     'toggle-theme', 'theme-toggle', 'aria-label="Switch to ' + (lab.dark ? 'light' : 'dark') + ' mode"');
 }
 function accountControls(){
+  const name = productionPreview && localStorage.getItem(workspaceSessionKey)
+    ? sessionStorage.getItem(workspaceAccountNameKey) || roleNames[role]
+    : person();
   const bell = `<svg class="icon notice-bell" aria-hidden="true" viewBox="0 0 28 28" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
     <path class="bell-body" d="M8 12c0-4 2.1-6.6 6-6.6s6 2.8 6 6.6c0 3.6 1.2 5.4 2.4 7.1-4.7.8-12.3.8-16.8 0C7 17.4 8 15.4 8 12Z"/>
     <path class="bell-clapper" d="M12 22q2 2 4-.2"/>
     <path class="bell-echo" pathLength="1" d="M4.4 7.8Q2.5 10 2.7 12.4M23.6 7.3q2.1 2.3 2 4.4"/>
   </svg>`;
   return `<a class="icon-button" href="${href('notifications')}" data-page="notifications" aria-label="Notifications" title="Notifications">${bell}${notificationEntries().some(([id])=>isNotificationUnread(id)) ? '<span class="notification-dot"></span>' : ''}</a>
-    <button type="button" class="account-button" popovertarget="account-menu" aria-label="Account menu for ${person()}">${avatar(person())}<span>${person()}</span>${icon('down')}</button>
+    <button type="button" class="account-button" popovertarget="account-menu" aria-label="Account menu for ${escapeHtml(name)}">${avatar(name)}<span>${escapeHtml(name)}</span>${icon('down')}</button>
     <div id="account-menu" popover><div class="account-caption">${roleNames[role]}</div>${link('profile','My profile')}${button('Sign out','sign-out','sign-out')}</div>`;
 }
 
@@ -1578,6 +1587,10 @@ function mountPortalService(host) {
 function render(focus=false){
   closeDeadline();
   clearFlipExposure();
+  if (page === 'graduation-plans' && role === 'advisor' && new URLSearchParams(location.search).get('view') === 'submitted') {
+    page = 'my-submitted-plans';
+    history.replaceState(history.state, '', href(page));
+  }
   if (!authPages.has(page) && (!signedIn() || (page === 'extra-hours' && !localStorage.getItem(workspaceSessionKey)))) {
     returnAfterSignIn = page;
     page = 'login';
@@ -1590,9 +1603,10 @@ function render(focus=false){
     destination.searchParams.set('screen', 'schedule-swap');
     history.replaceState(history.state, '', destination);
   }
-  document.title=productionPreview ? `Portal · ${pages[page]}` : `Portal — ${layoutNames[lab.layout]} · ${pages[page]}`;
+  const pageLabel = navigationLabel(page);
+  document.title=productionPreview ? `Portal · ${pageLabel}` : `Portal — ${layoutNames[lab.layout]} · ${pageLabel}`;
   document.body.classList.toggle('auth-screen',authPages.has(page));
-  const body=authPages.has(page)?auth():`<div class="shell">${sidebar()}<div class="workspace"><header class="topbar">${link('overview',portalWordmark(),'mobile-nav wordmark')}<span class="term">${workspaces[lab.layout].name==='Claude Study'?'<small class="study-crumb">Academic workspace &nbsp; / &nbsp;</small>':''}${pages[page]}<span>Winter 2026 / 2027</span></span><div class="topactions">${button(icon('menu')+'<span class="sr-only">Menu</span>','mobile-menu','mobile-menu')}${themeControl()}${accountControls()}</div></header><main class="content" data-screen="${page}" id="content" tabindex="-1">${renderers[page]()}</main></div></div>`;
+  const body=authPages.has(page)?auth():`<div class="shell">${sidebar()}<div class="workspace"><header class="topbar">${link('overview',portalWordmark(),'mobile-nav wordmark')}<span class="term">${workspaces[lab.layout].name==='Claude Study'?'<small class="study-crumb">Academic workspace &nbsp; / &nbsp;</small>':''}${pageLabel}<span>Winter 2026 / 2027</span></span><div class="topactions">${button(icon('menu')+'<span class="sr-only">Menu</span>','mobile-menu','mobile-menu')}${themeControl()}${accountControls()}</div></header><main class="content" data-screen="${page}" id="content" tabindex="-1">${renderers[page]()}</main></div></div>`;
   arrivalObserver?.disconnect();
   disposePortalService?.();
   disposePortalService = undefined;
@@ -1646,6 +1660,7 @@ async function signInWorkspace(credentials, expectedRole){
   }
   if (expectedRole && data.user.role !== expectedRole) throw new Error('The demo account has a different role.');
   localStorage.setItem(workspaceSessionKey,data.token);
+  sessionStorage.setItem(workspaceAccountNameKey, data.user.fullName || roleNames[data.user.role]);
   return data.user.role;
 }
 
@@ -1757,6 +1772,7 @@ function action(name,el){
       {
         const token = localStorage.getItem(workspaceSessionKey);
         localStorage.removeItem(workspaceSessionKey);
+        sessionStorage.removeItem(workspaceAccountNameKey);
         if (token) {
           void fetch('../api/identity/logout', {
             method: 'POST',
@@ -2148,6 +2164,7 @@ document.addEventListener('keydown',event=>{
 });
 window.addEventListener('popstate',()=>{const p=new URLSearchParams(location.search);page=pageKey(p.get('page'));returnAfterSignIn=returnPage(p.get('next'));role=Object.hasOwn(roleNames,p.get('role'))?p.get('role'):'coordinator';tab='';selectedStudent=studentIndex(p);selectedCourse=resolveCourse(p.get('course'));restoreLook(p);render(true);});
 window.addEventListener('storage',event=>{
+  if (event.key === workspaceSessionKey) sessionStorage.removeItem(workspaceAccountNameKey);
   if (event.key===previewSessionKey && !signedIn() && !authPages.has(page)) {
     returnAfterSignIn = 'overview';
     navigate('login');

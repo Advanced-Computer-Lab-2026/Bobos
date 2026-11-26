@@ -16,6 +16,7 @@ const requiredElectiveHours = 16;
 export async function loadGraduationContext(student, now = new Date()) {
   const windowEnd = new Date(now);
   windowEnd.setUTCFullYear(windowEnd.getUTCFullYear() + 1);
+  const windowEndTime = windowEnd.getTime();
   const [catalogue, attempts, futureTerms] = await Promise.all([
     Course.find().select("code name courseType isActive facultyMajors creditHours prerequisites offeringSeasons recommendedSemester")
       .sort({ recommendedSemester: 1, code: 1 }).lean(),
@@ -40,9 +41,9 @@ export async function loadGraduationContext(student, now = new Date()) {
     if (latest.has(courseId)) continue;
     latest.set(courseId, attempt);
     if (attempt.result !== "current") continue;
-    const end = attempt.term?.termEnd?.getTime() ?? Infinity;
-    // An expired current record is unresolved, so it must not waive a requirement.
-    if (end >= Date.now()) current.set(courseId, end);
+    const end = attempt.term?.termEnd?.getTime();
+    // Count a current attempt only when it can still finish in the planning year.
+    if (end >= Date.now() && end <= windowEndTime) current.set(courseId, end);
   }
   const failed = new Set(attempts.filter((attempt) => attempt.result === "failed").map((attempt) => idOf(attempt.course)));
   const remaining = catalogue.filter((course) => {
@@ -51,7 +52,7 @@ export async function loadGraduationContext(student, now = new Date()) {
       && (!course.facultyMajors?.length || course.facultyMajors.some((major) => majorMatches(major, student.major)));
   });
   const completedElectives = catalogue.filter((course) => course.courseType === "elective"
-    && (passed.has(idOf(course)) || (current.get(idOf(course)) ?? Infinity) <= windowEnd.getTime())
+    && (passed.has(idOf(course)) || current.has(idOf(course)))
     && (!course.facultyMajors?.length || course.facultyMajors.some((major) => majorMatches(major, student.major))));
   const electiveRequirement = {
     count: Math.max(0, requiredElectiveCount - completedElectives.length),
@@ -136,7 +137,7 @@ export function validateGraduationPlan(context, termPlans, exam, { reviewing = f
     seenTerms.add(plan.term);
     const selected = [];
     for (const courseId of plan.courses) {
-      if (reviewing && context.passed.has(courseId)) continue;
+      if (reviewing && (context.passed.has(courseId) || context.current.has(courseId))) continue;
       const course = courses.get(courseId);
       if (!course || placements.has(courseId)) {
         issues.push("Assign each remaining course at most once.");
@@ -185,7 +186,11 @@ function canFitCourses(context, courses) {
   while (remaining.size) {
     const next = [...remaining.values()].filter((course) => course.prerequisites.every((id) => !remaining.has(id)))
       .sort((a, b) => a.termIds.length - b.termIds.length || b.creditHours - a.creditHours)[0];
-    if (!next) return false;
+    if (!next) {
+      // A cycle blocks its courses, but optional choices can stay unassigned.
+      if ([...remaining.values()].some((course) => course.required)) return false;
+      break;
+    }
     remaining.delete(next._id);
     ordered.push(next);
   }

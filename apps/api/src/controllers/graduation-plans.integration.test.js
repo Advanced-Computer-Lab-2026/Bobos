@@ -203,6 +203,22 @@ test("exam eligibility checks whether the remaining courses can fit around the f
   assert.equal((await request()).status, 201);
 });
 
+test("an unusable elective choice does not hide an otherwise valid exit-exam request", async () => {
+  const [first, failed] = courses;
+  await Course.updateOne({ _id: first._id }, { offeringSeasons: ["winter"], creditHours: 19 });
+  await Course.updateOne({ _id: failed._id }, { offeringSeasons: ["winter"], prerequisites: [] });
+  await recordFailure(failed);
+  const electiveFields = { courseType: "elective", creditHours: 4, facultyMajors: ["CS"], offeringSeasons: ["spring"] };
+  const firstChoice = await Course.create({ ...electiveFields, code: "CYCLE1", name: "Unusable choice A" });
+  const secondChoice = await Course.create({ ...electiveFields, code: "CYCLE2", name: "Unusable choice B", prerequisites: [firstChoice._id] });
+  await Course.updateOne({ _id: firstChoice._id }, { prerequisites: [secondChoice._id] });
+
+  const request = await call("/exit-exam-requests", {
+    method: "POST", body: { courseId: String(failed._id), reason: "The Winter term would exceed the credit limit." },
+  });
+  assert.equal(request.status, 201, JSON.stringify(request.data));
+});
+
 test("staff lists respect draft privacy, advisor ownership, and combined search and filters", async () => {
   const submit = (user) => call("", { method: "POST", user, body: assignments([terms[0], courses[0]], [terms[1], courses[1]]) });
   const first = await submit("owner");
@@ -354,14 +370,44 @@ test("electives are choices and submission checks remaining count and hours", as
   assert.equal((await call(`/${short.data._id}/submit`, { method: "POST" })).status, 422);
 });
 
-test("passing a course after submission does not prevent Coordinator acceptance", async () => {
-  const draft = await call("", { method: "POST", body: assignments([terms[0], courses[0]], [terms[1], courses[1]]) });
-  assert.equal((await call(`/${draft.data._id}/submit`, { method: "POST" })).status, 200);
+for (const result of ["passed", "current"]) {
+  test(`a course marked ${result} after submission does not prevent Coordinator acceptance`, async () => {
+    const draft = await call("", { method: "POST", body: assignments([terms[0], courses[0]], [terms[1], courses[1]]) });
+    assert.equal((await call(`/${draft.data._id}/submit`, { method: "POST" })).status, 200);
+    await CourseAttempt.create({
+      course: courses[0]._id, student: student._id, term: terms[0]._id, attendance: "attended", result,
+      ...(result === "passed" && { grade: "A" }),
+    });
+    const accepted = await review(`/plans/${draft.data._id}/decision`, {
+      user: "coordinator", method: "POST", body: { decision: "accept", responseNote: "Verified against updated transcript." },
+    });
+    assert.equal(accepted.status, 200, JSON.stringify(accepted.data));
+  });
+}
+
+test("a current course ending beyond the planning year still needs an in-window placement", async () => {
+  const body = assignments([terms[0], courses[0]], [terms[1], courses[1]]);
+  const firstDraft = await call("", { method: "POST", body });
+  assert.equal((await call(`/${firstDraft.data._id}/submit`, { method: "POST" })).status, 200);
+
+  const lateTerm = await AcademicTerm.create({
+    ...terms[0].toObject(), _id: undefined, code: "long-term", academicYear: "2090/2091",
+    termEnd: new Date(Date.now() + 400 * 86_400_000),
+  });
+  const additional = await Course.create({
+    code: "CS103", name: "Capstone", courseType: "core", creditHours: 6, facultyMajors: ["CS"], offeringSeasons: ["summer"],
+  });
   await CourseAttempt.create({
-    course: courses[0]._id, student: student._id, term: terms[0]._id, attendance: "attended", result: "passed", grade: "A",
+    course: additional._id, student: student._id, term: lateTerm._id, attendance: "attended", result: "current",
   });
-  const accepted = await review(`/plans/${draft.data._id}/decision`, {
-    user: "coordinator", method: "POST", body: { decision: "accept", responseNote: "Verified against updated transcript." },
+
+  const accepted = await review(`/plans/${firstDraft.data._id}/decision`, {
+    user: "coordinator", method: "POST", body: { decision: "accept", responseNote: "Review within one year." },
   });
-  assert.equal(accepted.status, 200, JSON.stringify(accepted.data));
+  assert.equal(accepted.status, 422, JSON.stringify(accepted.data));
+  assert.match(accepted.data.issues.join(" "), /Assign CS103/);
+  const secondDraft = await call("", { method: "POST", body });
+  const submitted = await call(`/${secondDraft.data._id}/submit`, { method: "POST" });
+  assert.equal(submitted.status, 422, JSON.stringify(submitted.data));
+  assert.match(submitted.data.issues.join(" "), /Assign CS103/);
 });

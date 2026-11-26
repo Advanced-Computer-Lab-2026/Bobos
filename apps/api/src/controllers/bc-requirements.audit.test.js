@@ -388,7 +388,7 @@ test("GAP B2 Req 102: refunding a wallet payment restores the balance exactly on
   assert.equal((await getWallet(student._id)).balance, 5000, "refund must reverse a 3200 debit exactly once");
 });
 
-test("GAP C1 Req 59: GPA 3.70 independently applies the probation credit reduction", gap("Allowance uses standing/reason but ignores GPA >= 3.70"), async () => {
+test("C1 Req 59: GPA 3.70 independently applies the probation credit reduction", async () => {
   await StudentProfile.updateOne({ _id: student._id }, { gpa: 3.70 });
   const response = await call(`${schedulePath()}/overview`);
   assert.equal(response.body.creditHours.allowedHours, 23);

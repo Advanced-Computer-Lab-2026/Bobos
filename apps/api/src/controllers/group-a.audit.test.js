@@ -276,14 +276,33 @@ test("GAP A2 Req 121: API startup produces reminders for assigned open schedules
   } finally { child.kill(); await closed; }
 });
 
-test("GAP A3 Req 103,107,113: probation GPA reduces the term limit before saving/submitting/accepting a plan", gap("Shared C1 allowance ignores GPA unless standing/reason also changes"), async () => {
-  await StudentProfile.updateOne({ _id: student._id }, { gpa: 3.70 });
+test("A3 Req 103,107,113: GPA-based probation limits are checked when saving, submitting and accepting", async () => {
+  const setGpa = (gpa) => StudentProfile.updateOne({ _id: student._id }, { gpa });
   await CourseAttempt.insertMany(courses.map((course) => ({ student: student._id, course: course._id, term: past._id, result: "passed", attendance: "attended", grade: "A" })));
   const heavy = await Course.create({ code: "AHEAVY501", name: "25 credits", creditHours: 25, courseType: "core", facultyMajors: ["CS"], offeringSeasons: ["winter"] });
-  const created = await call(planPath(), { role: "advisor", method: "POST", body: { termPlans: [{ term: String(terms[0]._id), courses: [String(heavy._id)] }] } });
-  if (created.status === 422) return;
-  assert.equal(created.status, 201);
-  const submitted = await call(`${planPath()}/${created.data._id}/submit`, { role: "advisor", method: "POST", body: {} });
-  const accepted = await call(`/graduation/plans/${created.data._id}/decision`, { method: "POST", body: { decision: "accept", responseNote: "Accepted" } });
-  assert.ok([created.status, submitted.status, accepted.status].some((status) => status === 422), "25 credits passed draft, submission and acceptance despite a 23-credit probation limit");
+  const save = () => call(planPath(), { role: "advisor", method: "POST", body: { termPlans: [{ term: String(terms[0]._id), courses: [String(heavy._id)] }] } });
+  const assertOverLimit = (result) => {
+    assert.equal(result.status, 422, JSON.stringify(result.data));
+    assert.ok(result.data.issues.some((issue) => /25 credit hours.*limit.*23/.test(issue)), JSON.stringify(result.data));
+  };
+
+  await setGpa(3.70);
+  assertOverLimit(await save());
+  await setGpa(3.69);
+  const created = await save();
+  assert.equal(created.status, 201, JSON.stringify(created.data));
+
+  const submit = () => call(`${planPath()}/${created.data._id}/submit`, { role: "advisor", method: "POST", body: {} });
+  await setGpa(3.70);
+  assertOverLimit(await submit());
+  await setGpa(3.69);
+  const submitted = await submit();
+  assert.equal(submitted.status, 200, JSON.stringify(submitted.data));
+
+  const accept = () => call(`/graduation/plans/${created.data._id}/decision`, { method: "POST", body: { decision: "accept", responseNote: "Accepted" } });
+  await setGpa(3.70);
+  assertOverLimit(await accept());
+  await setGpa(3.69);
+  const accepted = await accept();
+  assert.equal(accepted.status, 200, JSON.stringify(accepted.data));
 });
