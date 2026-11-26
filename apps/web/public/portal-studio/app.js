@@ -1036,7 +1036,7 @@ function weekly(){
   }
   const illustrated = workspaces[lab.layout].name === 'Claude Study';
   function classCard([time, code, detail, color]) {
-    return `<div class="week-class ${color}">${illustrated ? timetableDrawing(code) : ''}<time datetime="${time}">${time}</time>
+    return `<div class="week-class ${color}">${illustrated ? (timetableDrawing(code) || courseDrawing('CSEN 701')) : ''}<time datetime="${time}">${time}</time>
       <strong>${(student() ? studentCourses() : courseData).find(course => course[0] === code)?.[1] || escapeHtml(code)}</strong>
       <small>${illustrated ? `${code}<span class="study-place">${detail}</span>` : `${code} · ${detail}`}</small></div>`;
   }
@@ -1058,14 +1058,14 @@ function weekly(){
       <path d="M36 22c-7-7 5-11-1-17M46 22c-4-6 4-9 2-13"/>
       </g></svg><span>No classes scheduled</span></div>`;
   }
-  return `<div class="week-columns${illustrated ? ' compact-week' : ''}" aria-label="Weekly course schedule">${studentWeek().map(([day, meetings]) =>
+  return `<div class="week-columns${illustrated ? ' compact-week' : ''}${student() && !comparePageDesigns ? ' live-student-week' : ''}" style="--teaching-days:${studentWeek().length}" aria-label="Weekly course schedule">${studentWeek().map(([day, meetings]) =>
     `<section class="week-day" aria-label="${day}"><h2>${day}</h2>${dayContents(meetings)}</section>`).join('')}</div>`;
 }
 function schedule(staff=false){
   if (staff) {
     return portalService('student-schedules', 'academic-services');
   }
-  const timetableContext = liveStudent.data ? `${escapeHtml(liveStudent.data.term.season)} ${escapeHtml(liveStudent.data.term.academicYear)} · ${escapeHtml(liveStudent.data.schedule.status)}` : '';
+  const timetableContext = liveStudent.data ? `${escapeHtml(liveStudent.data.term.season)} ${escapeHtml(liveStudent.data.term.academicYear)} · ${escapeHtml(({readyForStudentReview:"Ready for student review", processed:"Processed", draft:"Draft"})[liveStudent.data.schedule.status] || liveStudent.data.schedule.status)}` : '';
   if (!comparePageDesigns && !liveStudent.data) return head('My schedule') + `<p role="status">${escapeHtml(liveStudent.error || 'Loading your schedule…')}</p>`;
   return head('Weekly schedule',timetableContext,button('Download schedule','download-my-schedule'),'')+
     tabs([['week','Week'],['list','Course list']],'week')+(tab==='list'?registeredTable():weekly())+

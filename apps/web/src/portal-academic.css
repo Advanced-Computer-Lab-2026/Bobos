@@ -347,3 +347,165 @@
 @media (max-width: 700px) {
   .academic-services-embedded .portal-week { grid-template-columns: repeat(6, 160px); }
 }
+
+/* Advising, preference and graduation tools share the Portal control language. */
+.portal-advising-services .academic-services-embedded :is(.eyebrow, .panel-count) { display: none; }
+.portal-advising-services .academic-services-embedded .results-panel { padding-top: 0; border-top: 0; }
+.portal-advising-services .academic-services-embedded .directory-filters {
+  padding-bottom: 22px;
+  border-bottom: 1px solid var(--line);
+}
+.portal-advising-services .academic-services-embedded :is(.term-label, .result-count) {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+.portal-advising-services .academic-services-embedded :is(.table-actions .text-button, td > .text-button, .filter-toggle) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  font: 500 13px/1.4 Styrene, system-ui, sans-serif;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: none;
+}
+.portal-advising-services .academic-services-embedded :is(.text-button, .outline-button, .filter-toggle):hover:not(:disabled) { background: var(--raised); }
+.portal-advising-services .academic-services-embedded .table-actions { flex-wrap: wrap; gap: 8px; min-width: 200px; }
+.portal-advising-services .academic-services-embedded .filter-panel {
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  box-shadow: none;
+}
+.portal-advising-services .academic-services-embedded .filter-panel-actions,
+.portal-advising-services .academic-services-embedded .filter-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px; }
+.portal-advising-services .academic-services-embedded .modal-card {
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: none;
+}
+.portal-advising-services .academic-services-embedded .detail-item { background: transparent; border-bottom: 1px solid var(--line); padding-block: 12px; }
+.portal-advising-services .academic-services-embedded .detail-item strong { font-weight: 500; }
+.portal-advising-services .academic-services-embedded .preference-grid { gap: 28px; }
+.portal-advising-services .academic-services-embedded .preference-grid > .panel { padding: 0; border: 0; }
+.portal-advising-services .academic-services-embedded .preference-grid > .panel .helper-text { margin-bottom: 12px; }
+.portal-advising-services .academic-services-embedded :is(.preference-student-selected, .preference-student-result) {
+  padding: 14px 0;
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  box-shadow: none;
+}
+.portal-advising-services .academic-services-embedded .preference-student-result:hover { background: var(--raised); }
+.portal-advising-services .academic-services-embedded .preference-offering { padding: 18px 0; border: 0; border-top: 1px solid var(--line); border-radius: 0; background: transparent; }
+.portal-advising-services .academic-services-embedded .group-chip {
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  text-align: start;
+  box-shadow: none;
+}
+.portal-advising-services .academic-services-embedded .group-chip:is(.selected, [aria-pressed="true"]) {
+  border-color: #8aab99;
+  background: color-mix(in srgb, var(--paper) 86%, #aac5ad);
+}
+.portal-advising-services .academic-services-embedded .group-chip strong { font-size: 13px; font-weight: 500; }
+.portal-advising-services .academic-services-embedded .group-chip small { color: var(--muted); font-size: 12px; line-height: 1.5; }
+.portal-advising-services .academic-services-embedded .priority-list { padding: 0; }
+.portal-advising-services .academic-services-embedded .priority-list li { padding-block: 10px; border-bottom: 1px solid var(--line); background: transparent; }
+.portal-advising-services .academic-services-embedded .priority-list button { min-width: 32px; min-height: 32px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: var(--ink); }
+.portal-advising-services .academic-services-embedded :is(button, a, input, select, textarea):focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+.portal-advising-services .academic-services-embedded button:disabled { opacity: .5; cursor: not-allowed; }
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .portal-advising-services .academic-services-embedded :is(.outline-button, .primary-button, .table-actions .text-button, .group-chip) { transition: background-color 120ms ease-out, border-color 120ms ease-out; }
+}
+@media (max-width: 700px) {
+  .portal-advising-services .academic-services-embedded .filter-panel { padding: 14px; }
+  .portal-advising-services .academic-services-embedded .table-actions { min-width: 160px; }
+}
+
+/* Live records share the established Course catalogue table, in both themes. */
+.academic-services-embedded :is(.table-scroll, .table-wrap) {
+  max-width: 100%;
+  border: 1px solid color-mix(in srgb, var(--line) 80%, var(--muted));
+  border-radius: 10px;
+  background: transparent;
+  overflow-x: auto;
+}
+.academic-services-embedded :is(.table-scroll, .table-wrap) > table {
+  margin: 0;
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.academic-services-embedded :is(.table-scroll, .table-wrap) > table th {
+  padding: 13px 16px;
+  border: 0;
+  background: color-mix(in srgb, var(--raised) 60%, var(--canvas));
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  text-align: start;
+  white-space: nowrap;
+}
+.academic-services-embedded :is(.table-scroll, .table-wrap) > table td {
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  vertical-align: middle;
+}
+.academic-services-embedded :is(.table-scroll, .table-wrap) > table tr:last-child td { border-bottom: 0; }
+.academic-services-embedded :is(.table-scroll, .table-wrap) > table tbody tr:hover { background: color-mix(in srgb, var(--raised) 35%, transparent); }
+.academic-services-embedded :is(.table-scroll, .table-wrap) > table td .secondary-text { margin-top: 4px; color: var(--muted); font-size: 12px; }
+.academic-services-embedded .slot-changes-page .table-scroll > table :is(th, td) { font-size: 13px; }
+.academic-services-embedded .slot-changes-page .table-scroll > table th { font-size: 12px; }
+.academic-services-embedded .slot-changes-page .table-scroll > table .text-button {
+  min-height: 36px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  font: 500 13px/1.4 Styrene, system-ui, sans-serif;
+}
+.academic-services-embedded .slot-changes-page :is(.slot-request-detail-block, .slot-comparison) {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+}
+.academic-services-embedded .slot-changes-page .slot-request-detail-block .eyebrow {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: normal;
+  text-transform: none;
+}
+.academic-services-embedded .slot-changes-page .slot-request-detail-block p { margin: 8px 0 0; font-size: 14px; line-height: 1.5; }
+.academic-services-embedded .slot-changes-page .slot-request-filters { gap: 14px; }
+.academic-services-embedded .slot-changes-page .slot-request-card { padding: 24px; }
+@media (max-width: 700px) {
+  .academic-services-embedded :is(.table-scroll, .table-wrap) > table :is(th, td) { padding: 12px; }
+  .academic-services-embedded .slot-changes-page .slot-request-card { padding: 18px; }
+}
