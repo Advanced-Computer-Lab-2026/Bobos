@@ -486,6 +486,7 @@ export function StaffSchedulesPage({ token, role, notify, initialStudent = null,
 }
 
 function AdvisingDraftEditor({ token, role, student, termId, notify, onBack, onSaved }) {
+  const [draftView, setDraftView] = useState("courses");
   const [data, setData] = useState(null);
   const [selections, setSelections] = useState({});
   const [validationIssues, setValidationIssues] = useState(null);
@@ -709,15 +710,14 @@ function AdvisingDraftEditor({ token, role, student, termId, notify, onBack, onS
     {error && !data && <Feedback tone="error">{error}</Feedback>}
     {loading ? <Loading /> : data && <>
       <section className="panel draft-summary"><div><p className="eyebrow">{data.term?.code} · {data.term?.season} {data.term?.academicYear}</p><h2>{data.student?.fullName} · {data.student?.major}, semester {data.student?.currentSemester}</h2><p className="helper-text">{data.schedule ? `Draft version ${data.schedule.version} · last edited ${formatDraftDate(data.schedule.updatedAt)}` : "No draft exists for this term yet. Saving creates an open draft."}</p></div><span className={`status-pill ${editable ? "good" : "muted"}`}>{data.schedule ? prettyStatus(data.schedule.status) : "No draft"}</span>{!data.schedule && <button className="primary-button" type="button" onClick={createDraft} disabled={creating}>{creating ? "Creating…" : "Create open draft"}</button>}</section>
-      {overview && <AdvisingOverviewPanel overview={overview} token={token} student={student} termQuery={termQuery} canEdit={editable} notify={notify} onChanged={load} />}
-      <nav className="draft-section-nav" aria-label="Draft sections">
-        <a href="#draft-preferences">Preferences</a>
-        <a href="#draft-timetable">Timetable</a>
-        <a href="#draft-courses">Course selection</a>
-        <a href="#draft-validation">Validation</a>
+      <nav className="tabs draft-view-tabs" aria-label="Draft views">
+        {[["courses", "Course selection"], ["timetable", "Timetable"], ["student", "Student details"]].map(([view, label]) => <button key={view} type="button" aria-pressed={draftView === view} onClick={() => setDraftView(view)}>{label}</button>)}
       </nav>
+      <div hidden={draftView !== "student"}>
+        {overview && <AdvisingOverviewPanel overview={overview} token={token} student={student} termQuery={termQuery} canEdit={editable} notify={notify} onChanged={load} />}
+      </div>
       {data.schedule?.staleCourseCount > 0 && <Feedback tone="warning">{data.schedule.staleCourseCount} course selection{data.schedule.staleCourseCount === 1 ? " is" : "s are"} no longer available for this student and term. Review the draft before saving; unavailable selections will be removed from the saved draft.</Feedback>}
-      <section className="panel draft-preferences" id="draft-preferences"><div className="results-heading"><div><p className="eyebrow">STUDENT INPUT</p><h2>Latest scheduling preferences</h2></div><div className="table-actions"><span className="result-count">{data.preferenceLastUpdatedAt ? `Updated ${formatDraftDate(data.preferenceLastUpdatedAt)}` : "No submission"}</span><button className="text-button" type="button" disabled={refreshingPreferences} onClick={refreshPreferences}>{refreshingPreferences ? "Refreshing…" : "↻ Refresh"}</button></div></div>
+      <section hidden={draftView !== "student"} className="panel draft-preferences" id="draft-preferences"><div className="results-heading"><div><p className="eyebrow">STUDENT INPUT</p><h2>Latest scheduling preferences</h2></div><div className="table-actions"><span className="result-count">{data.preferenceLastUpdatedAt ? `Updated ${formatDraftDate(data.preferenceLastUpdatedAt)}` : "No submission"}</span><button className="text-button" type="button" disabled={refreshingPreferences} onClick={refreshPreferences}>{refreshingPreferences ? "Refreshing…" : "↻ Refresh"}</button></div></div>
         {!preferences ? <Feedback tone="info">This student has not submitted preferences for this term. You can still create the draft.</Feedback> : <>
           <p className="helper-text">Priority order is shown as ranked. Hints are satisfied where feasible and never override academic rules or a timetable clash.</p>
           <div className="draft-preference-grid">
@@ -731,7 +731,7 @@ function AdvisingDraftEditor({ token, role, student, termId, notify, onBack, onS
           {preferences.note && <p className="draft-student-note"><strong>Student note:</strong> {preferences.note}</p>}
         </>}
       </section>
-      {data.mandatoryCourses.length > 0 && <MandatoryCoursesPanel data={data} editable={editable} busy={savingMandatory} onSave={saveMandatory} />}
+      <div hidden={draftView !== "courses"}>{data.mandatoryCourses.length > 0 && <MandatoryCoursesPanel data={data} editable={editable} busy={savingMandatory} onSave={saveMandatory} />}</div>
       {!editable && data.schedule?.status === "readyForStudentReview" && (
         <section className="panel schedule-process-panel">
           <div>
@@ -772,9 +772,9 @@ function AdvisingDraftEditor({ token, role, student, termId, notify, onBack, onS
           </button>
         </section>
       )}
-      <section className="panel draft-timetable" id="draft-timetable"><div className="panel-heading"><div><p className="eyebrow">LIVE PREVIEW</p><h2>Selected timetable</h2></div><span className="result-count">{selectedOfferings.length} subjects</span></div>{selectedOfferings.length ? <WeeklySchedule week={draftWeek} compact /> : <p className="helper-text">Add course groups below to preview their days and times here.</p>}</section>
-      <EligibleCoursesPanel token={token} student={student} termQuery={termQuery} editable={editable} notify={notify} version={data.schedule?.version ?? 0} onChanged={async (status) => { onSaved?.(status); await load(); }} />
-      <form className="panel draft-course-editor" id="draft-courses" onSubmit={save}>
+      <section hidden={draftView !== "timetable"} className="panel draft-timetable" id="draft-timetable"><div className="panel-heading"><div><p className="eyebrow">LIVE PREVIEW</p><h2>Selected timetable</h2></div><span className="result-count">{selectedOfferings.length} subjects</span></div>{selectedOfferings.length ? <WeeklySchedule week={draftWeek} compact /> : <p className="helper-text">Add course groups below to preview their days and times here.</p>}</section>
+      <details hidden={draftView !== "courses"} className="draft-other-courses"><summary>Other eligible courses</summary><EligibleCoursesPanel token={token} student={student} termQuery={termQuery} editable={editable} notify={notify} version={data.schedule?.version ?? 0} onChanged={async (status) => { onSaved?.(status); await load(); }} /></details>
+      <form hidden={draftView !== "courses"} className="panel draft-course-editor" id="draft-courses" onSubmit={save}>
         <div className="results-heading draft-course-toolbar">
           <div><p className="eyebrow">DRAFT CONTENT</p><h2>Published course offerings</h2></div>
           <button className="outline-button" type="button" onClick={checkValidation} disabled={busy}>{validating ? "Checking…" : "Check draft validation"}</button>
@@ -838,7 +838,7 @@ function AdvisingDraftEditor({ token, role, student, termId, notify, onBack, onS
         {error && <Feedback tone="error">{error}</Feedback>}
         {message && <Feedback tone="success">{message}</Feedback>}
         <div className="form-footer"><span className="helper-text">Saving keeps the schedule in draft. The server rechecks academic rules, capacity, and clashes.</span><button className="primary-button" type="submit" disabled={busy || !editable}>{saving && !sendingForReview ? "Saving draft…" : data.schedule ? "Update draft" : "Create draft"}<span>→</span></button></div>
-        {editable && selectedOfferings.length > 0 && <div className="form-footer"><span className="helper-text">When the schedule is ready, save it and make it visible to the student for review.</span><button className="outline-button" type="button" onClick={(event) => save(event, true)} disabled={busy || Boolean(selectedConflict) || Boolean(incompleteSelection) || missingMandatory.length > 0 || overCreditLimit || extraHoursNotCovered}>{sendingForReview ? "Sending for review…" : "Save and send for student review"}<span>→</span></button></div>}
+        {editable && <div className="form-footer"><span className="helper-text">{selectedOfferings.length === 0 ? "Add at least one course and select its required groups to send this draft for student review." : "When the schedule is ready, save it and make it visible to the student for review."}</span><button className="outline-button" type="button" onClick={(event) => save(event, true)} disabled={selectedOfferings.length === 0 || busy || Boolean(selectedConflict) || Boolean(incompleteSelection) || missingMandatory.length > 0 || overCreditLimit || extraHoursNotCovered}>{sendingForReview ? "Sending for review…" : "Save and send for student review"}<span>→</span></button></div>}
         {data.schedule?.status === "processed" && <div className="form-footer" style={{ borderTop: "1px solid var(--line)", paddingTop: "14px" }}><span className="helper-text">Reopening reverts this schedule to draft status for further edits.</span><button className="primary-button destructive-action" type="button" onClick={() => { setReopenReason(""); setReopenError(""); setReopenModalOpen(true); }}>Reopen Schedule</button></div>}
       </form>
       {reopenModalOpen && (
@@ -1000,9 +1000,23 @@ function CourseDetailPanel({ details }) {
 }
 
 function WeeklySchedule({ week = {}, daysOff = [], compact = false }) {
-  return <div className={`weekly-schedule ${compact ? "compact" : ""}`}>
-    {WEEK.map((day) => <section className={`schedule-day ${daysOff.includes(day) ? "day-off" : ""}`} key={day}><h3>{day}{daysOff.includes(day) && <small>Off</small>}</h3>
-      {(week[day] || []).length ? week[day].map((slot, index) => <article className={`schedule-slot ${slot.type || ""}`} key={`${slot.courseCode}-${slot.startTime}-${index}`}><strong>{slot.courseCode}</strong>{slot.courseName && <span className="schedule-course-name">{slot.courseName}</span>}<span>{slot.type} · {slot.startTime}–{slot.endTime}</span><small>{slot.room} · Group {slot.groupNumber}</small></article>) : <p className="empty-day">No classes</p>}
+  const codes = [...new Set(Object.values(week).flat().map(slot => slot.courseCode))].sort();
+  const knownTones = { CSEN701: "blue", CSEN703: "coral", CSEN704: "sage", DMET701: "ivory" };
+  const tones = ["blue", "coral", "sage", "ivory"];
+  return <div className={`weekly-schedule portal-week ${compact ? "compact" : ""}`}>
+    {WEEK.map(day => <section className={`schedule-day ${daysOff.includes(day) ? "day-off" : ""}`} key={day}>
+      <h3>{day}</h3>
+      {(week[day] || []).length ? week[day].map((slot, index) => {
+        const code = String(slot.courseCode || "").replace(/\s/g, "");
+        const symbol = { CSEN703: "algorithms", CSEN704: "advanced-lab", DMET701: "graphics" }[code];
+        return <article className={`schedule-slot ${slot.type || ""}`} data-course-tone={knownTones[code] || tones[Math.max(0, codes.indexOf(slot.courseCode)) % tones.length]} key={`${slot.courseCode}-${slot.startTime}-${index}`}>
+          {symbol ? <img className="schedule-course-art" src={`/portal-studio/images/symbols/${symbol}.svg`} alt="" /> : <svg className="schedule-course-art" viewBox="0 0 30 24" fill="none" stroke="currentColor" strokeWidth="1.25" aria-hidden="true"><path d="m9 6 11-.5.6 10.5-11 1z M12 9l5-.4.4 4.4-5 .4z M11 3v3m4-3v3m4-3v2m-8 12v3m4-3v3m4-4v3M6 9h3m-3 4h3m12-5h3m-3 5h3" /></svg>}
+          <time className="schedule-meeting-time" dateTime={slot.startTime}>◷ {slot.startTime}–{slot.endTime}</time>
+          <strong className="schedule-course-name">{slot.courseName || slot.courseCode}</strong>
+          <small className="schedule-course-code">{slot.courseCode}</small>
+          <small className="schedule-meeting-place">{slot.type} · {slot.room} · Group {slot.groupNumber}</small>
+        </article>;
+      }) : <div className="empty-day"><svg viewBox="0 0 90 80" fill="none" stroke="#766b58" strokeWidth="1.4" aria-hidden="true"><ellipse cx="42" cy="65" rx="33" ry="7" fill="#d6bd9f"/><path d="M19 36h46l-4 17q-3 12-19 12T23 53Z" fill="#bed1c9"/><path d="M65 39q18-4 16 7-1 9-18 10"/><ellipse cx="42" cy="36" rx="23" ry="6" fill="#f6ecd6"/><ellipse cx="42" cy="37" rx="19" ry="4" fill="#705044"/><path d="M34 28c-8-9 7-10 1-20m13 20c-7-8 7-12 1-20"/></svg><span>No classes scheduled</span></div>}
     </section>)}
   </div>;
 }

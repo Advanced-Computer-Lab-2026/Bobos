@@ -8,8 +8,9 @@ import formStyles from "./form-controls.css?inline";
 import serviceStyles from "./extra-hours-study.css?inline";
 
 import paperStyles from "./components/paper-toss-button.css?inline";
+import academicStyles from "./portal-academic.css?inline";
 
-const styles = [baseStyles, workspaceStyles, formStyles, serviceStyles, paperStyles].join("\n")
+const styles = [baseStyles, workspaceStyles, formStyles, serviceStyles, paperStyles, academicStyles].join("\n")
   .replaceAll(":root", ".service-surface");
 
 export function mount(host) {
@@ -30,6 +31,21 @@ export function mount(host) {
   const surface = document.createElement("div");
   surface.className = "service-surface";
   surface.dataset.embedded = "true";
+  // Reuse Portal's existing heading illustrations inside the service shadow root.
+  const serviceParams = new URLSearchParams(host.dataset.portalService);
+  surface.dataset.service = serviceParams.get("screen") || "";
+  if (serviceParams.get("section") === "academic-services") {
+    const artHost = document.createElement("div");
+    artHost.innerHTML = '<div class="page-head"><div></div></div>';
+    const artScreen = { directory: "profile", "financial-records": "pending-work" }[serviceParams.get("screen")] || serviceParams.get("screen");
+    window.addStaffArt?.(artScreen, artHost);
+    const drawing = artHost.querySelector(".staff-desk-art");
+    if (drawing) {
+      drawing.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+      surface.style.setProperty("--portal-heading-art", `url("data:image/svg+xml,${encodeURIComponent(drawing.outerHTML)}")`);
+      surface.dataset.headingArt = "true";
+    }
+  }
   const updateTheme = () => {
     surface.dataset.theme = document.documentElement.dataset.theme;
     const theme = getComputedStyle(host);

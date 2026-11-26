@@ -38,9 +38,13 @@ async function queryActivities(req, res, { studentId } = {}) {
       filter.occurredAt.$lt = dayAfter;
     }
   }
-  if (search) {
-    const pattern = new RegExp(escaped(search), "i");
-    const matchingStudents = profiles.filter((profile) => pattern.test(profile.studentId));
+  const queryText = search.trim();
+  if (queryText) {
+    const pattern = new RegExp(escaped(queryText), "i");
+    // Match copied/compact IDs without changing literal staff-name/email searches.
+    const idText = queryText.replace(/[\u2010-\u2015\u2212]/g, "-").replace(/\s/g, "");
+    const canonicalId = /^\d{6,7}$/.test(idText) ? `${idText.slice(0, 2)}-${idText.slice(2)}` : idText;
+    const matchingStudents = profiles.filter((profile) => pattern.test(profile.studentId) || profile.studentId === canonicalId);
     const studentIds = matchingStudents.map((profile) => profile._id);
     filter.$or = [{ student: { $in: studentIds } }, { actorName: pattern }, { actorEmail: pattern }];
   }

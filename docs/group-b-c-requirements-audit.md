@@ -1,5 +1,7 @@
 # Group B and C requirements audit — 14 November 2026
 
+B1 status was rechecked on 26 November; see [the current B1 audit](b1-implementation-audit.md). The B1 failures below describe the older implementation.
+
 This audit covers the 46 Sprint 2 requirements assigned to B1/B2/B3 and C1/C2/C3 in the team's assignment image, checked against the functional-requirements workbook in the workspace. Shared Sprint 1 APIs are included in the regression run. A passing implementation-presence check does not certify every rule; the strict acceptance suite below deliberately fails on reproducible gaps.
 
 ## Integration and UI preservation

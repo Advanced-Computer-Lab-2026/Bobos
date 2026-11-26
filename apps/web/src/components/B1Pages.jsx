@@ -15,7 +15,8 @@ const requestStatusLabel = (request) => {
   if (request.type !== "extraHours") return displayLabel(request.status);
   if (request.status === "pending") return "Awaiting coordinator decision";
   const settlement = request.status.split(":")[1];
-  return settlement === "awaitingChoice" ? "Payment choice needed" : displayLabel(settlement || request.status);
+  return request.status === "approved" || settlement === "none" || settlement === "awaitingChoice"
+    ? "Payment choice needed" : displayLabel(settlement || request.status);
 };
 
 function SummaryGroup({ title, entries, label }) {
@@ -69,20 +70,16 @@ export function ScheduleActivityPage({ token, studentId }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [reloadKey, setReloadKey] = useState(0);
   const [page, setPage] = useState(1);
   const path = studentId ? `/api/admin/students/${encodeURIComponent(studentId)}/schedule-activity` : "/api/admin/schedule-activity";
   const exportPath = studentId ? `/api/admin/students/${encodeURIComponent(studentId)}/schedule-activity/export` : "/api/admin/schedule-activity/export";
   const query = new URLSearchParams({ ...Object.fromEntries(Object.entries(filters).filter(([, value]) => value)), page: String(page) });
   const load = async (signal) => {
     setError("");
-    setRefreshing(true);
     try { setData(await api(`${path}?${query.toString()}`, { token, signal })); }
     catch (err) { if (!signal?.aborted) setError(err.message); }
-    finally { if (!signal?.aborted) setRefreshing(false); }
   };
-  useEffect(() => { const controller = new AbortController(); load(controller.signal); return () => controller.abort(); }, [token, studentId, filters.action, filters.from, filters.to, filters.search, page, reloadKey]);
+  useEffect(() => { const controller = new AbortController(); load(controller.signal); return () => controller.abort(); }, [token, studentId, filters.action, filters.from, filters.to, filters.search, page]);
   const update = (key, value) => { setPage(1); setFilters((current) => ({ ...current, [key]: value })); };
   const exportCsv = async () => {
     setBusy(true);
@@ -107,9 +104,9 @@ export function ScheduleActivityPage({ token, studentId }) {
     filters.to && { key: "to", label: `Through: ${filters.to}`, onRemove: () => update("to", "") },
   ].filter(Boolean);
   return <div className="workspace-page">
-    <WorkspaceHeader title={studentId ? "Student schedule history" : "Schedule activity"} description={studentId ? "Processing and reopening events for this advising student." : "A record of schedule processing and reopening, including who made each change."} action={<div className="form-actions"><button className="outline-button" type="button" onClick={() => setReloadKey((key) => key + 1)} disabled={refreshing}>{refreshing ? "Refreshing…" : "Refresh"}</button><button className="outline-button" type="button" onClick={exportCsv} disabled={busy}>{busy ? "Exporting…" : "Export CSV"}</button></div>} />
+    <WorkspaceHeader title={studentId ? "Student schedule history" : "Schedule activity"} description={studentId ? "Processing and reopening events for this advising student." : "A record of schedule processing and reopening, including who made each change."} action={<div className="form-actions"><button className="outline-button" type="button" onClick={exportCsv} disabled={busy}>{busy ? "Exporting…" : "Export CSV"}</button></div>} />
     <section className="panel"><FilterDisclosure
-      search={<label className="field filter-search"><span>Student or staff</span><input type="search" name="activity-search" autoComplete="off" value={filters.search} maxLength={100} onChange={(event) => update("search", event.target.value)} placeholder="Student ID, name or email…" /></label>}
+      search={<label className="field filter-search"><span>Student ID or staff member</span><input type="search" name="activity-search" autoComplete="off" value={filters.search} maxLength={100} onChange={(event) => update("search", event.target.value)} placeholder="Student ID, staff name or GUC email…" /></label>}
       chips={filterChips}
       onClear={hasFilters ? () => { setPage(1); setFilters({ action: "", from: "", to: "", search: "" }); } : undefined}
     ><div className="filter-grid">

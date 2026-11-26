@@ -181,6 +181,30 @@ test("B1 Req 122: dashboard derives states, includes both student types and grou
   assert.equal(row.requests[0].type, "slotChange");
 });
 
+test("B1 Req 122: approved extra hours without a payment choice stay visible in pending work", async () => {
+  const request = await extraRequest({ settlementStatus: "none" });
+  const result = await call("/admin/pending-work");
+  assert.equal(result.status, 200);
+  const row = result.body.students.find((item) => item.id === String(student._id));
+  assert.equal(row.workflowStatus, "awaitingPaymentChoice");
+  assert.ok(row.requests.some((item) => item.id === String(request._id) && item.type === "extraHours"));
+  assert.equal(result.body.groups.requestType.extraHours, 1);
+});
+
+test("B1 Req 122: submitted future-term graduation plans remain in the coordinator queue", async () => {
+  const futureTerm = await AcademicTerm.create({ code: "FUT27", academicYear: "2027/2028", season: "winter",
+    termStart: new Date("2027-10-01"), termEnd: new Date("2028-03-01"), teachingStart: new Date("2027-10-05"), teachingEnd: new Date("2028-01-20"),
+    registrationStart: new Date("2027-09-01"), registrationEnd: new Date("2027-10-10"), advisingDeadline: new Date("2027-10-10"), wholeScheduleSwapDeadline: new Date("2027-10-10") });
+  const plan = await GraduationPlan.create({ student: student._id, advisor: users.advisor._id,
+    termPlans: [{ term: futureTerm._id, courses: [course._id] }], status: "submitted" });
+  const result = await call("/admin/pending-work");
+  assert.equal(result.status, 200);
+  const row = result.body.students.find((item) => item.id === String(student._id));
+  assert.ok(row.requests.some((item) => item.id === String(plan._id) && item.type === "graduationPlan"));
+  assert.equal(row.blockingStep, "Review submitted graduation plan");
+  assert.equal(result.body.groups.requestType.graduationPlan, 1);
+});
+
 test("B1 Req 123: history supports global and student scopes and preserves actor snapshots", async () => {
   await activity(student, "processed", "2026-11-01T10:00:00Z");
   await activity(other, "reopened", "2026-11-02T10:00:00Z");
@@ -221,6 +245,28 @@ test("B1 Req 125: literal search matches student IDs, staff name and email witho
     assert.equal(result.body.activities[0].studentId, student.studentId);
   }
   assert.equal((await call("/admin/schedule-activity?search=.%2A")).body.total, 0);
+});
+
+test("B1 Req 125: student ID search accepts surrounding spaces, compact IDs and copied dashes", async () => {
+  await activity(student, "processed", "2026-11-01T10:00:00Z");
+  await activity(other, "processed", "2026-11-01T10:00:00Z");
+  for (const search of [" 70-00001 ", "7000001", "70–00001", "70 - 00001"]) {
+    const result = await call(`/admin/schedule-activity?search=${encodeURIComponent(search)}`);
+    assert.equal(result.status, 200);
+    assert.equal(result.body.total, 1, search);
+    assert.equal(result.body.activities[0].studentId, "70-00001");
+  }
+  const csv = await call("/admin/schedule-activity/export?search=%2070%E2%80%9300001%20");
+  assert.equal(csv.status, 200);
+  assert.match(csv.body, /70-00001/);
+  assert.doesNotMatch(csv.body, /70-00002/);
+});
+
+test("B1 Req 125: student names are excluded while student IDs remain searchable", async () => {
+  await User.updateOne({ _id: users.advisingStudent._id }, { fullName: "Mariam Hassan" });
+  await activity(student, "processed", "2026-11-01T10:00:00Z");
+  assert.equal((await call("/admin/schedule-activity?search=Mariam")).body.total, 0);
+  assert.equal((await call("/admin/schedule-activity?search=70-00001")).body.total, 1);
 });
 
 test("B1 Req 126: CSV exports every matching page, excludes other actions and protects spreadsheet cells", async () => {
@@ -450,7 +496,7 @@ test("GAP C1 Req 59: overview recomputes status after saving an empty draft inst
   assert.equal(overview.body.scheduleStatus, "draft");
 });
 
-test("GAP B1 Req 122: dashboard includes graduation, exit-exam and financial reversal action requests", gap("Dashboard loads only swap, slot-change, mandatory-removal and extra-hours requests"), async () => {
+test("B1 Req 122: dashboard includes graduation, exit-exam and financial reversal action requests", async () => {
   await GraduationPlan.create({ student: student._id, advisor: users.advisor._id, termPlans: [{ term: term._id, courses: [course._id] }], status: "submitted" });
   await ExitExamRequest.create({ student: student._id, advisor: users.advisor._id, course: course._id, reason: "Final failed course" });
   const request = await extraRequest();

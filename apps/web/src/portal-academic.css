@@ -1,0 +1,349 @@
+/* Match the surrounding Portal registers and Schedule templates workspace.
+   Keep these rules inside academic services so other workspaces retain their design. */
+.service-surface .academic-services-embedded {
+  --primary: var(--ink);
+  --inverse: var(--canvas);
+  --control: var(--line);
+  --green: var(--ink);
+  --green-dark: var(--ink);
+  font: 400 14px/1.55 Styrene, system-ui, sans-serif;
+}
+.academic-services-embedded .page-content { padding: 0; }
+.academic-services-embedded :is(.page-stack, .workspace-page) { gap: 28px; }
+.academic-services-embedded :is(.workspace-header, .page-title-row) {
+  align-items: center;
+  gap: 20px;
+  margin: 0 0 4px;
+}
+.academic-services-embedded :is(.workspace-header, .page-title-row) h1 {
+  margin: 0;
+  color: var(--ink);
+  font: 500 22px/1.22 Styrene, system-ui, sans-serif;
+  letter-spacing: -.03em;
+}
+.academic-services-embedded :is(.workspace-header, .page-title-row) :is(p, .page-description) {
+  max-width: 68ch;
+  margin: 11px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.academic-services-embedded :is(.workspace-header, .page-title-row) .eyebrow { display: none; }
+.academic-services-embedded .panel {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.academic-services-embedded .panel + .panel { padding-top: 24px; border-top: 1px solid var(--line); }
+.academic-services-embedded :is(.results-heading, .panel-heading) { margin-bottom: 18px; }
+.academic-services-embedded :is(h2, .panel h2) {
+  color: var(--ink);
+  font: 500 17px/1.35 Styrene, system-ui, sans-serif;
+  letter-spacing: -.025em;
+}
+.academic-services-embedded :is(.table-wrap, .table-scroll) { border: 0; border-radius: 0; }
+.academic-services-embedded table { font-size: 14px; line-height: 1.5; }
+.academic-services-embedded table th {
+  padding: 12px 14px;
+  color: var(--muted);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: normal;
+}
+.academic-services-embedded table td { padding: 18px 14px; border-bottom: 1px solid var(--line); }
+.academic-services-embedded table :is(th, td):first-child { padding-inline-start: 0; }
+.academic-services-embedded table :is(th, td):last-child { padding-inline-end: 0; }
+.academic-services-embedded table td strong { font-weight: 500; }
+.academic-services-embedded tbody tr:hover { background: transparent; }
+.academic-services-embedded :is(.primary-button, .outline-button) {
+  min-height: 38px;
+  padding: 9px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: 500 13px/1.4 Styrene, system-ui, sans-serif;
+  box-shadow: none;
+}
+.academic-services-embedded .primary-button,
+.academic-services-embedded .primary-button:hover:not(:disabled) {
+  color: var(--canvas);
+  background: var(--ink);
+  border-color: var(--ink);
+  filter: none;
+  transform: none;
+}
+.academic-services-embedded .outline-button { color: var(--ink); background: transparent; }
+.academic-services-embedded .outline-button:hover:not(:disabled) { background: var(--raised); }
+.academic-services-embedded .primary-button.destructive-action {
+  color: var(--danger-ink);
+  background: var(--danger-bg);
+  border-color: transparent;
+}
+.academic-services-embedded :is(.field input, .field select, .field textarea, .search-control input) {
+  min-height: 40px;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  background-color: var(--paper);
+  font: 400 14px/1.5 Styrene, system-ui, sans-serif;
+  box-shadow: none;
+}
+.academic-services-embedded .field select { padding-inline-end: 40px; }
+.academic-services-embedded .field > span { color: var(--muted); font-size: 12px; font-weight: 500; }
+.academic-services-embedded .field :is(input, select, textarea):focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+}
+.academic-services-embedded :is(.pending-summary-card, .pending-work-summary) {
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.academic-services-embedded .status-pill { font-size: 12px; font-weight: 500; }
+.academic-services-embedded .workspace-empty { min-height: 190px; padding: 32px 16px; }
+.academic-services-embedded .workspace-empty-icon { border: 0; background: transparent; }
+.academic-services-embedded .draft-section-nav { padding-block: 12px; border-block: 1px solid var(--line); }
+@media (max-width: 700px) {
+  .academic-services-embedded :is(.workspace-header, .page-title-row) { align-items: flex-start; }
+  .academic-services-embedded table td { padding-block: 14px; }
+  .academic-services-embedded .panel + .panel { padding-top: 18px; }
+}
+.service-surface[data-heading-art="true"] .academic-services-embedded :is(.workspace-header, .page-title-row) > div:first-child {
+  position: relative;
+  min-height: 64px;
+  padding-inline-start: 96px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.service-surface[data-heading-art="true"] .academic-services-embedded :is(.workspace-header, .page-title-row) > div:first-child::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: 0;
+  top: 50%;
+  width: 78px;
+  height: 64px;
+  transform: translateY(-50%);
+  background: var(--portal-heading-art) center / contain no-repeat;
+  pointer-events: none;
+}
+@media (max-width: 700px) {
+  .service-surface[data-heading-art="true"] .academic-services-embedded :is(.workspace-header, .page-title-row) > div:first-child { padding-inline-start: 78px; }
+  .service-surface[data-heading-art="true"] .academic-services-embedded :is(.workspace-header, .page-title-row) > div:first-child::before { width: 64px; }
+}
+/* Student register and financial ledger use the same quiet workspace hierarchy. */
+.service-surface:is([data-service="directory"], [data-service="financial-records"]) .academic-services-embedded :is(.eyebrow, .panel-count) { display: none; }
+.service-surface:is([data-service="directory"], [data-service="financial-records"]) .academic-services-embedded .directory-filters {
+  padding-block: 0 22px;
+  border-bottom: 1px solid var(--line);
+}
+.service-surface:is([data-service="directory"], [data-service="financial-records"]) .academic-services-embedded .results-panel {
+  padding-top: 0;
+  border-top: 0;
+}
+.service-surface:is([data-service="directory"], [data-service="financial-records"]) .academic-services-embedded :is(.filter-actions, .filter-panel-actions) {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+.service-surface:is([data-service="directory"], [data-service="financial-records"]) .academic-services-embedded :is(.term-label, .result-count) {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+.service-surface[data-service="financial-records"] .finance-page > .directory-filters > .filter-grid {
+  grid-template-columns: minmax(240px, 2fr) repeat(3, minmax(130px, 1fr));
+  align-items: end;
+  gap: 14px;
+}
+.service-surface[data-service="financial-records"] .finance-page > .directory-filters > .filter-grid .span-two { grid-column: auto; }
+.service-surface[data-service="financial-records"] :is(.badge-currency, .detail-item strong, td:nth-child(5)) {
+  font-variant-numeric: tabular-nums;
+}
+.service-surface[data-service="financial-records"] .role-pill {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+.service-surface[data-service="directory"] .student-cell-button { gap: 3px; }
+.service-surface[data-service="directory"] .student-cell-button strong { font-size: 13px; font-variant-numeric: tabular-nums; }
+.service-surface[data-service="directory"] .student-cell-button span { margin: 0; font-size: 14px; font-weight: 500; }
+.service-surface[data-service="directory"] .student-cell-button small { margin: 0; color: var(--muted); font-size: 12px; }
+.service-surface[data-service="directory"] .filter-panel {
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  box-shadow: none;
+}
+.service-surface:is([data-service="directory"], [data-service="financial-records"]) .modal-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: none;
+}
+.service-surface:is([data-service="directory"], [data-service="financial-records"]) .detail-item {
+  padding-block: 12px;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+}
+.service-surface:is([data-service="directory"], [data-service="financial-records"]) .detail-item strong { font-weight: 500; }
+@media (max-width: 1100px) {
+  .service-surface[data-service="financial-records"] .finance-page > .directory-filters > .filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 600px) {
+  .service-surface[data-service="financial-records"] .finance-page > .directory-filters > .filter-grid { grid-template-columns: minmax(0, 1fr); }
+  .service-surface[data-service="directory"] .filter-panel { padding: 14px; }
+}
+
+/* B1 queues and activity use the same filter and section treatment as the register. */
+.service-surface:is([data-service="pending-work"], [data-service="schedule-activity"]) .result-count {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 400;
+}
+.service-surface[data-service="schedule-activity"] .filter-panel {
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  box-shadow: none;
+}
+.service-surface[data-service="pending-work"] .pending-summary-group li { padding-block: 10px; font-size: 13px; }
+.service-surface[data-service="pending-work"] .pending-work-records th { border-bottom: 1px solid var(--line); }
+.service-surface[data-service="pending-work"] .pending-request-list li { padding-block: 3px; }
+@media (max-width: 700px) {
+  .service-surface[data-service="schedule-activity"] .filter-panel { padding: 14px; }
+}
+
+/* Scheduling follows the Portal register: one task at a time, on the canvas. */
+.academic-services-embedded .scheduling-page [hidden] { display: none !important; }
+.academic-services-embedded .scheduling-page { gap: 24px; }
+.academic-services-embedded .scheduling-page .eyebrow { display: none; }
+.academic-services-embedded .scheduling-page .draft-summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  padding: 0 0 18px;
+  border-bottom: 1px solid var(--line);
+}
+.academic-services-embedded .draft-summary > div { flex: 1; }
+.academic-services-embedded .draft-summary h2 { margin: 0 0 5px; font-size: 14px; }
+.academic-services-embedded .draft-view-tabs { margin: 0; border: 0; padding: 0; gap: 6px; }
+.academic-services-embedded .draft-view-tabs button { min-height: 40px; padding-inline: 16px; font-size: 13px; }
+.academic-services-embedded .draft-other-courses {
+  padding: 14px 0;
+  border-block: 1px solid var(--line);
+}
+.academic-services-embedded .draft-other-courses > summary {
+  width: fit-content;
+  color: var(--muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+.academic-services-embedded .draft-other-courses[open] > summary { margin-bottom: 22px; color: var(--ink); }
+.academic-services-embedded .draft-course-editor { display: grid; gap: 22px; }
+.academic-services-embedded .draft-course-editor > .helper-text { max-width: 65ch; }
+.academic-services-embedded .draft-course-list { display: grid; gap: 0; }
+.academic-services-embedded .draft-course {
+  padding: 18px 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.academic-services-embedded .draft-course.selected { background: transparent; border-color: var(--line); }
+.academic-services-embedded .draft-course-heading strong { font-size: 14px; font-weight: 500; }
+.academic-services-embedded .draft-course-heading .secondary-text { margin-top: 5px; font-size: 12px; }
+.academic-services-embedded .draft-group-grid { margin-top: 18px; gap: 20px; }
+.academic-services-embedded .draft-credit-grid {
+  padding: 16px 0;
+  border-block: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+}
+.academic-services-embedded .draft-credit-grid dd { font-size: 20px; font-weight: 500; }
+.academic-services-embedded .draft-course-editor > .form-footer {
+  padding: 18px 0 0;
+  margin: 0;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.academic-services-embedded .draft-course-editor > .form-footer .helper-text { max-width: 55ch; }
+.academic-services-embedded .draft-preferences { margin-top: 24px; }
+@media (max-width: 700px) {
+  .academic-services-embedded .draft-view-tabs { width: 100%; }
+  .academic-services-embedded .draft-view-tabs button { padding-inline: 10px; }
+  .academic-services-embedded .draft-course-editor > .form-footer { align-items: flex-start; flex-direction: column; }
+}
+
+/* Live schedules use the same course-colored teaching week as the Portal home. */
+.academic-services-embedded .portal-week {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(150px, 1fr));
+  align-items: start;
+  gap: 14px;
+  padding-bottom: 12px;
+  overflow-x: auto;
+}
+.academic-services-embedded .portal-week .schedule-day {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.academic-services-embedded .portal-week .schedule-day h3 {
+  margin: 0 0 14px;
+  color: var(--ink);
+  font: 400 20px/1.3 Tiempos, Georgia, serif;
+  letter-spacing: -.025em;
+}
+.academic-services-embedded .portal-week .schedule-slot {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 0 8px;
+  padding: 14px 12px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--course-stock);
+  color: #25382f;
+  box-shadow: none;
+}
+.portal-week [data-course-tone="blue"] { --course-stock: #76ace9; }
+.portal-week [data-course-tone="coral"] { --course-stock: #ee9b7d; }
+.portal-week [data-course-tone="sage"] { --course-stock: #bed1c9; }
+.portal-week [data-course-tone="ivory"] { --course-stock: #efeee6; }
+.academic-services-embedded .portal-week .schedule-slot :is(strong, small, time) { color: inherit; }
+.academic-services-embedded .portal-week .schedule-slot .schedule-course-name { margin: 6px 0 2px; font-size: 14px; font-weight: 500; line-height: 1.4; }
+.academic-services-embedded .portal-week .schedule-slot small { font-size: 12px; line-height: 1.45; }
+.academic-services-embedded .portal-week .schedule-meeting-time { padding-inline-end: 24px; font-size: 11px; line-height: 1.5; font-variant-numeric: tabular-nums; }
+.academic-services-embedded .portal-week .schedule-course-art { position: absolute; top: 12px; right: 10px; width: 24px; height: 24px; object-fit: contain; opacity: .8; }
+.academic-services-embedded .portal-week .empty-day { display: grid; justify-items: center; gap: 8px; padding: 16px 4px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.academic-services-embedded .portal-week .empty-day svg { width: 78px; height: 70px; }
+.academic-services-embedded .portal-week.compact { grid-template-columns: repeat(6, minmax(150px, 1fr)); }
+@media (max-width: 700px) {
+  .academic-services-embedded .portal-week { grid-template-columns: repeat(6, 160px); }
+}

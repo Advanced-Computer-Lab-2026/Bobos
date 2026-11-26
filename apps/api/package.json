@@ -7,6 +7,8 @@
     "start": "node --env-file-if-exists=../../.env src/index.js",
     "seed": "node --env-file-if-exists=../../.env src/seed/index.js",
     "seed:c2": "node --env-file-if-exists=../../.env src/seed/c2.js",
+    "seed:group4": "node --env-file-if-exists=../../.env src/seed/group4.js",
+    "seed:b1": "node --env-file-if-exists=../../.env src/seed/b1.js",
     "seed:evaluation": "node --env-file-if-exists=../../.env src/seed/evaluation.js",
     "seed:pending-requests": "node --env-file-if-exists=../../.env src/seed/pending-requests.js",
     "seed:academic-history": "node --env-file-if-exists=../../.env src/seed/academic-history.js",

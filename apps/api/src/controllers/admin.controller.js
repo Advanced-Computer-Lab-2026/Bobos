@@ -367,14 +367,14 @@ export async function getPendingWork(req, res) {
       .select("student status updatedAt").lean().then((rows) => rows.map((row) => ({ ...row, type: "mandatoryCourseRemoval" }))) : [],
     termId ? ExtraHoursRequest.find({ term: termId, student: { $in: ids } })
       .select("_id student decisionStatus settlementStatus updatedAt").lean() : [],
-    GraduationPlan.find({ student: { $in: ids }, status: "submitted", ...(termId ? { "termPlans.term": termId } : {}) })
+    GraduationPlan.find({ student: { $in: ids }, status: "submitted" })
       .select("student status submittedAt updatedAt").lean().then((rows) => rows.map((row) => ({ ...row, updatedAt: row.updatedAt || row.submittedAt, type: "graduationPlan" }))),
     ExitExamRequest.find({ student: { $in: ids }, status: "pending" })
       .select("student status updatedAt").lean().then((rows) => rows.map((row) => ({ ...row, type: "exitExam" }))),
   ]) : [[], [], [], [], [], []];
   const [swapRequests, slotChanges, removalRequests, extraHours, graduationPlans, exitExams] = currentTermRequests;
   const actionableExtraHours = extraHours.filter((request) => request.decisionStatus === "pending" ||
-    (request.decisionStatus === "approved" && ["awaitingChoice", "failed", "cancelled", "deferred"].includes(request.settlementStatus)))
+    (request.decisionStatus === "approved" && ["none", "awaitingChoice", "failed", "cancelled", "deferred"].includes(request.settlementStatus)))
     .map((row) => ({ ...row, type: "extraHours" }));
   const financialReversals = extraHours.length ? await FinancialReversalRequest.find({
     student: { $in: ids }, extraHoursRequest: { $in: extraHours.map((row) => row._id) }, status: "pending",
