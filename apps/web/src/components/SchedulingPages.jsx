@@ -774,7 +774,7 @@ function AdvisingDraftEditor({ token, role, student, termId, notify, onBack, onS
         </section>
       )}
       <section hidden={draftView !== "timetable"} className="panel draft-timetable" id="draft-timetable"><div className="panel-heading"><div><p className="eyebrow">LIVE PREVIEW</p><h2>Selected timetable</h2></div><span className="result-count">{selectedOfferings.length} subjects</span></div>{selectedOfferings.length ? <WeeklySchedule week={draftWeek} compact /> : <p className="helper-text">Add course groups below to preview their days and times here.</p>}</section>
-      <div hidden={draftView !== "courses"} className="draft-other-courses"><EligibleCoursesPanel token={token} student={student} termQuery={termQuery} editable={editable} notify={notify} version={data.schedule?.version ?? 0} onChanged={async (status) => { onSaved?.(status); await load(); }} /></div>
+      {role !== "administrator" && <div hidden={draftView !== "courses"} className="draft-other-courses"><EligibleCoursesPanel token={token} student={student} termQuery={termQuery} editable={editable} notify={notify} version={data.schedule?.version ?? 0} onChanged={async (status) => { onSaved?.(status); await load(); }} /></div>}
       <form hidden={draftView !== "courses"} className="panel draft-course-editor" id="draft-courses" onSubmit={save}>
         <div className="results-heading draft-course-toolbar">
           <div><p className="eyebrow">DRAFT CONTENT</p><h2>Choose courses</h2><p className="draft-course-count">{selectedOfferings.length} selected · {data.offerings.length} available</p></div>
@@ -1017,8 +1017,8 @@ function WeeklySchedule({ week = {}, daysOff = [], compact = false }) {
       <h3>{day}</h3>
       {(week[day] || []).length ? week[day].map((slot, index) => {
         const code = String(slot.courseCode || "").replace(/\s/g, "");
-        const symbol = { CSEN703: "algorithms", CSEN704: "advanced-lab", DMET701: "graphics" }[code];
-        return <article className={`schedule-slot ${slot.type || ""}`} data-course-tone={knownTones[code] || tones[Math.max(0, codes.indexOf(slot.courseCode)) % tones.length]} key={`${slot.courseCode}-${slot.startTime}-${index}`}>
+        const symbol = globalThis.BobosCourseIcons?.[code]?.symbol || { CSEN703: "algorithms", CSEN704: "advanced-lab", DMET701: "graphics" }[code];
+        return <article className={`schedule-slot ${slot.type || ""}`} data-course-tone={globalThis.BobosCourseIcons?.[code]?.tone || knownTones[code] || tones[Math.max(0, codes.indexOf(slot.courseCode)) % tones.length]} key={`${slot.courseCode}-${slot.startTime}-${index}`}>
           {symbol ? <img className="schedule-course-art" src={`/portal-studio/images/symbols/${symbol}.svg`} alt="" /> : <svg className="schedule-course-art" viewBox="0 0 30 24" fill="none" stroke="currentColor" strokeWidth="1.25" aria-hidden="true"><path d="m9 6 11-.5.6 10.5-11 1z M12 9l5-.4.4 4.4-5 .4z M11 3v3m4-3v3m4-3v2m-8 12v3m4-3v3m4-4v3M6 9h3m-3 4h3m12-5h3m-3 5h3" /></svg>}
           <time className="schedule-meeting-time" dateTime={slot.startTime}>◷ {slot.startTime}–{slot.endTime}</time>
           <strong className="schedule-course-name">{slot.courseName || slot.courseCode}</strong>

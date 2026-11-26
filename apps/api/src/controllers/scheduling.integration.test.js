@@ -1182,11 +1182,15 @@ test("C1 Req 70 lists only courses the student may take, with reasons for the re
   const path = `/schedules/advising/${profiles.advising._id}/eligible-courses?termId=${term._id}`;
   assert.equal((await call(path)).status, 401);
   assert.equal((await call(path, { role: "administrator" })).status, 403);
+  assert.equal((await call(path, { role: "normalStudent" })).status, 403);
+  assert.equal((await call(path, { role: "advisingStudent" })).status, 403);
   const make = async (fields, semester = 5) => {
     const course = await Course.create({ creditHours: 3, courseType: "core", facultyMajors: ["CS"], ...fields });
     await CourseOffering.create({ course: course._id, academicYear: term.academicYear, term: term._id, isPublished: true, instructors: [{ fullName: "Dr. Z", email: "z@guc.edu.eg" }], eligibleGroups: [{ major: "CS", semester, studyGroup: "1" }], slots: [{ componentType: "lecture", groupNumber: "1", day: "Monday", startMinute: 600, endMinute: 720, room: "H2", capacity: 5 }] });
     return course;
   };
+  const unpublished = await make({ code: "CSEN 514", name: "Unpublished" });
+  await CourseOffering.updateOne({ course: unpublished._id }, { $set: { isPublished: false } });
   const needsPrereq = await make({ code: "CSEN 510", name: "Needs Prereq", prerequisites: [courses[0]._id] });
   await make({ code: "CSEN 511", name: "Spring Only", offeringSeasons: ["spring"] });
   await make({ code: "CSEN 512", name: "Any Season", offeringSeasons: ["winter", "spring"] });
@@ -1196,6 +1200,10 @@ test("C1 Req 70 lists only courses the student may take, with reasons for the re
 
   const result = await call(path, { role: "advisor" });
   assert.equal(result.status, 200);
+  const coordinatorResult = await call(path, { role: "coordinator" });
+  assert.equal(coordinatorResult.status, 200);
+  assert.deepEqual(coordinatorResult.body.courses, result.body.courses);
+  assert.ok(!result.body.courses.some(entry => entry.course.code === "CSEN 514"), "unpublished offerings cannot be eligible");
   assert.deepEqual(result.body.courses.map((entry) => entry.course.code), ["CSEN 512"]);
   const reasons = Object.fromEntries(result.body.excluded.map((entry) => [entry.code, entry.reason]));
   assert.equal(reasons["MATH 501"], "alreadyCompleted");
@@ -1208,6 +1216,10 @@ test("C1 Req 70 lists only courses the student may take, with reasons for the re
   const unlocked = await call(path, { role: "advisor" });
   assert.ok(unlocked.body.courses.some((entry) => entry.course.code === "CSEN 510"), "a met prerequisite makes the course eligible");
   assert.equal(needsPrereq.code, "CSEN 510");
+  const replacementAdvisor = await User.create({ fullName: "Other advisor", email: "other.req70@guc.edu.eg", role: "advisor", passwordHash: "test-hash" });
+  await StudentProfile.updateOne({ _id: profiles.advising._id }, { $set: { assignedAdvisor: replacementAdvisor._id } });
+  assert.equal((await call(path, { role: "advisor" })).status, 403, "an unassigned advisor cannot read this student's eligible courses");
+  assert.equal((await call(path, { role: "coordinator" })).status, 200);
 });
 
 test("C1 Req 71-73 adds and removes non-mandatory courses and reports credit hours", async () => {

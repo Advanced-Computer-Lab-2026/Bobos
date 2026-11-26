@@ -873,7 +873,7 @@ function academicCourse(course, fallback) {
   if (!academicStudy()) return fallback;
   const [code, title] = course;
   const drawing = courseDrawing(code) || icon('book');
-  return `<span class="academic-course"><span class="academic-emblem" data-course="${code}" aria-hidden="true">${drawing}</span><span><strong>${title}</strong><small>${code}</small></span></span>`;
+  return `<span class="academic-course"><span class="academic-emblem" data-course="${code}" data-course-tone="${globalThis.BobosCourseIcons?.[String(code).replace(/\s/g, '').toUpperCase()]?.tone || 'ivory'}" aria-hidden="true">${drawing}</span><span><strong>${title}</strong><small>${code}</small></span></span>`;
 }
 function academicStudent(name,index) {
   const id = `70-${71577+index}`;
@@ -989,6 +989,8 @@ function templateDetail(){return head(templateGroup(),'Computer Engineering · S
   `<div class="section-head"><h2>Course groups</h2>${button('Add course','add-offering','btn text')}</div>`+table(['Course','Lecture','Tutorial','Lab'],courseData.slice(0,4).map(c=>[academicCourse(c,`${c[0]}<small>${c[1]}</small>`),'L1 · Sun 08:30','T4 · Tue 10:00','P4 · Wed 12:00']))+`<div style="margin-top:30px">${academicStudy() ? '<h2 class="academic-week-title">Weekly timetable</h2>' : ''}${weekly()}</div>`;}
 // Small marginal drawings identify the four courses wherever the weekly schedule appears.
 function courseDrawing(code) {
+  const identity = globalThis.BobosCourseIcons?.[String(code).replace(/\s/g, '').toUpperCase()];
+  if (identity) return `<img class="course-drawing course-symbol" src="images/symbols/${identity.symbol}.svg" alt="">`;
   const symbol = {'CSEN 703':'algorithms','CSEN 704':'advanced-lab','DMET 701':'graphics'}[code];
   if (symbol) return `<img class="course-drawing course-symbol" src="images/symbols/${symbol}.svg" alt="">`;
   const paths = {
@@ -1093,7 +1095,7 @@ function registeredTable(){
 }
 function courseEmblem(code) {
   const courseTone = {'CSEN 701':'blue','CSEN 703':'coral','CSEN 704':'sage','DMET 701':'ivory','ELCT 701':'sage','MATH 701':'ivory'};
-  return `<span class="student-course-emblem" data-course-tone="${courseTone[code]}">${courseDrawing(code)}</span>`;
+  return `<span class="student-course-emblem" data-course-tone="${globalThis.BobosCourseIcons?.[String(code).replace(/\s/g, '').toUpperCase()]?.tone || courseTone[code]}">${courseDrawing(code)}</span>`;
 }
 function registered(){
   if (!comparePageDesigns && !liveStudent.data) return head('Registered courses') + `<p role="status">${escapeHtml(liveStudent.error || 'Loading your courses…')}</p>`;
@@ -1249,6 +1251,16 @@ function mountLiveCalendar(panel) {
       status.textContent = 'Connected as ' + data.providerAccountId + '. ' +
         (data.lastSyncError || (data.lastSyncedAt ? 'Last synced ' + new Date(data.lastSyncedAt).toLocaleString() : 'Waiting for the first sync.'));
       control('Sync now', async () => { await request('sync', 'POST'); await refresh(); });
+      if (data.lastSyncedAt) {
+        const openCalendar = document.createElement('a');
+        openCalendar.className = 'btn row-control';
+        openCalendar.textContent = 'Open Google Calendar ↗';
+        openCalendar.href = 'https://calendar.google.com/calendar/r' + (data.providerAccountId ? '?authuser=' + encodeURIComponent(data.providerAccountId) : '');
+        openCalendar.target = '_blank';
+        openCalendar.rel = 'noopener noreferrer';
+        openCalendar.setAttribute('aria-label', 'Open Google Calendar in a new tab');
+        controls.append(openCalendar);
+      }
       control('Change Google account', async () => location.assign((await request('connect')).authorizationUrl));
       control('Disconnect', async () => { await request('connection', 'DELETE'); await refresh(); });
     } else {

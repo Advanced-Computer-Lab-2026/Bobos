@@ -15,7 +15,7 @@ router.put("/advising/:studentId/bachelor-project", requireRole("advisor", "coor
 router.delete("/advising/:studentId/bachelor-project", requireRole("advisor", "coordinator"), removeBachelorProject);
 router.post("/advising/:studentId/draft", requireRole("advisor", "coordinator"), createAdvisingDraft);
 router.put("/advising/:studentId/mandatory-courses", requireRole("advisor", "coordinator"), selectMandatoryCourses);
-router.get("/advising/:studentId/eligible-courses", requireRole("advisor", "coordinator", "administrator"), getEligibleCourses);
+router.get("/advising/:studentId/eligible-courses", requireRole("advisor", "coordinator"), getEligibleCourses);
 router.get("/advising/:studentId/credit-hours", requireRole("advisor", "coordinator"), getDraftCreditHours);
 router.post("/advising/:studentId/courses", requireRole("advisor", "coordinator"), addDraftCourse);
 router.delete("/advising/:studentId/courses/:courseOffering", requireRole("advisor", "coordinator"), removeDraftCourse);

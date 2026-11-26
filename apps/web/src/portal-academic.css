@@ -845,3 +845,9 @@
 .preference-group-feedback { margin: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; color: var(--ink); font-size: 13px; line-height: 1.5; }
 @keyframes preference-spin { to { transform: rotate(360deg); } }
 @media(prefers-reduced-motion: reduce) { .preference-button-spinner { animation: none; border-style: dotted; } }
+
+.calendar-open-link { display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; }
+.calendar-link-hint { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+.catalogue-course-identity { display: flex; align-items: center; gap: 12px; min-width: 220px; }
+.catalogue-course-identity > button { min-width: 0; }

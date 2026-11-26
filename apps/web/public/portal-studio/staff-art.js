@@ -156,7 +156,7 @@
       'MATH 701': ink('m27 23 .6 16 32-1m-28-4 7-4 7 2 11-10') + part('point',shape('M52 24a2 2 0 1 0 4 .1 2 2 0 1 0-4-.1',clay))
     };
     if (special[code]) return place('rotate(-6 43 34)',paper + special[code]);
-    const symbol = {'CSEN 703':'algorithms','CSEN 704':'advanced-lab','DMET 701':'graphics'}[code];
+    const symbol = globalThis.BobosCourseIcons?.[String(code).replace(/\s/g, '').toUpperCase()]?.symbol || {'CSEN 703':'algorithms','CSEN 704':'advanced-lab','DMET 701':'graphics'}[code];
     const emblem = symbol
       ? `<image x="29" y="18" width="32" height="24" href="images/symbols/${symbol}.svg"/>`
       : place('translate(29 17)',shape('m7 5 14-.7.6 12-14 1Z',sage)

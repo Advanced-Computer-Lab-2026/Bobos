@@ -94,3 +94,9 @@
   .transfer-arrow {display:none}
   .academic-emblem {width:30px;height:30px}
 }
+
+/* Course identity comes from the shared registry across catalogue and timetable. */
+.academic-emblem[data-course-tone="blue"] { background: #a6c8e6; }
+.academic-emblem[data-course-tone="coral"] { background: #edb292; }
+.academic-emblem[data-course-tone="sage"] { background: #bdd2c7; }
+.academic-emblem[data-course-tone="ivory"] { background: #e8e4d9; }
