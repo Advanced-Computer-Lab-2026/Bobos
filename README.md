@@ -216,7 +216,9 @@ Install **Git, Node.js 22.12 or later with npm, MongoDB Community 8.x, and Mongo
 | Stripe | Set `STRIPE_SECRET_KEY` to a sandbox key and `WEB_ORIGIN` to the portal origin. Use a Stripe test card through **Pay by card**. |
 | Google Calendar | Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `GOOGLE_REDIRECT_URI`. Register `http://localhost:3000/api/calendar/oauth/callback` in Google Cloud for the default ports. Generate a separate 32-byte hex value for `CALENDAR_TOKEN_ENCRYPTION_KEY`. Sign in as a student and open **Calendar sync**. |
 
-For more advising data, run `npm run seed:evaluation --workspace @bobos/api` on a separate local demo database. If you need the dedicated extra-hours payment scenarios, set `EXTRA_HOURS_DEMO_URI` to `mongodb://127.0.0.1:27017/extra_hours_manual?replicaSet=rs0` and run `node scripts/seed-extra-hours-demo.mjs`. To view these accounts, point the local API's `MONGODB_URI` at that database and restart with `BOBOS_PORTAL_DEMO=extra-hours`.
+For a standalone assessment dataset, set `MONGODB_URI` to a fresh local database such as `mongodb://127.0.0.1:27017/bobos_evaluation?replicaSet=rs0` and run `npm run seed:evaluation --workspace @bobos/api`. Start the API against the same database and sign in with one of the evaluation accounts printed by the seed. It adds ten advising students, five advisors, a coordinator, an administrator, eight terms and ten named electives from the Portal catalogue. The seed leaves collections in place and is disabled in production.
+
+For dedicated extra-hours payment scenarios, set `EXTRA_HOURS_DEMO_URI` to `mongodb://127.0.0.1:27017/extra_hours_manual?replicaSet=rs0` and run `node scripts/seed-extra-hours-demo.mjs`. To view these accounts, point the local API's `MONGODB_URI` at that database and restart with `BOBOS_PORTAL_DEMO=extra-hours`.
 
 For a static frontend build, run `npm run build`. If frontend and API run on different hosts, set `VITE_API_BASE_URL` at build time to the API origin and `WEB_ORIGIN` on the server to the frontend origin. The API start command is `npm run start --workspace @bobos/api`.
 
@@ -263,7 +265,7 @@ npm run test:regression
 
 ## How to use
 
-On the local sign-in screen, open **Quick demo sign-in** and select a role after seeding. You can also sign in with these fixture accounts. They share the local-only password `Password123!`.
+For an explicitly enabled local Vite session, start with `BOBOS_PORTAL_DEMO=standard`, then open **Quick demo sign-in** and select a role after seeding. You can also sign in with these fixture accounts, which share the local-only password `Password123!`. Ordinary Vite sessions, static builds and assessment deployments open with an empty university email and password form.
 
 | Role | Local demo email | Start here |
 | --- | --- | --- |
