@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, explainApiError } from "../api.js";
 import { ScheduleActivityPage } from "./B1Pages.jsx";
-import { StudentIdentity, RegisterEmpty, RecordPages } from "./CoordinatorRecords.jsx";
+import { StudentIdentity, RegisterEmpty, RecordPages, scheduleTone } from "./CoordinatorRecords.jsx";
 import PortalAvatar from "./PortalAvatar.jsx";
 import FilterDisclosure from "./FilterDisclosure.jsx";
 
@@ -111,24 +111,44 @@ export default function StudentDirectoryPage({ token, role, notify }) {
     </section>
 
     {error && <div className="feedback error" role="alert">{error}</div>}
-    <section className="panel results-panel" aria-busy={loading}>
-      <div className="results-heading"><div><p className="eyebrow">DIRECTORY RESULTS</p><h2>Students</h2></div><span className="result-count">{loading ? "Loading" : `${students.length} ${students.length === 1 ? "student" : "students"}`}</span></div>
-      {loading ? <div className="loading-state"><span className="loader" />Loading students…</div> : !coordinator ? (students.length === 0 ? <div className="empty-state"><span>♙</span><h3>No students to show</h3><p>{error ? "The directory service could not be reached." : "Try changing your filters or search terms."}</p></div> : <div className="table-scroll"><table><thead><tr><th>Student</th><th>Type</th><th>Major</th><th>Semester</th><th>Standing</th><th>Advisor</th><th>Account</th><th>Workflow</th><th>Blocking step</th><th>Updated</th></tr></thead><tbody>{students.map((student) => <tr key={student.id}><td><button type="button" className="student-cell-button" onClick={() => openDetails(student.id)}><strong>{student.studentId || "Student"}</strong><span>{student.fullName || "—"}</span><small>{student.email}</small></button></td><td>{pretty(student.studentType)}</td><td>{student.major || "—"}</td><td>{student.currentSemester || "—"}</td><td>{pretty(student.academicStanding)}</td><td>{student.assignedAdvisor?.fullName || <span className="secondary-text">Unassigned</span>}</td><td><span className={`status-pill ${student.accountStatus === "active" ? "good" : "muted"}`}>{pretty(student.accountStatus)}</span></td><td><span className={`status-pill ${{
-        readyForStudentReview: "ready", readyToProcess: "ready", draft: "draft", processed: "completed",
-      }[student.workflowStatus] || "muted"}`}>{student.workflowStatus ? pretty(student.workflowStatus) : directory.term ? "Not started" : "No active term"}</span></td><td>{pretty(student.blockingStep)}</td><td>{student.lastUpdatedAt ? new Date(student.lastUpdatedAt).toLocaleString() : "—"}</td></tr>)}</tbody></table></div>) : students.length === 0 ? <RegisterEmpty title="No students to show" description={error ? undefined : "Try another name, ID or filter."} /> : <div className="staff-register">
+    <section className="panel results-panel directory-results" aria-busy={loading} aria-labelledby="directory-students-heading">
+      <div className="results-heading"><div>{!coordinator && <p className="eyebrow">DIRECTORY RESULTS</p>}<h2 id="directory-students-heading">Students</h2></div><span className="result-count">{loading ? "Loading" : `${students.length} ${students.length === 1 ? "student" : "students"}`}</span></div>
+      {loading ? <div className="loading-state"><span className="loader" />Loading students…</div> : !coordinator ? (students.length === 0 ? <div className="empty-state"><span>♙</span><h3>No students to show</h3><p>{error ? "The directory service could not be reached." : "Try changing your filters or search terms."}</p></div> : <div className="table-scroll"><table><thead><tr><th>Student</th><th>Type</th><th>Major</th><th>Semester</th><th>Standing</th><th>Advisor</th><th>Account</th><th>Workflow</th><th>Blocking step</th><th>Updated</th></tr></thead><tbody>{students.map((student) => <tr key={student.id}><td><button type="button" className="student-cell-button" onClick={() => openDetails(student.id)}><StudentIdentity name={student.fullName} id={student.studentId} email={student.email} /></button></td><td>{pretty(student.studentType)}</td><td>{student.major || "—"}</td><td>{student.currentSemester || "—"}</td><td>{pretty(student.academicStanding)}</td><td>{student.assignedAdvisor?.fullName || <span className="secondary-text">Unassigned</span>}</td><td><span className={`status-pill ${student.accountStatus === "active" ? "good" : "muted"}`}>{pretty(student.accountStatus)}</span></td><td><span className={`status-pill ${scheduleTone(student.workflowStatus)}`}>{student.workflowStatus ? pretty(student.workflowStatus) : directory.term ? "Not started" : "No active term"}</span></td><td>{pretty(student.blockingStep)}</td><td>{student.lastUpdatedAt ? new Date(student.lastUpdatedAt).toLocaleString() : "—"}</td></tr>)}</tbody></table></div>) : students.length === 0 ? <RegisterEmpty title="No students to show" description={error ? undefined : "Try another name, ID or filter."} /> : <div className="staff-register">
         {students.slice((currentPage - 1) * size, currentPage * size).map((student) =>
           <article key={student.id} className="register-entry">
             <StudentIdentity name={student.fullName} id={student.studentId} />
             <p className="register-academics">{student.major || "Undeclared major"}<small>Semester {student.currentSemester || "—"} · {pretty(student.studentType)}</small></p>
-            <div className="workflow-info"><span className={`status-pill ${student.workflowStatus === "processed" ? "good" : "muted"}`}>{student.workflowStatus ? pretty(student.workflowStatus) : directory.term ? "Not started" : "No active term"}</span><small>{student.workflowStatus !== "notStarted" && student.blockingStep}</small></div>
-            <button className="outline-button register-action" type="button" aria-label={`Open profile for ${student.studentId} · ${student.fullName || "Student"}`} onClick={() => openDetails(student.id)}>Open profile</button>
+            <div className="workflow-info">
+              <span className={`status-pill ${scheduleTone(student.workflowStatus)}`}>{student.workflowStatus && student.workflowStatus !== "notStarted" ? pretty(student.workflowStatus) : directory.term ? "Not started" : "No active term"}</span>
+              {student.workflowStatus !== "notStarted" && student.blockingStep && <small>{student.blockingStep}</small>}
+            </div>
+            <button className="text-button register-action" type="button" aria-label={`Open profile for ${student.studentId} · ${student.fullName || "Student"}`} onClick={() => openDetails(student.id)}>Open profile</button>
           </article>)}</div>}
       {coordinator && <RecordPages page={currentPage} size={size} total={students.length} onChange={setPage} label="Directory" />}
     </section>
 
 
 
-    {details && <div className="modal-backdrop" role="presentation" onClick={() => setDetails(null)}><section className="modal-card" role="dialog" aria-modal="true" aria-labelledby="student-details-title" onClick={(event) => event.stopPropagation()}><div className="modal-heading"><div><p className="eyebrow">STUDENT RECORD</p><h2 id="student-details-title">Student details</h2></div><button className="icon-button" type="button" onClick={() => setDetails(null)} aria-label="Close">×</button></div>{details.loading ? <div className="loading-state"><span className="loader" />Loading student…</div> : details.error ? <div className="feedback error" role="alert">{details.error}</div> : <><div className="detail-grid modal-details">{coordinator ? <StudentIdentity name={details.user?.fullName} id={details.studentId} /> : <><Detail label="Student ID" value={details.studentId} /><Detail label="Name" value={details.user?.fullName} /></>}<Detail label="Email" value={details.user?.email} /><Detail label="Student type" value={pretty(details.studentType)} /><Detail label="Major" value={details.major} /><Detail label="Semester" value={details.currentSemester} /><Detail label="Academic standing" value={pretty(details.academicStanding)} /><Detail label="GPA" value={details.gpa} /><Detail label="Enrollment" value={pretty(details.enrollmentStatus)} /><Detail label="Advisor" value={details.assignedAdvisor?.fullName || "Unassigned"} /><Detail label="Account" value={details.user?.isActive ? "Active" : "Inactive"} />{coordinator && <Detail label="Blocking step" value={students.find((student) => student.id === details._id)?.blockingStep || "None"} />}{coordinator && <Detail label="Workflow updated" value={students.find((student) => student.id === details._id)?.lastUpdatedAt ? new Date(students.find((student) => student.id === details._id).lastUpdatedAt).toLocaleString() : "—"} />}</div>{role === "administrator" && details.user && <button className={details.user.isActive ? "outline-button danger-button" : "primary-button"} type="button" onClick={setAccountStatus}>{details.user.isActive ? "Deactivate account" : "Activate account"}</button>}{details.studentType === "advising" && <div style={{ marginTop: "1rem" }}><ScheduleActivityPage token={token} studentId={details._id} /></div>}</>}</section></div>}
+    {details && <div className="modal-backdrop" role="presentation" onClick={() => setDetails(null)}><section className="modal-card" role="dialog" aria-modal="true" aria-labelledby="student-details-title" onClick={(event) => event.stopPropagation()}><div className="modal-heading"><div><p className="eyebrow">STUDENT RECORD</p><h2 id="student-details-title">Student details</h2></div><button className="icon-button" type="button" onClick={() => setDetails(null)} aria-label="Close">×</button></div>{details.loading ? <div className="loading-state"><span className="loader" />Loading student…</div> : details.error ? <div className="feedback error" role="alert">{details.error}</div> : <><StudentProfileDetails details={details} prominentIdentity={coordinator} workflow={students.find((student) => student.id === details._id)} showWorkflow={coordinator} />{role === "administrator" && details.user && <button className={details.user.isActive ? "outline-button danger-button" : "primary-button"} type="button" onClick={setAccountStatus}>{details.user.isActive ? "Deactivate account" : "Activate account"}</button>}{details.studentType === "advising" && <div style={{ marginTop: "1rem" }}><ScheduleActivityPage token={token} studentId={details._id} /></div>}</>}</section></div>}
+  </div>;
+}
+
+export function StudentProfileDetails({ details, prominentIdentity, workflow, showWorkflow }) {
+  return <div className="detail-grid modal-details">
+    {prominentIdentity ? <StudentIdentity name={details.user?.fullName} id={details.studentId} /> : <><Detail label="Student ID" value={details.studentId} /><Detail label="Name" value={details.user?.fullName} /></>}
+    <Detail label="Email" value={details.user?.email} />
+    <Detail label="Student type" value={pretty(details.studentType)} />
+    <Detail label="Major" value={details.major} />
+    <Detail label="Semester" value={details.currentSemester} />
+    <Detail label="Academic standing" value={pretty(details.academicStanding)} />
+    <Detail label="GPA" value={details.gpa} />
+    <Detail label="Enrollment" value={pretty(details.enrollmentStatus)} />
+    <Detail label="Advisor" value={details.assignedAdvisor?.fullName || "Unassigned"} />
+    {details.user?.isActive != null && <Detail label="Account" value={details.user.isActive ? "Active" : "Inactive"} />}
+    {showWorkflow && <>
+      <Detail label="Blocking step" value={workflow?.blockingStep || "None"} />
+      <Detail label="Workflow updated" value={workflow?.lastUpdatedAt ? new Date(workflow.lastUpdatedAt).toLocaleString() : "—"} />
+    </>}
   </div>;
 }
 

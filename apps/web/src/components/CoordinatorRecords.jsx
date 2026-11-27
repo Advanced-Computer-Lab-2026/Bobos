@@ -1,9 +1,13 @@
 import { useId } from "react";
 import PortalAvatar from "./PortalAvatar.jsx";
 
+export function scheduleTone(status) {
+  return ({ readyForStudentReview: "ready", readyToProcess: "ready", draft: "draft", processed: "completed" })[status] || "muted";
+}
+
 export function StudentIdentity({ name, id, email }) {
   return <span className="register-person"><PortalAvatar name={name} /><span><strong>{name || "Student"}</strong>
-    <small className="student-number">{id}</small>{email && <small>{email}</small>}</span></span>;
+    {id && <small className="student-number">{id}</small>}{email && <small>{email}</small>}</span></span>;
 }
 
 export function RecordPages({ page, size, total, onChange, label = "Records", busy = false }) {

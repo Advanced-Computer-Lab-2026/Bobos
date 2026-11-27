@@ -218,6 +218,8 @@
 dialog > .portal-focus-ring {position:absolute}
 :root:has([data-portal-focus]:focus-visible) .portal-focus-ring,
 .portal-focus-ring[data-service-ink] {display:block}
+/* The sticky workspace toolbar sits above the service layer. */
+body > .portal-focus-ring[data-service-ink] {z-index:4}
 .portal-focus-ring[data-service-ink=hover] svg {stroke-width:1.4}
 .portal-focus-ring svg {display:block;width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:2}
 .portal-focus-ring path:not(:first-child) {opacity:0}

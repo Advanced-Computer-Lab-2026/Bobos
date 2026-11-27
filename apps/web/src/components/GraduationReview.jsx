@@ -193,7 +193,7 @@ export default function GraduationReview({ token, role }) {
         description={plans && Object.values(filters).some(Boolean) ? "Try another student, advisor or submission date." : plans
           ? coordinator ? "Plans will appear here when advisors submit them." : "Plans you send for coordinator review will appear here."
           : "Requests will appear here when advisors submit them."} /> :
-        <div className="table-scroll"><table>
+        <div className="table-scroll graduation-register"><table>
           <thead><tr><th>Student</th>{coordinator && <th>Advisor</th>}{!plans && <th>Course</th>}
             <th>Status</th><th>Submitted</th><th>Action</th></tr></thead>
           <tbody>{rows.map((row) => <tr key={row._id}>

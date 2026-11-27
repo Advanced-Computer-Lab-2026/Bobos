@@ -125,7 +125,7 @@ test("Req 6–10: student directory finds the matching profile and changes the a
   await signIn(page, "regression@guc.edu.eg", password);
   await page.getByRole("link", { name: "Student directory" }).click();
   await expect(page.getByRole("heading", { name: "Student directory" })).toBeVisible();
-  const student = page.getByRole("button", { name: /28-90001.*Regression Student/i });
+  const student = page.getByRole("button", { name: /^Regression Student\s+28-90001\b/i });
   await expect(student).toBeVisible();
   const filterSemester = async (semester) => {
     await page.getByRole("button", { name: /^Filters\b/i }).click();
@@ -144,6 +144,7 @@ test("Req 6–10: student directory finds the matching profile and changes the a
   await search.press("Enter");
   await student.click();
   const details = page.getByRole("dialog", { name: "Student details" });
+  await expect(details.getByText("28-90001", { exact: true })).toBeVisible();
   await expect(details).toContainText(email);
   await details.getByRole("button", { name: "Deactivate account" }).click();
   await expect(details.getByRole("button", { name: "Activate account" })).toBeVisible();
@@ -297,11 +298,14 @@ test("Req 29: the old template bookmark opens the live editor and saves to the d
   await signIn(page, coordinator.email, password);
   await expect(page).toHaveURL(/[?&]page=templates(?:&|$)/);
   await page.getByRole("combobox", { name: /academic term/i }).selectOption(term.code);
-  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  const drafts = page.getByRole("region", { name: "Drafts", exact: true });
+  await expect(drafts.getByRole("button", { name: "Group 1 CS · Semester 5", pressed: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Courses for Group 1" })).toContainText(course.name);
+  await drafts.getByRole("button", { name: "Edit", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Update schedule template" })).toBeVisible();
   await page.getByLabel("Study group").fill("2");
   await page.getByRole("button", { name: /save changes/i }).click();
-  await expect(page.getByText("Semester 5 · Group 2", { exact: true })).toBeVisible();
+  await expect(drafts.getByRole("button", { name: "Group 2 CS · Semester 5", pressed: true })).toBeVisible();
   expect((await ScheduleTemplate.findById(template._id)).studyGroup).toBe("2");
 });
 
@@ -509,7 +513,7 @@ test("Catalogue editing preserves filtered prerequisites, seasons and legacy maj
   await page.goto(baseURL + "/portal-studio/index.html?page=courses");
   await signIn(page, "regression@guc.edu.eg", password);
   await page.getByRole("searchbox", {name:"Search courses"}).fill(course.code);
-  await page.getByRole("button", {name:"View", exact:true}).click();
+  await page.getByRole("button", {name:`View course ${course.code} · ${course.name}`}).click();
   const sheet = page.getByRole("dialog");
   await expect(sheet).toContainText(first.name);
   await sheet.getByRole("button", {name:"Edit course"}).click();
@@ -543,20 +547,40 @@ test("Coordinator can read ranked preferences, change term and review a removal 
   await SchedulingPreference.create({student:student._id, term:term._id, preferredDays:[{day:"Monday",priority:1},{day:"Thursday",priority:2}], note:"Please keep the morning lab."});
   const course = await Course.create({code:"CAT805", name:"Research Methods", creditHours:3, courseType:"core"});
   const removal = await MandatoryCourseRemovalRequest.create({student:student._id, advisor:advisor._id, term:term._id, course:course._id, reason:"other", explanation:"Review this requirement against the transfer record."});
-  await page.goto(baseURL + "/portal-studio/index.html?page=preferences");
+  await page.goto(baseURL + `/portal-studio/index.html?page=preferences&student=${student.studentId}&term=${term.code}`);
   await signIn(page, coordinator.email, password);
+  await expect(page.locator(".preference-reading")).toContainText("Please keep the morning lab.");
+  await page.getByRole("button", {name:"Change",exact:true}).click();
   await page.getByLabel("Find advising student").fill(student.studentId);
   await page.getByRole("button", {name:"Find student"}).click();
-  await expect(page.locator(".preference-student-selected")).toContainText(student.studentId);
+  const selection = page.locator(".preference-student-selected");
+  await expect(selection).toContainText(student.studentId);
+  await expect(selection).toContainText("schedule.review@student.guc.edu.eg");
+  await expect(selection.getByRole("button", {name:"Change",exact:true})).toBeVisible();
   await page.getByLabel("Academic term").selectOption(String(term._id));
   await page.getByRole("button", {name:"Load saved preferences"}).click();
   await expect(page.locator(".preference-reading")).toContainText("Please keep the morning lab.");
-  await expect(page.locator(".preference-facts li").first()).toHaveText("1Monday");
+  const rankedDays = page.getByRole("list", {name:"Preferred days, highest priority first"});
+  await expect(rankedDays.getByRole("listitem")).toHaveText(["1Monday", "2Thursday"]);
   await page.getByLabel("Academic term").selectOption(String(alternate._id));
   await page.getByRole("button", {name:"Load saved preferences"}).click();
   await expect(page.getByRole("heading", {name:"No preferences submitted"})).toBeVisible();
   await mainNavigation(page).getByRole("link", {name:"Course removals"}).click();
+  const removalSearch = page.getByRole("searchbox", {name:"Search student, ID, course, or advisor"});
+  await removalSearch.fill(student.studentId);
+  const courseButton = page.getByRole("button", {name:"View course Research Methods"});
+  await courseButton.click();
+  await expect(page.getByRole("dialog", {name:"Research Methods"}).getByRole("heading", {name:"Prerequisites"})).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(courseButton).toBeFocused();
+  const studentButton = page.getByRole("button", {name:"Open profile for Schedule Review Student"});
+  await studentButton.click();
+  await expect(page.getByRole("dialog", {name:"Schedule Review Student"})).toContainText("schedule.review@student.guc.edu.eg");
+  await page.getByRole("dialog").getByRole("button", {name:"Close",exact:true}).click();
+  await expect(studentButton).toBeFocused();
+  await expect(removalSearch).toHaveValue(student.studentId);
   await page.getByRole("button", {name:"View Details"}).click();
+  await expect(page.getByRole("dialog").getByRole("heading", {name:"Advisor explanation"})).toBeVisible();
   await expect(page.getByRole("dialog")).toContainText(removal.explanation);
   await page.getByRole("dialog").getByRole("button", {name:"Close",exact:true}).last().click();
   await page.getByRole("button", {name:"Reject",exact:true}).click();
@@ -590,4 +614,35 @@ test("Populated schedule activity survives a temporary profile outage, sidebar n
   await expect(page.locator(".activity-entry")).toContainText("Version 4");
   await page.reload();
   await expect(page.locator(".activity-entry")).toContainText("Schedule processed");
+});
+
+test("Req 122: paginate individual requests and find workflows by advisor", async ({ page }) => {
+  const coordinator = await User.create({
+    fullName: "Inbox Coordinator", role: "coordinator", email: "inbox.coordinator@guc.edu.eg", passwordHash: await bcrypt.hash(password, 4),
+  });
+  const requests = Array.from({ length: 9 }, (_, index) => ({
+    id: String(index), type: "extraHours", requestedHours: 1, status: "pending", updatedAt: "2026-05-20T12:00:00Z",
+  }));
+  const student = {
+    id: "sample", fullName: "Nour Adel", studentId: "27-00041", studentType: "advising", workflowStatus: "pendingApproval",
+    assignedAdvisor: { id: "advisor", fullName: "Dr. Amal Ali", email: "amal@guc.edu.eg" }, requests,
+  };
+  await page.route("**/api/admin/pending-work", route => route.fulfill({ json: {
+    students: [student, { ...student, id: "second", fullName: "Salma Adel", studentId: "27-00042", assignedAdvisor: null, requests: [] }],
+    groups: { requestType: { extraHours: 9 } },
+  } }));
+  await page.goto(baseURL + "/?page=pending-work&role=coordinator");
+  await signIn(page, coordinator.email, password);
+  const rows = page.locator(".pending-request-row");
+  await expect(rows).toHaveCount(8);
+  await expect(rows.first()).toContainText(student.fullName);
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await expect(rows).toHaveCount(1);
+  await page.getByRole("button", { name: "Student workflow", exact: true }).click();
+  await page.getByLabel("Group by").selectOption("advisor");
+  await page.getByLabel("Search students or advisors").fill(student.assignedAdvisor.email);
+  await expect(page.getByRole("heading", { name: "Dr. Amal Ali 1 student" })).toBeVisible();
+  await expect(page.locator(".workflow-record")).toHaveCount(1);
+  await page.locator(".workflow-requests summary").click();
+  await expect(page.locator(".workflow-requests a")).toHaveCount(9);
 });

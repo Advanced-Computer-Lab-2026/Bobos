@@ -2,10 +2,12 @@ import FilterDisclosure from "./FilterDisclosure.jsx";
 import PortalAvatar from "./PortalAvatar.jsx";
 import OfferingCourseIcon from "./OfferingCourseIcon.jsx";
 import { termLabel } from "../term-label.js";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api, explainApiError } from "../api.js";
 import RequestRemovalModal from "./RequestRemovalModal.jsx";
 import { WorkspaceEmpty } from "./WorkspaceUI.jsx";
+import { CourseDetailsModal, Modal } from "./AcademicWorkspace.jsx";
+import { StudentProfileDetails } from "./StudentDirectoryPage.jsx";
 
 const STATUS_OPTIONS = [
   { value: "", label: "All statuses" },
@@ -40,6 +42,12 @@ function formatDate(val) {
   }
 }
 
+function RemovalStatus({ status = "pending" }) {
+  const tone = { approved: "good", rejected: "error", pending: "warning" }[status];
+  const label = STATUS_OPTIONS.find((option) => option.value === status)?.label || status;
+  return <span className={`status-pill ${tone || ""}`}>{label}</span>;
+}
+
 export default function MandatoryRemovalDashboard({ token, role, notify }) {
   const [requests, setRequests] = useState([]);
   const [advisors, setAdvisors] = useState([]);
@@ -54,6 +62,17 @@ export default function MandatoryRemovalDashboard({ token, role, notify }) {
 
   const [selectedDetail, setSelectedDetail] = useState(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const detailDialogRef = useRef(null);
+  const [relatedRecord, setRelatedRecord] = useState(null);
+  const [loadingRecord, setLoadingRecord] = useState(false);
+  const relatedRecordTrigger = useRef(null);
+
+  useEffect(() => {
+    const dialog = detailDialogRef.current;
+    if (!dialog) return;
+    dialog.showModal();
+    return () => dialog.close();
+  }, [selectedDetail]);
 
   const [reviewingRequest, setReviewingRequest] = useState(null);
   const [responseNote, setResponseNote] = useState("");
@@ -118,6 +137,26 @@ export default function MandatoryRemovalDashboard({ token, role, notify }) {
       setLoadingDetail(false);
     }
   };
+
+  async function openRelatedRecord(kind, id, trigger) {
+    if (loadingRecord || loadingDetail) return;
+    const endpoint = kind === "course" ? "/api/catalogue/courses" : role === "advisor" ? "/api/advisor/students" : "/api/admin/students";
+    relatedRecordTrigger.current = trigger;
+    setLoadingRecord(true);
+    try {
+      const result = await api(`${endpoint}/${encodeURIComponent(id)}`, { token });
+      setRelatedRecord({ kind, data: result.profile || result });
+    } catch (err) {
+      notify?.("error", explainApiError(err, kind === "course" ? "Course catalogue" : "Student profile"));
+    } finally {
+      setLoadingRecord(false);
+    }
+  }
+
+  function closeRelatedRecord() {
+    setRelatedRecord(null);
+    requestAnimationFrame(() => relatedRecordTrigger.current?.focus({ preventScroll: true }));
+  }
 
   const handleStartReview = (reqItem, initialDecision = "") => {
     setReviewingRequest({ ...reqItem, pendingDecision: initialDecision });
@@ -258,16 +297,7 @@ export default function MandatoryRemovalDashboard({ token, role, notify }) {
 
       {error && <div className="feedback error" role="alert">{error}</div>}
 
-      <section className="panel results-panel" aria-busy={loading}>
-        <div className="results-heading">
-          <div>
-            <h2>Requests</h2>
-          </div>
-          <span className="result-count">
-            {loading ? "Loading…" : `${requests.length} request${requests.length === 1 ? "" : "s"}`}
-          </span>
-        </div>
-
+      <section className="panel results-panel removal-results" aria-label="Course removal requests" aria-busy={loading}>
         {loading ? (
           <div className="loading-state">
             <span className="loader" />
@@ -276,245 +306,118 @@ export default function MandatoryRemovalDashboard({ token, role, notify }) {
         ) : requests.length === 0 ? (
           <WorkspaceEmpty icon="document" title={filtered ? "No matching removal requests" : "No removal requests"} description={filtered ? "Try another student, course or advisor." : "Mandatory course removal requests will appear here for review."} action={filtered && <button className="outline-button" type="button" onClick={clearFilters}>Clear filters</button>} />
         ) : (
-          <div className="table-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>Student</th>
-                  <th>Course</th>
-                  <th>Term</th>
-                  <th>Advisor</th>
-                  <th>Reason</th>
-                  <th>Status</th>
-                  <th>Submitted</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {requests.map((item) => {
-                  const studentName = item.student?.user?.fullName || item.student?.studentId || "—";
-                  const studentId = item.student?.studentId || "—";
-                  const courseCode = item.course?.code || "—";
-                  const courseName = item.course?.name || "";
-                  const advisorName = item.advisor?.fullName || item.advisor?.email || "—";
-                  const termCode = termLabel(item.term);
-                  const status = item.status || "pending";
-
-                  const statusClass =
-                    status === "approved"
-                      ? "status-pill good"
-                      : status === "rejected"
-                      ? "status-pill error"
-                      : "status-pill warning";
-
-                  return (
-                    <tr key={item._id}>
-                      <td>
-                        <div className="portal-person-cell"><PortalAvatar name={studentName}/><div><strong>{studentName}</strong><span className="secondary-text">{studentId}</span></div></div>
-                      </td>
-                      <td>
-                        <div className="portal-person-cell"><OfferingCourseIcon code={courseCode}/><div><strong>{courseCode}</strong>{courseName && <span className="secondary-text">{courseName}</span>}</div></div>
-                      </td>
-                      <td>{termCode}</td>
-                      <td>{advisorName}</td>
-                      <td>{formatReason(item.reason, item.makeupAttempt)}</td>
-                      <td>
-                        <span className={statusClass}>
-                          {status[0].toUpperCase() + status.slice(1)}
-                        </span>
-                      </td>
-                      <td>{formatDate(item.createdAt)}</td>
-                      <td>
-                        <div className="table-actions" style={{ display: "flex", gap: "6px" }}>
-                          <button
-                            className="text-button"
-                            type="button"
-                            disabled={loadingDetail}
-                            onClick={() => handleOpenDetail(item._id)}
-                          >
-                            View Details
-                          </button>
-
-                          {canDecide && status === "pending" && (
-                            <>
-                              <button
-                                className="small-button primary-button"
-                                type="button"
-                                onClick={() => handleStartReview(item, "approved")}
-                              >
-                                Approve
-                              </button>
-                              <button
-                                className="small-button outline-button danger-button"
-                                type="button"
-                                onClick={() => handleStartReview(item, "rejected")}
-                              >
-                                Reject
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <ul className="portal-request-list removal-request-list" role="list" aria-label="Course removal requests">
+            {requests.map((item) => {
+              const courseName = item.course?.name || item.course?.code || "Unknown course";
+              const studentName = item.student?.user?.fullName || item.student?.studentId || "Unknown student";
+              const studentId = item.student?.studentId || "—";
+              return <li className="portal-request-row" key={item._id}>
+                <div className="request-row-course portal-person-cell">
+                  <OfferingCourseIcon code={item.course?.code} />
+                  <div>
+                    {item.course?._id ? <button className="removal-record-link" type="button" aria-label={`View course ${courseName}`} aria-disabled={loadingRecord || loadingDetail} onClick={event => openRelatedRecord("course", item.course._id, event.currentTarget)}>{courseName}</button> : <strong>{courseName}</strong>}
+                    {item.course?.name && <small>{item.course.code}</small>}
+                  </div>
+                </div>
+                <div className="request-row-student portal-person-cell">
+                  <PortalAvatar name={studentName} />
+                  <div>
+                    {item.student?._id ? <button className="removal-record-link" type="button" aria-label={`Open profile for ${studentName}`} aria-disabled={loadingRecord || loadingDetail} onClick={event => openRelatedRecord("student", item.student._id, event.currentTarget)}>{studentName}</button> : <strong>{studentName}</strong>}
+                    <small>{studentId}</small>
+                  </div>
+                </div>
+                <div className="request-row-context">
+                  <strong>{formatReason(item.reason, item.makeupAttempt)}</strong>
+                  <small>Advisor {item.advisor?.fullName || item.advisor?.email || "unassigned"}</small>
+                </div>
+                <div className="request-row-status">
+                  <RemovalStatus status={item.status} />
+                  <small><time dateTime={item.createdAt}>{formatDate(item.createdAt)}</time></small>
+                  <small>{termLabel(item.term)}</small>
+                </div>
+                <div className="request-row-actions">
+                  <button className="outline-button request-review-action" type="button" disabled={loadingDetail || loadingRecord} onClick={() => handleOpenDetail(item._id)}>View Details</button>
+                  {canDecide && (item.status || "pending") === "pending" && <div>
+                    <button className="text-button" type="button" onClick={() => handleStartReview(item, "approved")}>Approve</button>
+                    <button className="text-button" type="button" onClick={() => handleStartReview(item, "rejected")}>Reject</button>
+                  </div>}
+                </div>
+              </li>;
+            })}
+          </ul>
         )}
       </section>
 
+      {relatedRecord?.kind === "course" && <CourseDetailsModal course={relatedRecord.data} onClose={closeRelatedRecord} />}
+      {relatedRecord?.kind === "student" && <Modal title={relatedRecord.data.user?.fullName || "Student profile"} onClose={closeRelatedRecord}>
+        <StudentProfileDetails details={relatedRecord.data} prominentIdentity />
+      </Modal>}
+
       {selectedDetail && (
-        <div className="modal-backdrop" onClick={() => setSelectedDetail(null)}>
-          <div
-            className="modal-card"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Removal Request Details"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <dialog ref={detailDialogRef} className="academic-dialog modal-backdrop removal-detail-dialog" aria-labelledby="removal-detail-title"
+          onCancel={(event) => { event.preventDefault(); setSelectedDetail(null); }}
+          onClick={(event) => { if (event.target === detailDialogRef.current) setSelectedDetail(null); }}>
+          <section className="modal-card removal-detail-card">
             <div className="modal-heading">
-              <div>
-                <p className="eyebrow">REQUEST DETAILS</p>
-                <h2>{selectedDetail.course?.code} Removal Request</h2>
+              <div className="removal-detail-course">
+                <OfferingCourseIcon code={selectedDetail.course?.code} />
+                <div>
+                  <p className="removal-detail-kicker">Course removal request</p>
+                  <h2 id="removal-detail-title">{selectedDetail.course?.name || selectedDetail.course?.code || "Course removal"}</h2>
+                  <div className="removal-detail-course-meta">
+                    <span>{selectedDetail.course?.code}</span>
+                    {selectedDetail.course?.creditHours != null && <span>{selectedDetail.course.creditHours} credits</span>}
+                  </div>
+                </div>
               </div>
-              <button
-                className="icon-button"
-                type="button"
-                aria-label="Close"
-                onClick={() => setSelectedDetail(null)}
-              >
-                ×
-              </button>
+              <button className="icon-button" type="button" aria-label="Close" onClick={() => setSelectedDetail(null)}>×</button>
             </div>
 
-            <div className="page-stack" style={{ gap: "12px" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                <div>
-                  <small className="secondary-text">Student</small>
-                  <p>
-                    <strong>{selectedDetail.student?.user?.fullName || "—"}</strong> (
-                    {selectedDetail.student?.studentId})
-                  </p>
+            <div className="request-detail-body">
+              <div className="request-detail-identity">
+                <div className="portal-person-cell">
+                  <PortalAvatar name={selectedDetail.student?.user?.fullName} />
+                  <div>
+                    <strong>{selectedDetail.student?.user?.fullName || "Unknown student"}</strong>
+                    <small>{selectedDetail.student?.studentId}</small>
+                    <small>{selectedDetail.student?.user?.email}</small>
+                  </div>
                 </div>
-                <div>
-                  <small className="secondary-text">Student Email</small>
-                  <p>{selectedDetail.student?.user?.email || "—"}</p>
-                </div>
-                <div>
-                  <small className="secondary-text">Course</small>
-                  <p>
-                    <strong>{selectedDetail.course?.code}</strong> — {selectedDetail.course?.name} (
-                    {selectedDetail.course?.creditHours} credits)
-                  </p>
-                </div>
-                <div>
-                  <small className="secondary-text">Term</small>
-                  <p>
-                    {termLabel(selectedDetail.term)}
-                  </p>
-                </div>
-                <div>
-                  <small className="secondary-text">Requesting Advisor</small>
-                  <p>
-                    {selectedDetail.advisor?.fullName} ({selectedDetail.advisor?.email})
-                  </p>
-                </div>
-                <div>
-                  <small className="secondary-text">Date Submitted</small>
-                  <p>{formatDate(selectedDetail.createdAt)}</p>
-                </div>
-                <div>
-                  <small className="secondary-text">Removal Reason</small>
-                  <p>
-                    <strong>{formatReason(selectedDetail.reason, selectedDetail.makeupAttempt)}</strong>
-                  </p>
-                </div>
-                <div>
-                  <small className="secondary-text">Status</small>
-                  <p>
-                    <span
-                      className={
-                        selectedDetail.status === "approved"
-                          ? "status-pill good"
-                          : selectedDetail.status === "rejected"
-                          ? "status-pill error"
-                          : "status-pill warning"
-                      }
-                    >
-                      {selectedDetail.status?.[0].toUpperCase() + selectedDetail.status?.slice(1)}
-                    </span>
-                  </p>
-                </div>
+                <RemovalStatus status={selectedDetail.status} />
               </div>
-
-              <div>
-                <small className="secondary-text">Advisor Explanation</small>
-                <div
-                  style={{
-                    background: "var(--raised)",
-                    padding: "10px 14px",
-                    borderRadius: "6px",
-                    border: "1px solid var(--line)",
-                    marginTop: "4px",
-                  }}
-                >
-                  <p style={{ margin: 0, whiteSpace: "pre-wrap" }}>
-                    {selectedDetail.explanation}
-                  </p>
+              <dl className="request-detail-facts">
+                <div><dt>Removal reason</dt><dd><strong>{formatReason(selectedDetail.reason, selectedDetail.makeupAttempt)}</strong></dd></div>
+                <div><dt>Academic term</dt><dd>{termLabel(selectedDetail.term)}</dd></div>
+                <div><dt>Submitted</dt><dd><time dateTime={selectedDetail.createdAt}>{formatDate(selectedDetail.createdAt)}</time></dd></div>
+              </dl>
+              <section className="portal-request-note">
+                <h3>Advisor explanation</h3>
+                <p>{selectedDetail.explanation || "No explanation provided."}</p>
+                <div className="portal-note-attribution">
+                  <strong>{selectedDetail.advisor?.fullName || "Requesting advisor"}</strong>
+                  {selectedDetail.advisor?.email && <small>{selectedDetail.advisor.email}</small>}
                 </div>
-              </div>
+              </section>
 
-              {selectedDetail.status !== "pending" && (
-                <div
-                  style={{
-                    background: selectedDetail.status === "approved" ? "var(--success-bg)" : "var(--danger-bg)",
-                    padding: "12px 14px",
-                    borderRadius: "6px",
-                    border: `1px solid ${selectedDetail.status === "approved" ? "var(--line)" : "var(--line)"}`,
-                  }}
-                >
-                  <h3 style={{ margin: "0 0 6px 0", fontSize: "12px" }}>
-                    Coordinator Decision: {selectedDetail.status[0].toUpperCase() + selectedDetail.status.slice(1)}
-                  </h3>
-                  <p style={{ margin: "0 0 4px 0" }}>
-                    <strong>Note:</strong> {selectedDetail.responseNote || "—"}
-                  </p>
-                  <small className="secondary-text">
-                    Decided by {selectedDetail.decidedBy?.fullName || "Coordinator"} on{" "}
-                    {formatDate(selectedDetail.decidedAt)}
-                  </small>
+              {selectedDetail.status !== "pending" && <section className="portal-request-note">
+                <h3>Coordinator decision</h3>
+                <p>{selectedDetail.responseNote || "No decision note provided."}</p>
+                <div className="portal-note-attribution">
+                  <strong>{selectedDetail.decidedBy?.fullName || "Coordinator"}</strong>
+                  <small><time dateTime={selectedDetail.decidedAt}>{formatDate(selectedDetail.decidedAt)}</time></small>
                 </div>
-              )}
+              </section>}
 
-              <div
-                className="form-actions"
-                style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "14px" }}
-              >
-                {canDecide && selectedDetail.status === "pending" && (
-                  <button
-                    className="primary-button"
-                    type="button"
-                    onClick={() => {
-                      const reqItem = selectedDetail;
-                      setSelectedDetail(null);
-                      handleStartReview(reqItem);
-                    }}
-                  >
-                    Make Decision
-                  </button>
-                )}
-                <button
-                  className="outline-button"
-                  type="button"
-                  onClick={() => setSelectedDetail(null)}
-                >
-                  Close
-                </button>
+              <div className="form-actions request-detail-actions">
+                <button className="outline-button" type="button" onClick={() => setSelectedDetail(null)}>Close</button>
+                {canDecide && selectedDetail.status === "pending" && <button className="primary-button" type="button" onClick={() => {
+                  handleStartReview(selectedDetail);
+                  setSelectedDetail(null);
+                }}>Make Decision</button>}
               </div>
             </div>
-          </div>
-        </div>
+          </section>
+        </dialog>
       )}
 
       {reviewingRequest && (
@@ -549,23 +452,16 @@ export default function MandatoryRemovalDashboard({ token, role, notify }) {
             )}
 
             <div className="page-stack" style={{ gap: "12px" }}>
-              <div style={{ background: "var(--raised)", padding: "10px 14px", borderRadius: "6px", border: "1px solid var(--line)" }}>
-                <p style={{ margin: "0 0 4px 0" }}>
-                  <strong>Student:</strong> {reviewingRequest.student?.user?.fullName} ({reviewingRequest.student?.studentId})
-                </p>
-                <p style={{ margin: "0 0 4px 0" }}>
-                  <strong>Course:</strong> {reviewingRequest.course?.code} — {reviewingRequest.course?.name}
-                </p>
-                <p style={{ margin: "0 0 4px 0" }}>
-                  <strong>Term:</strong> {termLabel(reviewingRequest.term)}
-                </p>
-                <p style={{ margin: "0 0 4px 0" }}>
-                  <strong>Reason:</strong> {formatReason(reviewingRequest.reason, reviewingRequest.makeupAttempt)}
-                </p>
-                <p style={{ margin: 0 }}>
-                  <strong>Advisor Explanation:</strong> {reviewingRequest.explanation}
-                </p>
-              </div>
+              <dl className="request-detail-facts">
+                <div><dt>Student</dt><dd><strong>{reviewingRequest.student?.user?.fullName}</strong><small>{reviewingRequest.student?.studentId}</small></dd></div>
+                <div><dt>Course</dt><dd><strong>{reviewingRequest.course?.name || reviewingRequest.course?.code}</strong><small>{reviewingRequest.course?.code}</small></dd></div>
+                <div><dt>Academic term</dt><dd>{termLabel(reviewingRequest.term)}</dd></div>
+                <div><dt>Removal reason</dt><dd>{formatReason(reviewingRequest.reason, reviewingRequest.makeupAttempt)}</dd></div>
+              </dl>
+              <section className="portal-request-note">
+                <h3>Advisor explanation</h3>
+                <p>{reviewingRequest.explanation || "No explanation provided."}</p>
+              </section>
 
               <label className="field">
                 <span>Response / Decision Note *</span>
