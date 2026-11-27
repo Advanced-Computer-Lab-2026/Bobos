@@ -164,7 +164,7 @@ async function apiCall(endpoint, { method = "GET", userRole = "advisor", body = 
   return { status: res.status, body: data };
 }
 
-test("Req 83: Advisor successfully creates extra credit hours request with repeated and new course pricing", async () => {
+test("Req 83 and 120: advisor submits a priced request and the coordinator is notified", async () => {
   // c1 is 3 credits and repeated (1,000 EGP/hr -> 3,000 EGP)
   // Non-graduating student: max 3 hours allowed above standard
   const res = await apiCall("/extra-hours", {
@@ -190,6 +190,12 @@ test("Req 83: Advisor successfully creates extra credit hours request with repea
   assert.equal(res.body.eligibilitySnapshot.standardAllowance, 30);
   assert.equal(res.body.eligibilitySnapshot.hoursBeforeRequest, 30);
   assert.equal(res.body.eligibilitySnapshot.hoursAfterRequest, 33);
+  const inbox = await apiCall("/notifications", { userRole: "coordinator" });
+  assert.equal(inbox.status, 200);
+  const notice = await Notification.findOne({ type: "extraHoursRequested", relatedId: res.body._id });
+  assert.ok(notice, "Submitting the request must create a coordinator notification");
+  assert.ok(inbox.body.notifications.some(entry => entry._id === String(notice._id)));
+
 });
 
 test("Req 83: Pricing for a new (unattempted) course is 800 EGP/hr", async () => {

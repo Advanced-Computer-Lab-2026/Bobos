@@ -34,3 +34,7 @@ dist/
 /.private-requirements/
 .DS_Store
 .cache/
+
+# Playwright output
+/test-results/
+/playwright-report/

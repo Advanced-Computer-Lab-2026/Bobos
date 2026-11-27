@@ -30,8 +30,8 @@ beforeEach(async () => {
     advisingDeadline: new Date("2026-10-15"), wholeScheduleSwapDeadline: new Date("2026-10-20"), isActive: true });
   course = await Course.create({ code: "CSEN501", name: "Year test course", creditHours: 4, courseType: "core", facultyMajors: ["CS"] });
 });
-async function call(path, { method = "GET", body } = {}) {
-  const response = await fetch(base + path, { method, headers: { Authorization: `Bearer ${generateToken(user)}`, "Content-Type": "application/json" },
+async function call(path, { method = "GET", body, actor = user } = {}) {
+  const response = await fetch(base + path, { method, headers: { Authorization: `Bearer ${generateToken(actor)}`, "Content-Type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body) });
   return { status: response.status, body: await response.json() };
 }
@@ -119,4 +119,109 @@ test("cleanup refuses to discard a legacy year while its term reference is orpha
   assert.equal((await removeOfferingAcademicYear()).orphanedOfferings, 1);
   await assert.rejects(removeOfferingAcademicYear({ apply: true }), /Repair orphaned/);
   assert.equal((await CourseOffering.collection.findOne({ _id: id })).academicYear, "1999/2000");
+});
+
+test("Req 16–17 creates and updates the registration and advising dates as an administrator", async () => {
+  const path = "/academic-terms/academicTerm";
+  const dates = {
+    termStart: "2027-03-01", termEnd: "2027-08-01",
+    teachingStart: "2027-03-07", teachingEnd: "2027-07-01",
+    registrationStart: "2027-02-01", registrationEnd: "2027-03-07",
+    advisingDeadline: "2027-03-10", wholeScheduleSwapDeadline: "2027-03-20",
+  };
+  const body = { code: "S27", academicYear: "2026/2027", season: "spring", ...dates };
+  const coordinator = await User.create({
+    fullName: "Read Only Coordinator", email: "catalogue.coordinator@guc.edu.eg", role: "coordinator", passwordHash: "test-only",
+  });
+  assert.equal((await call(path, { method: "POST", body, actor: coordinator })).status, 403);
+  assert.equal((await call(path, { method: "POST", body: { ...body, termEnd: "2027-02-01" } })).status, 400);
+  const created = await call(path, { method: "POST", body });
+  assert.equal(created.status, 201, JSON.stringify(created.body));
+  assert.equal((await call(path, { method: "POST", body })).status, 409);
+  const detail = path + "/" + created.body._id;
+  const changes = { registrationEnd: "2027-03-08", advisingDeadline: "2027-03-11" };
+  assert.equal((await call(detail, { method: "PUT", body: changes, actor: coordinator })).status, 403);
+  assert.equal((await call(detail, { method: "PUT", body: changes })).status, 200);
+  const stored = await AcademicTerm.findById(created.body._id).lean();
+  for (const [field, date] of Object.entries({ ...dates, ...changes })) {
+    assert.equal(stored[field].toISOString().slice(0, 10), date, field);
+  }
+});
+
+test("Req 18–21 creates, reads, updates and deletes catalogue courses with reference protection", async () => {
+  const path = "/catalogue/courses";
+  const draft = { code: "CSEN999", name: "Regression elective", creditHours: 4, courseType: "elective", facultyMajors: ["CS"], prerequisites: [String(course._id)] };
+  const created = await call(path, { method: "POST", body: draft });
+  assert.equal(created.status, 201, JSON.stringify(created.body));
+  assert.match((await call(path, { method: "POST", body: draft })).body.message, /already exists/);
+  const detail = path + "/" + created.body._id;
+  const list = await call(path);
+  assert.equal(list.status, 200);
+  assert.ok(list.body.some(row => row._id === created.body._id && row.code === draft.code));
+  const result = await call(detail);
+  assert.equal(result.status, 200);
+  assert.equal(result.body.prerequisites[0].code, course.code);
+  assert.equal((await call(path + "/" + course._id, { method: "DELETE" })).status, 409);
+  assert.equal((await call(detail, { method: "PUT", body: { name: "Updated elective", creditHours: 5 } })).status, 200);
+  assert.equal((await call(detail)).body.creditHours, 5);
+  assert.equal((await call(detail)).body.name, "Updated elective");
+  assert.equal((await call(detail, { method: "DELETE" })).status, 200);
+  assert.equal((await call(detail)).status, 404);
+});
+
+test("Req 22–23 and 25–27 persists all offering components, edits, publication and deletion", async () => {
+  const slots = ["lecture", "tutorial", "lab"].map((componentType, index) => ({
+    componentType, groupNumber: "1", day: ["Saturday", "Sunday", "Monday"][index],
+    startMinute: 480, endMinute: 570, room: "R" + index, capacity: 30,
+  }));
+  const created = await create({ slots, instructors: [{ fullName: "Dr Regression" }], eligibleGroups: [{ major: "CS", semester: 5, studyGroup: "1" }] });
+  assert.equal(created.status, 201, JSON.stringify(created.body));
+  assert.equal((await create({ slots })).status, 409);
+  const path = "/catalogue/offerings/" + created.body._id;
+  const listing = await call("/catalogue/offerings?termId=" + term._id);
+  assert.deepEqual(listing.body.offerings.map(row => row._id), [created.body._id]);
+  const detail = (await call(path)).body;
+  assert.equal(detail.course.code, course.code);
+  assert.equal(detail.term.code, term.code);
+  assert.deepEqual(detail.slots.map(({ componentType, groupNumber, day, startMinute, endMinute, room, capacity }) =>
+    ({ componentType, groupNumber, day, startMinute, endMinute, room, capacity })), slots);
+  const labPath = path + "/slots/" + detail.slots[2]._id;
+  assert.equal((await call(labPath, { method: "PUT", body: { room: "Updated lab", capacity: 25 } })).status, 200);
+  assert.equal((await call(path)).body.slots[2].room, "Updated lab");
+  assert.equal((await call(path)).body.slots[2].capacity, 25);
+  for (const isPublished of [true, false]) {
+    const published = await call(path + "/publish", { method: "PATCH", body: { isPublished } });
+    assert.equal(published.status, 200, JSON.stringify(published.body));
+    assert.equal((await call(path)).body.isPublished, isPublished);
+  }
+  assert.equal((await call(labPath, { method: "DELETE" })).status, 200);
+  assert.deepEqual((await call(path)).body.slots.map(row => row.componentType), ["lecture", "tutorial"]);
+  assert.equal((await call(path, { method: "DELETE" })).status, 200);
+  assert.equal((await call(path)).status, 404);
+});
+
+test("Req 128 validates all CSV rows before importing and updates without duplicating courses", async () => {
+  const header = "course code,name,credit hours,course type,faculty/major,recommended semester,offering season,prerequisites";
+  const row = 'CSEN901,"Systems, applied",4,core,CS,5,winter,';
+  const importCsv = (...rows) => call("/catalogue/courses/import", {
+    method: "POST", body: { csvText: [header, ...rows].join("\n") },
+  });
+  const invalid = await importCsv(row, "CSEN902,Project,invalid,elective,CS,6,spring,CSEN901");
+  assert.equal(invalid.status, 400);
+  assert.ok(invalid.body.errors.some(error => error.row === 3 && error.field === "creditHours"));
+  assert.equal(await Course.countDocuments({ code: { $in: ["CSEN901", "CSEN902"] } }), 0);
+  const secondRow = "CSEN902,Project,5,elective,CS,6,spring,CSEN901";
+  const first = await importCsv(row, secondRow);
+  assert.equal(first.status, 200, JSON.stringify(first.body));
+  assert.equal(first.body.created, 2);
+  const initial = await Course.findOne({ code: "CSEN901" });
+  assert.equal(initial.name, "Systems, applied");
+  const retry = await importCsv(row.replace(",4,", ",6,"), secondRow);
+  assert.equal(retry.body.created, 0);
+  assert.equal(retry.body.updated, 2);
+  assert.equal((await Course.findById(initial._id)).creditHours, 6);
+  const linked = await Course.findOne({ code: "CSEN902" }).lean();
+  assert.deepEqual(linked.prerequisites, [initial._id]);
+  assert.deepEqual(linked.offeringSeasons, ["spring"]);
+  assert.equal(await Course.countDocuments({ code: { $in: ["CSEN901", "CSEN902"] } }), 2);
 });

@@ -29,6 +29,8 @@ const previewSessionKey = 'portal-studio-preview-session';
 const workspaceSessionKey = 'bobos.token';
 const workspaceAccountNameKey = 'portal-account-name';
 let liveStudent = { token: null, loading: false, error: '', data: null };
+let liveProfile;
+let liveInbox;
 const previewEmail = 'demo@portal.test';
 const signedIn = () => localStorage.getItem(previewSessionKey) === '1';
 const pageKey = key => Object.hasOwn(pages,key) ? key : 'overview';
@@ -41,7 +43,38 @@ let tab = '';
 let testCount = 0;
 const readNotifications = new Set();
 const notificationKey = id => `${role}:${id}`;
-const isNotificationUnread = id => !readNotifications.has(notificationKey(id));
+const isNotificationUnread = id => {
+  const token = localStorage.getItem(workspaceSessionKey);
+  return token
+    ? liveInbox?.token === token && liveInbox.data?.some(item => item._id === id && !item.isRead)
+    : !readNotifications.has(notificationKey(id));
+};
+
+async function accountRequest(path, token, method = 'GET') {
+  const response = await fetch('../api/' + path, {method, headers:{Authorization:'Bearer ' + token}});
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.message || 'Could not load your account data.');
+  return data;
+}
+
+function loadAccountData(refresh) {
+  const token = localStorage.getItem(workspaceSessionKey);
+  if (!token || authPages.has(page)) { liveProfile = liveInbox = undefined; return; }
+  if (page === 'profile' && (refresh || liveProfile?.token !== token)) {
+    const state = liveProfile = {token};
+    accountRequest('profile', token).then(data => { state.data = data.profile; })
+      .catch(error => { state.error = error.message; }).finally(() => {
+        if (liveProfile === state && page === 'profile') render();
+      });
+  }
+  if (liveInbox?.token !== token || (refresh && page === 'notifications')) {
+    const state = liveInbox = {token};
+    accountRequest('notifications', token).then(data => { state.data = data.notifications; })
+      .catch(error => { state.error = error.message; }).finally(() => {
+        if (liveInbox === state && ['notifications','overview'].includes(page)) render();
+      });
+  }
+}
 let returnFocus;
 const studentPreferences = new Map([[0,{days:['Thursday'],groups:Array(4).fill('Group 4'),notes:'I would prefer to keep Thursday free.'}]]);
 const preferenceDrafts = new Map();
@@ -627,25 +660,36 @@ function listFoot(count) {
   return `<p class="search-empty" hidden>No matching records. Try a different search.</p><div class="tablefoot"><span id="result-count">${count} records</span></div>`;
 }
 function profile(detail=false){
-  const name=detail?names[selectedStudent]:person();
+  const token = localStorage.getItem(workspaceSessionKey);
+  const real = !detail && token && liveProfile?.token === token ? liveProfile.data : null;
+  if (!detail && token && !real) {
+    const error = liveProfile?.token === token && liveProfile.error;
+    return head('My profile') + (error ? `<p role="alert">${escapeHtml(error)}</p>` : '<p role="status">Loading your profile…</p>');
+  }
+  const display = value => escapeHtml(value == null ? '—' : String(value)
+    .replace(/([a-z])([A-Z])/g, '$1 $2').replace(/^./, letter => letter.toUpperCase()));
+  const name=real ? escapeHtml(real.fullName) : detail?names[selectedStudent]:person();
   const isStudent=detail || student();
   const index=detail ? selectedStudent : 0;
   const roleTitle=detail ? (index%3?'Advising student':'Normal student') : roleNames[role];
-  const major=index===3?'Digital Media Engineering':'Computer Engineering';
-  const advisorName=[2,8].includes(index)?'Unassigned':'Dr. Salma Adel';
-  const state=scheduleStates[index];
+  const major=real ? escapeHtml(real.major || '—') : index===3?'Digital Media Engineering':'Computer Engineering';
+  const advisorName=real ? escapeHtml(real.assignedAdvisor?.fullName || 'Unassigned') : [2,8].includes(index)?'Unassigned':'Dr. Salma Adel';
+  const state=real ? display(real.scheduleStatus) : scheduleStates[index];
   const accountName=name.replace(/^Dr\. /,'').toLowerCase().replaceAll(' ','.');
-  const email=accountName+(isStudent?'@student.guc.edu.eg':'@guc.edu.eg');
+  const email=real ? escapeHtml(real.email) : accountName+(isStudent?'@student.guc.edu.eg':'@guc.edu.eg');
   const facts = pairs=>`<dl class="profile-facts">${pairs.map(([key,value])=>
     `<div><dt>${key}</dt><dd>${value}</dd></div>`).join('')}</dl>`;
   const academic = facts([
-    ['Major',major],['Semester','7'],['Academic standing','Very good'],['Enrollment','Active'],
-    ['Assigned advisor',advisorName],['Schedule status',badge(state,statusTone(state))]
+    ['Major',major],['Semester',real ? display(real.currentSemester) : '7'],
+    ['Academic standing',real ? display(real.academicStanding) : 'Very good'],
+    ...(real ? [] : [['Enrollment','Active']]),
+    ...(real && role !== 'advisingStudent' ? [] : [['Assigned advisor',advisorName]]),
+    ['Schedule status',badge(state,statusTone(state))]
   ]);
   const identity=`<aside class="profile-identity"><div class="campus-id">
     <div class="campus-wordmark"><img src="portal-card-index.svg" alt="">German University in Cairo</div>
     <div class="campus-owner">${avatar(name)}<div><h2>${name}</h2><p>${roleTitle}</p></div></div>
-    <div class="campus-card-foot">${isStudent?'Student ID <strong>70-'+(71577+index)+'</strong>':'Faculty of Media Engineering &amp; Technology'}</div>
+    <div class="campus-card-foot">${isStudent ? 'Student ID <strong>' + (real ? escapeHtml(real.studentId || '—') : '70-' + (71577+index)) + '</strong>' : real ? '' : 'Faculty of Media Engineering &amp; Technology'}</div>
     </div>${detail?`<div class="profile-contact"><h3>University email</h3><a href="mailto:${email}">${email}</a></div>`:''}</aside>`;
   const heading = head(detail ? 'Student details' : 'My profile', '', detail
     ? link('directory','Back to directory','btn')
@@ -673,6 +717,13 @@ function profile(detail=false){
     ${disclosure('Schedule workflow',workflow())}<div class="profile-actions">${actions}</div></div></div>`;
 }
 function notificationEntries(){
+  const token = localStorage.getItem(workspaceSessionKey);
+  if (token) {
+    const data = liveInbox?.token === token ? liveInbox.data : [];
+    return (data || []).map(item => [escapeHtml(item._id), escapeHtml(item.title), escapeHtml(item.message),
+      escapeHtml(new Date(item.createdAt).toLocaleString('en-GB', {dateStyle:'medium', timeStyle:'short', timeZone:'Africa/Cairo'})),
+      null, item.channels.includes('email') ? escapeHtml(item.deliveryStatus) : '']);
+  }
   const testEntries = Array.from({length:testCount}, (_, i) => [`test-${i}`, 'Test notification', 'This is a test notification for your account.', 'Just now']);
   if (role==='normalStudent') return testEntries;
   const registration = ['term', 'Winter 2026 dates updated', 'The registration window opens on 22 November.', 'Yesterday'];
@@ -758,21 +809,51 @@ function notifications(){
   const unread = entries.filter(([id]) => isNotificationUnread(id));
   const strip = notificationViews(unread.length);
   const visible = tab === 'unread' ? unread : entries;
-  const accountInbox = localStorage.getItem(workspaceSessionKey) ? link('account-inbox','Open university inbox','btn') : '';
-  return head('Notifications', '', accountInbox+(productionPreview?'':button('Create test notification','test-notification'))+
+  const token = localStorage.getItem(workspaceSessionKey);
+  const state = token && liveInbox?.token === token ? liveInbox : null;
+  const inboxStatus = token && !state?.data
+    ? state?.error ? `<p role="alert">${escapeHtml(state.error)}</p>` : '<p role="status">Loading notifications…</p>'
+    : '';
+  return head('Notifications', '', (productionPreview?'':button('Create test notification','test-notification'))+
     (unread.length ? button('Mark all as read','read-all','btn primary') : ''), '')+strip+
     `<section id="notice-results" role="tabpanel" aria-labelledby="notice-view-${tab}">`+
-    (visible.length ? `<div class="notification-list">${visible.map(([id,title,description,time,subject]) => {
+    (inboxStatus || (visible.length ? `<div class="notification-list">${visible.map(([id,title,description,time,subject,emailStatus]) => {
       const isUnread = isNotificationUnread(id);
       return `<article class="inbox-item ${isUnread ? 'unread' : ''}">
         ${workspaces[lab.layout].name==='Claude Study' ? `<span class="notice-symbol" data-kind="${id}">${icon(({schedule:'book',removal:'inbox',term:'calendar'})[id]||'bell')}</span>` : ''}
         <div class="inbox-text"><h3>${title}</h3><p>${description}</p><time>${time}</time></div>
         <div class="notification-meta">${subject ? `<span class="notice-person">${avatar(subject)}<span>${subject}</span></span>` : ''}
+          ${emailStatus ? `<small>Email: ${emailStatus}</small>` : ''}
           ${isUnread ? button('Mark as read','read-one','btn desk-action', `data-notification="${id}"`) : '<small>Read</small>'}
         </div>
       </article>`;
-    }).join('')}</div>` : '<div class="empty"><h2>You’re all caught up.</h2><p>No unread notifications.</p></div>')+'</section>';
+    }).join('')}</div>` : '<div class="empty"><h2>You’re all caught up.</h2><p>No unread notifications.</p></div>'))+'</section>';
 }
+
+async function markPortalNotifications(ids, control) {
+  const token = localStorage.getItem(workspaceSessionKey);
+  const state = liveInbox;
+  if (token) {
+    control.disabled = true;
+    const results = await Promise.allSettled(ids.map(id => accountRequest(`notifications/${encodeURIComponent(id)}/read`, token, 'PATCH')));
+    if (liveInbox !== state || localStorage.getItem(workspaceSessionKey) !== token) return;
+    const updated = new Map(results.filter(result => result.status === 'fulfilled')
+      .map(({value}) => [value.notification._id, value.notification]));
+    state.data = state.data.map(entry => updated.get(entry._id) || entry);
+    if (page !== 'notifications') return;
+    if (results.some(result => result.status === 'rejected')) {
+      render();
+      toast('Some notifications could not be marked as read.', 'error');
+      return;
+    }
+  } else {
+    ids.forEach(id => readNotifications.add(notificationKey(id)));
+  }
+  render();
+  document.querySelector('[aria-selected=true][aria-controls="notice-results"]')?.focus();
+  toast(ids.length === 1 ? 'Notification marked as read.' : 'All notifications marked as read.');
+}
+
 function academicStudy() {
   return workspaces[lab.layout].name === 'Claude Study';
 }
@@ -1528,6 +1609,7 @@ function mountPortalService(host) {
 
 function render(focus=false){
   loadStudentSchedule();
+  loadAccountData(focus);
   closeDeadline();
   clearFlipExposure();
   if (page === 'graduation-plans' && role === 'advisor' && new URLSearchParams(location.search).get('view') === 'submitted') {
@@ -1756,8 +1838,8 @@ function action(name,el){
     }
     case 'test-notification':testCount++;render();toast('Test notification created in this preview.');break;
     case 'refresh':toast('Preview refreshed.', 'info');break;
-    case 'read-all':notificationEntries().forEach(([id]) => readNotifications.add(notificationKey(id)));render();document.querySelector('[aria-selected=true]')?.focus();toast('All notifications marked as read.');break;
-    case 'read-one':readNotifications.add(notificationKey(el.dataset.notification));render();document.querySelector('[aria-selected=true]')?.focus();toast('Notification marked as read.');break;
+    case 'read-all':void markPortalNotifications(notificationEntries().map(([id]) => id).filter(isNotificationUnread), el);break;
+    case 'read-one':void markPortalNotifications([el.dataset.notification], el);break;
     case 'close-dialog':closeDialog();break;
     case 'save-draft':toast('Draft saved in this preview.');break;
     case 'save-preferences': {

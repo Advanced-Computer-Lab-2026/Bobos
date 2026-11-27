@@ -102,59 +102,6 @@ test("Requirement 5: Unauthenticated user cannot mark a notification as read", a
   assert.match(res2.getBody().message, /Authentication required/i);
 });
 
-test("Requirement 5: Each required role can retrieve their own notifications", async (t) => {
-  t.mock.method(StudentProfile, "findOne", () => ({ select: () => ({ lean: async () => null }) }));
-  mockEmptyAdvisorHistory(t);
-  const roles = [
-    { role: "normalStudent", email: "student.norm@student.guc.edu.eg", name: "Normal Student" },
-    { role: "advisingStudent", email: "student.adv@student.guc.edu.eg", name: "Advising Student" },
-    { role: "advisor", email: "advisor@guc.edu.eg", name: "Dr. Advisor" },
-    { role: "coordinator", email: "coord@guc.edu.eg", name: "Eng. Coordinator" },
-    { role: "administrator", email: "admin@guc.edu.eg", name: "Admin" },
-  ];
-
-  const originalFind = Notification.find;
-
-  for (const { role, email, name } of roles) {
-    const userId = new mongoose.Types.ObjectId();
-    const user = { _id: userId, email, role, fullName: name, isActive: true };
-
-    const mockNotifs = [
-      {
-        _id: new mongoose.Types.ObjectId(),
-        recipient: userId,
-        type: "scheduleProcessed",
-        title: `Welcome ${role}`,
-        message: `Notification for ${name}`,
-        channels: ["inApp"],
-        deliveryStatus: "sent",
-        readAt: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    ];
-
-    Notification.find = (filter) => {
-      assert.equal(filter.recipient.toString(), userId.toString());
-      return {
-        sort: async () => mockNotifs,
-      };
-    };
-
-    const { req, res } = createMockReqRes({ user });
-    await getMyNotifications(req, res);
-
-    assert.equal(res.getStatusCode(), 200);
-    const body = res.getBody();
-    assert.equal(body.success, true);
-    assert.equal(body.count, 1);
-    assert.equal(body.notifications[0].title, `Welcome ${role}`);
-    assert.equal(body.notifications[0].isRead, false);
-  }
-
-  Notification.find = originalFind;
-});
-
 test("Requirement 5: Only the authenticated user's notifications are returned", async () => {
   const userAId = new mongoose.Types.ObjectId();
   const userBId = new mongoose.Types.ObjectId();

@@ -146,10 +146,11 @@ window.mountPortalControlInk = function (shadow) {
     const bounds = dialog?.getBoundingClientRect();
     const left = bounds ? bounds.left + dialog.clientLeft - dialog.scrollLeft : 0;
     const top = bounds ? bounds.top + dialog.clientTop - dialog.scrollTop : 0;
-    layer.style.left = `${rect.left - left - 3}px`;
-    layer.style.top = `${rect.top - top - 3}px`;
-    layer.style.width = `${rect.width + 6}px`;
-    layer.style.height = `${rect.height + 6}px`;
+    const padding = target.matches('.preview-role-button') ? 1 : 3;
+    layer.style.left = `${rect.left - left - padding}px`;
+    layer.style.top = `${rect.top - top - padding}px`;
+    layer.style.width = `${rect.width + padding * 2}px`;
+    layer.style.height = `${rect.height + padding * 2}px`;
     target.setAttribute('data-portal-focus', '');
   }
 
