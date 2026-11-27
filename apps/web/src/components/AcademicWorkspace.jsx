@@ -720,9 +720,10 @@ function TemplatesWorkspace({ token, notify }) {
       courses, isPublished: form.isPublished,
     };
     try {
-      await api(editingTemplate ? `/api/academics/schedule-templates/${editingTemplate._id}` : "/api/academics/schedule-templates", {
+      const saved = await api(editingTemplate ? `/api/academics/schedule-templates/${editingTemplate._id}` : "/api/academics/schedule-templates", {
         token, method: editingTemplate ? "PUT" : "POST", body: payload,
       });
+      setSelectedTemplateId(saved._id);
       notify("success", editingTemplate ? "Schedule template updated." : "Schedule template created.");
       clearEditor(); await load();
     } catch (e) { setError(e.message); }
@@ -733,6 +734,7 @@ function TemplatesWorkspace({ token, notify }) {
     setError("");
     try {
       await api(`/api/academics/schedule-templates/${template._id}`, { token, method: "PUT", body: { isPublished: !template.isPublished } });
+      setSelectedTemplateId(template._id);
       notify("success", `Template ${template.isPublished ? "unpublished" : "published"}.`); await load();
     } catch (e) { setError(e.message); }
   };
@@ -754,35 +756,51 @@ function TemplatesWorkspace({ token, notify }) {
   const selected = selectedOffers.map((id) => offerings.find((item) => item._id === id)).filter(Boolean);
   const selectedTemplate = templates.find(template => template._id === selectedTemplateId)
     || templates.find(template => template.isPublished) || templates[0];
-  const templateCourses = selectedTemplate?.courses || [];
   return <div className="page-stack template-register">
     <PageTitle title="Schedule templates" description="Course groups for each major and semester." action={<button className="primary-button" type="button" disabled={loading || !termId} onClick={() => { clearEditor(); setError(""); setEditorOpen(true); }}>Create template</button>} />
-    <div className="register-controls"><Field label="Academic term"><select required value={termId} onChange={event => { if (event.target.value !== termId) { setTemplates([]); setOfferings([]); setSelectedTemplateId(""); setLoading(true); setTermId(event.target.value); } }}><option value="" disabled>Choose a term</option>{termOptions.map(term => <option key={term._id} value={term.code}>{termLabel(term)}</option>)}</select></Field>{!loading && templates.length > 0 && <span className="register-count">{templates.length} {templates.length === 1 ? "template" : "templates"}</span>}</div>
+    <div className="register-controls"><Field label="Academic term"><select required value={termId} onChange={event => { if (event.target.value !== termId) { setTemplates([]); setOfferings([]); setSelectedTemplateId(""); setLoading(true); setTermId(event.target.value); } }}><option value="" disabled>Choose a term</option>{termOptions.map(term => <option key={term._id} value={term.code}>{termLabel(term)}</option>)}</select></Field></div>
     {error && !editorOpen && <div className="feedback error" role="alert">{error}</div>}
-    {editorOpen && <Modal title={editingTemplate ? "Update schedule template" : "Create schedule template"} onClose={() => !saving && clearEditor()} wide>
+    {editorOpen && <Modal title={editingTemplate ? "Update schedule template" : "Create schedule template"} onClose={() => !saving && clearEditor()} wide className="template-editor">
         {error && <div className="feedback error" role="alert">{error}</div>}
-        <form className="form-stack" onSubmit={saveTemplate}>
-          <div className="form-grid">
+        <form className="form-stack template-editor-form" onSubmit={saveTemplate}>
+          <div className="form-grid template-editor-identity">
             <Field label="Major"><input required value={form.major} onChange={(event) => { setForm({ ...form, major: event.target.value }); setError(""); }} placeholder="Computer Science" /></Field>
             <Field label="Semester"><input required type="number" min="1" max="10" step="1" value={form.semester} onChange={(event) => setForm({ ...form, semester: event.target.value })} placeholder="4" /></Field>
             <Field label="Study group"><input required value={form.studyGroup} onChange={(event) => setForm({ ...form, studyGroup: event.target.value })} placeholder="G1" /></Field>
-            <label className="check-field"><input type="checkbox" checked={form.isPublished} onChange={(event) => setForm({ ...form, isPublished: event.target.checked })} /> Publish template when saved</label>
-            <Field label="Add published offering" className="span-two"><select value="" onChange={addOffering}><option value="">Choose offering…</option>{offerings.map((offering) => { const wrongMajor = !offeringMatchesMajor(offering, form.major); return <option key={offering._id} value={offering._id} disabled={!offering.isPublished || selectedOffers.includes(offering._id) || wrongMajor}>{offering.course?.code} · {offering.course?.name}{!offering.isPublished ? " (draft)" : wrongMajor ? " (different major)" : ""}</option>; })}</select></Field>
           </div>
-          {selected.length > 0 && <div className="selected-offerings"><p className="eyebrow">COURSES IN THIS TEMPLATE · {selected.length}</p>{selected.map((offering) => <div className="selected-offering" key={offering._id}>
-            <span className="template-course-title"><strong>{offering.course?.code}</strong> {offering.course?.name}</span>
-            <button type="button" className="text-button danger-text" onClick={() => removeSelected(offering._id)}>Remove course</button>
-            <div className="form-grid span-two">{offeringComponentTypes(offering).map((componentType) => <Field key={componentType} label={`${pretty(componentType)} group`}>
-              <select required value={slotSelections[offering._id]?.[componentType] || ""} onChange={(event) => setSlotSelections((current) => ({ ...current, [offering._id]: { ...current[offering._id], [componentType]: event.target.value } }))}>
-                <option value="">Choose a group</option>{offering.slots.filter((slot) => slot.componentType === componentType).map((slot) => <option key={slot._id} value={slot._id}>{slot.groupNumber} · {slot.day} · {minutesToTime(slot.startMinute)}–{minutesToTime(slot.endMinute)} · {slot.room}</option>)}
-              </select>
-            </Field>)}</div>
-          </div>)}</div>}
-          <div className="form-footer"><span className="helper-text">{selected.length ? "Choose exactly one group for each available component." : "Load a term and add at least one published course offering."}</span><div className="table-actions"><button className="outline-button" type="button" onClick={clearEditor} disabled={saving}>Cancel</button><button className="primary-button" disabled={saving || !termId.trim()}>{saving ? "Saving…" : editingTemplate ? "Save changes" : "Create template"}<span>→</span></button></div></div>
+          <section className="template-editor-courses" aria-labelledby="template-editor-courses-heading">
+            <h3 id="template-editor-courses-heading">Courses in this template</h3>
+            <Field label="Add published offering"><select value="" onChange={addOffering}><option value="">Choose a course</option>{offerings.map((offering) => { const wrongMajor = !offeringMatchesMajor(offering, form.major); return <option key={offering._id} value={offering._id} disabled={!offering.isPublished || selectedOffers.includes(offering._id) || wrongMajor}>{offering.course?.code} · {offering.course?.name}{!offering.isPublished ? " (draft)" : wrongMajor ? " (different major)" : ""}</option>; })}</select></Field>
+            {selected.length > 0 && <ul className="template-editor-course-list" role="list">{selected.map((offering) => <li key={offering._id}>
+              <div className="template-editor-course-heading">
+                <OfferingCourseIcon code={offering.course?.code} />
+                <div><strong>{offering.course?.name}</strong><small>{offering.course?.code}</small></div>
+                <button type="button" className="text-button danger-text" onClick={() => removeSelected(offering._id)} aria-label={`Remove ${offering.course?.name || "course"}`}>Remove course</button>
+              </div>
+              <fieldset className="template-editor-groups">
+                <legend>Meeting groups</legend>
+                <div className="form-grid">{offeringComponentTypes(offering).map((componentType) => <Field key={componentType} label={`${pretty(componentType)} group`}>
+                  <select required value={slotSelections[offering._id]?.[componentType] || ""} onChange={(event) => setSlotSelections((current) => ({ ...current, [offering._id]: { ...current[offering._id], [componentType]: event.target.value } }))}>
+                    <option value="">Choose a group</option>{offering.slots.filter((slot) => slot.componentType === componentType).map((slot) => <option key={slot._id} value={slot._id}>{slot.groupNumber} · {slot.day} {minutesToTime(slot.startMinute)}–{minutesToTime(slot.endMinute)} · {slot.room}</option>)}
+                  </select>
+                </Field>)}</div>
+              </fieldset>
+            </li>)}</ul>}
+          </section>
+          <fieldset className="template-editor-publication">
+            <legend>Publication status</legend>
+            <div>{[
+              { label: "Draft", description: "Keep the template out of group assignments.", published: false },
+              { label: "Published", description: "Make the template available for group assignments.", published: true },
+            ].map(({ label, description, published }) => <label key={label}>
+              <input type="radio" name="template-publication" checked={form.isPublished === published} onChange={() => setForm({ ...form, isPublished: published })} />
+              <span><strong>{label}</strong><small>{description}</small></span>
+            </label>)}</div>
+          </fieldset>
+          <div className="form-footer"><button className="outline-button" type="button" onClick={clearEditor} disabled={saving}>Cancel</button><button className="primary-button" disabled={saving || !termId.trim()}>{saving ? "Saving…" : editingTemplate ? "Save changes" : "Create template"}</button></div>
         </form>
     </Modal>}
-    {loading ? <Loading /> : selectedTemplate ? <div className="template-library">
-      <section className="template-groups" aria-label="Current templates">{[
+    {loading ? <Loading /> : selectedTemplate ? <section className="template-library" aria-label="Current templates">{[
         { label: "Published", tone: "good", isPublished: true },
         { label: "Drafts", tone: "draft", isPublished: false },
       ].map(({ label, tone, isPublished }) => {
@@ -790,30 +808,42 @@ function TemplatesWorkspace({ token, notify }) {
         return <section className="template-group" key={label} aria-labelledby={`template-group-${label}`}>
           <div className="template-group-heading"><h2 className={`status-pill ${tone}`} id={`template-group-${label}`}>{label}</h2><span className="register-count">{group.length}</span></div>
           {group.length ? <ul role="list">{group.map(template => {
-            const courseCount = template.courses?.length || 0;
+            const courses = template.courses || [];
+            const isSelected = template._id === selectedTemplate._id;
+            const labelId = `template-label-${template._id}`;
+            const countId = `template-count-${template._id}`;
             return <li className="template-register-row" key={template._id}>
-              <button className="template-identity" type="button" aria-pressed={template._id === selectedTemplate._id} aria-controls="template-course-sheet" onClick={() => setSelectedTemplateId(template._id)}>
-                <strong>Group {template.studyGroup}</strong><small>{template.major} · Semester {template.semester}</small>
+              <button className="template-identity" type="button" aria-pressed={isSelected} aria-controls="template-course-sheet"
+                aria-labelledby={labelId} aria-describedby={countId} onClick={() => setSelectedTemplateId(template._id)}>
+                <span id={labelId}><strong>Group {template.studyGroup}</strong><small>{template.major} · Semester {template.semester}</small></span>
+                <span className="template-course-count" id={countId}>{courses.length} {courses.length === 1 ? "course" : "courses"}</span>
               </button>
-              <span className="template-course-count">{courseCount} {courseCount === 1 ? "course" : "courses"}</span>
-              <div className="template-row-actions">
-                <button className="outline-button" type="button" onClick={() => editTemplate(template)}>Edit</button>
-                <button className="outline-button" type="button" aria-label={isPublished ? "Unpublish template" : "Publish template"} onClick={() => togglePublished(template)}>{isPublished ? "Unpublish" : "Publish"}</button>
-                <PaperTossButton label={`Delete template for ${template.major}, semester ${template.semester}, group ${template.studyGroup}`} onClick={() => { setConfirmingDelete(template); setDeleteError(""); }}>Delete</PaperTossButton>
-              </div>
+              {isSelected && <>
+                <div className="template-row-actions" role="group" aria-label={`Actions for Group ${template.studyGroup}`}>
+                  <button className="outline-button" type="button" onClick={() => editTemplate(template)}>Edit</button>
+                  <button className="outline-button" type="button" aria-label={isPublished ? "Unpublish template" : "Publish template"} onClick={() => togglePublished(template)}>{isPublished ? "Unpublish" : "Publish"}</button>
+                  <PaperTossButton label={`Delete template for ${template.major}, semester ${template.semester}, group ${template.studyGroup}`} onClick={() => { setConfirmingDelete(template); setDeleteError(""); }}>Delete</PaperTossButton>
+                </div>
+                <section className="template-course-sheet" id="template-course-sheet" aria-labelledby="template-course-heading">
+                  <h3 id="template-course-heading">Courses for Group {template.studyGroup}</h3>
+                  {courses.length ? <ul role="list">{courses.map((entry, index) => {
+                    const groups = (entry.slots || []).flatMap((slot) => {
+                      const group = entry.courseOffering?.slots?.find(item => item._id === slot.slotGroupId);
+                      return group ? [`${pretty(slot.componentType)} ${group.groupNumber}`] : [];
+                    });
+                    return <li key={entry.course?._id || index}>
+                      <OfferingCourseIcon code={entry.course?.code} />
+                      <div><strong>{entry.course?.name || "Course unavailable"}</strong>
+                        {entry.course?.code && <small>{entry.course.code}</small>}
+                        {groups.length > 0 && <small>{groups.join(" · ")}</small>}</div>
+                    </li>;
+                  })}</ul> : <p>No courses in this template</p>}
+                </section>
+              </>}
             </li>;
           })}</ul> : <p className="template-group-empty">{isPublished ? "No published templates" : "No draft templates"}</p>}
         </section>;
-      })}</section>
-      <section className="template-course-sheet" id="template-course-sheet" aria-labelledby="template-course-heading">
-        <h2 id="template-course-heading" aria-live="polite">Courses for Group {selectedTemplate.studyGroup}</h2>
-        <p>{selectedTemplate.major} · Semester {selectedTemplate.semester}</p>
-        {templateCourses.length ? <ul role="list">{templateCourses.map((entry, index) => <li key={entry.course?._id || index}>
-          <OfferingCourseIcon code={entry.course?.code} />
-          <div><strong>{entry.course?.name || "Course unavailable"}</strong>{entry.course?.code && <small>{entry.course.code}</small>}</div>
-        </li>)}</ul> : <p>No courses in this template</p>}
-      </section>
-    </div> : <div className="register-empty"><img src="/portal-studio/images/extra-hours-folder.svg" alt="" width="144" height="105"/><h3>No schedule templates</h3><p>Create a template using this term’s published course offerings.</p></div>}
+      })}</section> : <div className="register-empty"><img src="/portal-studio/images/extra-hours-folder.svg" alt="" width="144" height="105"/><h3>No schedule templates</h3><p>Create a template using this term’s published course offerings.</p></div>}
     {confirmingDelete && <Modal title="Delete schedule template?" eyebrow="REMOVE STANDARD PLAN" onClose={() => !deleting && setConfirmingDelete(null)}>
       <div className="confirmation-content"><span className="confirmation-icon" aria-hidden="true">!</span><div><p>Delete the template for <strong>{confirmingDelete.major}</strong>, semester <strong>{confirmingDelete.semester}</strong>, group <strong>{confirmingDelete.studyGroup}</strong>?</p><p className="helper-text">Templates assigned to student schedules cannot be deleted. Reassign those students first.</p></div></div>
       {deleteError && <div className="feedback error" role="alert">{deleteError}</div>}

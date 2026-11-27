@@ -2,10 +2,34 @@ import { useCallback, useEffect, useState } from "react";
 import { api, explainApiError } from "../api.js";
 import { ScheduleActivityPage } from "./B1Pages.jsx";
 import { StudentRegister, RegisterRow, StudentIdentity, RegisterEmpty, RecordPages, scheduleTone } from "./CoordinatorRecords.jsx";
+import { ChromeIcon } from "./PortalChrome.jsx";
 import PortalAvatar from "./PortalAvatar.jsx";
 import FilterDisclosure from "./FilterDisclosure.jsx";
+import { displayLabel } from "./WorkspaceUI.jsx";
 
 const emptyFilters = { search: "", studentType: "", advisor: "", major: "", currentSemester: "", academicStanding: "", workflowStatus: "", blockingStep: "", accountStatus: "" };
+const workflowMarks = {
+  noActiveTerm: "calendar",
+  reopened: "history",
+  readyToProcess: "readyToProcess",
+  changeRequestPending: "scheduleChange",
+  awaitingPaymentChoice: "paymentChoice",
+  deferredToNextInstallment: "nextInstallment",
+  scheduleAssigned: "scheduleAssigned",
+  swapRequestOpen: "swapOpen",
+  swapCompleted: "swapComplete",
+  swapWithdrawn: "swapWithdrawn",
+  swapExpired: "swapExpired",
+};
+
+function DirectoryScheduleStatus({ status, activeTerm }) {
+  const state = status || (activeTerm ? "notStarted" : "noActiveTerm");
+  const icon = workflowMarks[state];
+  return <span className={`status-pill ${state === "pendingApproval" ? "pending" : scheduleTone(state)}`} data-workflow-mark={icon}>
+    {icon && <ChromeIcon name={icon} />}
+    {state === "noActiveTerm" ? "No active term" : displayLabel(state)}
+  </span>;
+}
 const pretty = (value = "") => String(value || "—").replace(/([a-z])([A-Z])/g, "$1 $2").replace(/^./, (letter) => letter.toUpperCase());
 
 export default function StudentDirectoryPage({ token, role, notify }) {
@@ -90,7 +114,7 @@ export default function StudentDirectoryPage({ token, role, notify }) {
         <FilterDisclosure floating
           search={<label className="field filter-search"><span>Search students</span><input type="search" maxLength={100} value={filters.search} onChange={(event) => { const search = event.target.value; updateFilter("search", search); setApplied((current) => ({ ...current, search })); setPage(1); }} placeholder="Student ID, name or email" /></label>}
           chips={filterChips}
-          actions={<><button className="text-button" type="button" onClick={clear} disabled={!Object.values(filters).some(Boolean) && !Object.values(applied).some(Boolean)}>Clear</button><button className="text-button" type="button" onClick={() => loadStudents()}>Refresh</button></>}
+          actions={<button className="text-button" type="button" onClick={clear} disabled={!Object.values(filters).some(Boolean) && !Object.values(applied).some(Boolean)}>Clear</button>}
         >{({ close }) => <>
           <div className="filter-grid">
           <Select label="Student type" value={filters.studentType} onChange={(value) => updateFilter("studentType", value)} options={options.studentTypes || []} />
@@ -107,7 +131,7 @@ export default function StudentDirectoryPage({ token, role, notify }) {
       </form>
     </section>
 
-    {error && <div className="feedback error" role="alert">{error}</div>}
+    {error && <div className="feedback error" role="alert">{error} <button className="outline-button" type="button" onClick={() => loadStudents()}>Try again</button></div>}
     <section className="panel results-panel directory-results" aria-busy={loading} aria-labelledby="directory-students-heading">
       <div className="results-heading"><div><h2 id="directory-students-heading">Students</h2></div><span className="result-count">{loading ? "Loading" : `${students.length} ${students.length === 1 ? "student" : "students"}`}</span></div>
       {loading ? <div className="loading-state"><span className="loader" />Loading students…</div> : students.length === 0 ? <RegisterEmpty title="No students to show" description={error ? undefined : "Try another name, ID or filter."} /> : <StudentRegister label="Student directory" className="directory-register" columns={["Student", "Programme", "Schedule status", "Action"]}>
@@ -116,7 +140,7 @@ export default function StudentDirectoryPage({ token, role, notify }) {
             <StudentIdentity name={student.fullName} id={student.studentId} />
             <p className="student-register-meta">{student.major || "Undeclared major"}<small>Semester {student.currentSemester || "—"} · {pretty(student.studentType)}</small>{role === "administrator" && student.accountStatus === "inactive" && <small className="status-pill muted">Inactive account</small>}</p>
             <div className="student-register-meta">
-              <span className={`status-pill ${scheduleTone(student.workflowStatus)}`}>{student.workflowStatus && student.workflowStatus !== "notStarted" ? pretty(student.workflowStatus) : directory.term ? "Not started" : "No active term"}</span>
+              <DirectoryScheduleStatus status={student.workflowStatus} activeTerm={directory.term} />
               {student.workflowStatus !== "notStarted" && student.blockingStep && <small>{student.blockingStep}</small>}
             </div>
             <button className="outline-button" type="button" aria-label={`Open profile for ${student.studentId} · ${student.fullName || "Student"}`} onClick={() => openDetails(student.id)}>Open profile</button>

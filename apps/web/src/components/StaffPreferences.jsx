@@ -257,8 +257,8 @@ export function PreferenceSubmission({ preferences, offerings, updatedAt, title 
         <PriorityRow title="Days off" dayLabel="Desired days off" days={desiredDaysOff} />
       </tbody>
     </table>
-    <section className="preference-note-detail">
-      <h3>Student note</h3>
+    <section className="preference-note-detail" data-has-note={Boolean(note) || undefined}>
+      <h3>{note && <img src="/portal-studio/images/submitted-plan.svg" alt="" width="40" height="31" />}Student note</h3>
       {note ? <blockquote className="preference-note-text">{note}</blockquote> : <p className="preference-missing">No note submitted.</p>}
     </section>
     <section className="preference-group-register">

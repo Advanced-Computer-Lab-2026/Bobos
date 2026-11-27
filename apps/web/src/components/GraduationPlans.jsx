@@ -144,12 +144,12 @@ export default function GraduationPlans({ student, token, onBack, backLabel }) {
 
   const visibleCourses = courses.filter((course) => `${course.code} ${course.name}`.toLowerCase().includes(courseSearch.trim().toLowerCase()));
   return <div className="page-stack workspace-page graduation-planner-page">
-    <div className="workspace-header">
-      <div>
-        <h1>Graduation plans</h1>
-        <StudentIdentity name={student.user?.fullName} id={student.studentId} />
-      </div>
+    <header className="workspace-header">
+      <div><h1>Graduation plans</h1></div>
       <button className="outline-button" type="button" onClick={onBack}>{backLabel}</button>
+    </header>
+    <div className="planner-student-context" aria-label="Student">
+      <StudentIdentity name={student.user?.fullName || student.fullName} id={student.studentId} />
     </div>
     {notice && <div className="feedback success" role="status">{notice}</div>}
     {error && <div className="feedback error" role="alert">{error}
@@ -157,12 +157,15 @@ export default function GraduationPlans({ student, token, onBack, backLabel }) {
     </div>}
     {!workspace && !error && <div className="loading-state" role="status">Loading graduation plans…</div>}
     {workspace && <div className="planner-sections">
-      {!editing && <section>
-        <div className="results-heading">
-          <h2>Your plans</h2>
+      {!editing && <section className="planner-plan-list" data-empty={workspace.plans.length === 0 || undefined} aria-labelledby="planner-plans-title">
+        {workspace.plans.length === 0 ? <>
+          <h2 id="planner-plans-title">Your plans</h2>
+          <GraduationEmpty title="No graduation plans yet" description="Start a private draft to arrange the student’s remaining courses by term." />
           <button className="primary-button" type="button" onClick={() => openPlan(null)} disabled={busy}>New plan</button>
-        </div>
-        {workspace.plans.length === 0 && <GraduationEmpty title="No graduation plans yet" description="Create a private draft to arrange this student’s remaining courses by term." />}
+        </> : <div className="results-heading">
+          <h2 id="planner-plans-title">Your plans</h2>
+          <button className="primary-button" type="button" onClick={() => openPlan(null)} disabled={busy}>New plan</button>
+        </div>}
         {workspace.plans.length > 0 && <div className="table-scroll"><table>
           <thead><tr><th>Status</th><th>Last updated</th><th>Action</th></tr></thead>
           <tbody>{workspace.plans.map((item) => <tr key={item._id}>

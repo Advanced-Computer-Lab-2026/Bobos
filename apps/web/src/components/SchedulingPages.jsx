@@ -131,9 +131,11 @@ export function GroupAssignmentsPage({ token, canAssign = false, notify }) {
     {!loading && !terms.length && <Feedback tone="warning">Create an academic term before assigning schedules.</Feedback>}
     <section className="panel">
       <div className="group-register-toolbar">
-      <label className="field term-picker"><span>Academic term</span><select value={termId} onChange={(event) => setTermId(event.target.value)} disabled={loading || !terms.length}>{terms.map((term) => <option key={term._id} value={term.code}>{termLabel(term)}{term.isActive ? " · Active" : ""}</option>)}</select></label>
-      <label className="field group-status-filter"><span>Group status</span><select value={assigned} onChange={event => setAssigned(event.target.value)}><option value="">All students</option><option value="false">Unassigned</option><option value="true">Assigned</option></select></label>
-      <FilterDisclosure label="More filters" search={<label className="field filter-search"><span>Search students</span><input type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Name, email or student ID" maxLength={100} /></label>} chips={[
+      <FilterDisclosure label="More filters" search={<>
+        <label className="field term-picker"><span>Academic term</span><select value={termId} onChange={(event) => setTermId(event.target.value)} disabled={loading || !terms.length}>{terms.map((term) => <option key={term._id} value={term.code}>{termLabel(term)}{term.isActive ? " · Active" : ""}</option>)}</select></label>
+        <label className="field group-status-filter"><span>Group status</span><select value={assigned} onChange={event => setAssigned(event.target.value)}><option value="">All students</option><option value="false">Unassigned</option><option value="true">Assigned</option></select></label>
+        <label className="field filter-search"><span>Search students</span><input type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Name, email or student ID" maxLength={100} /></label>
+      </>} chips={[
         major && {key:"major", label:major, onRemove:() => setMajor("")},
         semester && {key:"semester", label:`Semester ${semester}`, onRemove:() => setSemester("")},
       ].filter(Boolean)} onClear={() => { setMajor(""); setSemester(""); }}>
@@ -399,6 +401,36 @@ export function SwapManagement({ token }) {
   </div>;
 }
 
+function observeScheduleActionPlacement(register) {
+  if (!register) return;
+
+  function placeMenu(menu) {
+    const row = menu.closest("tr");
+    const actions = menu.closest(".roster-actions");
+    const status = row.querySelector(".status-pill");
+    const style = getComputedStyle(actions);
+    const needed = actions.firstElementChild.offsetWidth + parseFloat(style.columnGap)
+      + parseFloat(style.getPropertyValue("--schedule-side-gap")) - parseFloat(style.getPropertyValue("--action-travel"));
+    menu.toggleAttribute("data-side-release", menu.children.length === 1 && getComputedStyle(row).display === "table-row"
+      && actions.getBoundingClientRect().left - status.getBoundingClientRect().right >= needed);
+  }
+
+  function beforeToggle(event) {
+    if (event.newState === "open" && event.target.matches(".record-menu")) placeMenu(event.target);
+  }
+
+  const resize = new ResizeObserver(() => {
+    const menu = register.querySelector(".record-menu:popover-open");
+    if (menu) placeMenu(menu);
+  });
+  resize.observe(register);
+  register.addEventListener("beforetoggle", beforeToggle, true);
+  return () => {
+    resize.disconnect();
+    register.removeEventListener("beforetoggle", beforeToggle, true);
+  };
+}
+
 export function StaffSchedulesPage({ token, role, notify, initialStudent = null, initialTermId = "" }) {
   const [search, setSearch] = useState("");
   const [students, setStudents] = useState([]);
@@ -491,7 +523,7 @@ export function StaffSchedulesPage({ token, role, notify, initialStudent = null,
       <div className="register-controls"><label className="field roster-search"><span>Search students</span><input type="search" name="roster-search" autoComplete="off" value={search} onChange={(event) => setSearch(event.target.value)} maxLength={100} placeholder="Student ID, name or email…" /></label>
         {terms.length > 0 && <label className="field term-picker"><span>Academic term</span><select value={termId} onChange={(event) => { setTermId(event.target.value); setSelected(null); setSchedule(null); setOverviewStudent(null); setOverview(null); }}>{terms.map((term) => <option key={term._id} value={term.code}>{termLabel(term)}</option>)}</select></label>}</div>
       <div className="register-list-heading"><h2>Student roster</h2><span className="register-count" aria-live="polite">{students.length} {students.length === 1 ? "student" : "students"}</span></div>
-      {loading ? <Loading /> : students.length ? <div className={staffRegister ? "table-scroll graduation-register student-register schedule-register register-with-actions" : "table-scroll roster-table"}><table role="table" aria-label="Student roster"><thead role="rowgroup"><tr role="row"><th role="columnheader" scope="col">Student</th><th role="columnheader" scope="col">Type</th><th role="columnheader" scope="col">Programme</th><th role="columnheader" scope="col">Schedule status</th><th role="columnheader" scope="col">Actions</th></tr></thead><tbody role="rowgroup">{students.map((student) => {
+      {loading ? <Loading /> : students.length ? <div className={staffRegister ? "table-scroll graduation-register student-register schedule-register register-with-actions" : "table-scroll roster-table"} ref={staffRegister && !administrator ? observeScheduleActionPlacement : undefined}><table role="table" aria-label="Student roster"><thead role="rowgroup"><tr role="row"><th role="columnheader" scope="col">Student</th><th role="columnheader" scope="col">Type</th><th role="columnheader" scope="col">Programme</th><th role="columnheader" scope="col">Schedule status</th><th role="columnheader" scope="col">Actions</th></tr></thead><tbody role="rowgroup">{students.map((student) => {
         const canEdit = student.studentType === "advising" && ["advisor", "coordinator"].includes(role);
         const canView = Boolean(student.scheduleStatus);
         const canOpenOverview = administrator && student.studentType === "advising";
@@ -761,7 +793,7 @@ function AdvisingDraftEditor({ token, role, student, termId, notify, onBack, onS
       <section hidden={draftView !== "student"} className="staff-preferences editor-preferences" id="draft-preferences" aria-label="Scheduling preferences">
         {preferences ? <PreferenceSubmission title="Scheduling preferences" preferences={preferences} offerings={data.offerings} updatedAt={data.preferenceLastUpdatedAt} draft /> : <><h2>Scheduling preferences</h2><p>No preferences submitted for this term.</p></>}
       </section>
-      {data.mandatoryCourses.length > 0 && <div hidden={draftView !== "courses"}><MandatoryCoursesPanel data={data} editable={editable} busy={savingMandatory} onSave={saveMandatory} /></div>}
+      <div hidden={draftView !== "courses"}><MandatoryCoursesPanel data={data} editable={editable} busy={savingMandatory} onSave={saveMandatory} /></div>
       <section hidden={draftView !== "timetable"} className="panel draft-timetable" id="draft-timetable"><div className="panel-heading"><div><h2>Selected timetable</h2></div><span className="result-count">{selectedOfferings.length} subjects</span></div>{selectedOfferings.length ? <WeeklySchedule week={draftWeek} compact /> : <p className="helper-text">Selected class groups will appear here.</p>}</section>
       {role !== "administrator" && <div hidden={draftView !== "courses"} className="draft-other-courses"><EligibleCoursesPanel token={token} student={student} termQuery={termQuery} editable={editable} notify={notify} version={data.schedule?.version ?? 0} onChanged={async (status) => { onSaved?.(status); await load(); }} /></div>}
       <form hidden={draftView !== "courses"} className="panel draft-course-editor" id="draft-courses" tabIndex={-1} onSubmit={save}>
@@ -769,9 +801,14 @@ function AdvisingDraftEditor({ token, role, student, termId, notify, onBack, onS
           <h2>Courses and groups</h2>
           <span className="result-count">{selectedOfferings.length} selected · {data.offerings.length} published</span>
         </div>}
-        {data.offerings.length > 0 && creditPolicy && <section className={`draft-allowance${overCreditLimit ? " is-over-limit" : ""}`} aria-label="Credit allowance">
-          <div className="draft-allowance-main"><span>Credit allowance</span><strong aria-label={`${credits} of ${creditPolicy.maximumCreditHours} credit hours`}>{credits}<span className="draft-credit-divider"> / </span>{creditPolicy.maximumCreditHours}</strong><span aria-live="polite">{overCreditLimit ? `${credits - creditPolicy.maximumCreditHours} h over limit` : `${Math.max(0, creditPolicy.maximumCreditHours - credits)} h remaining`}</span></div>
-          <div className="draft-allowance-track" role="meter" aria-label="Selected credit hours" aria-valuemin={0} aria-valuemax={creditPolicy.maximumCreditHours} aria-valuenow={Math.min(credits, creditPolicy.maximumCreditHours)}><span style={{width: `${Math.min(100, credits / Math.max(1, creditPolicy.maximumCreditHours) * 100)}%`}} /></div>
+        {data.offerings.length > 0 && creditPolicy && <section className={`draft-allowance${overCreditLimit ? " is-over-limit" : ""}`} aria-labelledby="draft-allowance-title">
+          <div className="draft-allowance-main">
+            <div className="draft-allowance-readout"><h3 id="draft-allowance-title">Credit allowance</h3><span><strong>{credits}</strong> of {creditPolicy.maximumCreditHours} h selected</span></div>
+            <div className="draft-allowance-meter">
+              <div className="draft-allowance-track" role="meter" aria-label="Selected credit hours" aria-valuemin={0} aria-valuemax={creditPolicy.maximumCreditHours} aria-valuenow={Math.min(credits, creditPolicy.maximumCreditHours)}><span style={{width: `${Math.min(100, credits / Math.max(1, creditPolicy.maximumCreditHours) * 100)}%`}} /></div>
+              <span aria-live="polite">{overCreditLimit ? `${credits - creditPolicy.maximumCreditHours} h over limit` : `${Math.max(0, creditPolicy.maximumCreditHours - credits)} h remaining`}</span>
+            </div>
+          </div>
           <dl className="draft-credit-grid" id="draft-credit-summary" tabIndex={-1}>
             <div><dt>{creditPolicy.probation ? "Probation allowance" : "Standard allowance"}</dt><dd>{creditPolicy.baseAllowance ?? "—"} h</dd></div>
             <div><dt>Activated extra hours</dt><dd>{creditPolicy.approvedExtraHours} h</dd></div>
@@ -789,10 +826,9 @@ function AdvisingDraftEditor({ token, role, student, termId, notify, onBack, onS
           return <article className={`draft-course ${selected ? "selected" : ""}`} id={`draft-course-${offering._id}`} tabIndex={-1} key={offering._id}>
             <div className="draft-course-heading">
               <div className="draft-course-identity"><OfferingCourseIcon code={offering.course.code} />
-                <div><strong>{offering.course.name}</strong><span className="draft-course-meta">{offering.course.code} · {COURSE_TYPE_LABELS[offering.course.courseType] || offering.course.courseType}
+                <div><strong>{offering.course.name}</strong><span className="draft-course-meta">{offering.course.code} · {COURSE_TYPE_LABELS[offering.course.courseType] || offering.course.courseType} · {offering.course.creditHours} {offering.course.creditHours === 1 ? "credit" : "credits"}
                   {approvedExtraCourses.has(String(offering.course._id)) && " · Approved extra hours (paid/deferred)"}</span></div>
               </div>
-              <span className="draft-course-hours">{offering.course.creditHours} credits</span>
               {editable && <button className="outline-button draft-course-action" type="button"
                 aria-label={`${selected ? "Remove" : "Add"} ${offering.course.name}`}
                 onClick={() => selected ? removeCourse(offering._id) : addCourse(offering)}>{selected ? "Remove" : "Add course"}</button>}
@@ -803,22 +839,31 @@ function AdvisingDraftEditor({ token, role, student, termId, notify, onBack, onS
               const options = offering.groups.filter((group) => group.componentType === componentType);
               const group = options.find((item) => item.groupNumber === picked);
               const label = componentType[0].toUpperCase() + componentType.slice(1) + " group";
+              const GroupRow = editable ? "label" : "div";
               return <fieldset className="draft-group-control" key={componentType}>
-                <legend>{label}</legend>
-                {options.map(option => <label className="draft-group-option" data-selected={picked === option.groupNumber || undefined} key={option.groupNumber}>
-                  <input type="radio" name={`${offering._id}-${componentType}`} checked={picked === option.groupNumber}
-                    disabled={!option.valid} onChange={() => setGroup(offering._id, componentType, option.groupNumber)} />
-                  <strong>Group {option.groupNumber}</strong>
-                  <span className="draft-meetings">{option.slots.map(slot => <span key={slot.slotGroupId}>{draftMeetingLabel(slot)}</span>)}</span>
-                  <span className="draft-group-seats">{!option.valid ? "Unavailable" : !option.availableSeats && !option.reservedForStudent ? (editable ? "Full · validation only" : "Full") : seatAvailability(option)}
-                    {option.preferredPriorities[0] && ` · Preferred #${option.preferredPriorities[0]}`}</span>
-                </label>)}
+                <legend>{label}{options.length === 1 ? "" : "s"}</legend>
+                {options.map(option => {
+                  const chosen = picked === option.groupNumber;
+                  const priority = option.preferredPriorities[0];
+                  return <GroupRow className="draft-group-option" data-selected={chosen || undefined} key={option.groupNumber}>
+                    {editable && <input type="radio" name={`${offering._id}-${componentType}`} checked={chosen}
+                      disabled={!option.valid} onChange={() => setGroup(offering._id, componentType, option.groupNumber)} />}
+                    <span className="draft-group-name"><strong>Group {option.groupNumber}</strong>{chosen && <small aria-hidden={editable || undefined}>Selected</small>}</span>
+                    <span className="draft-meetings">{option.slots.map(slot => <span className="draft-meeting" key={slot.slotGroupId}>
+                      <span><strong>{slot.day}</strong><span className="draft-meeting-time">{slot.startTime}–{slot.endTime}</span></span>
+                      <small>{slot.room}</small>
+                    </span>)}</span>
+                    <span className="draft-group-seats">
+                      <span>{!option.valid ? "Unavailable" : option.reservedForStudent ? "Seat reserved" : !option.availableSeats ? (editable ? "Full · validation only" : "Full") : seatAvailability(option)}</span>
+                      {priority && <small>Preferred #{priority}</small>}
+                    </span>
+                  </GroupRow>;
+                })}
                 {!options.length && <p className="draft-group-summary">No groups available.</p>}
                 <div className="draft-group-summary" aria-live="polite">
                   {editable && group?.valid && !group.availableSeats && !group.reservedForStudent ? <span>Group full. Check validation or choose another group.</span>
                     : editable && picked !== saved ? <span>{saved ? `Group ${saved} stays assigned until you save.` : "Save to reserve this seat."}</span>
-                    : group?.reservedForStudent ? <span className="status-pill good">Saved · seat reserved</span>
-                    : editable && group && <span>Seat reservation pending save.</span>}
+                    : editable && group && !group.reservedForStudent && <span>Seat reservation pending save.</span>}
                   {picked && editable && <button type="button" className="text-button" aria-label={`Clear ${label.toLowerCase()} for ${offering.course.code}`} onClick={() => setGroup(offering._id, componentType, "")}>Clear selection</button>}
                 </div>
               </fieldset>;
@@ -946,10 +991,6 @@ function seatAvailability(group) {
   return `${group.availableSeats} ${group.availableSeats === 1 ? "seat" : "seats"} left`;
 }
 
-function draftMeetingLabel(slot) {
-  return `${slot.day} ${slot.startTime}–${slot.endTime}, ${slot.room}`;
-}
-
 function formatDraftDate(value) { return value ? new Date(value).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short", timeZone: "Africa/Cairo" }) + " Cairo" : "—"; }
 
 function buildDraftWeek(selections, offerings) {
@@ -1059,7 +1100,24 @@ function EligibleCoursesPanel({ token, student, termQuery, editable, notify, ver
         </RegisterRow>)}
       </StudentRegister>
     </> : search && <p className="draft-empty-result">No eligible course matches your search.</p>}
-    {result?.excluded?.length > 0 && <details className="excluded-courses"><summary>Unavailable courses <span>{result.excluded.length}</span></summary><ul className="excluded-course-list">{result.excluded.map((entry) => <li key={entry._id}><div className="excluded-course-identity"><OfferingCourseIcon code={entry.code} /><div className="excluded-course-name"><span>{entry.code}</span><strong>{entry.name}</strong></div></div><div className="excluded-course-reason">{entry.reason === "unmetPrerequisites" && entry.missingPrerequisites?.length ? <><span>Complete first</span><div className="prerequisite-codes">{entry.missingPrerequisites.map(course => <span key={course.code} title={course.name}>{course.code}</span>)}</div></> : <span>{entry.message}</span>}</div></li>)}</ul></details>}
+    {result?.excluded?.length > 0 && <section className="draft-unavailable" aria-labelledby="draft-unavailable-title">
+      <div className="draft-unavailable-heading">
+        <h2 id="draft-unavailable-title">Unavailable courses</h2>
+        <span className="result-count">{result.excluded.length}</span>
+      </div>
+      <ul className="excluded-course-list">{result.excluded.map((entry) => <li key={entry._id}>
+        <div className="excluded-course-identity">
+          <OfferingCourseIcon code={entry.code} />
+          <div className="excluded-course-name"><strong>{entry.name}</strong><span>{entry.code}</span></div>
+        </div>
+        <div className="excluded-course-reason">
+          {entry.reason === "unmetPrerequisites" && entry.missingPrerequisites?.length ? <>
+            <span>Complete first</span>
+            <div className="prerequisite-codes">{entry.missingPrerequisites.map(course => <span key={course.code} title={course.name}>{course.code}</span>)}</div>
+          </> : <span>{entry.message}</span>}
+        </div>
+      </li>)}</ul>
+    </section>}
   </section>;
 }
 
@@ -1069,8 +1127,11 @@ function MandatoryCoursesPanel({ data, editable, busy, onSave }) {
   useEffect(() => { setPicked(new Set(available.filter((course) => course.inDraft).map((course) => course._id))); }, [data.schedule?.version]);
   const summary = data.mandatorySummary;
   const toggle = (id) => { const next = new Set(picked); next.has(id) ? next.delete(id) : next.add(id); onSave([...next]); };
-  return <section className="panel mandatory-panel" id="draft-mandatory">
-    <div className="draft-mandatory-heading"><h2>Mandatory courses</h2><span>{summary?.mandatoryHours ?? 0} / {summary?.allowedHours ?? data.creditPolicy.maximumCreditHours} h used</span></div>
+  if (!data.mandatoryCourses.length) return <section className="draft-mandatory-heading mandatory-clear" id="draft-mandatory" aria-labelledby="draft-mandatory-title">
+    <h2 id="draft-mandatory-title">Mandatory courses</h2><span className="status-pill good">None required this term</span>
+  </section>;
+  return <section className="panel mandatory-panel" id="draft-mandatory" aria-labelledby="draft-mandatory-title">
+    <div className="draft-mandatory-heading"><h2 id="draft-mandatory-title">Mandatory courses</h2><span>{summary?.mandatoryHours ?? 0} / {summary?.allowedHours ?? data.creditPolicy.maximumCreditHours} h used</span></div>
     <ul className="mandatory-list">{data.mandatoryCourses.map(course => <li key={course._id}>
       <label className="draft-required-course">
         {course.availableForTerm && <input type="checkbox" checked={picked.has(course._id)} disabled={!editable || busy} onChange={() => toggle(course._id)} />}
@@ -1144,14 +1205,16 @@ function AdvisingOverviewPanel({ overview, token, student, termQuery, canEdit, n
   }
   return <section className="student-advising-record" aria-label="Advising overview">
     <section className="advising-load" aria-labelledby="student-allowance-title">
-      <header><h2 id="student-allowance-title">Credit allowance</h2><p>{overview.academicStanding === "probation" ? "Academic probation" : "Good academic standing"}</p></header>
+      <h2 id="student-allowance-title">Credit allowance</h2>
       <dl className="advising-load-numbers">
-        <div><dt>Allowed this term</dt><dd>{hours.allowedHours ?? "—"} <small>h</small></dd></div>
-        <div><dt>Approved extra hours</dt><dd>{hours.approvedExtraHours ?? "—"} <small>h</small></dd></div>
-        <div><dt>Maximum this term</dt><dd>{hours.maximumCreditHours ?? "—"} <small>h</small></dd></div>
+        <div className="advising-load-maximum"><dt className="preference-sr">Maximum this term</dt>
+          <dd><strong>{hours.maximumCreditHours ?? "—"}</strong><span>credit hours<br />maximum this term</span></dd>
+        </div>
+        <div className="advising-load-detail"><dt>Allowed this term</dt><dd>{hours.allowedHours ?? "—"} h</dd></div>
+        <div className="advising-load-detail"><dt>Approved extra hours</dt><dd>{hours.approvedExtraHours ?? "—"} h</dd></div>
       </dl>
       {(hours.probation || hours.standardAllowance == null || hours.standardAllowance !== hours.allowedHours) && <p className="advising-load-policy">Standard allowance {hours.standardAllowance == null ? "not configured" : `${hours.standardAllowance} h`}.{hours.probation && ` Probation reduces the allowance by ${hours.reductionForProbation} h. Extra hours are unavailable during probation.`}</p>}
-      <div className="advising-record-reason"><span>Advising reason</span><strong>{ADVISING_REASONS[overview.advisingReason] || overview.advisingReason || "Not recorded"}</strong></div>
+      <div className="advising-record-reason"><span>Advising reason</span><strong>{ADVISING_REASONS[overview.advisingReason] || overview.advisingReason || "Not recorded"}</strong><span>{overview.academicStanding === "probation" ? "Academic probation" : "Good academic standing"}</span></div>
     </section>
     <section className="advising-project" aria-labelledby="student-project-title">
       <header className="advising-project-heading"><img src="/portal-studio/images/graduation-cap.svg" width="62" height="48" alt="" /><div><h2 id="student-project-title">Bachelor project</h2><span className={`status-pill ${bachelor.eligible ? "good" : "warning"}`}>{bachelor.eligible ? "Eligible" : "Not eligible"}</span></div>
@@ -1187,7 +1250,13 @@ function ProjectRequirements({ bachelor }) {
     <div className="project-requirements-toolbar"><div className="project-course-types" role="group" aria-label="Outstanding course category">
       {[["english", "English courses", english.length], ["core", "Semester 1–6 courses", core.length]].map(([key, label, count]) => <button key={key} type="button" aria-pressed={group === key} onClick={() => {setGroup(key); setPage(1);}}>{label} <span>{count}</span></button>)}
     </div>
-    {group === "core" && semesterNumbers.length > 1 && <label className="project-semester">Semester <select value={semester} onChange={event => {setSemester(event.target.value); setPage(1);}}><option value="">All semesters</option>{semesterNumbers.map(number => <option key={number} value={number}>Semester {number}</option>)}</select></label>}</div>
+    </div>
+    {group === "core" && semesterNumbers.length > 1 && <div className="project-semester" role="group" aria-label="Filter by semester">
+      <span>Semester</span>
+      {["", ...semesterNumbers.map(String)].map(number => <button key={number} type="button"
+        aria-label={number ? `Semester ${number}` : "All semesters"} aria-pressed={semester === number}
+        onClick={() => {setSemester(number); setPage(1);}}>{number || "All"}</button>)}
+    </div>}
     {courses.length ? <ul className="project-course-list" aria-label="Outstanding courses">{courses.slice((currentPage - 1) * size, currentPage * size).map(course => <li key={course._id || course.code}>
       <OfferingCourseIcon code={course.code} /><div><strong>{course.name || course.code}</strong>{course.name && <small>{course.code}</small>}</div>
       {course.recommendedSemester && <span>Semester {course.recommendedSemester}</span>}

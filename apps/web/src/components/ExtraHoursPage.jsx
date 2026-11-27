@@ -1,11 +1,12 @@
 import { termLabel } from "../term-label.js";
-import { Fragment, useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api.js";
 import { WorkspaceHeader } from "./WorkspaceUI.jsx";
 import { RegisterRow, StudentIdentity, StudentRegister, RecordPages } from "./CoordinatorRecords.jsx";
 import FilterDisclosure from "./FilterDisclosure.jsx";
 import OfferingCourseIcon from "./OfferingCourseIcon.jsx";
 import ExtraHoursRequestForm from "./ExtraHoursRequestForm.jsx";
+import { Modal } from "./AcademicWorkspace.jsx";
 
 const emptyFilters = { studentId: "", advisorId: "", decisionStatus: "", settlementOption: "", settlementStatus: "" };
 const pretty = (value = "—") =>
@@ -39,20 +40,24 @@ export default function ExtraHoursPage({
   const [rows, setRows] = useState([]);
   const [filters, setFilters] = useState(emptyFilters);
   const [opened, setOpened] = useState(null);
+  const reviewTrigger = useRef(null);
+  const reviewStatus = useRef(null);
+  const filterSearch = useRef(null);
   const [page, setPage] = useState(1);
   const [advisors, setAdvisors] = useState([]);
   const [history, setHistory] = useState([]);
   const [walletBalance, setWalletBalance] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [reviewError, setReviewError] = useState("");
   const [busyId, setBusyId] = useState("");
   const [notes, setNotes] = useState({});
   const pendingCheckouts = new Set(history.filter((item) =>
     item.kind === "gatewayPayment" && item.status === "pending" && item.metadata?.stripeCheckout
   ).map((item) => String(item.extraHoursRequest?._id)));
   const query = coordinator ? new URLSearchParams(Object.entries(filters).filter(([, value]) => value)).toString() : "";
-  const load = useCallback(async (signal) => {
-    setLoading(true);
+  const load = useCallback(async ({ signal, background = false } = {}) => {
+    if (!background) setLoading(true);
     setError("");
     try {
       if (student) {
@@ -77,12 +82,12 @@ export default function ExtraHoursPage({
     } catch (e) {
       if (!signal?.aborted) setError(e.message || "Unable to load extra-hours requests.");
     } finally {
-      if (!signal?.aborted) setLoading(false);
+      if (!background && !signal?.aborted) setLoading(false);
     }
   }, [token, student, advisor, query]);
   useEffect(() => {
     const controller = new AbortController();
-    load(controller.signal);
+    load({ signal: controller.signal });
     setPage(1);
     return () => controller.abort();
   }, [load]);
@@ -119,11 +124,19 @@ export default function ExtraHoursPage({
     void checkCheckout(id, result === "cancel", attemptId);
   }, [checkCheckout, student]);
 
+  async function refreshReview(row, updated) {
+    const reviewed = { ...updated, student: row.student };
+    setOpened(reviewed);
+    setRows(current => current.map(request => request._id === row._id ? reviewed : request));
+    requestAnimationFrame(() => reviewStatus.current?.focus());
+    await load({ background: true });
+  }
+
   const decision = async (row, value) => {
     setBusyId(row._id);
-    setError("");
+    setReviewError("");
     try {
-      await api(`/api/extra-hours/${row._id}/decision`, {
+      const updated = await api(`/api/extra-hours/${row._id}/decision`, {
         token,
         method: "POST",
         body: { decision: value, responseNote: notes[row._id] || "" },
@@ -134,26 +147,26 @@ export default function ExtraHoursPage({
           ? "Extra hours approved."
           : "Decision saved. The extra hours request was rejected.",
       );
-      await load();
+      await refreshReview(row, updated);
     } catch (e) {
-      setError(e.message);
+      setReviewError(e.message);
     } finally {
       setBusyId("");
     }
   };
   const withdraw = async (row) => {
     setBusyId(row._id);
-    setError("");
+    setReviewError("");
     try {
-      await api(`/api/extra-hours/${row._id}/withdraw`, {
+      const updated = await api(`/api/extra-hours/${row._id}/withdraw`, {
         token,
         method: "POST",
         body: {},
       });
       notify("success", "Extra hours request withdrawn.");
-      await load();
+      await refreshReview(row, updated);
     } catch (e) {
-      setError(e.message);
+      setReviewError(e.message);
     } finally {
       setBusyId("");
     }
@@ -212,12 +225,24 @@ export default function ExtraHoursPage({
       setError(e.message || "Unable to download confirmation.");
     }
   };
-  const refresh = <button type="button" className={staff ? "text-button" : "outline-button"}
-    disabled={loading} onClick={() => load()}>{loading ? "Refreshing…" : "Refresh"}</button>;
+  function openReview(row, trigger) {
+    reviewTrigger.current = trigger;
+    setReviewError("");
+    setOpened(row);
+  }
+
+  function closeReview() {
+    if (busyId === opened._id) return;
+    const trigger = reviewTrigger.current;
+    setOpened(null);
+    requestAnimationFrame(() => {
+      (trigger?.isConnected ? trigger : filterSearch.current)?.focus();
+    });
+  }
+
   function updateFilters(next) {
     setFilters(next);
     setPage(1);
-    setOpened(null);
   }
 
   const walletSummary = student && (
@@ -238,14 +263,7 @@ export default function ExtraHoursPage({
   const currentPage = Math.min(page, Math.max(1, Math.ceil(visibleRows.length / size)));
   return (
     <div className="page-stack workspace-page extra-hours-page">
-      {embedded ? (
-        <div className="extra-hours-toolbar" hidden={staff}>
-          <div className="extra-hours-account">
-            {walletSummary}
-          </div>
-          <div className="extra-hours-toolbar-actions">{student && refresh}</div>
-        </div>
-      ) : (
+      {!embedded && (
         <WorkspaceHeader
           title="Extra-hours requests"
           description={
@@ -255,15 +273,15 @@ export default function ExtraHoursPage({
                 ? "Track the extra-hours requests you have submitted for your students."
                 : "Review eligibility and costs before deciding an extra-hours request."
           }
-          action={student && refresh}
         />
       )}
-      {!embedded && walletSummary}
+      {walletSummary}
       {staff && !composing && (
         <section className="extra-filters" aria-label="Filter requests">
           <FilterDisclosure floating search={<label className="field filter-search">
               <span>Student ID</span>
               <input
+                ref={filterSearch}
                 name="extra-hours-student"
                 autoComplete="off"
                 value={filters.studentId}
@@ -273,8 +291,7 @@ export default function ExtraHoursPage({
                 placeholder="e.g. 64-12345…"
               />
             </label>} actions={<>
-            <button type="button" className="text-button" disabled={!filtered} onClick={() => updateFilters(emptyFilters)}>Clear</button>
-            {refresh}
+            <button type="button" className="outline-button extra-clear-button" disabled={!filtered} onClick={() => updateFilters(emptyFilters)}>Clear</button>
             {advisor && <button type="button" className="primary-button"
               onClick={() => setComposing(true)}>New request</button>}</>}
             chips={Object.entries(filters).filter(([key,value]) => key !== "studentId" && value).map(([key,value]) => ({
@@ -389,98 +406,29 @@ export default function ExtraHoursPage({
       ) : (
         <Queue {...(staff ? { label: "Extra-hours requests", className: "extra-register", columns: ["Student", "Request", "Amount / status", "Action"] } : {})}>
           {(staff ? visibleRows.slice((currentPage - 1) * size, currentPage * size) : rows).map(row => {
-            const payment = staff && paymentStates[row.settlementStatus];
-            const summary = <div className="extra-request-summary">
-                <span
-                  className={`status-pill ${row.decisionStatus === "approved" ? "good" : row.decisionStatus === "rejected" ? "danger" : row.decisionStatus === "pending" ? "warning" : "muted"}`}
-                >
-                  {pretty(row.decisionStatus)}
-                  {student && row.settlementStatus && row.settlementStatus !== "none"
-                    ? ` · ${pretty(row.settlementStatus)}`
-                    : ""}
-                </span>
-                <dl className="extra-request-price">
-                  <dt>Request total</dt>
-                  <dd>{money(row.totalCost)}</dd>
-                </dl>
-                {payment && <span className="extra-payment-state" data-tone={payment.tone}>{payment.label}</span>}
-              </div>;
-            const events = row.history?.length ? row.history : [
-              row.createdAt && { action: "submitted", occurredAt: row.createdAt },
-              row.decidedAt && { action: row.decisionStatus, occurredAt: row.decidedAt },
-            ].filter(Boolean);
-            const detail = (!staff || opened === row._id) && <div className="extra-review-sheet" id={"extra-detail-" + row._id}>
-              {staff && <dl className="extra-sheet-heading">
-                <div><dt>Term</dt><dd>{termLabel(row.term)}</dd></div>
-                <div><dt>Requested by</dt><dd>{row.advisor?.fullName || "—"}</dd></div>
-                <div className="extra-reference"><dt>Request reference</dt><dd>{row._id}</dd></div>
-              </dl>}
-              <div className="extra-sheet-columns">
-                <section className="extra-sheet-courses">
-                  <h3>Requested courses</h3>
-                  <ul>{row.courses?.map(item => <li key={item.course?._id || item._id || item.course}>
-                    <OfferingCourseIcon code={item.course?.code} />
-                    <div><strong>{item.course?.name || item.course?.code || "Course"}</strong>
-                      <small>{[item.course?.code, `${item.hours} ${item.hours === 1 ? "hour" : "hours"} × ${money(item.pricePerHour)}`, item.isRepeated && "Repeated course"].filter(Boolean).join(" · ")}</small></div>
-                    <span>{money(item.subtotal)}</span>
-                  </li>)}</ul>
-                  <div className="extra-sheet-total"><span>Request total</span><strong>{money(row.totalCost)}</strong></div>
-                </section>
-                <section className="extra-sheet-load">
-                  <h3>Study load</h3>
-                  <dl>
-                    <div><dt>Current hours</dt><dd>{row.eligibilitySnapshot?.hoursBeforeRequest ?? "—"}</dd></div>
-                    <div><dt>Requested hours</dt><dd>{row.requestedHours ?? "—"}</dd></div>
-                    <div className="extra-load-total"><dt>Hours after request</dt><dd>{row.eligibilitySnapshot?.hoursAfterRequest ?? "—"}</dd></div>
-                    <div><dt>Standard allowance</dt><dd>{row.eligibilitySnapshot?.standardAllowance ?? "—"} hours</dd></div>
-                    <div><dt>Graduating within one year</dt><dd>{row.eligibilitySnapshot?.graduatingWithinOneYear == null ? "—" : row.eligibilitySnapshot.graduatingWithinOneYear ? "Yes" : "No"}</dd></div>
-                  </dl>
-                  {row.eligibilitySnapshot?.isProbation && <p className="feedback error">Ineligible due to academic probation</p>}
-                </section>
+            const summary = <RequestSummary row={row} student={student} />;
+            if (staff) return <RegisterRow key={row._id} className="extra-student-row">
+              <StudentIdentity name={row.student?.user?.fullName} id={row.student?.studentId} />
+              <div className="extra-request-subject">
+                <strong>{row.requestedHours} extra credit {row.requestedHours === 1 ? "hour" : "hours"}</strong>
+                {row.courses?.map(item => <span className="extra-course-preview" key={item.course?._id || item._id}>
+                  <OfferingCourseIcon code={item.course?.code} /><small>{item.course?.name || item.course?.code || "Course"}</small>
+                </span>)}
               </div>
-              <section className="extra-sheet-history">
-                <h3>Request history</h3>
-                {events.length ? <ol>{events.map((entry, index) => <li key={entry._id || index}>
-                  <time dateTime={entry.occurredAt}>{date(entry.occurredAt)}</time>
-                  <div>
-                    <strong>{pretty(entry.action)}</strong>
-                    {paymentStates[entry.settlementStatus] && <small>{paymentStates[entry.settlementStatus].label}</small>}
-                    {entry.note && entry.note !== row.decisionNote && <p>{entry.note}</p>}
-                  </div>
-                </li>)}</ol> : <p>No history recorded yet.</p>}
-              </section>
-              {row.decisionNote && <section className="extra-sheet-response"><h3>Coordinator response</h3><p>{row.decisionNote}</p></section>}
-                {role === "coordinator" && row.decisionStatus === "pending" && (
-                  <div className="form-stack">
-                    <label className="field">
-                      <span>Response note (required)</span>
-                      <textarea
-                        rows={2}
-                        maxLength={1000}
-                        value={notes[row._id] || ""}
-                        onChange={(e) =>
-                          setNotes({ ...notes, [row._id]: e.target.value })
-                        }
-                      />
-                    </label>
-                    <div className="form-actions">
-                      <button
-                        className="outline-button"
-                        disabled={busyId === row._id || !notes[row._id]?.trim()}
-                        onClick={() => decision(row, "rejected")}
-                      >
-                        Reject
-                      </button>
-                      <button
-                        className="primary-button"
-                        disabled={busyId === row._id || !notes[row._id]?.trim()}
-                        onClick={() => decision(row, "approved")}
-                      >
-                        Approve request
-                      </button>
-                    </div>
-                  </div>
-                )}
+              {summary}
+              <button type="button" className="outline-button" aria-haspopup="dialog" onClick={event => openReview(row, event.currentTarget)}>
+                {coordinator && row.decisionStatus === "pending" ? "Review request" : "View request"}
+              </button>
+            </RegisterRow>;
+            return <article className="extra-request" key={row._id}>
+              <header className="extra-request-row"><div><h2>{row.student?.user?.fullName || "Your request"} {row.student?.studentId ? `· ${row.student.studentId}` : ""}</h2>
+                <p className="helper-text">{termLabel(row.term)} · Request {row._id.slice(-8)}</p>
+                <dl className="extra-request-meta"><div><dt>Advisor</dt><dd>{row.advisor?.fullName || "—"}</dd></div>
+                  <div><dt>Submitted</dt><dd>{date(row.createdAt)}</dd></div></dl>
+              </div>
+                {summary}
+              </header>
+              <RequestDetails row={row}>
                 {student &&
                   row.decisionStatus === "approved" &&
                   row.settlementStatus === "awaitingChoice" && (
@@ -545,49 +493,50 @@ export default function ExtraHoursPage({
                     your next university installment. Download its confirmation below.
                   </div>
                 )}
-                {!student &&
-                  role === "advisor" &&
-                  row.decisionStatus === "pending" && (
-                    <div className="form-actions">
-                      <button
-                        className="text-button danger-text"
-                        disabled={busyId === row._id}
-                        onClick={() => withdraw(row)}
-                      >
-                        Withdraw request
-                      </button>
-                    </div>
-                  )}
-            </div>;
-            if (staff) return <Fragment key={row._id}>
-              <RegisterRow className="extra-student-row">
-                <StudentIdentity name={row.student?.user?.fullName} id={row.student?.studentId} />
-                <div className="extra-request-subject">
-                  <strong>{row.requestedHours} extra credit {row.requestedHours === 1 ? "hour" : "hours"}</strong>
-                  {row.courses?.map(item => <span className="extra-course-preview" key={item.course?._id || item._id}>
-                    <OfferingCourseIcon code={item.course?.code} /><small>{item.course?.name || item.course?.code || "Course"}</small>
-                  </span>)}
-                </div>
-                {summary}
-                <button type="button" className="outline-button" aria-expanded={opened === row._id} aria-controls={"extra-detail-" + row._id}
-                onClick={() => setOpened(opened === row._id ? null : row._id)}>{opened === row._id ? "Close details" : coordinator && row.decisionStatus === "pending" ? "Review request" : "View request"}</button>
-              </RegisterRow>
-              {detail && <tr className="register-detail-row"><td colSpan={4}>{detail}</td></tr>}
-            </Fragment>;
-            return <article className="extra-request" key={row._id}>
-              <header className="extra-request-row"><div><h2>{row.student?.user?.fullName || "Your request"} {row.student?.studentId ? `· ${row.student.studentId}` : ""}</h2>
-                <p className="helper-text">{termLabel(row.term)} · Request {row._id.slice(-8)}</p>
-                <dl className="extra-request-meta"><div><dt>Advisor</dt><dd>{row.advisor?.fullName || "—"}</dd></div>
-                  <div><dt>Submitted</dt><dd>{date(row.createdAt)}</dd></div></dl>
-              </div>
-                {summary}
-              </header>
-              {detail}
+              </RequestDetails>
             </article>;
           })}
         </Queue>
       )}
       {staff && <RecordPages page={currentPage} size={size} total={visibleRows.length} onChange={setPage} label="Requests" />}
+      {opened && <Modal title="Extra-hours request" className="extra-request-dialog" onClose={closeReview} wide>
+        <div className="extra-review-intro">
+          <div className="extra-review-student">
+            <StudentIdentity name={opened.student?.user?.fullName} id={opened.student?.studentId} />
+          </div>
+          <RequestSummary row={opened} statusRef={reviewStatus} />
+          <dl className="extra-review-meta">
+            <div><dt>Term</dt><dd>{termLabel(opened.term)}</dd></div>
+            <div><dt>Requested by</dt><dd>{opened.advisor?.fullName || "—"}</dd></div>
+            <div><dt>Submitted</dt><dd><time dateTime={opened.createdAt}>{date(opened.createdAt)}</time></dd></div>
+          </dl>
+        </div>
+        <RequestDetails row={opened} staff>
+          {opened.decisionStatus === "pending" && <div className="extra-review-actions">
+            {reviewError && <div className="feedback error" role="alert">{reviewError}</div>}
+            {coordinator && <>
+              <label className="field">
+                <span>Response note (required)</span>
+                <textarea rows={2} maxLength={1000} value={notes[opened._id] || ""}
+                  onChange={event => setNotes({ ...notes, [opened._id]: event.target.value })} />
+              </label>
+              <div className="form-actions">
+                <button type="button" className="outline-button"
+                  disabled={busyId === opened._id || !notes[opened._id]?.trim()}
+                  onClick={() => decision(opened, "rejected")}>Reject</button>
+                <button type="button" className="primary-button"
+                  disabled={busyId === opened._id || !notes[opened._id]?.trim()}
+                  onClick={() => decision(opened, "approved")}>Approve request</button>
+              </div>
+            </>}
+            {advisor && <div className="form-actions">
+              <button type="button" className="text-button danger-text"
+                disabled={busyId === opened._id}
+                onClick={() => withdraw(opened)}>Withdraw request</button>
+            </div>}
+          </div>}
+        </RequestDetails>
+      </Modal>}
       {student && (
         <section className="extra-financial">
           <h2>Payments and deferred charges</h2>
@@ -661,4 +610,71 @@ export default function ExtraHoursPage({
       )}
     </div>
   );
+}
+
+function RequestSummary({ row, student = false, statusRef }) {
+  const payment = !student && paymentStates[row.settlementStatus];
+  const tone = { approved: "good", rejected: "danger", pending: "warning" }[row.decisionStatus] || "muted";
+  return <div className="extra-request-summary">
+    <span className={`status-pill ${tone}`} ref={statusRef} tabIndex={statusRef ? -1 : undefined}>
+      {pretty(row.decisionStatus)}
+      {student && row.settlementStatus && row.settlementStatus !== "none" ? ` · ${pretty(row.settlementStatus)}` : ""}
+    </span>
+    <dl className="extra-request-price">
+      <dt>Request total</dt>
+      <dd>{money(row.totalCost)}</dd>
+    </dl>
+    {payment && <span className="extra-payment-state" data-tone={payment.tone}>{payment.label}</span>}
+  </div>;
+}
+
+function RequestDetails({ row, staff = false, children }) {
+  const events = row.history?.length ? row.history : [
+    row.createdAt && { action: "submitted", occurredAt: row.createdAt },
+    row.decidedAt && { action: row.decisionStatus, occurredAt: row.decidedAt },
+  ].filter(Boolean);
+  const eligibility = row.eligibilitySnapshot;
+  return <div className="extra-review-sheet">
+    <div className="extra-sheet-columns">
+      <section className="extra-sheet-courses">
+        <h3>Requested courses</h3>
+        <ul>{row.courses?.map(item => <li key={item.course?._id || item._id || item.course}>
+          <OfferingCourseIcon code={item.course?.code} />
+          <div>
+            <strong>{item.course?.name || item.course?.code || "Course"}</strong>
+            <small>{[item.course?.code, `${item.hours} ${item.hours === 1 ? "hour" : "hours"} × ${money(item.pricePerHour)}`, item.isRepeated && "Repeated course"].filter(Boolean).join(" · ")}</small>
+          </div>
+          <span>{money(item.subtotal)}</span>
+        </li>)}</ul>
+        {!staff && <div className="extra-sheet-total"><span>Request total</span><strong>{money(row.totalCost)}</strong></div>}
+      </section>
+      <section className="extra-sheet-load">
+        <h3>Study load</h3>
+        <dl>
+          <div><dt>Current hours</dt><dd>{eligibility?.hoursBeforeRequest ?? "—"}</dd></div>
+          <div><dt>Requested hours</dt><dd>{row.requestedHours ?? "—"}</dd></div>
+          <div className="extra-load-total"><dt>Hours after request</dt><dd>{eligibility?.hoursAfterRequest ?? "—"}</dd></div>
+          <div><dt>Standard allowance</dt><dd>{eligibility?.standardAllowance == null ? "—" : `${eligibility.standardAllowance} hours`}</dd></div>
+          <div><dt>Graduating within one year</dt><dd>{eligibility?.graduatingWithinOneYear == null ? "—" : eligibility.graduatingWithinOneYear ? "Yes" : "No"}</dd></div>
+        </dl>
+        {eligibility?.isProbation && <p className="feedback error">Ineligible due to academic probation</p>}
+      </section>
+    </div>
+    <section className="extra-sheet-history">
+      <div className="extra-history-heading">
+        <h3>Request history</h3>
+        {staff && <dl className="extra-reference"><dt>Request reference</dt><dd>{row._id}</dd></dl>}
+      </div>
+      {events.length ? <ol>{events.map((entry, index) => <li key={entry._id || index}>
+        <time dateTime={entry.occurredAt}>{date(entry.occurredAt)}</time>
+        <div>
+          <strong>{pretty(entry.action)}</strong>
+          {paymentStates[entry.settlementStatus] && <small>{paymentStates[entry.settlementStatus].label}</small>}
+          {entry.note && entry.note !== row.decisionNote && <p>{entry.note}</p>}
+        </div>
+      </li>)}</ol> : <p>No history recorded yet.</p>}
+    </section>
+    {row.decisionNote && <section className="extra-sheet-response"><h3>Coordinator response</h3><p>{row.decisionNote}</p></section>}
+    {children}
+  </div>;
 }

@@ -10,6 +10,14 @@ import { WorkspaceHeader, WorkspaceEmpty, displayLabel } from "./WorkspaceUI.jsx
 
 const dateValue = (value) => value ? new Date(value).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "—";
 const requestDestinations = { extraHours: "extra-hours", slotChange: "slot-changes", mandatoryCourseRemoval: "mandatory-removals", graduationPlan: "graduation-plans", exitExam: "graduation-plans", financialReversal: "financial-records" };
+const requestArtwork = {
+  wholeScheduleSwap: "schedule-exchange.svg",
+  slotChange: "schedule-exchange.svg",
+  mandatoryCourseRemoval: "course-removal-slip.svg",
+  graduationPlan: "graduation-cap.svg",
+  exitExam: "symbols/management-checklist.svg",
+};
+const requestIcons = { extraHours: "clock", financialReversal: "coins" };
 const requestStatusLabel = (request) => {
   if (request.type !== "extraHours") return displayLabel(request.status);
   if (request.status === "pending") return "Awaiting coordinator decision";
@@ -67,20 +75,23 @@ function StudentWorkDetail({ student, term, requestType, requestsOnly, onClose }
 function WorkflowRow({ student, requestType, term, onOpen }) {
   const requests = student.requests.filter(item => !requestType || item.type === requestType);
   const scheduleUrl = scheduleDestination(student, term);
-  const hours = requests.length === 1 && requests[0].type === "extraHours" && requests[0].requestedHours;
+  const singleRequest = requests.length === 1 ? requests[0] : null;
+  const artwork = requestArtwork[singleRequest?.type];
+  const hours = singleRequest?.type === "extraHours" && singleRequest.requestedHours;
   const subject = hours ? `${hours} extra ${hours === 1 ? "hour" : "hours"}`
-    : requests.length === 1 ? requestTitle(requests[0]) : requestCount(requests.length);
+    : singleRequest ? requestTitle(singleRequest) : requestCount(requests.length);
   return <tr className="workflow-record" role="row">
-    <td role="cell"><button type="button" className="workflow-student" onClick={() => onOpen({ student })} aria-label={`View workflow for ${student.fullName || student.studentId}`}>
+    <td role="cell"><button type="button" className="workflow-student" aria-haspopup="dialog"
+      onClick={() => onOpen({ student })} aria-label={`View workflow for ${student.fullName || student.studentId}`}>
       <StudentIdentity name={student.fullName} id={student.studentId} />
-      <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m6 4 4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
     </button></td>
     <td role="cell">{displayLabel(student.workflowStatus)}</td>
     <td role="cell">{scheduleUrl ? <a className="outline-button workflow-action" href={scheduleUrl} aria-label={`${student.blockingStep} for ${student.fullName || student.studentId}`}>{student.blockingStep}</a> : student.blockingStep || "None"}</td>
     <td role="cell">{requests.length ? <button type="button" className="workflow-request-link" aria-haspopup="dialog"
       onClick={() => onOpen({ student, requestType, requestsOnly:true })}
       aria-label={`View ${subject.toLowerCase()} for ${student.fullName || student.studentId}`}>
-      <ChromeIcon name="document" />
+      {artwork ? <img src={`/portal-studio/images/${artwork}`} width="30" height="28" alt="" />
+        : <ChromeIcon name={requestIcons[singleRequest?.type] || "document"} />}
       <span>{subject}</span>
     </button> : <span className="workflow-none">No requests</span>}</td>
   </tr>;

@@ -74,19 +74,20 @@
 & .workflow-register .register-person small { display:block; margin-top:3px; color:var(--muted); font-size:13px; line-height:1.4; }
 & .workflow-register .register-person .portal-person-avatar { width:39px; height:39px; flex-basis:39px; }
 & .workflow-register .workflow-student {
-  display:inline-flex; align-items:center; gap:7px; max-width:100%; margin:0; padding:2px;
+  display:inline-flex; align-items:center; min-height:44px; max-width:100%; margin-inline-start:-4px; padding:2px 6px;
   border:0; border-radius:6px; color:inherit; background:none; text-align:start; cursor:pointer;
 }
-.workflow-student svg { width:14px; height:14px; flex:none; color:var(--muted); }
+& .workflow-register .workflow-student:is(:hover,:focus-visible) { background:var(--raised); }
+.workflow-student:is(:hover,:focus-visible) strong { text-decoration:underline; text-underline-offset:3px; }
 & .pending-workspace .workflow-action { min-height:36px; max-width:100%; padding:6px 11px; border:1px solid var(--line); background:var(--paper); text-decoration:none; white-space:normal; font:500 14px/1.35 Styrene,system-ui,sans-serif; }
 & .pending-workspace .workflow-action:hover { background:var(--raised); border-color:var(--muted); }
 .workflow-request-link {
-  display:inline-flex; align-items:center; gap:6px; min-height:36px; max-width:100%;
+  display:inline-flex; align-items:center; gap:7px; min-height:36px; max-width:100%;
   padding:4px 6px; margin-inline-start:-6px; border:0; border-radius:6px;
   color:var(--ink); background:transparent; cursor:pointer; text-align:start;
   font:500 13px/1.35 Styrene,system-ui,sans-serif;
 }
-.workflow-request-link svg { width:16px; height:16px; flex:none; color:var(--muted); }
+.workflow-request-link :is(svg,img) { width:30px; height:28px; flex:none; color:var(--muted); object-fit:contain; }
 .workflow-request-link:hover { background:var(--raised); }
 .workflow-none { color:var(--muted); }
 .pending-file { display:grid; gap:20px; }
@@ -155,7 +156,6 @@
 & .academic-services-embedded .graduation-register.table-scroll > table td { border-block-end:0; }
 & .academic-services-embedded .graduation-register.table-scroll > table tbody tr:hover { background:transparent; }
 & .graduation-register .register-person { min-width:130px; }
-& .extra-hours-page .extra-hours-toolbar[hidden] { display:none; }
 & .extra-hours-page .extra-filters { padding:0; background:transparent; border:0; }
 & :is(.extra-filters,.advising-filter-section) .field > span { font-weight:600; }
 & :is(.extra-filters,.advising-filter-section) .field :is(input, select) {
@@ -197,8 +197,6 @@
 .request-provenance dt { font-size:12px; color:var(--muted); }
 .request-provenance dd { margin:3px 0 0; overflow-wrap:anywhere; }
 & .extra-hours-page .extra-record-desk { padding-block:12px 20px; }
-.ledger-balance .record-amount { display:block; font-size:16px; }
-.ledger-currency { color:var(--muted); font-size:12px; }
 @media (max-width:700px) {
  &:is([data-service="directory"],[data-service="financial-records"],[data-service="schedule-activity"]) .academic-services-embedded :is(.workspace-header,.page-title-row) {
    flex-direction:row; align-items:center; gap:12px;
@@ -274,7 +272,13 @@
 .extra-payment-state[data-tone="good"] { color:var(--success-ink); }
 .extra-payment-state[data-tone="warning"] { color:var(--draft-ink); }
 .extra-payment-state[data-tone="danger"] { color:var(--danger-ink); }
-.finance-register { --column-2: "Transaction"; --column-3: "Amount"; --column-4: "Payment status"; }
+.finance-register {
+  --column-2: "Transaction";
+  --column-3: "Amount";
+  --column-4: "Payment status";
+  --ledger-currency-width: 27px;
+  --ledger-currency-gap: 8px;
+}
 .service-surface[data-staff-presentation] .academic-services-embedded .ledger-results .results-heading {
   justify-content:start;
   align-items:baseline;
@@ -286,8 +290,23 @@
   font-weight:500;
   font-variant-numeric:tabular-nums;
 }
-.finance-register .ledger-balance .record-amount { font-size:18px; font-weight:550; }
 .academic-services-embedded .finance-register > table :is(th,td).ledger-balance { text-align:end; }
+.finance-register .ledger-amount-heading { margin-inline-end:calc(var(--ledger-currency-width) + var(--ledger-currency-gap)); }
+.finance-register .ledger-value {
+  display:grid;
+  grid-template-columns:minmax(0,1fr) var(--ledger-currency-width);
+  align-items:baseline;
+  column-gap:var(--ledger-currency-gap);
+}
+.finance-register .ledger-value .record-amount {
+  font-size:16px;
+  font-weight:550;
+  line-height:1.4;
+  text-align:end;
+  white-space:normal;
+  overflow-wrap:anywhere;
+}
+.finance-register .ledger-currency { color:var(--muted); font-size:12px; text-align:start; }
 .finance-page .finance-register .ledger-actions { display:flex; justify-content:start; gap:8px; }
 .finance-register .ledger-actions > button { min-height:38px; padding-inline:10px; }
 .finance-register .ledger-reversal { width:136px; }
@@ -295,7 +314,7 @@
 .schedule-register .schedule-student-type { text-transform:capitalize; }
 .service-surface[data-staff-presentation] .schedule-register .roster-actions {
   justify-content:start;
-  gap:8px;
+  gap:var(--schedule-action-gap);
 }
 .service-surface[data-staff-presentation] .schedule-register .roster-actions > .outline-button {
   min-inline-size:132px;
@@ -310,7 +329,6 @@
 .service-surface[data-staff-presentation] .academic-services-embedded :is(.schedule-register,.finance-register).register-with-actions.table-scroll > table > :is(thead,tbody) > tr > :is(th,td):last-child {
   text-align:start;
 }
-.extra-register tr.register-detail-row > td { grid-column:1 / -1; }
 .slot-register-days { display:grid; gap:20px; }
 .slot-register-day { min-width:0; }
 .slot-register-day h3 { margin:0 0 8px; color:var(--ink); font:550 16px/1.4 Styrene,system-ui,sans-serif; }
@@ -409,8 +427,10 @@
   .student-register > table > tbody > tr > td:not(:last-child):nth-child(4)::before { content: var(--column-4); }
   .student-register > table > tbody > tr > td:not(:last-child):nth-child(5)::before { content: var(--column-5); }
   .activity-register > table > tbody > tr > td:last-child::before { content:var(--column-5); }
-  .academic-services-embedded .finance-register > table td.ledger-balance { text-align:start; }
-  .finance-register .ledger-balance .record-amount { font-size:16px; }
+  .finance-register > table > tbody > tr > td.ledger-balance::before {
+    margin-inline-end:calc(var(--ledger-currency-width) + var(--ledger-currency-gap));
+    text-align:end;
+  }
 }
 @container (max-width: 470px) {
   .student-register > table > tbody > tr { grid-template-columns: repeat(2,minmax(0,1fr)); }
@@ -513,10 +533,14 @@
 .service-surface[data-staff-presentation] .advising-register .record-burst .record-menu > button {
   --release-x:7px;
   --release-y:-3px;
+  min-height:38px;
   border-color:transparent;
   background:transparent;
   border-radius:6px;
   box-shadow:none;
+}
+@container (max-width:470px) {
+  .service-surface[data-staff-presentation] .advising-register .record-burst .record-menu > button { min-height:44px; }
 }
 .advising-register .record-burst:has(.record-menu:popover-open) > .record-more { background:var(--raised); }
 @media (prefers-reduced-motion:no-preference) {
@@ -542,6 +566,7 @@
   --schedule-action-height:38px;
   --schedule-action-gap:8px;
   --schedule-more-width:44px;
+  --schedule-side-gap:5px;
 }
 .service-surface[data-staff-presentation] .schedule-register .record-burst > .record-more { inline-size:var(--schedule-more-width); }
 .schedule-register .record-burst:has(.record-menu:popover-open) > .record-more { background:var(--raised); }
@@ -553,7 +578,7 @@
   inline-size:var(--schedule-action-width);
   margin:7px 0 0;
 }
-.service-surface[data-staff-presentation]:not([data-portal-role="administrator"]) .schedule-register .roster-actions:has(.record-menu:popover-open) {
+.service-surface[data-staff-presentation]:not([data-portal-role="administrator"]) .schedule-register .roster-actions:has(.record-menu:popover-open:not([data-side-release])) {
   padding-block-end:calc(var(--schedule-action-height) + var(--schedule-action-gap));
 }
 .service-surface[data-staff-presentation]:not([data-portal-role="administrator"]) .schedule-register .record-burst .record-menu {
@@ -566,6 +591,13 @@
   padding:0 9px;
   text-align:center;
 }
+.service-surface[data-staff-presentation] .schedule-register .record-burst .record-menu[data-side-release] {
+  position-area:inline-start center;
+  align-self:anchor-center;
+  margin:0;
+  margin-inline-end:calc(var(--schedule-action-width) + var(--schedule-action-gap) + var(--schedule-side-gap) - var(--action-travel));
+}
+.schedule-register .record-menu[data-side-release] > button { --release-x:52px; }
 @container (width < 1080px) {
   .service-surface[data-portal-role="administrator"] .schedule-register .roster-actions:has(.record-menu:popover-open) { padding-block-end:51px; }
   .service-surface[data-portal-role="administrator"] .schedule-register .record-burst .record-menu > button { min-height:44px; }

@@ -419,7 +419,7 @@ export default function FinancialRecordsPage({ token, notify }) {
               <table>
                 <thead>
                   <tr>
-                    <th>Student</th><th>Transaction</th><th className="ledger-balance">Amount</th>
+                    <th>Student</th><th>Transaction</th><th className="ledger-balance"><span className="ledger-amount-heading">Amount</span></th>
                     <th>Payment status</th><th>Actions</th>
                   </tr>
                 </thead>
@@ -429,7 +429,10 @@ export default function FinancialRecordsPage({ token, notify }) {
                         <td className="ledger-student"><StudentIdentity name={r.student?.name || r.student?.user?.fullName} id={r.student?.studentId} /></td>
                         <td className="ledger-transaction"><strong>{ledgerLabel(r.type || r.kind)}</strong>
                           <small>{[SETTLEMENT_LABELS[r.settlementOption], (r.occurredAt || r.createdAt) && new Date(r.occurredAt || r.createdAt).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })].filter(Boolean).join(" · ")}</small></td>
-                        <td className="ledger-balance"><strong className="record-amount">{formatAmount(r.amount)} <span className="ledger-currency">{r.currency ?? "EGP"}</span></strong></td>
+                        <td className="ledger-balance"><span className="ledger-value">
+                          <strong className="record-amount">{formatAmount(r.amount)}</strong>{" "}
+                          <span className="ledger-currency">{r.currency ?? "EGP"}</span>
+                        </span></td>
                         <td><span className={`status-pill ${formatStatusClass(r.status)}`}>{ledgerLabel(r.status)}</span></td>
                       <td>
                         <div className="ledger-actions">

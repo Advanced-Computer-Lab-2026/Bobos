@@ -62,7 +62,7 @@ export function mount(host) {
     || (surface.dataset.service === "graduation-plans" && surface.dataset.portalRole !== "advisingStudent")) {
     const artHost = document.createElement("div");
     artHost.innerHTML = '<div class="page-head"><div></div></div>';
-    const artScreen = { directory: "profile", "financial-records": "pending-work", advising: "group-assignments", preferences: "template-detail", "graduation-plans": "templates", "slot-changes": "student-schedules" }[serviceParams.get("screen")] || serviceParams.get("screen");
+    const artScreen = { directory: "profile", "financial-records": "pending-work", advising: "group-assignments", preferences: "template-detail", "graduation-plans": "templates", templates: "copy-offerings", "slot-changes": "student-schedules" }[surface.dataset.service] || surface.dataset.service;
     window.addStaffArt?.(artScreen, artHost);
     const drawing = artHost.querySelector(".staff-desk-art");
     if (drawing) {

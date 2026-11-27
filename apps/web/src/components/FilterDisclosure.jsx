@@ -35,8 +35,8 @@ export default function FilterDisclosure({ search, chips = [], onClear, children
     const outside = (event) => {
       if (!event.composedPath().includes(root.current)) setOpen(false);
     };
-    document.addEventListener("pointerdown", outside, true);
-    return () => document.removeEventListener("pointerdown", outside, true);
+    document.addEventListener("click", outside, true);
+    return () => document.removeEventListener("click", outside, true);
   }, [floating, open]);
   return <div ref={root} className={"filter-disclosure" + (floating ? " floating-filters" : "")} onKeyDown={(event) => {
     if (open && event.key === "Escape" && !event.defaultPrevented) { event.stopPropagation(); close(); }

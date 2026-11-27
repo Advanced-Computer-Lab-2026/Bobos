@@ -528,6 +528,90 @@ test("Req 50, 52: browse beyond the first 20 students and filter by real payment
   await expect(rosterPages.getByRole("button", { name: "Next", exact: true })).toHaveCount(0);
 });
 
+test("Extra-hours staff open, decide and withdraw requests in the review dialog", async ({ page }) => {
+  const term = await auditTerm();
+  const passwordHash = await bcrypt.hash(password, 4);
+  const [advisor, coordinator] = await User.create([
+    { fullName: "Study Load Advisor", role: "advisor", email: "study.load.advisor@guc.edu.eg", passwordHash },
+    { fullName: "Study Load Coordinator", role: "coordinator", email: "study.load.coordinator@guc.edu.eg", passwordHash },
+  ]);
+  const student = await auditAdvisingStudent({
+    email: "study.load@student.guc.edu.eg", fullName: "Study Load Student", studentId: "46-00883", passwordHash, assignedAdvisor: advisor._id,
+  });
+  const courses = await Course.create([
+    { code: "CSEN905", name: "Machine Learning", creditHours: 3, courseType: "core" },
+    { code: "DMET501", name: "Media Engineering", creditHours: 3, courseType: "core" },
+  ]);
+  const submittedAt = new Date("2030-09-07T09:30:00Z");
+  const [decisionRequest, withdrawalRequest] = await ExtraHoursRequest.create(courses.map(course => ({
+    student: student._id, advisor: advisor._id, term: term._id, createdAt: submittedAt,
+    courses: [{ course: course._id, hours: 3, isRepeated: false, pricePerHour: 800, subtotal: 2400 }],
+    requestedHours: 3, totalCost: 2400,
+    eligibilitySnapshot: { standardAllowance: 30, hoursBeforeRequest: 30, hoursAfterRequest: 33, isProbation: false, graduatingWithinOneYear: false },
+    history: [{ action: "submitted", actor: advisor._id, occurredAt: submittedAt }],
+  })));
+
+  await page.goto(baseURL);
+  await signIn(page, coordinator.email, password);
+  await mainNavigation(page).getByRole("link", { name: "Extra-hours requests", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Refresh", exact: true })).toHaveCount(0);
+  const search = page.getByRole("textbox", { name: "Student ID" });
+  const waitForRequests = (studentId) => page.waitForResponse(response => {
+    const url = new URL(response.url());
+    return url.pathname === "/api/extra-hours" && url.searchParams.get("studentId") === studentId && response.ok();
+  });
+  await Promise.all([waitForRequests(student.studentId), search.fill(student.studentId)]);
+  const clear = page.getByRole("button", { name: "Clear", exact: true });
+  await expect(clear).toHaveCSS("border-top-style", "solid");
+  await Promise.all([waitForRequests(null), clear.click()]);
+  await expect(search).toBeEmpty();
+
+  const coordinatorRow = page.getByRole("row").filter({ hasText: "Machine Learning" });
+  const review = coordinatorRow.getByRole("button", { name: "Review request" });
+  await review.press("Enter");
+  const dialog = page.getByRole("dialog", { name: "Extra-hours request", exact: true });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByText(student.studentId, { exact: true })).toBeVisible();
+  await expect(dialog.getByText(advisor.fullName, { exact: true })).toBeVisible();
+  await expect(dialog.locator(".extra-review-meta time")).toHaveAttribute("datetime", submittedAt.toISOString());
+  await expect(dialog.getByText(String(decisionRequest._id), { exact: true })).toBeVisible();
+  await expect(dialog.getByRole("heading", { name: "Request history" })).toBeVisible();
+  await expect(dialog.locator(".extra-sheet-courses .offering-course-emblem img")).toBeVisible();
+  await expect(dialog.locator("details")).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await expect(review).toBeFocused();
+
+  await review.click();
+  await page.route(`**/api/extra-hours/${decisionRequest._id}/decision`, route =>
+    route.fulfill({ status: 409, json: { message: "Try the decision again." } }), { times: 1 });
+  const responseNote = dialog.getByLabel("Response note (required)");
+  await responseNote.fill("The course is already scheduled for another term.");
+  await dialog.getByRole("button", { name: "Reject", exact: true }).click();
+  await expect(dialog.getByRole("alert")).toHaveText("Try the decision again.");
+  await expect(responseNote).toHaveValue("The course is already scheduled for another term.");
+  await dialog.getByRole("button", { name: "Reject", exact: true }).click();
+  await expect(dialog.getByRole("heading", { name: "Coordinator response" })).toBeVisible();
+  await expect(dialog.locator(".extra-sheet-history")).toContainText("Rejected");
+  await dialog.getByRole("button", { name: "Close", exact: true }).click();
+  await expect(coordinatorRow.getByRole("button", { name: "View request" })).toBeFocused();
+
+  await page.getByRole("button", { name: /account/i }).click();
+  await page.getByRole("button", { name: "Sign out" }).click();
+  await signIn(page, advisor.email, password);
+  await mainNavigation(page).getByRole("link", { name: "Extra-hours requests", exact: true }).click();
+  await page.getByRole("button", { name: /^Filters\b/ }).click();
+  await page.getByRole("combobox", { name: "Decision", exact: true }).selectOption("pending");
+  const view = page.getByRole("row").filter({ hasText: "Media Engineering" }).getByRole("button", { name: "View request" });
+  await view.click();
+  await expect(dialog.getByText(String(withdrawalRequest._id), { exact: true })).toBeVisible();
+  await dialog.getByRole("button", { name: "Withdraw request", exact: true }).click();
+  await expect(dialog.locator(".extra-sheet-history")).toContainText("Withdrawn");
+  await dialog.getByRole("button", { name: "Close", exact: true }).click();
+  await expect(view).toHaveCount(0);
+  await expect(search).toBeFocused();
+});
+
 test("Req 92, 94, 102, 120: confirm, download and cancel an installment charge through the Portal", async ({ page }) => {
   const term = await auditTerm();
   const passwordHash = await bcrypt.hash(password, 4);
@@ -592,6 +676,13 @@ test("Coordinator schedule folders open the selected student and term across rel
   const coordinator = await User.create({ role: "coordinator", email: "folders.coordinator@guc.edu.eg", fullName: "Folder Coordinator", passwordHash });
   const student = await auditAdvisingStudent({ fullName: "Folder Student", email: "folders.student@student.guc.edu.eg", studentId: "45-00019", passwordHash });
   await StudentSchedule.create({ student: student._id, term: term._id, scheduleType: "advising", status: "draft", createdBy: coordinator._id });
+  const prerequisite = await Course.create({ code: "FDR101", name: "Draft Prerequisite", creditHours: 3, courseType: "core" });
+  const unavailable = await Course.create({ code: "FDR201", name: "Draft Follow-on Course", creditHours: 3, courseType: "core", prerequisites: [prerequisite._id] });
+  await CourseOffering.create({
+    course: unavailable._id, term: term._id, isPublished: true, instructors: [{ fullName: "Draft Audit Instructor" }],
+    eligibleGroups: [{ major: "CS", semester: 5 }],
+    slots: [{ componentType: "lecture", groupNumber: "1", day: "Sunday", room: "Hall 1", startMinute: 540, endMinute: 630, capacity: 20 }],
+  });
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.addInitScript(() => {
     window.folderArrivals = [];
@@ -626,18 +717,34 @@ test("Coordinator schedule folders open the selected student and term across rel
   await expect(editorContext.getByRole("heading", { name: "Folder Student", exact: true })).toBeVisible();
   await expect(editorContext).toContainText("45-00019");
   await expect(editorContext).toContainText("Winter 2030/2031");
+  const unavailableCourses = page.getByRole("region", { name: "Unavailable courses", exact: true });
+  await expect(unavailableCourses.getByRole("listitem").filter({ hasText: unavailable.name })).toContainText(/Draft Follow-on Course\s*FDR201\s*Complete first\s*FDR101/);
   await page.getByRole("button", { name: /Back to students/ }).click();
   await expect(page.getByRole("heading", { name: "Student schedules", exact: true })).toBeVisible();
   expect(new URL(page.url()).searchParams.has("student")).toBe(false);
   const row = page.getByRole("row", { name: /Folder Student/ });
+  await page.setViewportSize({ width: 1440, height: 900 });
   await row.getByRole("button", { name: /More actions/ }).click();
   await expect(row.getByRole("button", { name: "View schedule" })).toBeVisible();
-  await expect.poll(() => row.evaluate((studentRow) => {
-    const reveal = studentRow.querySelector(".record-menu:popover-open").getBoundingClientRect();
+  const placement = () => row.evaluate((studentRow) => {
+    const secondary = studentRow.querySelector(".record-menu:popover-open > button");
+    if (!secondary) return null;
+    const reveal = secondary.getBoundingClientRect();
     const primary = studentRow.querySelector(".roster-actions > .outline-button").getBoundingClientRect();
-    return reveal.top > primary.bottom && Math.abs(reveal.left - primary.left) < 1
-      && Math.abs(reveal.width - primary.width) < 1 && reveal.bottom <= studentRow.getBoundingClientRect().bottom;
-  })).toBe(true);
+    const status = studentRow.querySelector(".status-pill").getBoundingClientRect();
+    const register = studentRow.closest(".schedule-register");
+    if (Math.abs(reveal.width - primary.width) >= 1 || Math.abs(reveal.height - primary.height) >= 1
+      || reveal.bottom > studentRow.getBoundingClientRect().bottom
+      || register.scrollWidth !== register.clientWidth || register.scrollHeight !== register.clientHeight) return null;
+    if (Math.abs(reveal.top - primary.top) < 1 && reveal.left > status.right && reveal.right < primary.left) return "side";
+    if (reveal.top > primary.bottom && Math.abs(reveal.left - primary.left) < 1) return "stacked";
+    return null;
+  });
+  await expect.poll(placement).toBe("side");
+  await page.setViewportSize({ width: 1060, height: 900 });
+  await expect.poll(placement).toBe("stacked");
+  await page.setViewportSize({ width: 390, height: 900 });
+  await expect.poll(placement).toBe("stacked");
 });
 
 test("Catalogue editing preserves filtered prerequisites, seasons and legacy major lines", async ({ page }) => {
