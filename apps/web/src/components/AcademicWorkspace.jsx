@@ -1,6 +1,6 @@
 import OfferingCourseIcon from "./OfferingCourseIcon.jsx";
 import { termLabel } from "../term-label.js";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { api, explainApiError } from "../api.js";
 import PaperTossButton, { waitForPaperToss } from "./PaperTossButton.jsx";
 
@@ -648,8 +648,7 @@ function TemplatesWorkspace({ token, notify }) {
     const controller = new AbortController();
     api("/api/academic-terms/academicTerm", {token, signal: controller.signal}).then(terms => {
       setTermOptions(terms);
-      const recent = localStorage.getItem("bobos.lastTermId");
-      const term = terms.find(item => [item._id, item.code].includes(recent)) || terms.find(item => item.isActive) || terms[0];
+      const term = terms.find(item => item.isActive) || terms[0];
       setTermId(term?.code || "");
     }).catch(e => { if (!controller.signal.aborted) setError(e.message); });
     return () => controller.abort();
@@ -663,7 +662,6 @@ function TemplatesWorkspace({ token, notify }) {
   const load = useCallback(async () => {
     if (!termId) return;
     const version = ++loadVersion.current;
-    localStorage.setItem("bobos.lastTermId", termId);
     setLoading(true); setError("");
     try {
       const [templateData, offeringData] = await Promise.all([
@@ -900,7 +898,7 @@ function PageTitle({ eyebrow, title, description, action }) { return <div classN
 function Field({ label, children, className = "" }) { return <label className={`field ${className}`}><span>{label}</span>{children || <input />}</label>; }
 export function Modal({ title, eyebrow, onClose, children, wide = false }) {
   const ref = useRef(null);
-  useEffect(() => {
+  useLayoutEffect(() => {
     const dialog = ref.current;
     dialog.showModal();
     return () => dialog.close();

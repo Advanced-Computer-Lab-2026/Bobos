@@ -1,8 +1,8 @@
 import { termLabel } from "../term-label.js";
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { api } from "../api.js";
 import { WorkspaceHeader } from "./WorkspaceUI.jsx";
-import { StudentIdentity, RecordPages } from "./CoordinatorRecords.jsx";
+import { RegisterRow, StudentIdentity, StudentRegister, RecordPages } from "./CoordinatorRecords.jsx";
 import FilterDisclosure from "./FilterDisclosure.jsx";
 import ExtraHoursRequestForm from "./ExtraHoursRequestForm.jsx";
 
@@ -14,6 +14,14 @@ const pretty = (value = "—") =>
 const money = (amount) =>
   `${Number(amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EGP`;
 const date = (value) => (value ? new Date(value).toLocaleString() : "—");
+const paymentStates = {
+  awaitingChoice: { label: "Awaiting payment choice", tone: "warning" },
+  paid: { label: "Payment received", tone: "good" },
+  deferred: { label: "Added to next installment", tone: "warning" },
+  failed: { label: "Payment failed", tone: "danger" },
+  cancelled: { label: "Payment cancelled", tone: "muted" },
+  refunded: { label: "Refunded", tone: "muted" },
+};
 
 export default function ExtraHoursPage({
   token,
@@ -233,6 +241,7 @@ export default function ExtraHoursPage({
     </dl>
   );
 
+  const Queue = coordinator ? StudentRegister : Fragment;
   const filtered = Object.values(filters).some(Boolean);
   const visibleRows = [...rows].sort((a, b) => Number(b.decisionStatus === "pending") - Number(a.decisionStatus === "pending"));
   const size = 8;
@@ -336,7 +345,7 @@ export default function ExtraHoursPage({
                 <option value="">All options</option>
                 {["wallet", "gateway", "deferred"].map((x) => (
                   <option key={x} value={x}>
-                    {pretty(x)}
+                    {x === "deferred" ? "Next installment" : pretty(x)}
                   </option>
                 ))}
               </select>
@@ -360,7 +369,7 @@ export default function ExtraHoursPage({
                   "refunded",
                 ].map((x) => (
                   <option key={x} value={x}>
-                    {pretty(x)}
+                    {paymentStates[x]?.label || pretty(x)}
                   </option>
                 ))}
               </select>
@@ -386,24 +395,15 @@ export default function ExtraHoursPage({
           <p>{filtered ? "Try another student ID or clear your filters." : student ? "Requests from your advisor will appear here." : "Requests will appear here when they’re ready for your review."}</p>
         </section>
       ) : (
-        (coordinator ? visibleRows.slice((currentPage - 1) * size, currentPage * size) : rows).map((row) => (
-          <article className="extra-request" key={row._id}>
-            <header className="extra-request-row">
-              {coordinator ? <>
-                <StudentIdentity name={row.student?.user?.fullName} id={row.student?.studentId} />
-                <div className="extra-request-subject"><strong>{row.requestedHours} extra credit {row.requestedHours === 1 ? "hour" : "hours"}</strong>
-                  <small>{row.courses?.map(item => item.course?.name || item.course?.code).filter(Boolean).join(", ")}</small></div>
-              </> : <div><h2>{row.student?.user?.fullName || "Your request"} {row.student?.studentId ? `· ${row.student.studentId}` : ""}</h2>
-                <p className="helper-text">{termLabel(row.term)} · Request {row._id.slice(-8)}</p>
-                <dl className="extra-request-meta"><div><dt>Advisor</dt><dd>{row.advisor?.fullName || "—"}</dd></div>
-                  <div><dt>Submitted</dt><dd>{date(row.createdAt)}</dd></div></dl>
-              </div>}
-              <div className="extra-request-summary">
+        <Queue {...(coordinator ? { label: "Extra-hours requests", className: "extra-register", columns: ["Student", "Request", "Amount / status", "Action"] } : {})}>
+          {(coordinator ? visibleRows.slice((currentPage - 1) * size, currentPage * size) : rows).map(row => {
+            const payment = coordinator && paymentStates[row.settlementStatus];
+            const summary = <div className="extra-request-summary">
                 <span
                   className={`status-pill ${row.decisionStatus === "approved" ? "good" : row.decisionStatus === "rejected" ? "danger" : row.decisionStatus === "pending" ? "warning" : "muted"}`}
                 >
                   {pretty(row.decisionStatus)}
-                  {row.settlementStatus && row.settlementStatus !== "none"
+                  {!coordinator && row.settlementStatus && row.settlementStatus !== "none"
                     ? ` · ${pretty(row.settlementStatus)}`
                     : ""}
                 </span>
@@ -411,11 +411,9 @@ export default function ExtraHoursPage({
                   <dt>Request total</dt>
                   <dd>{money(row.totalCost)}</dd>
                 </dl>
-              </div>
-              {coordinator && <button type="button" className="outline-button" aria-expanded={opened === row._id} aria-controls={"extra-detail-" + row._id}
-                onClick={() => setOpened(opened === row._id ? null : row._id)}>{opened === row._id ? "Close details" : row.decisionStatus === "pending" && role === "coordinator" ? "Review request" : "View request"}</button>}
-            </header>
-            {(!coordinator || opened === row._id) && <div className="extra-record-desk" id={"extra-detail-" + row._id}>
+                {payment && <span className="extra-payment-state" data-tone={payment.tone}>{payment.label}</span>}
+              </div>;
+            const detail = (!coordinator || opened === row._id) && <div className="extra-record-desk" id={"extra-detail-" + row._id}>
               <div className="extra-record-content">
                 {coordinator && <dl className="request-provenance">
                   <div><dt>Request</dt><dd>{row._id}</dd></div>
@@ -616,9 +614,30 @@ export default function ExtraHoursPage({
                   </svg>
                 </div>
               </details>
-            </div>}
-          </article>
-        ))
+            </div>;
+            if (coordinator) return <Fragment key={row._id}>
+              <RegisterRow className="extra-student-row">
+                <StudentIdentity name={row.student?.user?.fullName} id={row.student?.studentId} />
+                <div className="extra-request-subject"><strong>{row.requestedHours} extra credit {row.requestedHours === 1 ? "hour" : "hours"}</strong>
+                  <small>{row.courses?.map(item => item.course?.name || item.course?.code).filter(Boolean).join(", ")}</small></div>
+                {summary}
+                <button type="button" className="outline-button" aria-expanded={opened === row._id} aria-controls={"extra-detail-" + row._id}
+                onClick={() => setOpened(opened === row._id ? null : row._id)}>{opened === row._id ? "Close details" : row.decisionStatus === "pending" ? "Review request" : "View request"}</button>
+              </RegisterRow>
+              {detail && <tr className="register-detail-row"><td colSpan={4}>{detail}</td></tr>}
+            </Fragment>;
+            return <article className="extra-request" key={row._id}>
+              <header className="extra-request-row"><div><h2>{row.student?.user?.fullName || "Your request"} {row.student?.studentId ? `· ${row.student.studentId}` : ""}</h2>
+                <p className="helper-text">{termLabel(row.term)} · Request {row._id.slice(-8)}</p>
+                <dl className="extra-request-meta"><div><dt>Advisor</dt><dd>{row.advisor?.fullName || "—"}</dd></div>
+                  <div><dt>Submitted</dt><dd>{date(row.createdAt)}</dd></div></dl>
+              </div>
+                {summary}
+              </header>
+              {detail}
+            </article>;
+          })}
+        </Queue>
       )}
       {coordinator && <RecordPages page={currentPage} size={size} total={rows.length} onChange={setPage} label="Requests" />}
       {student && (

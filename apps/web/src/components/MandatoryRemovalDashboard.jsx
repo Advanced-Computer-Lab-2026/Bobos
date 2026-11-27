@@ -1,3 +1,4 @@
+import { RegisterRow, StudentIdentity, StudentRegister } from "./CoordinatorRecords.jsx";
 import FilterDisclosure from "./FilterDisclosure.jsx";
 import PortalAvatar from "./PortalAvatar.jsx";
 import OfferingCourseIcon from "./OfferingCourseIcon.jsx";
@@ -272,7 +273,7 @@ export default function MandatoryRemovalDashboard({ token, role, notify }) {
           </label>
 
           <label className="field">
-            <span>Date from</span>
+            <span>Submitted from</span>
             <input
               type="date"
               value={dateFrom}
@@ -282,7 +283,7 @@ export default function MandatoryRemovalDashboard({ token, role, notify }) {
           </label>
 
           <label className="field">
-            <span>Date to</span>
+            <span>Submitted to</span>
             <input
               type="date"
               value={dateTo}
@@ -306,45 +307,45 @@ export default function MandatoryRemovalDashboard({ token, role, notify }) {
         ) : requests.length === 0 ? (
           <WorkspaceEmpty icon="document" title={filtered ? "No matching removal requests" : "No removal requests"} description={filtered ? "Try another student, course or advisor." : "Mandatory course removal requests will appear here for review."} action={filtered && <button className="outline-button" type="button" onClick={clearFilters}>Clear filters</button>} />
         ) : (
-          <ul className="portal-request-list removal-request-list" role="list" aria-label="Course removal requests">
+          <StudentRegister label="Course removal requests" className="removal-register" columns={["Student", "Course", "Reason / advisor", "Status", "Actions"]} listClassName={role !== "coordinator" && "portal-request-list removal-request-list"}>
             {requests.map((item) => {
               const courseName = item.course?.name || item.course?.code || "Unknown course";
               const studentName = item.student?.user?.fullName || item.student?.studentId || "Unknown student";
               const studentId = item.student?.studentId || "—";
-              return <li className="portal-request-row" key={item._id}>
-                <div className="request-row-course portal-person-cell">
+              const studentLink = item.student?._id && <button className="removal-record-link" type="button"
+                aria-label={`Open profile for ${studentName}`} aria-disabled={loadingRecord || loadingDetail}
+                onClick={event => openRelatedRecord("student", item.student._id, event.currentTarget)}>{studentName}</button>;
+              return <RegisterRow listItem={role !== "coordinator"} key={item._id}>
+                {role === "coordinator" ? <StudentIdentity name={studentName} id={studentId} nameAction={studentLink} /> :
+                  <div className="request-row-student portal-person-cell"><PortalAvatar name={studentName} />
+                    <div>{studentLink || <strong>{studentName}</strong>}<small>{studentId}</small></div>
+                  </div>}
+                <span className="request-row-course register-person">
                   <OfferingCourseIcon code={item.course?.code} />
-                  <div>
+                  <span>
                     {item.course?._id ? <button className="removal-record-link" type="button" aria-label={`View course ${courseName}`} aria-disabled={loadingRecord || loadingDetail} onClick={event => openRelatedRecord("course", item.course._id, event.currentTarget)}>{courseName}</button> : <strong>{courseName}</strong>}
-                    {item.course?.name && <small>{item.course.code}</small>}
-                  </div>
-                </div>
-                <div className="request-row-student portal-person-cell">
-                  <PortalAvatar name={studentName} />
-                  <div>
-                    {item.student?._id ? <button className="removal-record-link" type="button" aria-label={`Open profile for ${studentName}`} aria-disabled={loadingRecord || loadingDetail} onClick={event => openRelatedRecord("student", item.student._id, event.currentTarget)}>{studentName}</button> : <strong>{studentName}</strong>}
-                    <small>{studentId}</small>
-                  </div>
-                </div>
+                    {item.course?.name && item.course.code && <small>{item.course.code}</small>}
+                  </span>
+                </span>
                 <div className="request-row-context">
                   <strong>{formatReason(item.reason, item.makeupAttempt)}</strong>
                   <small>Advisor {item.advisor?.fullName || item.advisor?.email || "unassigned"}</small>
                 </div>
                 <div className="request-row-status">
                   <RemovalStatus status={item.status} />
-                  <small><time dateTime={item.createdAt}>{formatDate(item.createdAt)}</time></small>
+                  {role !== "coordinator" && <small><time dateTime={item.createdAt}>{formatDate(item.createdAt)}</time></small>}
                   <small>{termLabel(item.term)}</small>
                 </div>
                 <div className="request-row-actions">
                   <button className="outline-button request-review-action" type="button" disabled={loadingDetail || loadingRecord} onClick={() => handleOpenDetail(item._id)}>View Details</button>
                   {canDecide && (item.status || "pending") === "pending" && <div>
-                    <button className="text-button" type="button" onClick={() => handleStartReview(item, "approved")}>Approve</button>
-                    <button className="text-button" type="button" onClick={() => handleStartReview(item, "rejected")}>Reject</button>
+                    <button className="text-button removal-approve" type="button" onClick={() => handleStartReview(item, "approved")}>Approve</button>
+                    <button className="text-button removal-reject" type="button" onClick={() => handleStartReview(item, "rejected")}>Reject</button>
                   </div>}
                 </div>
-              </li>;
+              </RegisterRow>;
             })}
-          </ul>
+          </StudentRegister>
         )}
       </section>
 

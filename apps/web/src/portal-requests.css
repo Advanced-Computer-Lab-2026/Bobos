@@ -1,113 +1,124 @@
-/* Staff schedule preferences */
-.portal-advising-services .academic-services-embedded .staff-preferences .preference-toolbar {
-  grid-template-columns: minmax(0, 1fr) minmax(185px, 220px) auto;
-  align-items: end;
-  gap: 12px 16px;
-}
-.portal-advising-services .academic-services-embedded .staff-preferences .preference-toolbar.has-selection {
-  grid-template-columns: minmax(210px, 250px) auto minmax(0, 1fr);
-}
-.academic-services-embedded .staff-preferences .preference-toolbar > .primary-button { margin: 0; align-self: end; }
-.staff-preferences .preference-toolbar.has-selection .preference-identify { grid-column: 1 / -1; }
-.portal-advising-services .academic-services-embedded .staff-preferences .preference-student-selected {
+/* Staff read the submitted week in Portal calendar order. */
+.staff-preferences { container: staff-preferences / inline-size; }
+.staff-preferences .preference-context {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  flex-wrap: nowrap;
-  gap: 12px;
-  padding: 16px;
-  border: 0;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--paper) 92%, #cdb792);
-}
-.preference-selected-identity {
-  display: flex;
-  align-items: center;
-  min-width: 0;
-  gap: 12px;
-}
-.preference-selected-identity strong { display: block; font-size: 16px; line-height: 1.35; overflow-wrap: anywhere; }
-.academic-services-embedded .staff-preferences .preference-selected-meta {
-  display: flex;
   flex-wrap: wrap;
-  gap: 0 12px;
-  margin-top: 4px;
-  font-variant-numeric: tabular-nums;
+  gap: 18px 32px;
+  padding-block: 3px 22px;
 }
-.academic-services-embedded .staff-preferences .preference-selected-meta span {
-  flex: none;
-  min-width: 0;
-  font-size: 13px;
-  overflow-wrap: anywhere;
+.preference-identify { min-width: 0; }
+.preference-student-selected { display: flex; align-items: center; flex-wrap: wrap; gap: 2px 22px; }
+.staff-preferences .preference-student-selected .register-person { gap: 14px; }
+.staff-preferences .preference-student-selected .register-person strong { font-size: 21px; line-height: 1.35; font-weight: 500; }
+.staff-preferences .preference-student-selected .register-person small { font-size: 13px; }
+.staff-preferences .preference-student-selected .portal-person-avatar { width: 52px; height: 52px; flex-basis: 52px; font-size: 18px; }
+.staff-preferences .preference-change { min-height: 36px; padding-inline: 12px; font-size: 13px; }
+.preference-student-lookup { display: grid; grid-template-columns: minmax(0, 320px) auto; gap: 8px; align-items: end; }
+.preference-term { width: min(100%, 235px); }
+.staff-preferences .preference-context .field { min-width: 0; }
+.staff-preferences .preference-context .field > span { color: var(--muted); }
+.staff-preferences .preference-student-results {
+  list-style: none; margin: 12px 0 0; padding: 0; max-height: 260px; overflow: auto;
 }
-.staff-preferences .preference-toolbar .preference-draft-action { justify-self: start; }
-.academic-services-embedded .staff-preferences .preference-student-results { grid-template-columns: minmax(0, 1fr); gap: 0; }
-.portal-advising-services .academic-services-embedded .staff-preferences .preference-student-result {
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 12px;
-  overflow-wrap: anywhere;
+.preference-student-result {
+  display: flex; align-items: center; width: 100%; padding: 8px; border: 0;
+  border-radius: 5px; background: transparent; cursor: pointer; color: var(--ink); text-align: start;
 }
-.preference-student-result :is(strong, small) { display: block; }
-.staff-preferences .preference-student-result strong { color: var(--ink); font-weight: 500; }
-.staff-preferences .preference-student-result small { color: var(--muted); font-size: 12px; }
-
-.academic-services-embedded .staff-preferences .preference-reading { gap: 26px; }
-.staff-preferences .preference-reading .register-list-heading { margin-bottom: -12px; }
-.preference-ranked-sheets { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); align-items: start; gap: 16px; }
-.preference-ranked-sheet {
-  min-width: 0;
-  padding: 14px 16px 8px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
+.preference-student-result:hover { background: var(--raised); }
+.staff-preferences .preference-reading-heading h2 { margin: 0; font-size: 20px; font-weight: 500; }
+.preference-reading-heading { display: flex; align-items: baseline; flex-wrap: wrap; gap: 5px 20px; }
+.preference-reading-heading p, .preference-missing { margin: 0; font-size: 13px; line-height: 1.5; color: var(--muted); }
+.preference-planners, .preference-details {
+  display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: clamp(24px, 4cqi, 60px);
+  align-items: start; margin-top: 24px;
 }
-.preference-ranked-sheet .preference-section-heading { gap: 9px; margin-bottom: 4px; }
-.academic-services-embedded .preference-ranked-sheet .preference-section-heading h3 { margin: 0; }
-.preference-ranked-sheet .preference-section-icon { width: 28px; height: 28px; border: 0; background: transparent; color: var(--muted); }
-.preference-ranked-sheet .preference-section-icon svg { width: 23px; height: 23px; }
-.academic-services-embedded .preference-ranked-sheet .preference-facts > div {
-  grid-template-columns: minmax(106px, .72fr) minmax(0, 1fr);
-  gap: 8px;
-  padding: 9px 0;
-  border: 0;
-  border-top: 1px solid var(--line);
+.preference-details { margin-top: 32px; }
+.staff-preferences :is(.preference-planners, .preference-details) h3,
+.staff-preferences .preference-empty h3 { margin: 0 0 12px; color: var(--ink); font-size: 17px; font-weight: 500; }
+.preference-week-heading { display: flex; align-items: baseline; gap: 12px; }
+.preference-week-heading small { color: var(--muted); font-size: 12px; }
+.preference-week-sheet {
+  --label-width: clamp(80px, 10cqi, 115px);
+  --week-paper: #ebe5d6;
+  --week-ink: #38382f;
+  --week-muted: #58594e;
+  --week-seam: #cfcab9;
+  position: relative;
+  padding: 20px 15px 12px;
+  color: var(--week-ink);
+  border-radius: 3px 5px 5px 3px;
+  background: var(--week-paper);
+  box-shadow: 0 2px 0 var(--week-seam);
 }
-.academic-services-embedded .preference-ranked-sheet .preference-facts dt { font-size: 13px; }
-.academic-services-embedded .preference-ranked-sheet .preference-facts ol { display: grid; gap: 5px; }
-.preference-facts li { display: flex; align-items: baseline; gap: 7px; font-variant-numeric: tabular-nums; }
-.staff-preferences .preference-reading .preference-rank {
-  display: inline-grid;
-  place-items: center;
-  width: 21px;
-  min-height: 21px;
-  flex: none;
-  margin: 0;
-  border-radius: 4px;
-  background: var(--raised);
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
+[data-theme="dark"] .preference-week-sheet {
+  --week-paper: #363831; --week-ink: #efeee4; --week-muted: #cacbc0; --week-seam: #4c4d42;
 }
-.preferred-group-reading { max-width: 850px; }
-.academic-services-embedded .preferred-group-reading li {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr);
-  align-items: center;
-  gap: 10px 14px;
-  padding: 11px 0;
-  border-top: 1px solid var(--line);
-  overflow-wrap: anywhere;
+.preference-week-sheet::before, .preference-week-sheet::after {
+  position: absolute; top: -4px; width: 5px; height: 12px;
+  border: 1px solid var(--week-muted); border-radius: 50% 50% 45% 50%;
+  content: ""; transform: rotate(-9deg); background: var(--week-paper);
 }
-.preferred-group-reading :is(.preference-course-identity, .preference-group-meeting) { margin: 0; min-width: 0; }
-.preferred-group-reading strong { font-weight: 500; }
-.preferred-group-reading .preference-group-meeting strong { font-size: 14px; }
-.preferred-group-reading .preference-group-meeting small { line-height: 1.45; }
-.preference-note-sheet { padding: 15px 18px; border-inline-start: 2px solid var(--line); }
-.preference-note-sheet.has-note,
-.portal-request-note { background: color-mix(in srgb, var(--paper) 92%, #cdb792); }
-.preference-note-sheet .preference-note-reading { margin: 0; color: var(--muted); line-height: 1.55; }
-.preference-note-sheet.has-note .preference-note-reading { color: var(--ink); }
+.preference-week-sheet::before { left: 20%; }
+.preference-week-sheet::after { right: 20%; }
+.preference-day-head, .preference-day-row ol { display: grid; grid-template-columns: repeat(7,minmax(0,1fr)); align-items: center; text-align: center; }
+.preference-day-head { margin-left: var(--label-width); padding-bottom: 9px; color: var(--week-muted); font: 15px/1.3 Tiempos,Georgia,serif; }
+.preference-day-row { display: grid; grid-template-columns: var(--label-width) minmax(0,1fr); align-items: center; min-height: 40px; }
+.preference-day-row + .preference-day-row { border-top: 1px solid var(--week-seam); }
+.preference-day-label { font-size: 13px; }
+.preference-day-row ol, .preference-time-row ol, .preferred-group-reading { padding: 0; margin: 0; list-style: none; }
+.preference-day-row .preference-missing { color: var(--week-muted); }
+.preference-day-mark {
+  display: grid; place-items: center; justify-self: center; width: 30px; height: 26px;
+  color: #25372d; background: #b9cfb9; border-radius: 47% 52% 49% 42% / 55% 45% 54% 44%;
+  font: 17px/1 Tiempos,Georgia,serif; font-variant-numeric: tabular-nums;
+}
+.preference-day-mark.is-avoid { color: #493429; background: #deb69d; border-radius: 4px 5px 3px 5px; }
+.preference-day-mark.is-off { color: #293c4b; background: #b0c8d9; border-radius: 48% 49% 5px 5px; }
+.preference-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.preference-time-planner { padding-top: 0; }
+.preference-hour-axis { display: flex; justify-content: space-between; margin: 0 0 12px; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.preference-time-row + .preference-time-row { margin-top: 13px; }
+.preference-time-label { display: block; margin-bottom: 6px; font-size: 13px; color: var(--muted); }
+.preference-time-row ol { display: grid; gap: 6px; }
+.preference-time-track { position: relative; display: block; height: 10px; background: color-mix(in srgb, var(--ink) 12%, var(--paper)); border-radius: 2px; }
+.preference-time-track i { position: absolute; inset-block: 0; min-width: 2px; background: #9dbba2; border-radius: 2px; }
+.preference-time-track.is-avoid i { background: #cd9c81; }
+.preference-window-label { display: flex; align-items: baseline; gap: 9px; margin-top: 4px; font-size: 14px; font-variant-numeric: tabular-nums; }
+.preference-window-label small, .preference-course-description small, .preference-meeting { color: var(--muted); font-size: 12px; }
+.preferred-group-reading { display: grid; gap: 16px; }
+.preferred-group-reading > li { display: flex; align-items: flex-start; gap: 14px; }
+.preferred-group-reading .offering-course-emblem { width: 52px; height: 60px; border-radius: 3px 7px 4px 3px; }
+.preferred-group-reading .offering-course-emblem :is(img,svg) { width: 40px; height: 40px; }
+.preference-course-description { display: flex; flex-wrap: wrap; align-items: baseline; gap: 3px 9px; min-width: 0; }
+.preference-course-description small, .preference-meeting { flex-basis: 100%; }
+.preference-course-description strong { color: var(--ink); font-weight: 500; font-size: 17px; }
+.preference-group-type { color: var(--muted); font-size: 13px; text-transform: capitalize; }
+.preference-note-detail blockquote { margin: 0; max-width: 50ch; font-size: 15px; line-height: 1.55; overflow-wrap: anywhere; white-space: pre-wrap; }
+.preference-draft-handoff { margin-top: 22px; }
+.preference-draft-handoff button { gap: 10px; min-height: 42px; white-space: normal; text-align: start; }
+.preference-empty p, .preference-read-progress { margin: 5px 0 0; color: var(--muted); }
+.preference-read-error { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.preference-read-error .feedback, .preference-identify .feedback { margin-block-end: 0; }
+@container staff-preferences (max-width: 760px) {
+  .preference-planners { grid-template-columns: minmax(0,1fr); }
+  .preference-details { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .preference-time-planner { max-width: 540px; width: 100%; }
+}
+@container staff-preferences (max-width: 560px) {
+  .preference-details { grid-template-columns: minmax(0, 1fr); }
+  .preference-week-sheet { --label-width: 78px; padding-inline: 9px; }
+  .preference-day-label { font-size: 12px; }
+  .preference-day-head { font-size: 13px; }
+  .preference-day-mark { width: 25px; height: 23px; font-size: 15px; }
+  .staff-preferences .preference-context :is(button, input, select) { min-height: 44px; }
+}
+@container staff-preferences (max-width: 460px) {
+  .preference-term, .preference-identify { width: 100%; }
+  .preference-student-selected { display: grid; grid-template-columns: 1fr; gap: 8px; }
+  .staff-preferences .preference-change { justify-self: start; margin-left: 66px; }
+}
 
 /* Shared request queue rows keep all record fields available at every width. */
 .portal-request-list {
@@ -200,15 +211,14 @@
   border-radius: 2px;
   background: transparent;
   color: var(--ink);
-  font: 500 14px/1.35 Styrene, system-ui, sans-serif;
+  font: 500 14px/1.4 Styrene, system-ui, sans-serif;
   text-align: start;
-  text-decoration: underline;
-  text-decoration-color: var(--muted);
+  text-decoration: none;
   text-underline-offset: 3px;
   overflow-wrap: anywhere;
   cursor: pointer;
 }
-.removal-record-link:hover { text-decoration-color: currentColor; }
+.removal-record-link:is(:hover, :focus-visible) { text-decoration: underline; }
 .removal-record-link[aria-disabled="true"] { cursor: wait; }
 .removal-request-list .request-row-actions .outline-button { min-width: 120px; }
 @container (max-width: 860px) {
@@ -247,6 +257,7 @@
 .request-detail-facts dd { margin: 3px 0 0; overflow-wrap: anywhere; }
 .request-detail-facts strong { font-weight: 500; }
 .portal-request-note {
+  background: color-mix(in srgb, var(--paper) 92%, #cdb792);
   min-width: 0;
   padding: 15px 17px;
   border-radius: 8px;
@@ -295,34 +306,10 @@
 .slot-review .slot-alternative-state { justify-self: end; color: var(--muted); text-align: end; font-size: 12px; overflow-wrap: anywhere; }
 .slot-review .slot-alternative-state.is-unavailable { color: var(--ink); }
 .slot-review .slot-response-field textarea { min-height: 82px; padding: 9px 11px; font-size: 14px; }
-@media (max-width: 1100px) {
-  .portal-advising-services .academic-services-embedded .staff-preferences .preference-toolbar,
-  .portal-advising-services .academic-services-embedded .staff-preferences .preference-toolbar.has-selection { grid-template-columns: minmax(0, 1fr) auto; }
-  .staff-preferences .preference-toolbar .preference-identify { grid-column: 1 / -1; }
-  .staff-preferences .preference-toolbar .preference-draft-action { grid-column: 1 / -1; }
-}
 @media (max-width: 680px) {
-  .preference-ranked-sheets, .slot-review-record { grid-template-columns: minmax(0, 1fr); }
-  .preferred-group-reading .offering-course-emblem { width: 32px; height: 32px; }
-  .preferred-group-reading .offering-course-emblem :is(img, svg) { width: 23px; height: 23px; }
-  .academic-services-embedded .preferred-group-reading li { grid-template-columns: auto minmax(0, 1fr); gap: 6px 9px; }
-  .preferred-group-reading .preference-group-meeting { grid-column: 2; padding-inline-start: 42px; }
-  .portal-advising-services .academic-services-embedded .staff-preferences .preference-toolbar,
-  .portal-advising-services .academic-services-embedded .staff-preferences .preference-toolbar.has-selection { grid-template-columns: minmax(0, 1fr); }
-  .staff-preferences .preference-toolbar .preference-draft-action { justify-self: start; max-width: 100%; text-align: start; white-space: normal; }
-  .staff-preferences .preference-student-lookup { flex-wrap: wrap; }
-  .staff-preferences .preference-student-lookup .field { flex-basis: 190px; }
-  .staff-preferences .preference-student-result > small { grid-column: 2; }
-  .portal-advising-services .academic-services-embedded .staff-preferences .preference-student-selected { padding: 12px; gap: 8px; }
-  .staff-preferences .preference-selected-identity { gap: 8px; }
-  .staff-preferences .preference-student-selected .outline-button { min-height: 44px; padding-inline: 10px; }
-  .academic-services-embedded .staff-preferences .preference-selected-meta span { font-size: 12px; }
+  .slot-review-record { grid-template-columns: minmax(0, 1fr); }
   .slot-review .slot-alternative { grid-template-columns: 17px minmax(0, 1fr); }
   .slot-review .slot-alternative-state { grid-column: 2; justify-self: start; text-align: start; }
   .removal-page .workspace-header { flex-wrap: wrap; }
   .removal-page .workspace-header-actions { flex-wrap: wrap; }
-}
-@media (max-width: 440px) {
-  .portal-advising-services .academic-services-embedded .staff-preferences .preference-student-selected { padding-inline: 10px; gap: 6px; }
-  .staff-preferences .preference-student-selected .outline-button { padding-inline: 8px; }
 }

@@ -127,28 +127,13 @@
 .pending-request-list li { display: grid; gap: 2px; }
 .pending-request-list li strong { font-size: 12px; font-weight: 500; }
 .pending-request-list li span { color: var(--muted); font-size: 11px; }
-.activity-page { width: 100%; max-width: 800px; }
-.activity-profile-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
-.activity-profile-heading h3 { margin: 0; font: 500 18px/1.35 Styrene, system-ui, sans-serif; }
-.activity-controls .filter-bar .filter-search { flex-basis: 118px; }
+.activity-page { width: 100%; min-width:0; max-width:none; }
+.activity-profile-heading { margin: 0; font: 500 18px/1.35 Styrene, system-ui, sans-serif; }
+.activity-controls .filter-bar { justify-content: flex-start; }
+.activity-controls .filter-bar .filter-search { flex: 1 1 min(100%, 230px); max-width: 460px; }
+.activity-controls .filter-bar .text-button { min-height: 40px; padding-inline: 10px; white-space: nowrap; }
 .activity-count { flex: none; margin: 0; margin-inline-start: auto; padding-block: 10px; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
 .activity-log { min-width: 0; }
-.activity-timeline { display: grid; gap: 24px; }
-.activity-page .activity-day .activity-date { margin: 0 0 8px; color: var(--muted); font: 500 14px/1.4 Styrene, system-ui, sans-serif; letter-spacing: normal; }
-.activity-day ol { display: grid; gap: 22px; margin: 0; padding: clamp(14px, 2vw, 20px); list-style: none; background: var(--raised); border-radius: 8px; }
-.activity-entry { display: grid; gap: 11px; min-width: 0; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
-.activity-entry-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 8px 18px; }
-.activity-entry-heading > div { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 10px; }
-.activity-entry-heading :is(h3, h5) { margin: 0; color: var(--ink); font: 500 17px/1.35 Styrene, system-ui, sans-serif; }
-.activity-entry-heading span, .activity-byline small { color: var(--muted); font-size: 13px; }
-.activity-entry-heading time { font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.activity-people { display: flex; flex-wrap: wrap; align-items: center; gap: 9px 24px; }
-.activity-people .register-person { flex: 0 1 clamp(170px, 34%, 245px); }
-.activity-byline { flex: 1 1 220px; min-width: 0; margin: 0; color: var(--muted); }
-.activity-byline strong, .activity-reason strong { color: var(--ink); font-weight: 500; }
-.activity-byline small { display: block; }
-.activity-reason { max-width: 65ch; margin: 0; color: var(--muted); text-wrap: pretty; }
-.activity-reason strong { margin-inline-end: 6px; }
 @media (max-width: 900px) { .pending-work-group-grid { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 700px) {
   .pending-work-group-grid { grid-template-columns: 1fr; gap: 14px; }

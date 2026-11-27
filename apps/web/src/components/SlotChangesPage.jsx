@@ -1,15 +1,18 @@
+import { RegisterRow, StudentIdentity, StudentRegister } from "./CoordinatorRecords.jsx";
 import PortalAvatar from "./PortalAvatar.jsx";
 import OfferingCourseIcon from "./OfferingCourseIcon.jsx";
 import { termLabel } from "../term-label.js";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api.js";
-import { filterSlotChanges } from "../slot-change-filters.js";
+import { filterSlotChanges, slotSubmissionDay, slotSubmissionTimeZone } from "../slot-change-filters.js";
 import FilterDisclosure from "./FilterDisclosure.jsx";
 import { WorkspaceEmpty } from "./WorkspaceUI.jsx";
 
 const path = "/api/slot-changes";
 const statuses = { pending: "Pending", approved: "Approved", rejected: "Rejected", withdrawn: "Withdrawn" };
 const date = (value) => value ? new Date(value).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "—";
+const submittedAt = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short", timeZone: slotSubmissionTimeZone });
+const submittedHeading = new Intl.DateTimeFormat(undefined, { dateStyle: "long", timeZone: slotSubmissionTimeZone });
 const component = (type = "") => type.replace(/^./, (letter) => letter.toUpperCase());
 const meetingText = (slot) => `${slot.day} ${slot.startTime}–${slot.endTime} · ${slot.room}`;
 const slotText = (slot) => `${slot.type} · Group ${slot.groupNumber} · ${(slot.meetings || [slot]).map(meetingText).join("; ")}`;
@@ -26,6 +29,7 @@ function NoteField({ label, value, onChange, hint, placeholder, className = "" }
 
 export default function SlotChangesPage({ token, role, onOpenSchedule }) {
   const mine = role === "advisingStudent";
+  const coordinator = role === "coordinator";
   const [data, setData] = useState(null);
   const [slotId, setSlotId] = useState("");
   const [note, setNote] = useState("");
@@ -78,7 +82,9 @@ export default function SlotChangesPage({ token, role, onOpenSchedule }) {
   }
 
   const requests = data?.requests || [];
-  const shown = filterSlotChanges(requests, filters);
+  const shown = filterSlotChanges(requests, filters, coordinator);
+  const submissionDays = coordinator ? [...Map.groupBy(shown, item => slotSubmissionDay(item.createdAt, true))]
+    .sort(([a], [b]) => b.localeCompare(a)) : [];
   const selectedRequest = mine ? requests.find((request) => request._id === selectedRequestId) : null;
   const advisors = [...new Map(requests.map(({ student }) => {
     const advisor = student?.assignedAdvisor;
@@ -95,6 +101,31 @@ export default function SlotChangesPage({ token, role, onOpenSchedule }) {
   const currentRequest = detail?.request;
   const eligibleSlots = (data?.slots || []).filter((slot) => !requests.some((request) =>
     request.status === "pending" && request.course?._id === slot.courseId && request.componentType === slot.type));
+
+  const requestRegister = (items, label) => <StudentRegister label={label} className="slot-register" columns={["Student", "Course", "Student preference", "Status", "Actions"]} listClassName={!coordinator && "portal-request-list slot-request-list"}>
+    {items.map((item) => <RegisterRow key={item._id} listItem={!coordinator}>
+      {coordinator ? <StudentIdentity name={item.student?.user?.fullName} id={item.student?.studentId} /> : <div className="request-row-student portal-person-cell">
+        <PortalAvatar name={item.student?.user?.fullName} />
+        <div><strong>{item.student?.user?.fullName || "Unknown student"}</strong><small>{item.student?.studentId}</small><small>Advisor {item.student?.assignedAdvisor?.fullName || "unassigned"}</small></div>
+      </div>}
+      <div className="request-row-course portal-person-cell">
+        <OfferingCourseIcon code={item.course?.code} />
+        <div><strong>{item.course?.name || item.course?.code || "Unknown course"}</strong><small>{item.course?.name && item.course?.code ? `${item.course.code} · ` : ""}{component(item.componentType)}</small></div>
+      </div>
+      {coordinator ? <span className="slot-preference-excerpt">{item.preferenceNote || "No preference provided."}</span> : <div className="request-row-context">
+        <strong>{item.currentSlotLabel ? "Current assigned slot" : "Student preference"}</strong>
+        <small>{item.currentSlotLabel || item.preferenceNote || "No preference provided."}</small>
+      </div>}
+      <div className="request-row-status">
+        <Status status={item.status} />
+        {!coordinator && <small><time dateTime={item.createdAt}>{date(item.createdAt)}</time></small>}
+        <small>{termLabel(item.term)}</small>
+      </div>
+      <div className="request-row-actions">
+        <button type="button" className="outline-button request-review-action" disabled={busy} id={`slot-request-${item._id}`} aria-label={`View request for ${item.student?.studentId}, ${item.course?.code}`} onClick={() => open(item._id)}>View request</button>
+      </div>
+    </RegisterRow>)}
+  </StudentRegister>;
 
   return <div className="page-stack scheduling-page slot-changes-page workspace-page" ref={pageRef}>
     <div className="workspace-header"><div><h1>Slot change requests</h1>
@@ -134,8 +165,8 @@ export default function SlotChangesPage({ token, role, onOpenSchedule }) {
         <label className="field"><span>Status</span><select value={filters.status} onChange={setFilter("status")}><option value="">All statuses</option>{Object.entries(statuses).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
         <label className="field"><span>Advisor</span><select value={filters.advisor} onChange={setFilter("advisor")}><option value="">All advisors</option>{advisors.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label>
         <label className="field"><span>Course</span><select value={filters.course} onChange={setFilter("course")}><option value="">All courses</option>{options(requests.map((item) => item.course?.code)).map((code) => <option key={code}>{code}</option>)}</select></label>
-        <label className="field"><span>Start date</span><input type="date" value={filters.from} max={filters.to || undefined} onChange={setFilter("from")} /></label>
-        <label className="field"><span>End date</span><input type="date" value={filters.to} min={filters.from || undefined} onChange={setFilter("to")} /></label>
+        <label className="field"><span>{coordinator ? "Submitted from" : "Start date"}</span><input type="date" value={filters.from} max={filters.to || undefined} onChange={setFilter("from")} /></label>
+        <label className="field"><span>{coordinator ? "Submitted through" : "End date"}</span><input type="date" value={filters.to} min={filters.from || undefined} onChange={setFilter("to")} /></label>
       </div></FilterDisclosure>}
       {shown.length ? mine ? <div className="table-scroll"><table>
         <thead><tr><th>Course and slot</th><th>Submitted</th><th>Status</th><th>Details</th></tr></thead>
@@ -148,30 +179,14 @@ export default function SlotChangesPage({ token, role, onOpenSchedule }) {
             requestAnimationFrame(() => studentRequestHeading.current?.focus());
           }}>View details</button></td>
         </tr>)}</tbody>
-      </table></div> : <ul className="portal-request-list slot-request-list" role="list" aria-label="Slot change requests">
-        {shown.map((item) => <li key={item._id} className="portal-request-row">
-          <div className="request-row-student portal-person-cell">
-            <PortalAvatar name={item.student?.user?.fullName} />
-            <div><strong>{item.student?.user?.fullName || "Unknown student"}</strong><small>{item.student?.studentId}</small><small>Advisor {item.student?.assignedAdvisor?.fullName || "unassigned"}</small></div>
-          </div>
-          <div className="request-row-course portal-person-cell">
-            <OfferingCourseIcon code={item.course?.code} />
-            <div><strong>{item.course?.name || item.course?.code || "Unknown course"}</strong><small>{item.course?.name && item.course?.code ? `${item.course.code} · ` : ""}{component(item.componentType)}</small></div>
-          </div>
-          <div className="request-row-context">
-            <strong>{item.currentSlotLabel ? "Current assigned slot" : "Student preference"}</strong>
-            <small>{item.currentSlotLabel || item.preferenceNote || "No preference provided."}</small>
-          </div>
-          <div className="request-row-status">
-            <Status status={item.status} />
-            <small><time dateTime={item.createdAt}>{date(item.createdAt)}</time></small>
-            <small>{termLabel(item.term)}</small>
-          </div>
-          <div className="request-row-actions">
-            <button type="button" className="outline-button request-review-action" disabled={busy} id={`slot-request-${item._id}`} aria-label={`View request for ${item.student?.studentId}, ${item.course?.code}`} onClick={() => open(item._id)}>View request</button>
-          </div>
-        </li>)}
-      </ul> : <WorkspaceEmpty icon="calendar" action={requests.length > 0 && <button type="button" className="outline-button" onClick={() => setFilters(emptyFilters)}>Clear filters</button>} title={requests.length ? "No matching requests" : "No slot-change requests"} description={requests.length ? "Try another student or course, or clear your filters to see all requests." : mine ? "Requests you submit for a different lecture, tutorial or lab will appear here." : "Students’ slot-change requests will appear here with their current slot and preferences."} />}
+      </table></div> : coordinator ? <div className="slot-register-days">
+        {submissionDays.map(([day, items]) => {
+          const label = day ? submittedHeading.format(new Date(items[0].createdAt)) : "Submission date unavailable";
+          return <section key={day} className="slot-register-day"><h3>{day ? <time dateTime={day}>{label}</time> : label}</h3>
+            {requestRegister(items, `Slot change requests · ${label}`)}
+          </section>;
+        })}
+      </div> : requestRegister(shown, "Slot change requests") : <WorkspaceEmpty icon="calendar" action={requests.length > 0 && <button type="button" className="outline-button" onClick={() => setFilters(emptyFilters)}>Clear filters</button>} title={requests.length ? "No matching requests" : "No slot-change requests"} description={requests.length ? "Try another student or course, or clear your filters to see all requests." : mine ? "Requests you submit for a different lecture, tutorial or lab will appear here." : "Students’ slot-change requests will appear here with their current slot and preferences."} />}
     </section>}
     {selectedRequest && <div className="modal-backdrop slot-request-modal-backdrop" role="presentation" onClick={() => {
       const id = selectedRequestId;
@@ -231,7 +246,7 @@ export default function SlotChangesPage({ token, role, onOpenSchedule }) {
         <dl className="request-detail-facts">
           <div><dt>Advisor</dt><dd>{currentRequest.student?.assignedAdvisor?.fullName || "Unassigned"}</dd></div>
           <div><dt>Academic term</dt><dd>{termLabel(currentRequest.term)}</dd></div>
-          <div><dt>Submitted</dt><dd><time dateTime={currentRequest.createdAt}>{date(currentRequest.createdAt)}</time></dd></div>
+          <div><dt>Submitted</dt><dd><time dateTime={currentRequest.createdAt}>{coordinator && currentRequest.createdAt ? submittedAt.format(new Date(currentRequest.createdAt)) : date(currentRequest.createdAt)}</time></dd></div>
         </dl>
       </div>
       <div className="slot-review-notes">

@@ -78,7 +78,7 @@
 .dayoff:checked + .day-mark path:first-child {fill:#eee6d4;stroke:#b8b09d}
 [data-workspace] .notification-list .inbox-item {
   position:relative;grid-template-columns:64px minmax(0,1fr) auto;align-items:center;
-  gap:16px;padding:21px 12px;border-bottom:1px solid var(--rule);border-radius:0;
+  gap:16px;padding:21px 12px;border:0;border-radius:0;
 }
 [data-workspace] .notification-list .notice-symbol,
 [data-workspace] .notification-list .notice-symbol svg {width:62px;height:50px}
@@ -180,7 +180,9 @@
 .queue-group .staff-identity strong {font-size:16px;font-weight:500}
 .queue-group .staff-identity small {color:var(--muted);font-size:13px;line-height:1.45;margin-top:3px}
 .notice-person {display:inline-flex;align-items:center;gap:8px;color:var(--ink);font-size:14px;font-weight:500}
-.notice-person .avatar {display:grid;place-items:center;width:30px;height:30px;font-size:12px;flex:none}
+.inbox-item > .avatar {display:grid;place-items:center;justify-self:center;width:36px;height:36px;font-size:12px;flex:none}
+.inbox-text .notice-person {margin-bottom:4px;flex-wrap:wrap;gap:2px 8px}
+.notice-person small {font-weight:400;color:var(--muted);font-variant-numeric:tabular-nums}
 [data-workspace] .content .notification-list {max-width:none}
 [data-workspace] .notification-list .notification-meta {display:flex;align-items:center;justify-content:flex-end;gap:16px;flex-wrap:nowrap}
 [data-workspace] .notification-list time {display:block;color:var(--muted);margin-top:6px}
@@ -370,7 +372,6 @@
   .template-library .template-register .desk-action {grid-column:2;grid-row:2}
   .template-library .template-register .template-identity {grid-row:span 2}
   [data-workspace] .notification-list .notification-meta {grid-column:1/-1;justify-content:flex-end}
-  .notification-meta .notice-person {margin-right:auto}
 }
 
 

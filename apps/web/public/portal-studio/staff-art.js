@@ -195,7 +195,15 @@
       term.insertAdjacentHTML('afterbegin',`<span class="desk-season" aria-hidden="true">${seasonDrawing(month)}</span>`);
     });
     if (page === 'notifications') root.querySelectorAll('.notice-symbol').forEach(symbol => {
-      const art = {schedule: clipboard, removal: eraser, term: calendar}[symbol.dataset.kind] || bell;
+      const art = {
+        advisorAssigned: pass, advisorRemoved: pass, slotChangeSubmitted: clipboard,
+        slotChangeWithdrawn: clipboard, slotChangeDecision: clipboard, scheduleReadyForReview: clipboard,
+        scheduleProcessed: clipboard, scheduleReopened: clipboard, scheduleSwapOpened: copies, scheduleSwapCompleted: copies,
+        extraHoursRequested: catalogue, extraHoursDecision: catalogue, paymentUpdated: activityJournal,
+        refundIssued: activityJournal, deferredChargeUpdated: activityJournal, financialReversalRequested: activityJournal,
+        graduationPlanSubmitted: templates, graduationPlanDecision: templates, exitExamRequested: offerings, exitExamDecision: offerings,
+        mandatoryCourseRemovalRequested: eraser, advisingDeadlineReminder: calendar, probationWarning: pass,
+      }[symbol.dataset.kind] || inbox;
       symbol.innerHTML = drawing(art(), 'desk-small');
     });
     if (page === 'courses') root.querySelectorAll('.academic-emblem').forEach(emblem => {

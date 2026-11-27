@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, explainApiError } from "../api.js";
 import { ScheduleActivityPage } from "./B1Pages.jsx";
-import { StudentIdentity, RegisterEmpty, RecordPages, scheduleTone } from "./CoordinatorRecords.jsx";
+import { StudentRegister, RegisterRow, StudentIdentity, RegisterEmpty, RecordPages, scheduleTone } from "./CoordinatorRecords.jsx";
 import PortalAvatar from "./PortalAvatar.jsx";
 import FilterDisclosure from "./FilterDisclosure.jsx";
 
@@ -113,17 +113,17 @@ export default function StudentDirectoryPage({ token, role, notify }) {
     {error && <div className="feedback error" role="alert">{error}</div>}
     <section className="panel results-panel directory-results" aria-busy={loading} aria-labelledby="directory-students-heading">
       <div className="results-heading"><div>{!coordinator && <p className="eyebrow">DIRECTORY RESULTS</p>}<h2 id="directory-students-heading">Students</h2></div><span className="result-count">{loading ? "Loading" : `${students.length} ${students.length === 1 ? "student" : "students"}`}</span></div>
-      {loading ? <div className="loading-state"><span className="loader" />Loading students…</div> : !coordinator ? (students.length === 0 ? <div className="empty-state"><span>♙</span><h3>No students to show</h3><p>{error ? "The directory service could not be reached." : "Try changing your filters or search terms."}</p></div> : <div className="table-scroll"><table><thead><tr><th>Student</th><th>Type</th><th>Major</th><th>Semester</th><th>Standing</th><th>Advisor</th><th>Account</th><th>Workflow</th><th>Blocking step</th><th>Updated</th></tr></thead><tbody>{students.map((student) => <tr key={student.id}><td><button type="button" className="student-cell-button" onClick={() => openDetails(student.id)}><StudentIdentity name={student.fullName} id={student.studentId} email={student.email} /></button></td><td>{pretty(student.studentType)}</td><td>{student.major || "—"}</td><td>{student.currentSemester || "—"}</td><td>{pretty(student.academicStanding)}</td><td>{student.assignedAdvisor?.fullName || <span className="secondary-text">Unassigned</span>}</td><td><span className={`status-pill ${student.accountStatus === "active" ? "good" : "muted"}`}>{pretty(student.accountStatus)}</span></td><td><span className={`status-pill ${scheduleTone(student.workflowStatus)}`}>{student.workflowStatus ? pretty(student.workflowStatus) : directory.term ? "Not started" : "No active term"}</span></td><td>{pretty(student.blockingStep)}</td><td>{student.lastUpdatedAt ? new Date(student.lastUpdatedAt).toLocaleString() : "—"}</td></tr>)}</tbody></table></div>) : students.length === 0 ? <RegisterEmpty title="No students to show" description={error ? undefined : "Try another name, ID or filter."} /> : <div className="staff-register">
+      {loading ? <div className="loading-state"><span className="loader" />Loading students…</div> : !coordinator ? (students.length === 0 ? <div className="empty-state"><span>♙</span><h3>No students to show</h3><p>{error ? "The directory service could not be reached." : "Try changing your filters or search terms."}</p></div> : <div className="table-scroll"><table><thead><tr><th>Student</th><th>Type</th><th>Major</th><th>Semester</th><th>Standing</th><th>Advisor</th><th>Account</th><th>Workflow</th><th>Blocking step</th><th>Updated</th></tr></thead><tbody>{students.map((student) => <tr key={student.id}><td><button type="button" className="student-cell-button" onClick={() => openDetails(student.id)}><StudentIdentity name={student.fullName} id={student.studentId} email={student.email} /></button></td><td>{pretty(student.studentType)}</td><td>{student.major || "—"}</td><td>{student.currentSemester || "—"}</td><td>{pretty(student.academicStanding)}</td><td>{student.assignedAdvisor?.fullName || <span className="secondary-text">Unassigned</span>}</td><td><span className={`status-pill ${student.accountStatus === "active" ? "good" : "muted"}`}>{pretty(student.accountStatus)}</span></td><td><span className={`status-pill ${scheduleTone(student.workflowStatus)}`}>{student.workflowStatus ? pretty(student.workflowStatus) : directory.term ? "Not started" : "No active term"}</span></td><td>{pretty(student.blockingStep)}</td><td>{student.lastUpdatedAt ? new Date(student.lastUpdatedAt).toLocaleString() : "—"}</td></tr>)}</tbody></table></div>) : students.length === 0 ? <RegisterEmpty title="No students to show" description={error ? undefined : "Try another name, ID or filter."} /> : <StudentRegister label="Student directory" className="directory-register" columns={["Student", "Programme", "Schedule status", "Action"]}>
         {students.slice((currentPage - 1) * size, currentPage * size).map((student) =>
-          <article key={student.id} className="register-entry">
+          <RegisterRow key={student.id} className="directory-student-row">
             <StudentIdentity name={student.fullName} id={student.studentId} />
-            <p className="register-academics">{student.major || "Undeclared major"}<small>Semester {student.currentSemester || "—"} · {pretty(student.studentType)}</small></p>
-            <div className="workflow-info">
+            <p className="student-register-meta">{student.major || "Undeclared major"}<small>Semester {student.currentSemester || "—"} · {pretty(student.studentType)}</small></p>
+            <div className="student-register-meta">
               <span className={`status-pill ${scheduleTone(student.workflowStatus)}`}>{student.workflowStatus && student.workflowStatus !== "notStarted" ? pretty(student.workflowStatus) : directory.term ? "Not started" : "No active term"}</span>
               {student.workflowStatus !== "notStarted" && student.blockingStep && <small>{student.blockingStep}</small>}
             </div>
-            <button className="text-button register-action" type="button" aria-label={`Open profile for ${student.studentId} · ${student.fullName || "Student"}`} onClick={() => openDetails(student.id)}>Open profile</button>
-          </article>)}</div>}
+            <button className="outline-button" type="button" aria-label={`Open profile for ${student.studentId} · ${student.fullName || "Student"}`} onClick={() => openDetails(student.id)}>Open profile</button>
+          </RegisterRow>)}</StudentRegister>}
       {coordinator && <RecordPages page={currentPage} size={size} total={students.length} onChange={setPage} label="Directory" />}
     </section>
 

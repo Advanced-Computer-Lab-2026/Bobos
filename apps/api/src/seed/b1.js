@@ -11,6 +11,14 @@ if (process.env.NODE_ENV === 'production' || !uri || !['localhost', '127.0.0.1',
 }
 const password = 'Password123!';
 const oid = key => new mongoose.Types.ObjectId(createHash('sha256').update(`bobos-b1-v1:${key}`).digest('hex').slice(0, 24));
+const legacyNames = {
+  coordinator: 'B1 Coordinator', admin: 'B1 Administrator', advisor: 'B1 Advisor Salma', advisor2: 'B1 Advisor Karim',
+  student1: 'B1 Calendar ready', student2: 'B1 Reopened draft', student3: 'B1 Slot change pending',
+  student4: 'B1 Course removal pending', student5: 'B1 Extra hours approval', student6: 'B1 Payment choice needed',
+  student7: 'B1 Deferred payment', student8: 'B1 Future graduation plan', student9: 'B1 Exit exam pending',
+  student10: 'B1 Financial reversal', student11: 'B1 Not started',
+  normal1: 'B1 Normal assigned', normal2: 'B1 Open group swap', normal3: 'B1 Completed group swap',
+};
 let inserted = 0;
 async function ensure(Model, key, fields) {
   const id = oid(key);
@@ -30,15 +38,17 @@ try {
   if (!term) throw new Error('Run npm run seed:evaluation --workspace @bobos/api first to create the active term and curriculum.');
   const hash = await bcrypt.hash(password, 10);
   async function account(key, role, name) {
-    return ensure(User, `user:${key}`, { email: `b1.${key}@${role.endsWith('Student') ? 'student.guc.edu.eg' : 'guc.edu.eg'}`,
-      fullName: `B1 ${name}`, passwordHash: hash, role, isActive: true, isAdvisorInSystem: role === 'advisor' });
+    const email = `b1.${key}@${role.endsWith('Student') ? 'student.guc.edu.eg' : 'guc.edu.eg'}`;
+    const user = await ensure(User, `user:${key}`, { email, fullName: name, passwordHash: hash, role, isActive: true, isAdvisorInSystem: role === 'advisor' });
+    if (legacyNames[key]) await User.updateOne({ _id: user._id, fullName: legacyNames[key] }, { $set: { fullName: name } });
+    return user;
   }
-  const coordinator = await account('coordinator', 'coordinator', 'Coordinator');
-  await account('admin', 'administrator', 'Administrator');
-  const advisor = await account('advisor', 'advisor', 'Advisor Salma');
-  const advisor2 = await account('advisor2', 'advisor', 'Advisor Karim');
-  const names = ['Calendar ready', 'Reopened draft', 'Slot change pending', 'Course removal pending', 'Extra hours approval',
-    'Payment choice needed', 'Deferred payment', 'Future graduation plan', 'Exit exam pending', 'Financial reversal', 'Not started'];
+  const coordinator = await account('coordinator', 'coordinator', 'Nadia Mahmoud');
+  await account('admin', 'administrator', 'Mona Hafez');
+  const advisor = await account('advisor', 'advisor', 'Sherif Ezzat');
+  const advisor2 = await account('advisor2', 'advisor', 'Hala Mounir');
+  const names = ['Mariam Adel', 'Youssef Tarek', 'Laila Hossam', 'Omar Karim', 'Nour Hassan',
+    'Hana Samir', 'Amr Nabil', 'Yasmin Fawzy', 'Tamer Sherif', 'Dina Hany', 'Mostafa Wael'];
   const students = [];
   for (let i = 0; i < names.length; i++) {
     const user = await account(`student${i + 1}`, 'advisingStudent', names[i]);
@@ -50,15 +60,15 @@ try {
     students.push(profile);
   }
   const normals = [];
-  for (let i = 1; i <= 3; i++) {
-    const user = await account(`normal${i}`, 'normalStudent', ['Normal assigned', 'Open group swap', 'Completed group swap'][i - 1]);
-    normals.push(await ensure(StudentProfile, `normal:${i}`, { user: user._id, studentId: `92-${String(i).padStart(5, '0')}`,
-      studentType: 'normal', major: 'CS', currentSemester: 5, gpa: 2.2, academicStanding: 'goodAcademicStanding', studyGroup: String(i) }));
+  for (const [i, name] of ['Karim Ashraf', 'Salma Younis', 'Omar Fathy'].entries()) {
+    const user = await account(`normal${i + 1}`, 'normalStudent', name);
+    normals.push(await ensure(StudentProfile, `normal:${i + 1}`, { user: user._id, studentId: `92-${String(i + 1).padStart(5, '0')}`,
+      studentType: 'normal', major: 'CS', currentSemester: 5, gpa: 2.2, academicStanding: 'goodAcademicStanding', studyGroup: String(i + 1) }));
   }
   const course = await Course.findOne({code:'CSEN704'});
   if (!course) throw new Error('Import the curriculum first (CSEN704).');
   const offering = await CourseOffering.findOne({course:course._id,term:term._id}) || await ensure(CourseOffering, `offering:${term.id}`, { course: course._id, term: term._id, isPublished: true,
-    instructors: [{ fullName: 'B1 Test Faculty', email: 'b1.faculty@guc.edu.eg' }], eligibleGroups: [{ major: 'CS', semester: 5 }],
+    instructors: [{ fullName: 'Dr Rania Emad', email: 'b1.faculty@guc.edu.eg' }], eligibleGroups: [{ major: 'CS', semester: 5 }],
     slots: ['lecture', 'tutorial', 'lab'].flatMap((componentType, i) => [1, 2].map(group => ({
       _id: oid(`slot:${term.id}:${i}:${group}`), componentType, groupNumber: String(group), day: ['Monday', 'Tuesday', 'Wednesday'][i],
       startMinute: 540 + group * 120, endMinute: 600 + group * 120, room: `B1.${i + 1}${group}`, capacity: 100 }))) });
@@ -80,9 +90,13 @@ try {
   }
   await ensure(SlotChangeRequest, 'slot-request', { student: students[2]._id, schedule: schedules[2]._id, term: term._id,
     course: course._id, componentType: 'lecture', currentOffering: offering._id, currentSlotGroupId: offering.slots[0]._id,
-    preferenceNote: 'B1 test: prefer the second lecture group.', status: 'pending' });
+    preferenceNote: 'I have a Monday conflict and would prefer the second lecture group.', status: 'pending' });
+  await SlotChangeRequest.updateOne({ _id: oid('slot-request'), preferenceNote: 'B1 test: prefer the second lecture group.' },
+    { $set: { preferenceNote: 'I have a Monday conflict and would prefer the second lecture group.' } });
   await ensure(MandatoryCourseRemovalRequest, 'removal', { student: students[3]._id, advisor: students[3].assignedAdvisor,
-    term: term._id, course: course._id, reason: 'incorrectMandatoryDesignation', explanation: 'B1 test coordinator review.', status: 'pending' });
+    term: term._id, course: course._id, reason: 'incorrectMandatoryDesignation', explanation: 'My audit shows this course was an elective when I completed it.', status: 'pending' });
+  await MandatoryCourseRemovalRequest.updateOne({ _id: oid('removal'), explanation: 'B1 test coordinator review.' },
+    { $set: { explanation: 'My audit shows this course was an elective when I completed it.' } });
   async function extra(index, decisionStatus, settlementStatus) {
     return ensure(ExtraHoursRequest, `extra:${index}`, { student: students[index]._id, advisor: students[index].assignedAdvisor, term: term._id,
       courses: [{ course: course._id, hours: 4, isRepeated: false, pricePerHour: 800, subtotal: 3200 }], requestedHours: 4, totalCost: 3200,
@@ -101,7 +115,9 @@ try {
   }
   await ensure(GraduationPlan, 'graduation', { student: students[7]._id, advisor: students[7].assignedAdvisor, status: 'submitted', submittedAt: new Date(),
     termPlans: [{ term: future._id, courses: [course._id] }] });
-  await ensure(ExitExamRequest, 'exit-exam', { student: students[8]._id, advisor: students[8].assignedAdvisor, course: course._id, reason: 'B1 test final failed course.', status: 'pending' });
+  await ensure(ExitExamRequest, 'exit-exam', { student: students[8]._id, advisor: students[8].assignedAdvisor, course: course._id, reason: 'I would like to retake the final exam for this course.', status: 'pending' });
+  await ExitExamRequest.updateOne({ _id: oid('exit-exam'), reason: 'B1 test final failed course.' },
+    { $set: { reason: 'I would like to retake the final exam for this course.' } });
   const paid = await extra(9, 'approved', 'paid');
   const payment = await ensure(FinancialTransaction, 'payment', { student: students[9]._id, extraHoursRequest: paid._id, kind: 'gatewayPayment',
     amount: 3200, currency: 'EGP', status: 'succeeded', transactionReference: 'B1-PAYMENT-001', occurredAt: new Date() });
@@ -116,11 +132,14 @@ try {
     const index = i % 2;
     const action = index === 0 ? 'processed' : 'reopened';
     const actor = i % 4 < 2 ? coordinator : advisor;
-    await ensure(ScheduleActivity, `activity:${i}`, { student: students[index]._id, term: term._id, schedule: schedules[index]._id,
+    const activity = await ensure(ScheduleActivity, `activity:${i}`, { student: students[index]._id, term: term._id, schedule: schedules[index]._id,
       action, scheduleVersion: Math.floor(i / 2) + 2, actor: actor._id,
-      actorName: i < 12 ? 'B1 Former Staff Name' : actor.fullName, actorEmail: actor.email, actorRole: actor.role,
+      actorName: actor.fullName, actorEmail: actor.email, actorRole: actor.role,
       occurredAt: new Date(today.getTime() - (9 - Math.floor(i / 12)) * day + (i % 12) * 3600000),
-      ...(action === 'reopened' ? { reason: `B1 test correction ${i + 1}: review the lab group.` } : {}) });
+      ...(action === 'reopened' ? { reason: 'Updated after review of the lab group assignment.' } : {}) });
+    if (i < 12) await ScheduleActivity.updateOne({ _id: activity._id, actorName: 'B1 Former Staff Name' }, { $set: { actorName: actor.fullName } });
+    if (action === 'reopened') await ScheduleActivity.updateOne({ _id: activity._id, reason: `B1 test correction ${i + 1}: review the lab group.` },
+      { $set: { reason: 'Updated after review of the lab group assignment.' } });
   }
   console.log(`B1 seed ready in database ${mongoose.connection.name}, active term ${term.code}. Inserted ${inserted} documents; existing fixture records retained.`);
   console.log('Password for all B1 accounts: Password123!');

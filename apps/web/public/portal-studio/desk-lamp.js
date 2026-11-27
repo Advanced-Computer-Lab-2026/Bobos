@@ -39,7 +39,7 @@ window.mountPortalControlInk = function (shadow, { coordinator = false } = {}) {
   const capture = { capture: true, passive: true, signal: events.signal };
   const fields = 'input:not([type=hidden], [type=radio], [type=checkbox], [type=range], [type=file]), select, textarea';
   const selector = coordinator ? `button, ${fields}, a[href]` : 'button, input:not([type=hidden]), select, textarea, a[href]';
-  const hoverSelector = coordinator ? `button, ${fields}` : selector;
+  const hoverSelector = coordinator ? `button:not(.workflow-student), ${fields}` : selector;
   const createRing = (kind) => {
     const ring = document.createElement('span');
     ring.className = 'portal-focus-ring';
@@ -48,6 +48,7 @@ window.mountPortalControlInk = function (shadow, { coordinator = false } = {}) {
     ring.innerHTML = inkContour;
     return ring;
   };
+  const anchored = coordinator && CSS.supports('position-anchor: --service-control');
   const hoverRing = createRing('hover');
   const focusRing = createRing('focus');
   let pointer;
@@ -61,14 +62,26 @@ window.mountPortalControlInk = function (shadow, { coordinator = false } = {}) {
       ring.remove();
       return;
     }
-    const dialogue = coordinator ? control.closest('dialog[open]') : null;
-    const host = dialogue || document.body;
+    // Keep coordinator contours in the same scrolling content as their controls.
+    if (coordinator) {
+      const host = control.parentElement;
+      if (ring.parentNode !== host) host.append(ring);
+      if (!anchored) {
+        const box = control.getBoundingClientRect();
+        const parent = ring.offsetParent;
+        if (!parent) return;
+        const origin = parent.getBoundingClientRect();
+        Object.assign(ring.style, {
+          left: `${box.left - origin.left - parent.clientLeft + parent.scrollLeft}px`,
+          top: `${box.top - origin.top - parent.clientTop + parent.scrollTop}px`,
+          width: `${box.width}px`, height: `${box.height}px`,
+        });
+      }
+      return;
+    }
     const rect = control.getBoundingClientRect();
-    const bounds = dialogue?.getBoundingClientRect();
-    const left = bounds ? bounds.left + dialogue.clientLeft - dialogue.scrollLeft : 0;
-    const top = bounds ? bounds.top + dialogue.clientTop - dialogue.scrollTop : 0;
     const clip = { top: 0, right: 0, bottom: 0, left: 0 };
-    for (let parent = control.parentElement; parent && parent !== dialogue; parent = parent.parentElement || parent.getRootNode().host) {
+    for (let parent = control.parentElement; parent; parent = parent.parentElement || parent.getRootNode().host) {
       const { overflowX, overflowY } = getComputedStyle(parent);
       if (overflowX === 'visible' && overflowY === 'visible') continue;
       const boundary = parent.getBoundingClientRect();
@@ -84,16 +97,13 @@ window.mountPortalControlInk = function (shadow, { coordinator = false } = {}) {
       }
     }
     Object.assign(ring.style, {
-      left: `${rect.left - padding - left}px`,
-      top: `${rect.top - padding - top}px`,
+      left: `${rect.left - padding}px`,
+      top: `${rect.top - padding}px`,
       width: `${rect.width + padding * 2}px`,
       height: `${rect.height + padding * 2}px`,
       clipPath: `inset(${clip.top}px ${clip.right}px ${clip.bottom}px ${clip.left}px)`,
     });
-    if (coordinator) {
-      ring.style.color = getComputedStyle(control).getPropertyValue('--ink');
-    }
-    if (ring.parentNode !== host) host.append(ring);
+    if (ring.parentNode !== document.body) document.body.append(ring);
   }
 
   function update() {

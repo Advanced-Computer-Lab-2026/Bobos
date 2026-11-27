@@ -544,7 +544,10 @@ export async function listNormalStudents(req, res, next) {
     const schedules = await StudentSchedule.find({ term: term._id, scheduleType: "normal", student: { $in: students.map((student) => student._id) } })
       .select("student template status processedAt courses").populate("template", "studyGroup").lean();
     const schedulesByStudent = new Map(schedules.map((schedule) => [idOf(schedule.student), schedule]));
-    let rows = students.map((student) => studentView(student, schedulesByStudent.get(idOf(student._id))));
+    let rows = students.map((student) => ({
+      ...studentView(student, schedulesByStudent.get(idOf(student._id))),
+      enrollmentStatus: student.enrollmentStatus,
+    }));
     if (req.query.assigned === "true") rows = rows.filter((row) => row.assignment);
     if (req.query.assigned === "false") rows = rows.filter((row) => !row.assignment);
     if (req.query.assigned && !["true", "false"].includes(req.query.assigned)) return res.status(400).json({ message: "assigned must be true or false" });

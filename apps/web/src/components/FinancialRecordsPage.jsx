@@ -308,7 +308,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
             />
           </label>;
   const filterFields = <>
-<label className="field">
+          <label className="field">
             <span>Transaction type</span>
             <select value={type} onChange={handleTypeChange}>
               {TYPE_OPTIONS.map((opt) => (
@@ -349,16 +349,16 @@ export default function FinancialRecordsPage({ token, role, notify }) {
               ))}
             </select>
           </label>
-
-          <label className="field">
-            <span>From date</span>
-            <input type="date" value={startDate} onChange={(e) => { setStartDate(e.target.value); setPage(1); }} />
-          </label>
-
-          <label className="field">
-            <span>To date</span>
-            <input type="date" value={endDate} onChange={(e) => { setEndDate(e.target.value); setPage(1); }} />
-          </label>
+  </>;
+  const dateFields = <>
+    <label className="field">
+      <span>From date</span>
+      <input type="date" value={startDate} onChange={(event) => { setStartDate(event.target.value); setPage(1); }} />
+    </label>
+    <label className="field">
+      <span>To date</span>
+      <input type="date" value={endDate} onChange={(event) => { setEndDate(event.target.value); setPage(1); }} />
+    </label>
   </>;
   return (
     <div className="page-stack workspace-page finance-page">
@@ -389,9 +389,9 @@ export default function FinancialRecordsPage({ token, role, notify }) {
           [startDate && "From " + startDate, setStartDate], [endDate && "Through " + endDate, setEndDate],
         ].filter(([label]) => label).map(([label, reset], index) => ({ key: index, label: label === term ? termLabel(terms.find(item => item.code === term)) : ledgerLabel(label), onRemove: () => { reset(""); setPage(1); } }))}
           search={searchField}>
-          <div className="filter-grid">{filterFields}        </div>
+          <div className="filter-grid ledger-filter-grid">{filterFields}<div className="ledger-date-range">{dateFields}</div></div>
 
-        </FilterDisclosure> : <><div className="panel-heading"><h2>Find a transaction</h2></div><div className="filter-grid">{searchField}{filterFields}</div>
+        </FilterDisclosure> : <><div className="panel-heading"><h2>Find a transaction</h2></div><div className="filter-grid">{searchField}{filterFields}{dateFields}</div>
           <div className="filter-actions"><button type="button" className="text-button" onClick={handleClearFilters}>Clear filters</button><button type="button" className="text-button push-right" onClick={() => loadRecords()}>Refresh</button></div></>}
       </section>
 
@@ -422,7 +422,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
             action={hasFilters ? <button className="outline-button" type="button" onClick={handleClearFilters}>Clear filters</button> : undefined} />
         ) : (
           <>
-            <div className={coordinator ? "studio-ledger" : "table-scroll"}>
+            <div className={coordinator ? "finance-register table-scroll graduation-register student-register register-with-actions" : "table-scroll"}>
               <table>
                 <thead>
                   <tr>
@@ -450,7 +450,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
                         <div className="ledger-actions">
                           <button
                             type="button"
-                            className={coordinator ? "text-button" : "outline-button"}
+                            className="outline-button"
                             onClick={() => openDetails(r)}
                             title="View complete record breakdown"
                           >

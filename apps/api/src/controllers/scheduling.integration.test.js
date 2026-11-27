@@ -944,6 +944,9 @@ test("C2 Req 79 previews simultaneous issues without mutating the draft or reser
 
 test("assignment rejects inactive/non-normal students, unknown terms, unpublished templates and full slots", async () => {
   const inactive = await StudentProfile.create({ user: (await User.create({ email: "inactive@student.guc.edu.eg", fullName: "Inactive", passwordHash: "hash", role: "normalStudent" }))._id, studentId: "52-00002", studentType: "normal", major: "CS", currentSemester: 5, gpa: 2, academicStanding: "goodAcademicStanding", enrollmentStatus: "inactive" });
+  const roster = await call(`/group-assignments/students?termId=${term._id}&search=${inactive.studentId}`, { role: "coordinator" });
+  assert.equal(roster.body.students[0].isActive, true);
+  assert.equal(roster.body.students[0].enrollmentStatus, "inactive");
   const baseBody = { termId: String(term._id), studyGroup: "1" };
   assert.equal((await call("/group-assignments", { role: "coordinator", method: "POST", body: { ...baseBody, studentId: String(inactive._id) } })).status, 400);
   assert.equal((await call("/group-assignments", { role: "coordinator", method: "POST", body: { ...baseBody, studentId: String(profiles.advising._id) } })).status, 400);

@@ -1,5 +1,8 @@
+import { Modal } from "./AcademicWorkspace.jsx";
 import OfferingCourseIcon from "./OfferingCourseIcon.jsx";
-import { RecordPages, RegisterEmpty, StudentIdentity } from "./CoordinatorRecords.jsx";
+import PortalAvatar from "./PortalAvatar.jsx";
+import { ChromeIcon } from "./PortalChrome.jsx";
+import { RecordPages, RegisterEmpty, RegisterRow, StudentIdentity, StudentRegister } from "./CoordinatorRecords.jsx";
 import { useEffect, useState } from "react";
 import FilterDisclosure from "./FilterDisclosure.jsx";
 import { api } from "../api.js";
@@ -15,160 +18,196 @@ const requestStatusLabel = (request) => {
     ? "Payment choice needed" : displayLabel(settlement || request.status);
 };
 
-const queueArt = {
-  extraHours: "extra-hours-inbox.svg", slotChange: "student-schedules-calendar.png",
-  mandatoryCourseRemoval: "course-removal-slip.svg", graduationPlan: "graduation-cap.svg",
-  exitExam: "submitted-plan.svg", financialReversal: "payment-ledger.svg", wholeScheduleSwap: "schedule-exchange.svg",
-};
+const groupLabels = { studentType: "Student type", requestType: "Request type", advisor: "Advisor" };
+const allGroupLabels = { studentType: "All student types", requestType: "All request types", advisor: "All advisors" };
+const workflowColumns = ["Student", "Schedule status", "Blocking step", "Requests"];
+const requestCount = count => count === 1 ? "1 request" : `${count} requests`;
 
-function RequestSummary({ item }) {
-  const title = item.type === "extraHours" && item.requestedHours
-    ? `${item.requestedHours} extra credit ${item.requestedHours === 1 ? "hour" : "hours"}`
-    : item.type === "slotChange" && item.componentType ? `Change ${item.componentType} group` : displayLabel(item.type);
-  return <div className="pending-request-summary">
-    <strong>{title}</strong>
-    {item.courses?.map(({ code, name }, index) => <span className="pending-course" key={index}><OfferingCourseIcon code={code} />{[name, code].filter(Boolean).join(" · ")}</span>)}
-    {!["pending", "submitted"].includes(item.status) && <small>{requestStatusLabel(item)}</small>}
-  </div>;
+function requestTitle(item) {
+  if (item.type === "extraHours" && item.requestedHours) return `${item.requestedHours} extra credit ${item.requestedHours === 1 ? "hour" : "hours"}`;
+  if (item.type === "slotChange" && item.componentType) return `Change ${item.componentType} group`;
+  return displayLabel(item.type);
 }
 
-function ReviewLink({ item, student }) {
-  const destination = requestDestinations[item.type];
-  return destination && <a className="outline-button inbox-action"
-    href={`?page=${destination}&role=coordinator${item.type === "exitExam" ? "&queue=exams" : ""}`}
-    aria-label={`Review ${displayLabel(item.type).toLowerCase()} queue for ${student.fullName || student.studentId}`}>Review queue</a>;
+function scheduleDestination(student, term) {
+  if (!term || !student.blockingStep || !["notStarted", "draft", "reopened"].includes(student.workflowStatus)) return null;
+  return student.studentType === "normal" ? "?page=group-assignments&role=coordinator"
+    : `?page=student-schedules&role=coordinator&student=${encodeURIComponent(student.id)}&term=${encodeURIComponent(term.code)}`;
 }
 
-function WorkflowRow({ student, term, groupBy, requestType }) {
+function StudentWorkDetail({ student, term, requestType, requestsOnly, onClose }) {
+  const [page, setPage] = useState(1);
   const requests = student.requests.filter(item => !requestType || item.type === requestType);
-  const scheduleBlocker = ["notStarted", "draft", "reopened"].includes(student.workflowStatus) && student.blockingStep && term;
-  const advising = student.studentType === "advising";
-  const assignment = groupBy === "advisor" ? displayLabel(student.studentType) : student.assignedAdvisor?.fullName || (advising ? "Advisor unassigned" : "No advisor required");
-  return <div className="workflow-record">
-    <div className="workflow-student-line">
-      <StudentIdentity name={student.fullName} id={[student.studentId, assignment].filter(Boolean).join(" · ")} />
-      <div className="workflow-state"><strong>{displayLabel(student.workflowStatus)}</strong><small>{student.blockingStep || "No blocking step"}</small></div>
-      <div className="workflow-followup">
-        {scheduleBlocker && <a className="outline-button inbox-action" href={advising
-          ? `?page=student-schedules&role=coordinator&student=${encodeURIComponent(student.id)}&term=${encodeURIComponent(term.code)}`
-          : "?page=group-assignments&role=coordinator"}>{advising ? "Open schedule" : "Open assignments"}</a>}
-        {student.lastUpdatedAt && <time dateTime={student.lastUpdatedAt} title={dateValue(student.lastUpdatedAt)}>Updated {new Date(student.lastUpdatedAt).toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"})}</time>}
-      </div>
+  const scheduleUrl = scheduleDestination(student, term);
+  const pageSize = 4;
+  return <Modal title={requestsOnly ? `${student.fullName || student.studentId} · Requests` : student.fullName || student.studentId} onClose={onClose}>
+    <div className="pending-file">
+      <p className="pending-file-identity">{student.studentId} · {displayLabel(student.studentType)}</p>
+      {!requestsOnly && <dl className="pending-facts">
+        <div><dt>Schedule status</dt><dd>{displayLabel(student.workflowStatus)}</dd></div>
+        <div><dt>Blocking step</dt><dd>{scheduleUrl ? <a className="outline-button workflow-action" href={scheduleUrl} aria-label={`${student.blockingStep} for ${student.fullName || student.studentId}`}>{student.blockingStep}</a> : student.blockingStep || "None"}</dd></div>
+        <div><dt>Advisor</dt><dd>{student.assignedAdvisor?.fullName || (student.studentType === "normal" ? "No advisor required" : "Unassigned")}</dd></div>
+        {student.lastUpdatedAt && <div><dt>Last workflow update</dt><dd><time dateTime={student.lastUpdatedAt}>{dateValue(student.lastUpdatedAt)}</time></dd></div>}
+      </dl>}
+      {(!requestsOnly || requests.length > 1) && <h3>{requestCount(requests.length)}</h3>}
+      {requests.length > 0 && <ol className="pending-file-requests" start={(page - 1) * pageSize + 1}>{requests.slice((page - 1) * pageSize, page * pageSize).map(item => {
+        const destination = requestDestinations[item.type];
+        return <li key={item.id}>
+          <div className="pending-file-request-head"><strong>{requestTitle(item)}</strong>
+            {destination && <a className="outline-button workflow-action" href={`?page=${destination}&role=coordinator${item.type === "exitExam" ? "&queue=exams" : ""}`}>Review queue</a>}</div>
+          {item.courses?.map(({code, name}) => <div className="pending-course" key={code || name}><OfferingCourseIcon code={code} /><span>{[code, name].filter(Boolean).join(" · ")}</span></div>)}
+          <p>{requestStatusLabel(item)}{item.updatedAt && <> · <time dateTime={item.updatedAt}>Updated {dateValue(item.updatedAt)}</time></>}</p>
+        </li>;
+      })}</ol>}
+      <RecordPages label="Student requests" page={page} size={pageSize} total={requests.length} onChange={setPage} />
     </div>
-    {requests.length > 0 && <details className="workflow-requests"><summary>{requests.length} {requests.length === 1 ? "request" : "requests"}</summary>
-      <ul>{requests.map(item => <li key={item.id}><RequestSummary item={item} /><ReviewLink item={item} student={student} /></li>)}</ul>
-    </details>}
-  </div>;
+  </Modal>;
+}
+
+function WorkflowRow({ student, requestType, term, onOpen }) {
+  const requests = student.requests.filter(item => !requestType || item.type === requestType);
+  const scheduleUrl = scheduleDestination(student, term);
+  const hours = requests.length === 1 && requests[0].type === "extraHours" && requests[0].requestedHours;
+  const subject = hours ? `${hours} extra ${hours === 1 ? "hour" : "hours"}`
+    : requests.length === 1 ? requestTitle(requests[0]) : requestCount(requests.length);
+  return <tr className="workflow-record" role="row">
+    <td role="cell"><button type="button" className="workflow-student" onClick={() => onOpen({ student })} aria-label={`View workflow for ${student.fullName || student.studentId}`}>
+      <StudentIdentity name={student.fullName} id={student.studentId} />
+      <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m6 4 4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+    </button></td>
+    <td role="cell">{displayLabel(student.workflowStatus)}</td>
+    <td role="cell">{scheduleUrl ? <a className="outline-button workflow-action" href={scheduleUrl} aria-label={`${student.blockingStep} for ${student.fullName || student.studentId}`}>{student.blockingStep}</a> : student.blockingStep || "None"}</td>
+    <td role="cell">{requests.length ? <button type="button" className="workflow-request-link" aria-haspopup="dialog"
+      onClick={() => onOpen({ student, requestType, requestsOnly:true })}
+      aria-label={`View ${subject.toLowerCase()} for ${student.fullName || student.studentId}`}>
+      <ChromeIcon name="document" />
+      <span>{subject}</span>
+    </button> : <span className="workflow-none">No requests</span>}</td>
+  </tr>;
+}
+
+function groupWorkflows(students, groupBy, requestTypes) {
+  const groups = new Map();
+  const add = (key, label) => {
+    if (!groups.has(key)) groups.set(key, { key, label, students: [] });
+    return groups.get(key).students;
+  };
+  if (groupBy === "studentType") {
+    add("advising", "Advising students");
+    add("normal", "Normal students");
+  }
+  if (groupBy === "requestType") {
+    for (const key of requestTypes) add(key, displayLabel(key));
+    add("noRequests", "No requests");
+  }
+  for (const student of students) {
+    if (groupBy === "studentType") add(student.studentType, displayLabel(student.studentType)).push(student);
+    if (groupBy === "advisor") add(student.assignedAdvisor?.id || "unassigned", student.assignedAdvisor?.fullName || "No advisor assigned").push(student);
+    if (groupBy === "requestType") {
+      const keys = student.requests.length ? new Set(student.requests.map(item => item.type)) : ["noRequests"];
+      for (const key of keys) add(key, displayLabel(key)).push(student);
+    }
+  }
+  return [...groups.values()].sort((a, b) => Number(["unassigned", "noRequests"].includes(a.key)) - Number(["unassigned", "noRequests"].includes(b.key)) || a.label.localeCompare(b.label));
+}
+
+function AdvisorWorkflowGroup({ group, term, onOpen, size }) {
+  const [page, setPage] = useState(1);
+  const count = group.students.length;
+  const currentPage = Math.min(page, Math.ceil(count / size));
+  const preview = group.students.slice(0, 4);
+  return <details className="workflow-advisor">
+    <summary>
+      <span className="workflow-advisor-name">{group.label}</span>
+      <span className="workflow-advisor-avatars" aria-hidden="true">
+        {preview.map(student => <PortalAvatar key={student.id} name={student.fullName} />)}
+        {count > preview.length && <span className="workflow-advisor-overflow">+{count - preview.length}</span>}
+      </span>
+      <span className="workflow-advisor-count">{count} {count === 1 ? "student" : "students"}</span>
+      <svg className="workflow-advisor-chevron" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m4 6 4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+    </summary>
+    <StudentRegister className="workflow-register" columns={workflowColumns} label={`Student scheduling workflow · ${group.label}`}>
+      {group.students.slice((currentPage - 1) * size, currentPage * size).map(student => <WorkflowRow key={student.id} student={student} term={term} onOpen={onOpen} />)}
+    </StudentRegister>
+    <RecordPages page={currentPage} size={size} total={count} onChange={setPage} label={`${group.label} workflows`} />
+  </details>;
 }
 
 export function PendingWorkPage({ token }) {
   const [data, setData] = useState(null);
-  const [queue, setQueue] = useState("");
-  const [workflow, setWorkflow] = useState(false);
   const [groupBy, setGroupBy] = useState("studentType");
-  const [type, setType] = useState("");
+  const [groupFilter, setGroupFilter] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [detail, setDetail] = useState(null);
   const [error, setError] = useState("");
-  const [refreshing, setRefreshing] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   useEffect(() => {
     const controller = new AbortController();
-    setRefreshing(true);
     setError("");
     api("/api/admin/pending-work", { token, signal: controller.signal })
       .then((result) => { if (!controller.signal.aborted) setData(result); })
-      .catch((err) => { if (!controller.signal.aborted) setError(err.message); })
-      .finally(() => { if (!controller.signal.aborted) setRefreshing(false); });
+      .catch((err) => { if (!controller.signal.aborted) setError(err.message); });
     return () => controller.abort();
   }, [token, reloadKey]);
-  if (!data && !error) return <div className="app-loading"><span className="loader" />Loading pending work…</div>;
-  const students = data?.students || [];
-  const byType = Object.entries(data?.groups.requestType || {}).sort(([, a], [, b]) => b - a);
-  const totalRequests = byType.reduce((sum, [, count]) => sum + count, 0);
+  useEffect(() => {
+    const refreshOnReturn = () => {
+      if (document.visibilityState === "visible") setReloadKey(key => key + 1);
+    };
+    document.addEventListener("visibilitychange", refreshOnReturn);
+    return () => document.removeEventListener("visibilitychange", refreshOnReturn);
+  }, []);
+  if (!data && !error) return <div className="app-loading" role="status"><span className="loader" />Loading pending work…</div>;
+
   const query = search.trim().toLowerCase();
-  const matches = students.filter(s => !query || [s.fullName, s.studentId, s.assignedAdvisor?.fullName, s.assignedAdvisor?.email]
-    .some(value => value?.toLowerCase().includes(query)));
-  const filtered = matches.filter(s => !type || type === s.studentType);
-  const groups = new Map();
-  const rows = [];
-  if (workflow) {
-    for (const student of filtered) {
-      let keys = [student.studentType];
-      if (groupBy === "advisor") keys = [student.assignedAdvisor?.id || "unassigned"];
-      if (groupBy === "requestType") keys = student.requests.length ? [...new Set(student.requests.map(item => item.type))] : ["noRequests"];
-      for (const key of keys) {
-        const label = groupBy === "advisor" ? student.assignedAdvisor?.fullName || "No advisor assigned" :
-          groupBy === "studentType" ? (key === "advising" ? "Advising students" : "Normal students") :
-          key === "noRequests" ? "No requests" : displayLabel(key);
-        if (!groups.has(key)) groups.set(key, { key, label, students: [] });
-        groups.get(key).students.push(student);
-      }
-    }
-    for (const group of [...groups.values()].sort((a,b) => Number(["unassigned","noRequests"].includes(a.key)) - Number(["unassigned","noRequests"].includes(b.key)) || a.label.localeCompare(b.label))) {
-      group.students.sort((a,b) => (a.fullName || "").localeCompare(b.fullName || ""));
-      for (const student of group.students) rows.push({ student, group:group.key, heading:group.label });
-    }
-  } else {
-    for (const student of students) {
-      for (const item of student.requests) {
-        if (queue && item.type !== queue) continue;
-        const day = item.updatedAt && new Date(item.updatedAt).toLocaleDateString(undefined, { month:"long", day:"numeric", year:"numeric" });
-        rows.push({ student, item, group:day, heading:day || "Update date unavailable" });
-      }
-    }
-    rows.sort((a,b) => new Date(b.item.updatedAt || 0) - new Date(a.item.updatedAt || 0) || a.item.id.localeCompare(b.item.id));
-  }
+  const students = [...(data?.students || [])].sort((a,b) => Number(b.requests.length > 0) - Number(a.requests.length > 0) || a.fullName.localeCompare(b.fullName));
+  const groups = groupWorkflows(students, groupBy, Object.keys(data?.groups.requestType || {}));
+  const matchingGroups = groups.filter(group => !groupFilter || group.key === groupFilter).map(group => ({
+    ...group,
+    students: group.students.filter(student => !query || [student.fullName, student.studentId, student.assignedAdvisor?.fullName, student.assignedAdvisor?.email]
+      .some(value => value?.toLowerCase().includes(query))),
+  }));
+  const rows = matchingGroups.flatMap(group => group.students.map(student => ({ group, student })));
   const size = 8;
   const currentPage = Math.min(page, Math.max(1, Math.ceil(rows.length / size)));
   const visible = rows.slice((currentPage - 1) * size, currentPage * size);
-  const selectQueue = (key) => { setQueue(key); setPage(1); };
-  const showWorkflow = (enabled) => { setWorkflow(enabled); setPage(1); };
-  const count = workflow ? filtered.length : rows.length;
-  const queueButton = (key, title, count, art) => <button key={key} type="button" className="inbox-nav-row"
-    aria-pressed={queue === key} onClick={() => selectQueue(key)}>
-    <img alt="" src={`/portal-studio/images/${art}`} width="68" height="54" />
-    <span>{title}</span><span className={`queue-count${count ? " has-requests" : ""}`}>{count}</span>
-  </button>;
+  const visibleGroups = Map.groupBy(visible, row => row.group);
+  const hasFilters = Boolean(query || groupFilter);
+  const emptyQueue = groupBy === "requestType" && groupFilter && groupFilter !== "noRequests" && !query;
+  const clear = () => { setGroupFilter(""); setSearch(""); setPage(1); };
+
   return <div className="workspace-page pending-workspace">
-    <WorkspaceHeader title="Pending work" action={<button className="outline-button" type="button" onClick={() => setReloadKey(key => key + 1)} disabled={refreshing}>{refreshing ? "Refreshing…" : "Refresh"}</button>} />
-    {error && <div className="feedback error" role="alert">{error}</div>}
+    <WorkspaceHeader title="Pending work" />
+    {error && <div className="feedback error pending-load-error"><span role="alert">{error}</span>
+      <button className="outline-button" type="button" onClick={() => setReloadKey(key => key + 1)}>Try again</button>
+    </div>}
     {data && <>
-      <div className="tabs work-views" role="group" aria-label="Pending work views">
-        <button type="button" aria-pressed={!workflow} onClick={() => showWorkflow(false)}>Request inbox</button>
-        <button type="button" aria-pressed={workflow} onClick={() => showWorkflow(true)}>Student workflow</button>
+      <div className="workflow-options">
+        <div className="workflow-grouping" role="group" aria-label="Group by"><span aria-hidden="true">Group by</span>
+          <div>{Object.entries(groupLabels).map(([key, label]) => <button key={key} type="button" aria-pressed={groupBy === key} onClick={() => {
+            if (key !== groupBy) { setGroupBy(key); setGroupFilter(""); setPage(1); }
+          }}>{label}</button>)}</div>
+        </div>
+        <label className="field workflow-search"><span>Search students or advisors</span>
+          <input type="search" placeholder="Name, ID or email" value={search} onChange={event => { setSearch(event.target.value); setPage(1); }} /></label>
+        <label className="field workflow-filter"><span id="pending-group-filter-label">{groupLabels[groupBy]}</span><select aria-labelledby="pending-group-filter-label" value={groupFilter} onChange={event => { setGroupFilter(event.target.value); setPage(1); }}>
+          <option value="">{allGroupLabels[groupBy]}</option>{groups.map(group => <option key={group.key} value={group.key}>{group.label}{groupBy === "requestType" && group.key !== "noRequests" ? ` (${data.groups.requestType[group.key] || 0})` : ""}</option>)}
+        </select></label>
       </div>
-      <div className={workflow ? "workflow-layout" : "inbox-layout"}>
-        {!workflow && <nav className="inbox-navigation" aria-label="Work queues">
-          <h2>Work queues</h2>
-          <div className="inbox-queue-options">{queueButton("", "All requests", totalRequests, "extra-hours-folder.svg")}
-          {byType.map(([key, count]) => queueButton(key, displayLabel(key), count, queueArt[key]))}</div>
-        </nav>}
-        <section className="request-inbox" aria-labelledby="inbox-title">
-          <div className="inbox-heading"><h2 id="inbox-title">{workflow ? "Students" : queue ? displayLabel(queue) : "Latest requests"}</h2>
-            <span role="status">{count} {workflow ? (count === 1 ? "student" : "students") : (count === 1 ? "request" : "requests")}</span></div>
-          {workflow && <div className="workflow-options">
-            <label className="field workflow-search"><span>Search students or advisors</span>
-              <input type="search" placeholder="Name, student ID or advisor email" value={search} onChange={event => { setSearch(event.target.value); setPage(1); }} /></label>
-            <label className="field"><span>Group by</span><select value={groupBy} onChange={event => { setGroupBy(event.target.value); setPage(1); }}>
-              <option value="studentType">Student type</option><option value="advisor">Advisor</option><option value="requestType">Request type</option>
-            </select></label>
-            <div className="workflow-types" role="group" aria-label="Student type">{[["","All"],["advising","Advising"],["normal","Normal"]].map(([key,label]) =>
-              <button type="button" key={key} aria-pressed={type === key} onClick={() => { setType(key); setPage(1); }}>{label} <small>{key ? matches.filter(s => s.studentType === key).length : matches.length}</small></button>)}</div>
-          </div>}
-          <div className="inbox-register">{visible.length ? visible.map(({student,item,group,heading}, index) => <div key={workflow ? group + student.id : item.id}>
-            {(index === 0 || group !== visible[index-1].group) && <h3 className="pending-group-heading">{heading}
-              {workflow && <small>{groups.get(group).students.length} {groups.get(group).students.length === 1 ? "student" : "students"}</small>}</h3>}
-            {workflow ? <WorkflowRow student={student} term={data.term} groupBy={groupBy} requestType={groupBy === "requestType" ? group : ""} />
-              : <article className="pending-request-row" title={item.updatedAt ? `Updated ${dateValue(item.updatedAt)}` : undefined}><RequestSummary item={item} />
-                <StudentIdentity name={student.fullName} id={student.studentId} /><ReviewLink item={item} student={student} /></article>}
-          </div>) : <RegisterEmpty art={workflow ? "extra-hours-folder.svg" : queue ? queueArt[queue] : "extra-hours-inbox.svg"}
-            title={workflow ? (query || type ? "No matching students" : "No student records yet") : queue ? "No requests in this queue" : "Your request inbox is clear"}
-            description={workflow ? (query || type ? "Try another student or advisor, or clear the filters." : "Student workflows appear here when profiles are added.") : queue ? `There are no ${displayLabel(queue).toLowerCase()} requests to review.` : "New requests will appear here for review."}
-            action={workflow && (query || type) ? <button type="button" className="outline-button" onClick={() => { setSearch(""); setType(""); setPage(1); }}>Clear filters</button> : !workflow && (queue || students.length > 0) ? <button type="button" className="outline-button" onClick={() => queue ? selectQueue("") : showWorkflow(true)}>{queue ? "View all requests" : "View student workflow"}</button> : undefined} />}</div>
-          <RecordPages page={currentPage} size={size} total={rows.length} onChange={setPage} label={workflow ? "Student workflow" : "Request inbox"} />
-        </section>
-      </div>
+      {visible.length ? groupBy === "advisor" ? <div className="workflow-advisors">
+        {matchingGroups.filter(group => group.students.length).map(group => <AdvisorWorkflowGroup key={group.key} group={group} term={data.term} onOpen={setDetail} size={size} />)}
+      </div> : <div className="workflow-groups">
+        {[...visibleGroups].map(([group, members]) => <section className="workflow-group" key={group.key}>
+          <div className="workflow-group-heading"><h2>{group.label}</h2><span>{group.students.length} {group.students.length === 1 ? "student" : "students"}</span></div>
+          <StudentRegister className="workflow-register" columns={workflowColumns} label={`Student scheduling workflow · ${group.label}`}>
+            {members.map(({student}) => <WorkflowRow key={student.id} student={student} term={data.term} requestType={groupBy === "requestType" ? group.key : ""} onOpen={setDetail} />)}
+          </StudentRegister>
+        </section>)}
+      </div> : <RegisterEmpty art="extra-hours-folder.svg" title={emptyQueue ? `No ${displayLabel(groupFilter).toLowerCase()} requests` : hasFilters ? "No matching students" : "No student workflows yet"}
+        description={hasFilters && !emptyQueue ? "Try another name, student ID or advisor." : undefined}
+        action={hasFilters ? <button type="button" className="outline-button" onClick={clear}>Clear filters</button> : undefined} />}
+      {groupBy !== "advisor" && <RecordPages page={currentPage} size={size} total={rows.length} onChange={setPage} label="Student workflow" />}
+      {detail && <StudentWorkDetail {...detail} term={data.term} onClose={() => setDetail(null)} />}
     </>}
   </div>;
 }
@@ -199,31 +238,21 @@ export function ScheduleActivityPage({ token, studentId }) {
     } catch (err) { setError(err.message); } finally { setBusy(false); }
   };
   const hasFilters = Object.values(filters).some(Boolean);
-  const activityDays = data ? Object.values(data.activities.reduce((days, row) => {
-    const occurredAt = new Date(row.occurredAt);
-    const key = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit" }).format(occurredAt);
-    if (!days[key]) days[key] = { key, date: occurredAt, activities: [] };
-    days[key].activities.push(row);
-    return days;
-  }, {})) : [];
   const filterChips = [
     filters.action && { key: "action", label: displayLabel(filters.action), onRemove: () => update("action", "") },
     filters.from && { key: "from", label: `From: ${filters.from}`, onRemove: () => update("from", "") },
     filters.to && { key: "to", label: `Through: ${filters.to}`, onRemove: () => update("to", "") },
   ].filter(Boolean);
-  const Title = studentId ? "h3" : "h1";
-  const DayHeading = studentId ? "h4" : "h2";
-  const EventHeading = studentId ? "h5" : "h3";
   return <div className={studentId ? "workspace-page activity-page student-activity" : "workspace-page activity-page"}>
-    <header className={studentId ? "activity-profile-heading" : "workspace-header"}>
-      <div><Title>{studentId ? "Student schedule history" : "Schedule activity"}</Title></div>
-      <button className="outline-button" type="button" onClick={exportCsv} disabled={busy}>{busy ? "Exporting…" : "Export CSV"}</button>
-    </header>
-    <div className="activity-controls"><FilterDisclosure
+    {studentId ? <h3 className="activity-profile-heading">Student schedule history</h3> : <WorkspaceHeader title="Schedule activity" />}
+    <div className="activity-controls"><FilterDisclosure floating={!studentId}
       search={<label className="field filter-search"><span>{studentId ? "Search staff" : "Search schedule activity"}</span><input type="search" name="activity-search" autoComplete="off" value={filters.search} maxLength={100} onChange={(event) => update("search", event.target.value)} placeholder={studentId ? "Name or GUC email" : "ID, staff or email"} /></label>}
       chips={filterChips}
-      onClear={hasFilters ? () => { setPage(1); setFilters({ action: "", from: "", to: "", search: "" }); } : undefined}
-      actions={<p className="activity-count" role="status">{data ? `${data.total} ${data.total === 1 ? "event" : "events"}` : error ? "" : "Loading…"}</p>}
+      actions={<>
+        <button className="text-button" type="button" disabled={!hasFilters} onClick={() => { setPage(1); setFilters({ action: "", from: "", to: "", search: "" }); }}>Clear</button>
+        <button className="text-button" type="button" onClick={exportCsv} disabled={busy}>{busy ? "Exporting…" : "Export CSV"}</button>
+        <p className="activity-count" role="status">{data ? `${data.total} ${data.total === 1 ? "event" : "events"}` : error ? "" : "Loading…"}</p>
+      </>}
     ><div className="filter-grid">
       <label className="field"><span>Action</span><select value={filters.action} onChange={(event) => update("action", event.target.value)}><option value="">All actions</option><option value="processed">Processed</option><option value="reopened">Reopened</option></select></label>
       <label className="field"><span>From date</span><input type="date" value={filters.from} max={filters.to || undefined} onChange={(event) => update("from", event.target.value)} /></label>
@@ -231,21 +260,18 @@ export function ScheduleActivityPage({ token, studentId }) {
     </div></FilterDisclosure></div>
     {error && <div className="feedback error" role="alert">{error}</div>}
     <section className="activity-log" aria-label="Schedule activity history">
-    {data && (!data.activities.length ? <WorkspaceEmpty icon="history" title={hasFilters ? "No matching activity" : "No schedule activity yet"} description={hasFilters ? "Try a different date range or clear your filters to see all activity." : "Processed and reopened schedules will appear here with the staff member, time and reason."} /> : <div className="activity-timeline">
-      {activityDays.map((day) => <section className="activity-day" key={day.key}><DayHeading className="activity-date">{day.date.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</DayHeading><ol role="list">
-        {day.activities.map((row) => <li className="activity-entry" key={row.id}>
-          <div className="activity-entry-heading">
-            <div><EventHeading>Schedule {displayLabel(row.action).toLowerCase()}</EventHeading><span>Version {row.scheduleVersion}</span></div>
-            <time dateTime={row.occurredAt}>{new Date(row.occurredAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</time>
-          </div>
-          <div className="activity-people">
-            {!studentId && <StudentIdentity name={row.studentName || "Advising student"} id={row.studentId} />}
-            <p className="activity-byline">By <strong>{row.staffName}</strong><small>{[displayLabel(row.staffRole), row.staffEmail].filter(Boolean).join(" · ")}</small></p>
-          </div>
-          {row.reason && <p className="activity-reason"><strong>Reason</strong> {row.reason}</p>}
-        </li>)}
-      </ol></section>)}
-    </div>)}
+    {data && (!data.activities.length ? <WorkspaceEmpty icon="history" title={hasFilters ? "No matching activity" : "No schedule activity yet"} description={hasFilters ? "Try a different date range or clear your filters to see all activity." : "Processed and reopened schedules will appear here with the staff member, time and reason."} /> :
+      <StudentRegister className="activity-register" columns={["Student", "Action", "Staff member", "Date and time", "Reopening reason"]} label={studentId ? "Student schedule history" : "Schedule activity"}>
+        {data.activities.map((row) => <RegisterRow className="activity-entry" key={row.id}>
+          <StudentIdentity name={row.studentName || "Advising student"} id={row.studentId} />
+          <span className={`status-pill ${row.action === "processed" ? "completed" : "draft"}`}>
+            <span>Schedule {displayLabel(row.action).toLowerCase()}<small>Version {row.scheduleVersion}</small></span>
+          </span>
+          <span className="activity-staff"><span>{row.staffName} <small>· {displayLabel(row.staffRole)}</small></span><small>{row.staffEmail}</small></span>
+          <time dateTime={row.occurredAt}>{dateValue(row.occurredAt)}</time>
+          <span className="activity-reason">{row.reason || "—"}</span>
+        </RegisterRow>)}
+      </StudentRegister>)}
     {data && <RecordPages page={data.page} size={data.limit} total={data.total} onChange={setPage} label="Schedule activity" />}
     </section>
   </div>;

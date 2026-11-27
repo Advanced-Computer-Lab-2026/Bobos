@@ -120,6 +120,34 @@ test("Req 1–5: reset through email, view your profile and inbox, and sign out"
   await expect(page.getByRole("heading", { name: "Sign in", exact: true })).toBeVisible();
 });
 
+test("Staff inbox shows the linked student and preserves the portrait after marking a notice read", async ({ page }) => {
+  const { passwordHash } = await User.findOne({ email: "regression@guc.edu.eg" }).select("+passwordHash");
+  const coordinator = await User.create({ role: "coordinator", email: "notice.coordinator@guc.edu.eg", fullName: "Inbox Coordinator", passwordHash });
+  const request = await MandatoryCourseRemovalRequest.create({
+    student: regressionStudent._id, advisor: coordinator._id, course: new mongoose.Types.ObjectId(),
+    term: new mongoose.Types.ObjectId(), reason: "other", explanation: "Already credited.",
+  });
+  await Notification.create({ recipient: coordinator._id, type: "advisingDeadlineReminder", title: "Term deadline", message: "Review the calendar." });
+  await page.goto(baseURL + "/?page=notifications");
+  await signIn(page, coordinator.email, password);
+  const notice = page.getByRole("article").filter({ hasText: "Mandatory course removal requested" });
+  await expect(notice.locator(".notice-person")).toContainText("Regression Student");
+  await expect(notice.locator(":scope > .avatar")).toHaveText("RS");
+  await expect(notice.locator(".notice-person small")).toHaveText("28-90001");
+  await expect(notice.getByText(/has a request for you to review/)).toHaveCount(0);
+  const deadline = page.getByRole("article").filter({ hasText: "Term deadline" });
+  await expect(deadline.locator('.notice-symbol[data-kind="advisingDeadlineReminder"] svg')).toBeVisible();
+  await expect(deadline.locator(".avatar")).toHaveCount(0);
+  await expect(page.getByText("Private administrator notice")).toHaveCount(0);
+  await notice.getByRole("button", { name: "Mark as read" }).click();
+  await expect(notice.getByText("Read", { exact: true })).toBeVisible();
+  await expect(notice.locator(".notice-person")).toContainText("Regression Student");
+  await expect(notice.locator(":scope > .avatar")).toHaveText("RS");
+  await page.getByRole("tab", { name: /unread/i }).click();
+  await expect(notice).toHaveCount(0);
+  expect((await Notification.findOne({ recipient: coordinator._id, relatedId: String(request._id) })).readAt).toBeTruthy();
+});
+
 test("Req 6–10: student directory finds the matching profile and changes the account status", async ({ page }) => {
   await page.goto(baseURL);
   await signIn(page, "regression@guc.edu.eg", password);
@@ -276,12 +304,13 @@ test("Req 29: the old template bookmark opens the live editor and saves to the d
     fullName: "Template Coordinator", role: "coordinator", email: "template.coordinator@guc.edu.eg",
     passwordHash: await bcrypt.hash(password, 4),
   });
-  const term = await AcademicTerm.create({
+  const historicalTerm = await AcademicTerm.create({
     code: "AUD27", academicYear: "2026/2027", season: "spring",
     termStart: "2027-03-01", termEnd: "2027-08-01", teachingStart: "2027-03-07", teachingEnd: "2027-07-01",
     registrationStart: "2027-02-01", registrationEnd: "2027-03-07",
     advisingDeadline: "2027-03-10", wholeScheduleSwapDeadline: "2027-03-20",
   });
+  const term = await auditTerm();
   const course = await Course.create({ code: "CSEN992", name: "Template Audit Course", creditHours: 3, courseType: "core" });
   const offering = await CourseOffering.create({
     course: course._id, term: term._id, isPublished: true, instructors: [{ fullName: "Dr. Audit" }],
@@ -297,7 +326,15 @@ test("Req 29: the old template bookmark opens the live editor and saves to the d
   await page.goto(baseURL + "/portal-studio/index.html?page=template-detail&group=1");
   await signIn(page, coordinator.email, password);
   await expect(page).toHaveURL(/[?&]page=templates(?:&|$)/);
-  await page.getByRole("combobox", { name: /academic term/i }).selectOption(term.code);
+  const termSelect = page.getByRole("combobox", { name: /academic term/i });
+  const empty = page.getByRole("heading", { name: "No schedule templates" });
+  await termSelect.selectOption(historicalTerm.code);
+  await expect(empty).toBeVisible();
+  await mainNavigation(page).getByRole("link", { name: "Academic terms", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Academic terms", exact: true })).toBeVisible();
+  await page.evaluate(termCode => localStorage.setItem("bobos.lastTermId", termCode), historicalTerm.code);
+  await mainNavigation(page).getByRole("link", { name: "Schedule templates", exact: true }).click();
+  await expect(termSelect).toHaveValue(term.code);
   const drafts = page.getByRole("region", { name: "Drafts", exact: true });
   await expect(drafts.getByRole("button", { name: "Group 1 CS · Semester 5", pressed: true })).toBeVisible();
   await expect(page.getByRole("region", { name: "Courses for Group 1" })).toContainText(course.name);
@@ -307,6 +344,13 @@ test("Req 29: the old template bookmark opens the live editor and saves to the d
   await page.getByRole("button", { name: /save changes/i }).click();
   await expect(drafts.getByRole("button", { name: "Group 2 CS · Semester 5", pressed: true })).toBeVisible();
   expect((await ScheduleTemplate.findById(template._id)).studyGroup).toBe("2");
+  await drafts.getByRole("button", { name: "Publish template", exact: true }).click();
+  const published = page.getByRole("region", { name: "Published", exact: true });
+  await published.getByRole("button", { name: "Unpublish template" }).click();
+  await drafts.getByRole("button", { name: /delete template for CS/i }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Delete template", exact: true }).click();
+  await expect(empty).toBeVisible();
+  expect(await ScheduleTemplate.exists({ _id: template._id })).toBeNull();
 });
 
 async function auditTerm() {
@@ -488,6 +532,7 @@ test("Coordinator schedule folders open the selected student and term across rel
   await page.goto(baseURL);
   await signIn(page, coordinator.email, password);
   await expect(page.locator("[data-sidebar-term]")).toHaveText("Winter 2030/2031");
+  await expect(page.locator(".module-intro .workspace-term")).toHaveText("Winter 2030/2031");
   releaseRoster();
   const folder = page.getByRole("link", { name: /Folder Student.*Draft.*45-00019/ });
   await expect(folder).toBeVisible();
@@ -535,7 +580,7 @@ test("Catalogue editing preserves filtered prerequisites, seasons and legacy maj
   expect(await Course.findById(course._id)).toBeNull();
 });
 
-test("Coordinator can read ranked preferences, change term and review a removal request", async ({page}) => {
+test("Coordinator can read ranked preferences, change term and review a removal request", async ({page, browser}) => {
   const passwordHash = await bcrypt.hash(password, 4);
   const [coordinator, advisor] = await User.create([
     {fullName:"Schedule Review Coordinator", email:"schedule.review@guc.edu.eg", role:"coordinator", passwordHash},
@@ -544,27 +589,37 @@ test("Coordinator can read ranked preferences, change term and review a removal 
   const student = await auditAdvisingStudent({fullName:"Schedule Review Student", email:"schedule.review@student.guc.edu.eg", studentId:"49-00805", assignedAdvisor:advisor._id, passwordHash});
   const term = await auditTerm();
   const alternate = await AcademicTerm.create({ ...term.toObject(), _id:new mongoose.Types.ObjectId(), code:"CATALT", season:"spring", isActive:false });
-  await SchedulingPreference.create({student:student._id, term:term._id, preferredDays:[{day:"Monday",priority:1},{day:"Thursday",priority:2}], note:"Please keep the morning lab."});
+  const submission = await SchedulingPreference.create({student:student._id, term:term._id, preferredDays:[{day:"Thursday",priority:4},{day:"Monday",priority:1}], preferredTimes:[{startMinute:390,endMinute:465,priority:3}], note:"Please keep the morning lab."});
   const course = await Course.create({code:"CAT805", name:"Research Methods", creditHours:3, courseType:"core"});
   const removal = await MandatoryCourseRemovalRequest.create({student:student._id, advisor:advisor._id, term:term._id, course:course._id, reason:"other", explanation:"Review this requirement against the transfer record."});
   await page.goto(baseURL + `/portal-studio/index.html?page=preferences&student=${student.studentId}&term=${term.code}`);
   await signIn(page, coordinator.email, password);
   await expect(page.locator(".preference-reading")).toContainText("Please keep the morning lab.");
-  await page.getByRole("button", {name:"Change",exact:true}).click();
+  await expect(page.locator(".preference-reading time")).toHaveAttribute("datetime", submission.updatedAt.toISOString());
+  await page.getByRole("button", {name:"Change student",exact:true}).click();
+  await expect(page.getByLabel("Find advising student")).toBeFocused();
   await page.getByLabel("Find advising student").fill(student.studentId);
   await page.getByRole("button", {name:"Find student"}).click();
   const selection = page.locator(".preference-student-selected");
   await expect(selection).toContainText(student.studentId);
   await expect(selection).toContainText("schedule.review@student.guc.edu.eg");
-  await expect(selection.getByRole("button", {name:"Change",exact:true})).toBeVisible();
+  await expect(selection.getByRole("button", {name:"Change student",exact:true})).toBeVisible();
   await page.getByLabel("Academic term").selectOption(String(term._id));
-  await page.getByRole("button", {name:"Load saved preferences"}).click();
   await expect(page.locator(".preference-reading")).toContainText("Please keep the morning lab.");
   const rankedDays = page.getByRole("list", {name:"Preferred days, highest priority first"});
-  await expect(rankedDays.getByRole("listitem")).toHaveText(["1Monday", "2Thursday"]);
+  await expect(rankedDays.getByRole("listitem")).toHaveText(["Priority 1Monday", "Priority 4Thursday"]);
+  await expect(rankedDays.getByTitle("Thursday · Priority 4")).toHaveCSS("grid-column-start", "6");
+  const teachingTimes = page.getByRole("region", {name:"Teaching time priorities"});
+  await expect(teachingTimes).toContainText("06:30–07:45");
+  await expect(teachingTimes.getByRole("listitem")).toContainText("Priority 3");
   await page.getByLabel("Academic term").selectOption(String(alternate._id));
-  await page.getByRole("button", {name:"Load saved preferences"}).click();
   await expect(page.getByRole("heading", {name:"No preferences submitted"})).toBeVisible();
+  await expect(page.locator(".preference-reading time")).toHaveCount(0);
+  await page.getByRole("button", {name:"Create or update draft schedule"}).click();
+  await expect(page.getByRole("heading", {name:"Advising draft schedule"})).toBeVisible();
+  await expect(page.locator(".draft-summary")).toContainText("No draft exists for this term");
+  await mainNavigation(page).getByRole("link", {name:"Schedule preferences"}).click();
+  await expect(page.getByLabel("Find advising student")).toBeVisible();
   await mainNavigation(page).getByRole("link", {name:"Course removals"}).click();
   const removalSearch = page.getByRole("searchbox", {name:"Search student, ID, course, or advisor"});
   await removalSearch.fill(student.studentId);
@@ -590,6 +645,20 @@ test("Coordinator can read ranked preferences, change term and review a removal 
   await decision.getByRole("button", {name:"Reject Request"}).click();
   await expect(decision).toHaveCount(0);
   expect((await MandatoryCourseRemovalRequest.findById(removal._id)).status).toBe("rejected");
+
+  const advisorPage = await browser.newPage();
+  try {
+    await advisorPage.goto(baseURL + "/portal-studio/index.html?page=advising");
+    await signIn(advisorPage, advisor.email, password);
+    await advisorPage.getByRole("searchbox", {name:"Search by student, ID, or email"}).fill(student.studentId);
+    await advisorPage.getByRole("row").filter({hasText:student.studentId}).getByRole("button", {name:"Preferences",exact:true}).click();
+    await expect(advisorPage.locator(".preference-student-selected")).toContainText(student.studentId);
+    await advisorPage.getByLabel("Academic term").selectOption(String(term._id));
+    await expect(advisorPage.locator(".preference-reading blockquote")).toHaveText(submission.note);
+    await expect(advisorPage.getByRole("button", {name:"Save preferences"})).toHaveCount(0);
+  } finally {
+    await advisorPage.close();
+  }
 });
 
 test("Populated schedule activity survives a temporary profile outage, sidebar navigation and reload", async ({page}) => {
@@ -616,33 +685,91 @@ test("Populated schedule activity survives a temporary profile outage, sidebar n
   await expect(page.locator(".activity-entry")).toContainText("Schedule processed");
 });
 
-test("Req 122: paginate individual requests and find workflows by advisor", async ({ page }) => {
+test("Req 122: group student workflows and open individual requests without expanding a row", async ({ page }) => {
   const coordinator = await User.create({
     fullName: "Inbox Coordinator", role: "coordinator", email: "inbox.coordinator@guc.edu.eg", passwordHash: await bcrypt.hash(password, 4),
   });
   const requests = Array.from({ length: 9 }, (_, index) => ({
-    id: String(index), type: "extraHours", requestedHours: 1, status: "pending", updatedAt: "2026-05-20T12:00:00Z",
+    id: String(index), type: "extraHours", requestedHours: index + 1, status: "pending", updatedAt: "2026-05-20T12:00:00Z",
   }));
   const student = {
     id: "sample", fullName: "Nour Adel", studentId: "27-00041", studentType: "advising", workflowStatus: "pendingApproval",
+    blockingStep: "Resolve pending coordinator approval", lastUpdatedAt: requests[0].updatedAt,
     assignedAdvisor: { id: "advisor", fullName: "Dr. Amal Ali", email: "amal@guc.edu.eg" }, requests,
   };
-  await page.route("**/api/admin/pending-work", route => route.fulfill({ json: {
-    students: [student, { ...student, id: "second", fullName: "Salma Adel", studentId: "27-00042", assignedAdvisor: null, requests: [] }],
-    groups: { requestType: { extraHours: 9 } },
-  } }));
+  const normal = {
+    id: "normal", fullName: "Salma Adel", studentId: "27-00042", studentType: "normal", workflowStatus: "swapCompleted",
+    requests: [{ id: "swap", type: "wholeScheduleSwap", status: "completed" }],
+  };
+  let pendingLoads = 0;
+  await page.route("**/api/admin/pending-work", route => {
+    pendingLoads += 1;
+    return route.fulfill({ json: {
+      students: [student, normal, { ...normal, id: "other", studentId: "27-00043", fullName: "Alya Ali", workflowStatus: "notStarted", requests: [] }],
+      groups: { requestType: { extraHours: 9, wholeScheduleSwap: 1, financialReversal: 0 } },
+    } });
+  });
+  await page.route("**/api/admin/pending-work", route => route.fulfill({ status: 503, json: { message: "Pending work is temporarily unavailable" } }), { times: 1 });
   await page.goto(baseURL + "/?page=pending-work&role=coordinator");
   await signIn(page, coordinator.email, password);
-  const rows = page.locator(".pending-request-row");
-  await expect(rows).toHaveCount(8);
-  await expect(rows.first()).toContainText(student.fullName);
-  await page.getByRole("button", { name: "Next", exact: true }).click();
-  await expect(rows).toHaveCount(1);
-  await page.getByRole("button", { name: "Student workflow", exact: true }).click();
-  await page.getByLabel("Group by").selectOption("advisor");
-  await page.getByLabel("Search students or advisors").fill(student.assignedAdvisor.email);
-  await expect(page.getByRole("heading", { name: "Dr. Amal Ali 1 student" })).toBeVisible();
+  await page.getByRole("button", { name: "Try again" }).click();
+  for (const groupName of ["Advising students", "Normal students"]) {
+    const register = page.locator(".workflow-group").filter({ has: page.getByRole("heading", { name: groupName, exact: true }) });
+    await expect(register.getByRole("table", { name: `Student scheduling workflow · ${groupName}` }).getByRole("columnheader"))
+      .toHaveText(["Student", "Schedule status", "Blocking step", "Requests"]);
+  }
+  await expect(page.getByRole("button", { name: "Refresh", exact: true })).toHaveCount(0);
+  await expect(page.locator(".workflow-record")).toHaveCount(3);
+  await expect(page.locator(".workflow-record").filter({hasText:"Alya Ali"})).toContainText("Not started");
+
+  const grouping = page.getByRole("group", { name: "Group by" });
+  await grouping.getByRole("button", { name: "Advisor" }).click();
+  const advisorGroups = page.locator(".workflow-advisor");
+  await expect(advisorGroups).toHaveCount(2);
+  await expect(page.getByRole("table")).toHaveCount(0);
+  const search = page.getByLabel("Search students or advisors");
+  await search.fill(student.assignedAdvisor.email);
+  const advisorRegister = advisorGroups.filter({ hasText: student.assignedAdvisor.fullName });
+  const advisorBar = advisorRegister.locator("summary");
+  await expect(advisorBar).toContainText("1 student");
+  await advisorBar.focus();
+  await page.keyboard.press("Enter");
+  await expect(advisorRegister.getByRole("table")).toBeVisible();
+  expect(await advisorBar.evaluate(heading => heading.getBoundingClientRect().bottom))
+    .toBeLessThan(await advisorRegister.getByRole("columnheader", { name: "Student", exact: true }).evaluate(header => header.getBoundingClientRect().top));
   await expect(page.locator(".workflow-record")).toHaveCount(1);
-  await page.locator(".workflow-requests summary").click();
-  await expect(page.locator(".workflow-requests a")).toHaveCount(9);
+  const openRequests = page.getByRole("button", {name:"View 9 requests for Nour Adel"});
+  await openRequests.click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByRole("link", {name:"Review queue"})).toHaveCount(4);
+  await dialog.getByRole("button", {name:"Next"}).click();
+  await dialog.getByRole("button", {name:"Next"}).click();
+  await expect(dialog).toContainText("9 extra credit hours");
+  await expect(dialog.getByRole("link", {name:"Review queue"})).toHaveAttribute("href", /page=extra-hours/);
+  await page.keyboard.press("Escape");
+  await expect(openRequests).toBeFocused();
+  await page.getByRole("button", {name:"View workflow for Nour Adel"}).click();
+  await expect(dialog.getByText("Last workflow update")).toBeVisible();
+  await dialog.getByRole("button", {name:"Close"}).click();
+
+  await search.fill("");
+  await grouping.getByRole("button", {name:"Request type"}).click();
+  const requestType = page.getByLabel("Request type", {exact:true});
+  await requestType.selectOption("wholeScheduleSwap");
+  await page.getByRole("button", {name:"View whole-schedule swap for Salma Adel"}).click();
+  await expect(dialog.getByText("Completed", {exact:true})).toBeVisible();
+  await expect(dialog.getByRole("link")).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await requestType.selectOption("financialReversal");
+  await expect(page.getByRole("heading", {name:"No financial reversal requests"})).toBeVisible();
+  await page.getByRole("button", {name:"Clear filters"}).click();
+  await expect(page.getByRole("heading", {name:"No requests"})).toBeVisible();
+
+  const nav = mainNavigation(page);
+  await nav.getByRole("link", { name: "Course removals", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Course removals", exact: true })).toBeVisible();
+  const loadsBeforeReturn = pendingLoads;
+  await nav.getByRole("link", { name: "Pending work", exact: true }).click();
+  await expect(page.locator(".workflow-record")).toHaveCount(3);
+  expect(pendingLoads).toBeGreaterThan(loadsBeforeReturn);
 });

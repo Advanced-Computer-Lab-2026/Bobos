@@ -1,13 +1,29 @@
-import { useId } from "react";
+import { Children, useId } from "react";
 import PortalAvatar from "./PortalAvatar.jsx";
 
 export function scheduleTone(status) {
   return ({ readyForStudentReview: "ready", readyToProcess: "ready", draft: "draft", processed: "completed" })[status] || "muted";
 }
 
-export function StudentIdentity({ name, id, email }) {
-  return <span className="register-person"><PortalAvatar name={name} /><span><strong>{name || "Student"}</strong>
+export function StudentIdentity({ name, id, email, nameAction }) {
+  return <span className="register-person"><PortalAvatar name={name} /><span>{nameAction || <strong>{name || "Student"}</strong>}
     {id && <small className="student-number">{id}</small>}{email && <small>{email}</small>}</span></span>;
+}
+
+// The coordinator registers use the same table and student identity as Graduation review.
+export function StudentRegister({ columns, label, children, className = "", listClassName }) {
+  if (listClassName) return <ul className={listClassName} role="list" aria-label={label}>{children}</ul>;
+  const labels = Object.fromEntries(columns.map((column, index) => [`--column-${index + 1}`, JSON.stringify(column)]));
+  const actionClass = ["Action", "Actions"].includes(columns.at(-1)) ? "register-with-actions" : "";
+  return <div className={`table-scroll graduation-register student-register ${actionClass} ${className}`} style={labels}>
+    <table role="table" aria-label={label}><thead role="rowgroup"><tr role="row">{columns.map(column =>
+      <th key={column} scope="col" role="columnheader">{column}</th>)}</tr></thead><tbody role="rowgroup">{children}</tbody></table>
+  </div>;
+}
+
+export function RegisterRow({ children, className, listItem = false }) {
+  if (listItem) return <li className="portal-request-row">{children}</li>;
+  return <tr role="row" className={className}>{Children.map(children, child => <td role="cell">{child}</td>)}</tr>;
 }
 
 export function RecordPages({ page, size, total, onChange, label = "Records", busy = false }) {

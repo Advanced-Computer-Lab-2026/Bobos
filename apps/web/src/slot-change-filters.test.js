@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { filterSlotChanges } from "./slot-change-filters.js";
+import { filterSlotChanges, slotSubmissionDay } from "./slot-change-filters.js";
 
 const rows = [
   { _id: "1", student: { studentId: "70-001", user: { fullName: "Ali [Audit]" }, assignedAdvisor: { _id: "advisor1" } }, course: { code: "CSEN 501" }, status: "pending", createdAt: "2026-11-01T00:00:00.000Z" },
@@ -31,4 +31,12 @@ test("C3 Req 45: inclusive submission dates compose with search without mutating
   assert.deepEqual(ids({ from: "2026-11-03", to: "2026-11-02" }), []);
   assert.equal(rows.length, 3);
   assert.deepEqual(ids({}), ["1", "2", "3"]);
+});
+
+test("C3 Req 45: coordinator filters use the same Cairo submission day shown above each register", () => {
+  const beforeMidnight = { ...rows[0], createdAt: "2026-06-20T20:59:59Z" };
+  const afterMidnight = { ...rows[1], createdAt: "2026-06-20T21:00:00Z" };
+  assert.equal(slotSubmissionDay(beforeMidnight.createdAt, true), "2026-06-20");
+  assert.equal(slotSubmissionDay(afterMidnight.createdAt, true), "2026-06-21");
+  assert.deepEqual(filterSlotChanges([beforeMidnight, afterMidnight], { from: "2026-06-21", to: "2026-06-21" }, true), [afterMidnight]);
 });

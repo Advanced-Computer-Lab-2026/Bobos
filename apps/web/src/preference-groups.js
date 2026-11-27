@@ -68,6 +68,6 @@ function matchesGroup(option, group) {
   return option.componentType === group.componentType && option.groupNumber === group.groupNumber;
 }
 
-function minutesToTime(value) {
+export function minutesToTime(value) {
   return `${String(Math.floor(value / 60)).padStart(2, "0")}:${String(value % 60).padStart(2, "0")}`;
 }
