@@ -1302,6 +1302,12 @@
 .review-decision .graduation-response p, .graduation-planner-page .planner-exams p { margin:0; }
 .planner-sections { display:grid; gap:28px; min-width:0; }
 .planner-sections > section { min-width:0; }
+.academic-services-embedded .graduation-planner-page .table-scroll > table :is(th, td):first-child {
+  padding-inline-start: clamp(12px, 2vw, 16px);
+}
+.academic-services-embedded .graduation-planner-page .table-scroll > table :is(th, td):last-child {
+  padding-inline-end: clamp(12px, 2vw, 16px);
+}
 .graduation-planner-page .planner-header {
   display:grid; grid-template-columns:minmax(0,1fr) minmax(215px,249px); gap:16px 24px;
 }
