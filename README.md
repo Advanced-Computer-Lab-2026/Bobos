@@ -51,6 +51,14 @@ See [Group B API coverage](docs/group-b-verification.md) for the student directo
 
 See [the Group A Sprint 2 audit](docs/group-a-sprint2-audit.md) for the integrated student workflows, all 36 assigned requirements, and reproduced missing/partial behavior. Run `npm run test:a` for strict acceptance (known gaps fail) or `npm run test:a:regression` to keep those same gap assertions explicitly marked TODO.
 
+### Functional regression tests
+
+Run `npm test` for the API and logic suites. The [coverage map](tests/functional-coverage.json) ties each of the 128 numbered requirements to named tests. The run fails if a mapped check is missing, skipped, marked TODO, or fails.
+
+Install the browser with `npx playwright install chromium`, then run `npm run test:regression` to include the browser journeys. GitHub Actions runs the same command on pull requests to `development` and `main`. The browser suite serves the production build with a temporary database and local SMTP server. Stripe and Google API checks substitute controlled provider responses. The suite needs no live provider credentials.
+
+Browser tests use accessible roles and labels and assert outcomes such as a saved change after reload. Layout, colors, animation, and CSS class names are free to change. When an intentional change alters an action's accessible name or the steps to complete the task, update the matching browser test. The test map tracks numbered functional requirements. Course grading and full visual acceptance are separate.
+
 ### Extra-hours card payments (Req. 91 and 93)
 
 Set `STRIPE_SECRET_KEY` to a Stripe sandbox secret key in the API environment. Hosted Stripe Checkout accepts test cards in EGP. The Portal displays **Pay by card** for an approved request and confirms the payment with Stripe before applying the extra hours. The API checks pending checkouts in the background every minute, so a student can close the tab after paying. Use `WEB_ORIGIN` to set the return origin when hosted.

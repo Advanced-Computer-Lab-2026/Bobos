@@ -122,7 +122,8 @@ html[data-theme=dark] .theme-dark{background:var(--control);color:var(--ink)!imp
 #account-menu:popover-open{animation:popover-in 160ms var(--ease)}
 @keyframes popover-in{from{opacity:0;transform:translateY(-4px) scale(.98)}to{opacity:1;transform:none}}
 .mobile-nav,.mobile-menu{display:none}
-.content{max-width:1280px;margin:auto;padding:25px 40px 64px;min-width:0}.content:focus{outline:none}
+.content{max-width:1280px;margin:auto;padding:25px 40px 64px;min-width:0}
+main#content:focus{outline:none}
 .page-head{display:flex;align-items:center;justify-content:space-between;gap:24px;margin-bottom:32px}
 .page-head p{font-size:13px;margin-top:9px}.kicker{font-size:11px;color:var(--muted);margin-bottom:8px}
 .avatar{width:36px;height:36px;display:inline-grid;place-items:center;border-radius:50%;font-size:11px;font-weight:500;flex-shrink:0;color:var(--blue-ink);background:var(--blue)}

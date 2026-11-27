@@ -1481,3 +1481,62 @@ test("C3: concurrent approvals cannot split or overbook a two-meeting group", as
   assert.deepEqual(schedules.map((schedule) => [...new Set(schedule.courses[0].slots.map((ref) =>
     counts.id(ref.slotGroupId).groupNumber))].join(",")).sort(), ["1", "2"]);
 });
+
+test("Req 5 isolates each role's inbox and persists read timestamps through the API", async () => {
+  const entries = await Notification.create(Object.entries(users).map(([role, user]) => ({
+    recipient: user._id, type: "scheduleProcessed", title: role, message: "Regression inbox entry", channels: ["inApp"],
+  })));
+  for (const [role, user] of Object.entries(users)) {
+    const mine = entries.find(entry => entry.recipient.equals(user._id));
+    const other = entries.find(entry => !entry.recipient.equals(user._id));
+    assert.deepEqual((await inbox(role)).map(entry => entry._id), [String(mine._id)], role);
+    assert.equal((await call(`/notifications/${other._id}/read`, { role, method: "PATCH" })).status, 403, role);
+    assert.equal((await call(`/notifications/${mine._id}/read`, { role, method: "PATCH" })).status, 200, role);
+    const [read] = await inbox(role);
+    assert.equal(read.isRead, true, role);
+    assert.ok(read.readAt, role);
+  }
+});
+
+test("Req 28–29 creates and updates a standard schedule template with validated slots and coordinator access", async () => {
+  const path = "/academics/schedule-templates";
+  const original = templates["3"].toJSON();
+  await ScheduleTemplate.deleteOne({ _id: original._id });
+  const { major, semester, studyGroup } = original;
+  const body = { term: term.code, major, semester, studyGroup, courses: original.courses };
+  assert.equal((await call(path, { role: "advisor", method: "POST", body })).status, 403);
+  const created = await call(path, { role: "coordinator", method: "POST", body });
+  assert.equal(created.status, 201, JSON.stringify(created.body));
+  assert.equal((await call(path, { role: "coordinator", method: "POST", body })).status, 409);
+  const detail = path + "/" + created.body._id;
+  assert.equal((await call(detail, { role: "coordinator", method: "PUT", body: { courses: [] } })).status, 400);
+  assert.equal((await call(detail, { role: "advisor", method: "PUT", body: { isPublished: true } })).status, 403);
+  const replacement = original.courses.slice(1);
+  const updated = await call(detail, { role: "coordinator", method: "PUT", body: { courses: replacement, isPublished: true } });
+  assert.equal(updated.status, 200, JSON.stringify(updated.body));
+  const stored = (await call(detail, { role: "coordinator" })).body;
+  assert.deepEqual([stored.major, stored.semester, stored.studyGroup, stored.isPublished], [major, semester, studyGroup, true]);
+  assert.deepEqual(stored.courses.map(entry => entry.course._id), replacement.map(entry => String(entry.course)));
+  assert.equal(stored.courses[0].slots[0].slotGroupId, String(replacement[0].slots[0].slotGroupId));
+});
+
+test("Req 34 shows complete weekly timetables only for same-term groups with identical subjects", async () => {
+  const { participants } = await setupSwapParticipants();
+  const [viewer, requester, competitor] = participants;
+  const first = await call("/swaps/eligible-groups", { role: viewer.role });
+  assert.equal(first.status, 200);
+  assert.deepEqual(first.body.eligibleGroups.map(group => group.studyGroup), [requester.group, competitor.group]);
+  for (const group of first.body.eligibleGroups) {
+    const participant = participants.find(row => row.group === group.studyGroup);
+    const own = await readSwapTimetable(participant.role);
+    assert.deepEqual(group.week, own.week);
+    const slots = Object.values(group.week).flat();
+    assert.deepEqual(slots.map(slot => slot.type).sort(), ["lab", "lecture", "lecture", "tutorial"]);
+    assert.deepEqual(group.courseCodes.sort(), courses.map(course => course.code).sort());
+  }
+  await ScheduleTemplate.updateOne({ _id: templates[competitor.group]._id }, {
+    $pull: { courses: { course: courses[1]._id } },
+  });
+  const narrowed = await call("/swaps/eligible-groups", { role: viewer.role });
+  assert.deepEqual(narrowed.body.eligibleGroups.map(group => group.studyGroup), [requester.group]);
+});
