@@ -8,6 +8,10 @@
   gap: 14px 32px;
   padding-block: 3px 6px;
 }
+.staff-preferences .preference-context[data-selected] {
+  padding-block-end:20px;
+  border-block-end:1px solid var(--line);
+}
 .preference-identify { min-width: 0; max-width: 540px; }
 .preference-student-selected { display: flex; align-items: center; flex-wrap: wrap; gap: 2px 22px; }
 .staff-preferences .preference-student-selected .register-person { gap: 14px; }
@@ -38,29 +42,28 @@
 .staff-preferences .preference-reading-heading h2 { margin: 0; font-size: 20px; font-weight: 500; }
 .preference-reading-heading { display: flex; align-items: baseline; flex-wrap: wrap; gap: 5px 20px; }
 .preference-reading-heading p, .preference-missing { margin: 0; font-size: 13px; line-height: 1.5; color: var(--muted); }
-.staff-preferences .preference-priorities {
+.staff-preferences :is(.preference-priorities,.preferred-group-reading) {
   table-layout: fixed; width: 100%; margin-top: 12px; border-collapse: collapse; color: var(--ink);
   font-size: 15px;
 }
-.staff-preferences .preference-priorities :is(th,td) {
+.staff-preferences :is(.preference-priorities,.preferred-group-reading) :is(th,td) {
   position: static; background: transparent; text-align: start; border: 0; padding: 9px 12px;
   vertical-align: top; overflow-wrap: anywhere;
 }
-.staff-preferences .preference-priorities :is(th,td):first-child { padding-inline-start: 0; }
-.staff-preferences .preference-priorities thead th {
-  padding-block: 4px 8px; color: var(--muted); font-size: 12px; font-weight: 400; border-block-end: 1px solid var(--line);
+.staff-preferences :is(.preference-priorities,.preferred-group-reading) :is(th,td):first-child { padding-inline-start: 0; }
+.staff-preferences :is(.preference-priorities,.preferred-group-reading) thead th {
+  padding-block: 4px 8px; color: var(--muted); font-size: 13px; font-weight: 400; border-block-end: 1px solid var(--line);
 }
+.staff-preferences :is(.preference-priorities,.preferred-group-reading) tbody tr + tr > * { border-block-start:1px solid var(--line); }
 .staff-preferences .preference-priorities thead th:first-child { width: 28%; }
 .staff-preferences .preference-priorities thead th:nth-child(2) { width: 40%; }
 .staff-preferences .preference-priorities .status-pill, .preference-off-label {
   display: inline-flex; align-items: center; gap: 9px; min-height: 26px; font-size: 14px; font-weight: 500;
 }
 .preference-day-off-cup { width: 26px; height: 25px; color: var(--muted); flex: none; }
-.preference-choices, .preferred-group-reading { margin: 0; padding: 0; list-style: none; }
-.preference-choices { display: flex; flex-wrap: wrap; gap: 5px 8px; }
+.preference-choices { margin:0; padding:0; list-style:none; display:flex; flex-wrap:wrap; gap:2px 18px; }
 .preference-choices li {
-  display: inline-flex; align-items: baseline; gap: 6px; padding-inline: 8px;
-  border-radius: 6px; background: var(--raised); line-height: 26px; font-variant-numeric: tabular-nums;
+  display: inline-flex; align-items: baseline; gap:5px; line-height:26px; font-variant-numeric:tabular-nums;
 }
 /* Use the teaching week's clock next to a submitted time range. */
 .preference-priorities td:last-child .preference-choices li::before {
@@ -74,20 +77,22 @@
 .preference-inapplicable { color: var(--muted); }
 .staff-preferences :is(.preference-group-register,.preference-note-detail) h3,
 .staff-preferences .preference-empty h3 { margin: 0; color: var(--ink); font-size: 19px; font-weight: 500; }
-.preference-group-register { margin-top: 23px; }
-.preferred-group-reading { margin-top: 12px; border: 1px solid var(--line); border-radius: 10px; }
-.preferred-group-reading > li {
-  display: grid; grid-template-columns: auto minmax(0,1fr) minmax(0,.8fr); gap: 12px;
-  align-items: center; padding: 11px 14px;
-}
+.preference-group-register { margin-top:26px; }
+.preference-group-register > .preference-missing { margin-top:8px; }
+.staff-preferences .preferred-group-reading thead th:first-child { width:46%; }
+.staff-preferences .preferred-group-reading :is(th,td):last-child { width:12%; text-align:end; padding-inline-end:0; }
+.staff-preferences .preferred-group-reading tbody td { vertical-align:middle; }
+.preference-group-course { display:flex; align-items:center; gap:10px; }
+.preference-group-course .offering-course-emblem { flex:none; }
 .preferred-group-reading .offering-course-emblem { width: 36px; height: 36px; border-radius: 8px; }
 .preferred-group-reading .offering-course-emblem :is(img,svg) { width: 23px; height: 20px; }
 .preferred-group-reading strong { display: block; font: 500 15px/1.35 Styrene,system-ui,sans-serif; }
 .preferred-group-reading small { display: block; margin-top: 3px; font-size: 13px; color: var(--muted); }
 .preference-group-detail strong { font-size: 14px; text-transform: capitalize; }
-.preference-note-detail { margin-top: 22px; }
-.staff-preferences .preference-note-detail h3 { font-size: 15px; }
-.preference-note-detail blockquote { margin: 5px 0 0; max-width: 70ch; font-size: 14px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+.preference-note-detail { margin-top:20px; padding-block:18px; border-block:1px solid var(--line); }
+.staff-preferences .preference-note-detail h3 { margin-bottom:8px; }
+.preference-note-text { margin:0; max-width:65ch; color:var(--ink); font-size:16px; line-height:1.6; white-space:pre-wrap; overflow-wrap:anywhere; }
+.preference-submitted-at { margin:14px 0 0; color:var(--muted); font-size:13px; }
 .preference-draft-handoff { margin-top: 22px; }
 .preference-draft-handoff button { gap: 10px; min-height: 42px; white-space: normal; text-align: start; }
 .preference-empty p, .preference-read-progress { margin: 5px 0 0; color: var(--muted); }
@@ -96,15 +101,15 @@
 @container staff-preferences (max-width: 620px) {
   .staff-preferences .preference-context { grid-template-columns: minmax(0, 1fr); }
   .preference-term { max-width: 380px; }
-  .staff-preferences .preference-priorities :is(th,td) { padding-inline: 5px; }
+  .staff-preferences :is(.preference-priorities,.preferred-group-reading) :is(th,td) { padding-inline:5px; }
   .staff-preferences .preference-priorities thead th:first-child { width: 28%; }
   .staff-preferences .preference-priorities thead th:nth-child(2) { width: 37%; }
   .staff-preferences .preference-priorities { font-size: 14px; }
   .staff-preferences .preference-priorities .status-pill, .preference-off-label { gap: 5px; font-size: 13px; }
   .staff-preferences .preference-priorities .status-pill::before, .preference-day-off-cup { width: 19px; height: 20px; }
   .preference-priorities td:last-child .preference-choices li::before { display: none; }
-  .preferred-group-reading > li { grid-template-columns: auto minmax(0, 1fr); gap: 3px 10px; }
-  .preference-group-detail { grid-column: 2; }
+  .staff-preferences .preferred-group-reading :is(th,td):last-child { width:62px; }
+  .preference-group-course { flex-wrap:wrap; gap:5px 8px; }
   .staff-preferences .preference-context :is(button, input, select) { min-height: 44px; }
 }
 @container (550px < width <= 790px) {

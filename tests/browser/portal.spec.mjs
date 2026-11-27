@@ -629,6 +629,15 @@ test("Coordinator schedule folders open the selected student and term across rel
   await page.getByRole("button", { name: /Back to students/ }).click();
   await expect(page.getByRole("heading", { name: "Student schedules", exact: true })).toBeVisible();
   expect(new URL(page.url()).searchParams.has("student")).toBe(false);
+  const row = page.getByRole("row", { name: /Folder Student/ });
+  await row.getByRole("button", { name: /More actions/ }).click();
+  await expect(row.getByRole("button", { name: "View schedule" })).toBeVisible();
+  await expect.poll(() => row.evaluate((studentRow) => {
+    const reveal = studentRow.querySelector(".record-menu:popover-open").getBoundingClientRect();
+    const primary = studentRow.querySelector(".roster-actions > .outline-button").getBoundingClientRect();
+    return reveal.top > primary.bottom && Math.abs(reveal.left - primary.left) < 1
+      && Math.abs(reveal.width - primary.width) < 1 && reveal.bottom <= studentRow.getBoundingClientRect().bottom;
+  })).toBe(true);
 });
 
 test("Catalogue editing preserves filtered prerequisites, seasons and legacy major lines", async ({ page }) => {

@@ -507,12 +507,14 @@
   border-radius:11px;
   background:var(--paper);
   box-shadow:0 5px 18px #0002;
+  overflow:clip;
 }
 .service-surface[data-staff-presentation] .advising-register .record-burst .record-menu:popover-open { gap:2px; }
 .service-surface[data-staff-presentation] .advising-register .record-burst .record-menu > button {
   --release-x:7px;
   --release-y:-3px;
   border-color:transparent;
+  background:transparent;
   border-radius:6px;
   box-shadow:none;
 }
@@ -525,7 +527,6 @@
 }
 @keyframes advising-actions-unfold {
   from { scale:.9 .84; }
-  72% { scale:1.008 1.018; }
 }
 
 @media (max-width:600px) {
@@ -537,32 +538,48 @@
 
 .schedule-register .roster-actions {
   --action-travel:-7px;
+  --schedule-action-width:132px;
+  --schedule-action-height:38px;
+  --schedule-action-gap:8px;
+  --schedule-more-width:44px;
 }
+.service-surface[data-staff-presentation] .schedule-register .record-burst > .record-more { inline-size:var(--schedule-more-width); }
 .schedule-register .record-burst:has(.record-menu:popover-open) > .record-more { background:var(--raised); }
+.service-surface[data-staff-presentation] .schedule-register .roster-actions > .outline-button {
+  inline-size:var(--schedule-action-width);
+}
 .service-surface[data-staff-presentation] .schedule-register .record-burst .record-menu {
-  inline-size:132px;
-  margin:7px 0 0;
   position-try-fallbacks:none;
+  inline-size:var(--schedule-action-width);
+  margin:7px 0 0;
+}
+.service-surface[data-staff-presentation]:not([data-portal-role="administrator"]) .schedule-register .roster-actions:has(.record-menu:popover-open) {
+  padding-block-end:calc(var(--schedule-action-height) + var(--schedule-action-gap));
+}
+.service-surface[data-staff-presentation]:not([data-portal-role="administrator"]) .schedule-register .record-burst .record-menu {
+  margin:0;
+  margin-block-start:var(--schedule-action-gap);
+  margin-inline-end:calc(var(--schedule-more-width) + var(--schedule-action-gap) - var(--action-travel));
 }
 .service-surface[data-staff-presentation] .schedule-register .record-burst .record-menu > button {
-  min-height:44px;
-  padding-inline:12px;
+  min-height:var(--schedule-action-height);
+  padding:0 9px;
   text-align:center;
 }
 @container (width < 1080px) {
-  .service-surface[data-staff-presentation] .schedule-register .roster-actions:has(.record-menu:popover-open) { padding-block-end:51px; }
+  .service-surface[data-portal-role="administrator"] .schedule-register .roster-actions:has(.record-menu:popover-open) { padding-block-end:51px; }
+  .service-surface[data-portal-role="administrator"] .schedule-register .record-burst .record-menu > button { min-height:44px; }
 }
 @container (width >= 1080px) {
-  .service-surface[data-staff-presentation] .schedule-register .record-burst .record-menu {
+  .service-surface[data-staff-presentation][data-portal-role="administrator"] .schedule-register .record-burst .record-menu {
     position-area:inline-start center;
     align-self:anchor-center;
-    margin:0;
-    margin-inline-end:155px;
+    margin:0 155px 0 0;
   }
-  .service-surface[data-staff-presentation] .schedule-register .record-burst .record-menu > button {
-    min-height:38px;
-    --release-x:52px;
-  }
+  .service-surface[data-portal-role="administrator"] .schedule-register .record-burst .record-menu > button { --release-x:52px; }
+}
+@container (max-width:470px) {
+  .schedule-register .roster-actions { --schedule-action-height:44px; }
 }
 
 @keyframes row-action-skid {

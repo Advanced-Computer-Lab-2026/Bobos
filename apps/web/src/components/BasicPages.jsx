@@ -111,7 +111,7 @@ export function StudentRecordsPage({ token, profile, profileId: targetProfileId,
       </div>}
       {(error || (tab === "transcript" && yearsError)) && <div className="feedback error" role="alert">{error || yearsError}</div>}
       {loading || (tab === "transcript" && yearsLoading) ? <Loading /> : data ? <RecordData data={data} tab={tab} /> : tab === "transcript" && !error && !yearsError &&
-        <RecordsEmpty title="No transcript yet" description="Yearly transcripts appear after an academic year has course attempts." />}
+        <RecordsEmpty title="No transcript yet" description="Yearly transcripts appear after an academic year has course attempts." spacious />}
     </section>
   </div>;
 }
@@ -325,7 +325,7 @@ function RecordData({ data, tab }) {
     return records.length ? <CourseRecordGroup title="Failed or unattended courses" previewLength={records.length} items={records.map(item => ({
       id: item._id, course: item.course,
       details: { Term: termLabel(item.term), Attempt: item.attemptNumber, Attendance: humanize(item.attendance), Result: humanize(item.result), Grade: item.grade },
-    }))} /> : <RecordsEmpty title="No failed or unattended courses" description="Courses appear here when a failed or unattended attempt is recorded." />;
+    }))} /> : <RecordsEmpty title="No failed or unattended courses" description="Courses appear here when a failed or unattended attempt is recorded." art="course-removal-slip.svg" spacious />;
   }
   if (tab === "transcript") {
     const terms = Object.entries(data.terms || {}).filter(([, rows]) => rows?.length);
@@ -335,7 +335,7 @@ function RecordData({ data, tab }) {
         id: row._id || index, course: row.course,
         details: { Grade: row.grade, Result: humanize(row.result), Attendance: humanize(row.attendance) },
       }))} />)}
-    </div> : <RecordsEmpty title="No course attempts for this year" description="Select another academic year to view its transcript." />;
+    </div> : <RecordsEmpty title="No course attempts for this year" description="Select another academic year to view its transcript." spacious />;
   }
   return <AcademicHistory data={data} />;
 }
@@ -382,9 +382,9 @@ function AcademicHistory({ data }) {
   </div>;
 }
 
-function RecordsEmpty({ title, description }) {
-  return <div className="records-blank">
-    <img src="/portal-studio/images/academic-transcript.svg" alt="" width="44" height="44" />
+function RecordsEmpty({ title, description, art = "academic-transcript.svg", spacious = false }) {
+  return <div className={spacious ? "records-blank records-blank-tab" : "records-blank"}>
+    <img src={`/portal-studio/images/${art}`} alt="" width={spacious ? 148 : 44} height={spacious ? 124 : 44} />
     <div><strong>{title}</strong>{description && <p>{description}</p>}</div>
   </div>;
 }

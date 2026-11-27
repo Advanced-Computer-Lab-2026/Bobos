@@ -197,7 +197,7 @@ export default function StaffPreferences({ token, profile, profileId, studentTar
   const waitingForSelection = !termError && (linkedStudentPending || (selectedId && termsLoading));
   return <div className="page-stack schedule-preferences-page staff-preferences">
     <div className="page-title-row"><div><h1>Student preferences</h1></div></div>
-    <section className="preference-context" aria-label="Student and term">
+    <section className="preference-context" data-selected={Boolean(selectedStudent) || undefined} aria-label="Student and term">
       <div className="preference-identify">
         {selectedStudent ? <div className="preference-student-selected">
           <StudentIdentity name={studentName(selectedStudent)} id={selectedStudent.studentId} email={studentEmail(selectedStudent)} />
@@ -248,9 +248,7 @@ export default function StaffPreferences({ token, profile, profileId, studentTar
 export function PreferenceSubmission({ preferences, offerings, updatedAt, title = "Scheduling priorities", draft = false }) {
   const { preferredDays, avoidedDays, desiredDaysOff, preferredTimes, avoidedTimes, preferredGroups, note } = preferences;
   return <div className="preference-submission">
-    <header className="preference-reading-heading"><h2>{title}</h2>
-      {updatedAt && <p>Last updated <time dateTime={updatedAt}>{updatedAtFormat.format(new Date(updatedAt))} Cairo</time></p>}
-    </header>
+    <header className="preference-reading-heading"><h2>{title}</h2></header>
     <table className="preference-priorities" aria-label="Scheduling priorities">
       <thead><tr><th scope="col">Preference</th><th scope="col">Weekdays</th><th scope="col">Teaching times</th></tr></thead>
       <tbody>
@@ -259,33 +257,37 @@ export function PreferenceSubmission({ preferences, offerings, updatedAt, title 
         <PriorityRow title="Days off" dayLabel="Desired days off" days={desiredDaysOff} />
       </tbody>
     </table>
+    <section className="preference-note-detail">
+      <h3>Student note</h3>
+      {note ? <blockquote className="preference-note-text">{note}</blockquote> : <p className="preference-missing">No note submitted.</p>}
+    </section>
     <section className="preference-group-register">
       <h3>Preferred course groups</h3>
-      {preferredGroups?.length ? <ol className="preferred-group-reading" aria-label="Preferred course groups, highest priority first" role="list">
+      {preferredGroups?.length ? <table className="preferred-group-reading" aria-label="Preferred course groups, highest priority first">
+        <thead><tr><th scope="col">Course</th><th scope="col">Group</th><th scope="col">Priority</th></tr></thead>
+        <tbody>
         {preferredGroups.map(({ course, componentType, groupNumber, priority }, index) => {
           const offering = offerings?.find((item) => String(item.course?._id || item.course) === String(course?._id || course));
           const groups = offering?.groups || (offering && preferenceGroupOptions(offering));
           const option = groups?.find((item) => item.componentType === componentType && item.groupNumber === groupNumber);
           const sessions = option?.sessions || option?.slots || [];
           const identity = course?.code ? course : offering?.course;
-          return <li key={`${course?._id || course}-${componentType}-${groupNumber}-${index}`}>
-            <OfferingCourseIcon code={identity?.code} />
-            <div className="registered-course-title">
-              <strong>{identity?.name || identity?.code || "Course"}</strong>
-              <small>{[identity?.code, `Priority ${priority ?? index + 1}`].filter(Boolean).join(" · ")}</small>
-            </div>
-            <div className="preference-group-detail">
+          return <tr key={`${course?._id || course}-${componentType}-${groupNumber}-${index}`}>
+            <td><div className="preference-group-course">
+              <OfferingCourseIcon code={identity?.code} />
+              <div><strong>{identity?.name || identity?.code || "Course"}</strong>{identity?.code && <small>{identity.code}</small>}</div>
+            </div></td>
+            <td className="preference-group-detail">
               <strong className="preference-group-type">{componentType} {groupNumber}</strong>
               {option ? sessions.map((session, position) => <small key={session._id || position}>{session.startTime ? [session.day, `${session.startTime}–${session.endTime}`, session.room].filter(Boolean).join(" · ") : preferenceMeetingLabel(session)}</small>) : <small>{offerings && !draft ? "Group is no longer published" : "Meeting details are unavailable"}</small>}
-            </div>
-          </li>;
+            </td>
+            <td>{priority ?? index + 1}</td>
+          </tr>;
         })}
-      </ol> : <p className="preference-missing">No preferred course groups.</p>}
+        </tbody>
+      </table> : <p className="preference-missing">No preferred course groups.</p>}
     </section>
-    <aside className="preference-note-detail">
-      <h3>Student note</h3>
-      {note ? <blockquote>{note}</blockquote> : <p className="preference-missing">No note submitted.</p>}
-    </aside>
+    {updatedAt && <p className="preference-submitted-at">Last updated <time dateTime={updatedAt}>{updatedAtFormat.format(new Date(updatedAt))} Cairo</time></p>}
   </div>;
 }
 

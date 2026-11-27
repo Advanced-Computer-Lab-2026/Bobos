@@ -410,13 +410,14 @@ export default function ExtraHoursPage({
               row.decidedAt && { action: row.decisionStatus, occurredAt: row.decidedAt },
             ].filter(Boolean);
             const detail = (!staff || opened === row._id) && <div className="extra-review-sheet" id={"extra-detail-" + row._id}>
-              {staff && <header className="extra-sheet-heading">
-                <div><h3>Request breakdown</h3><p>{termLabel(row.term)} · Requested by {row.advisor?.fullName || "unknown advisor"}</p></div>
-                <details className="extra-reference"><summary>Request reference</summary><code>{row._id}</code></details>
-              </header>}
+              {staff && <dl className="extra-sheet-heading">
+                <div><dt>Term</dt><dd>{termLabel(row.term)}</dd></div>
+                <div><dt>Requested by</dt><dd>{row.advisor?.fullName || "—"}</dd></div>
+                <div className="extra-reference"><dt>Request reference</dt><dd>{row._id}</dd></div>
+              </dl>}
               <div className="extra-sheet-columns">
                 <section className="extra-sheet-courses">
-                  <h4>Requested courses</h4>
+                  <h3>Requested courses</h3>
                   <ul>{row.courses?.map(item => <li key={item.course?._id || item._id || item.course}>
                     <OfferingCourseIcon code={item.course?.code} />
                     <div><strong>{item.course?.name || item.course?.code || "Course"}</strong>
@@ -426,25 +427,29 @@ export default function ExtraHoursPage({
                   <div className="extra-sheet-total"><span>Request total</span><strong>{money(row.totalCost)}</strong></div>
                 </section>
                 <section className="extra-sheet-load">
-                  <h4>Study load</h4>
-                  <div className="extra-load-value">{row.eligibilitySnapshot?.hoursAfterRequest ?? "—"} <small>hours after request</small></div>
-                  <p>{row.eligibilitySnapshot?.hoursBeforeRequest ?? "—"} current + {row.requestedHours} requested</p>
+                  <h3>Study load</h3>
                   <dl>
+                    <div><dt>Current hours</dt><dd>{row.eligibilitySnapshot?.hoursBeforeRequest ?? "—"}</dd></div>
+                    <div><dt>Requested hours</dt><dd>{row.requestedHours ?? "—"}</dd></div>
+                    <div className="extra-load-total"><dt>Hours after request</dt><dd>{row.eligibilitySnapshot?.hoursAfterRequest ?? "—"}</dd></div>
                     <div><dt>Standard allowance</dt><dd>{row.eligibilitySnapshot?.standardAllowance ?? "—"} hours</dd></div>
                     <div><dt>Graduating within one year</dt><dd>{row.eligibilitySnapshot?.graduatingWithinOneYear == null ? "—" : row.eligibilitySnapshot.graduatingWithinOneYear ? "Yes" : "No"}</dd></div>
                   </dl>
                   {row.eligibilitySnapshot?.isProbation && <p className="feedback error">Ineligible due to academic probation</p>}
                 </section>
               </div>
-              <details className="extra-sheet-history" open>
-                <summary>Request history</summary>
-                {events.length ? <ol>{events.map(entry => <li key={entry._id || entry.action}>
-                  <div><strong>{pretty(entry.action)}</strong><time dateTime={entry.occurredAt}>{date(entry.occurredAt)}</time></div>
-                  {entry.settlementStatus && paymentStates[entry.settlementStatus] && <small>{paymentStates[entry.settlementStatus].label}</small>}
-                  {entry.note && entry.note !== row.decisionNote && <p>{entry.note}</p>}
+              <section className="extra-sheet-history">
+                <h3>Request history</h3>
+                {events.length ? <ol>{events.map((entry, index) => <li key={entry._id || index}>
+                  <time dateTime={entry.occurredAt}>{date(entry.occurredAt)}</time>
+                  <div>
+                    <strong>{pretty(entry.action)}</strong>
+                    {paymentStates[entry.settlementStatus] && <small>{paymentStates[entry.settlementStatus].label}</small>}
+                    {entry.note && entry.note !== row.decisionNote && <p>{entry.note}</p>}
+                  </div>
                 </li>)}</ol> : <p>No history recorded yet.</p>}
-              </details>
-              {row.decisionNote && <section className="extra-sheet-response"><h4>Coordinator response</h4><p>{row.decisionNote}</p></section>}
+              </section>
+              {row.decisionNote && <section className="extra-sheet-response"><h3>Coordinator response</h3><p>{row.decisionNote}</p></section>}
                 {role === "coordinator" && row.decisionStatus === "pending" && (
                   <div className="form-stack">
                     <label className="field">

@@ -13,31 +13,20 @@ export default function FilterDisclosure({ search, chips = [], onClear, children
     if (!open || !pointerOpen.current || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const trigger = toggle.current.getBoundingClientRect();
     const fields = [...panel.current.querySelectorAll(".field, .filter-panel-actions > button")];
-    const bounds = fields.map(field => field.getBoundingClientRect());
-    const animations = fields.map((field, index) => {
-      const rect = bounds[index];
-      const x = trigger.left + trigger.width / 2 - rect.left - rect.width / 2;
-      const y = trigger.top + trigger.height / 2 - rect.top - rect.height / 2;
-      const tilt = Math.sign(x || 1);
-      const pose = (offset, progress, lift, angle, scale, opacity = 1) => ({
-        offset, opacity, easing: "steps(1, end)",
-        transform: `translate3d(${Math.round(x * progress)}px, ${Math.round(y * progress + lift)}px, 0) rotate(${angle * tilt}deg) scale(${scale})`,
-      });
-      // Held poses echo the teaching week's paper cards finding their places.
+    const triggerCenter = trigger.left + trigger.width / 2;
+    const placements = fields.map(field => {
+      const rect = field.getBoundingClientRect();
+      return { field, distance: triggerCenter - rect.left - rect.width / 2, top: rect.top };
+    });
+    placements.sort((a, b) => a.top - b.top || Math.abs(a.distance) - Math.abs(b.distance));
+    const animations = placements.map(({ field, distance }, index) => {
+      // Each field fans out near its own position, starting with those closest to the trigger.
+      const slide = Math.max(-18, Math.min(18, distance * .08));
       return field.animate([
-        pose(0, 1, 0, -11, .18, 0),
-        pose(.07, .93, -5, -9, .25, .45),
-        pose(.17, .78, -10, -7, .39),
-        pose(.28, .60, -15, -2, .56),
-        pose(.39, .42, -17, 4, .70),
-        pose(.50, .24, -14, 5, .83),
-        pose(.61, .11, -7, 2, .93),
-        pose(.72, .025, -3, -1.5, .98),
-        pose(.82, 0, 2, .7, 1),
-        pose(.91, 0, -1, -.25, 1),
-        pose(.97, 0, 0, 0, 1),
-        { offset: 1, opacity: 1, transform: "none" },
-      ], { duration: 685, delay: Math.min(index, 7) * 75, fill: "backwards" });
+        { opacity: 0, transform: `translate(${slide}px, -11px) rotate(${slide / 10}deg) scale(.97)`, easing: "cubic-bezier(.2,.72,.3,1)" },
+        { offset: .75, opacity: 1, transform: "translateY(1px)", easing: "ease-out" },
+        { opacity: 1, transform: "none" },
+      ], { duration: 225, delay: Math.min(index, 5) * 24, fill: "backwards" });
     });
     return () => animations.forEach(animation => animation.cancel());
   }, [open]);

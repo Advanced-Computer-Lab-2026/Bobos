@@ -32,32 +32,30 @@ function PlanCourses({ plan }) {
 
 function AdvisorSubmission({ plan, multiple, first }) {
   const courses = plan.termPlans.flatMap(term => term.courses);
+  const accepted = plan.status === "accepted";
   const summary = <>
     <StudentIdentity name={plan.student?.user?.fullName} id={plan.student?.studentId} />
-    <span className="submission-load">{plan.termPlans.length} {plan.termPlans.length === 1 ? "term" : "terms"} · {courses.length} {courses.length === 1 ? "course" : "courses"} · {creditLabel(courses.reduce((sum, course) => sum + course.creditHours, 0))}</span>
     <Status status={plan.status} />
   </>;
   const content = <div className="submission-body">
+    <section className="submission-review" aria-label="Plan review">
+      <p>{accepted ? "The student can view this plan in My graduation." : "The coordinator will accept the plan or return it to you for changes."}</p>
+      <dl className="submission-facts">
+        {plan.submittedAt && <div><dt>Submitted</dt><dd><time dateTime={plan.submittedAt}>{studentDate.format(new Date(plan.submittedAt))}</time></dd></div>}
+        {plan.advisor?.fullName && <div><dt>Submitted by</dt><dd>{plan.advisor.fullName}</dd></div>}
+        {accepted && plan.decidedAt && <div><dt>Accepted</dt><dd><time dateTime={plan.decidedAt}>{studentDate.format(new Date(plan.decidedAt))}</time></dd></div>}
+      </dl>
+      <GraduationResponse note={plan.responseNote} />
+    </section>
     <section className="submission-courses">
-      <h3>Courses by term</h3>
+      <div className="submission-course-heading"><h3>Courses by term</h3>
+        <span>{courses.length} {courses.length === 1 ? "course" : "courses"} · {creditLabel(courses.reduce((sum, course) => sum + course.creditHours, 0))}</span>
+      </div>
       {plan.termPlans.length ? <StudentPlanTerms plan={plan} /> : <p>No term courses in this plan.</p>}
       {plan.exitExamRequest && <div className="graduation-exam-course">
         <OfferingCourseIcon code={plan.exitExamRequest.course?.code} />
         <div><strong>Approved exit exam</strong><p>{plan.exitExamRequest.course?.name || "Archived course"} · {plan.exitExamRequest.course?.code || "—"}</p></div>
       </div>}
-    </section>
-    <section className="submission-history">
-      <h3>Review history</h3>
-      <ol>
-        <li><strong>Submitted for review</strong>
-          {plan.submittedAt && <time dateTime={plan.submittedAt}>{studentDate.format(new Date(plan.submittedAt))}</time>}
-          {plan.advisor?.fullName && <span>{plan.advisor.fullName}</span>}
-        </li>
-        <li className={plan.status === "accepted" ? "accepted" : "waiting"}><strong>{plan.status === "accepted" ? "Accepted by coordinator" : "Awaiting coordinator decision"}</strong>
-          {plan.status === "accepted" && plan.decidedAt && <time dateTime={plan.decidedAt}>{studentDate.format(new Date(plan.decidedAt))}</time>}
-        </li>
-      </ol>
-      <GraduationResponse note={plan.responseNote} />
     </section>
   </div>;
   return multiple ? <details className="submission-sheet" open={first}>

@@ -21,11 +21,10 @@
 }
 .editor-student-meta { display: flex; flex-wrap: wrap; gap: 0 12px; }
 .editor-student-meta strong { color: var(--ink); font-weight: 500; }
-.editor-version { text-align: end; }
- .editor-workflow strong { font-size: 15px; font-weight: 550; }
-.editor-workflow > div { display: flex; gap: 3px 12px; flex-wrap: wrap; align-items: baseline; }
-.editor-caption, .advising-record-reason > span { font-size: 14px; color: var(--muted); }
-.editor-workflow p { flex-basis: 100%; margin: 0; }
+.editor-context .editor-version { margin-top: 3px; color: var(--muted); font-size: 13px; }
+.editor-context .editor-workflow { grid-column: 1 / -1; margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.editor-workflow strong { color: var(--ink); font-weight: 500; }
+.advising-record-reason > span { font-size: 14px; color: var(--muted); }
 .editor-action { justify-self: end; }
 .editor-context .schedule-process-feedback { grid-column: 1 / -1; }
 .student-advising-record { display: grid; gap: 30px; }
@@ -60,7 +59,7 @@
 .editor-preferences { padding-block: 6px 0; min-width: 0; }
 @media(max-width: 700px) {
   .academic-services-embedded .advising-draft-page .draft-summary.editor-context { grid-template-columns: 1fr; gap: 10px; }
-  .editor-version, .editor-action { text-align: start; justify-self: start; }
+  .editor-action { justify-self: start; }
   .editor-identity-line { gap: 4px 12px; }
   .advising-load { padding: 15px; }
   .advising-project-heading button { margin-inline-start: 0; }

@@ -129,6 +129,10 @@ export default function GraduationPlans({ student, token, onBack, backLabel }) {
   const courses = workspace?.courses ?? [];
   const terms = workspace?.terms ?? [];
   const currentExamCourse = courses.find((course) => course._id === workspace?.examEligibility.courseId);
+  const failedCourses = courses.filter((course) => course.failed).length;
+  const examExplanation = workspace?.examEligibility.message && !workspace.examEligibility.courseId
+    ? `${failedCourses ? `This student has ${failedCourses} remaining failed courses.` : "This student has no remaining failed courses."} ${workspace.examEligibility.message}`
+    : workspace?.examEligibility.message;
   const courseNames = new Map([...Object.entries(workspace?.savedCourseCodes ?? {}), ...courses.map((course) => [course._id, course.code])]);
   const termNames = new Map([...Object.entries(workspace?.savedTermCodes ?? {}), ...terms.map((term) => [term._id, term.code])]);
   const remainingIds = new Set(courses.map((course) => course._id));
@@ -152,7 +156,7 @@ export default function GraduationPlans({ student, token, onBack, backLabel }) {
       {issues.length > 0 && <ul>{issues.map((issue, index) => <li key={index}>{issue}</li>)}</ul>}
     </div>}
     {!workspace && !error && <div className="loading-state" role="status">Loading graduation plans…</div>}
-    {workspace && <div className={`planner-sections${!editing && !workspace.plans.length ? " planner-sections-empty" : ""}`}>
+    {workspace && <div className="planner-sections">
       {!editing && <section>
         <div className="results-heading">
           <h2>Your plans</h2>
@@ -258,9 +262,12 @@ export default function GraduationPlans({ student, token, onBack, backLabel }) {
           </div>}
         </>}
       </section>}
-      <section className="panel planner-exams">
+      <section className="planner-exams">
         <h2>Exit-exam requests</h2>
-        {!workspace.exams.length && <p className="exam-empty">No exit exam requested</p>}
+        {!workspace.exams.length && <div className="planner-exam-empty">
+          <h3>No exit exam requested</h3>
+          {examExplanation && <p>{examExplanation}</p>}
+        </div>}
         {workspace.exams.map((exam) => <div className="planner-exam-record" key={exam._id}>
           <div className="graduation-exam-course"><OfferingCourseIcon code={courseNames.get(exam.course)} />
             <strong>{courseNames.get(exam.course) || "Exit exam"}</strong>
@@ -268,7 +275,7 @@ export default function GraduationPlans({ student, token, onBack, backLabel }) {
           </div>
           {exam.responseNote && <p><strong>Coordinator response</strong> {exam.responseNote}</p>}
         </div>)}
-        {workspace.examEligibility.message && <div className="exam-eligibility"><strong>Exit exam unavailable</strong><p>{workspace.examEligibility.message}</p></div>}
+        {workspace.exams.length > 0 && examExplanation && <p className="exam-eligibility">{examExplanation}</p>}
         {currentExamCourse && !workspace.examEligibility.message && !examAlreadyRequested &&
           <form className="form-stack" onSubmit={requestExam}>
             <div className="graduation-exam-course"><OfferingCourseIcon code={currentExamCourse.code} /><div><strong>Eligible for an exit exam</strong><p>{currentExamCourse.code} · {currentExamCourse.name}</p></div></div>

@@ -49,7 +49,7 @@ function RemovalStatus({ status = "pending" }) {
   return <span className={`status-pill ${tone || ""}`}>{label}</span>;
 }
 
-export default function MandatoryRemovalDashboard({ token, role, notify }) {
+export default function MandatoryRemovalDashboard({ token, role, advisorId, notify }) {
   const [requests, setRequests] = useState([]);
   const [advisors, setAdvisors] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -499,6 +499,7 @@ export default function MandatoryRemovalDashboard({ token, role, notify }) {
       {requestModalOpen && (
         <RequestRemovalModal
           token={token}
+          advisorId={advisorId}
           onClose={() => setRequestModalOpen(false)}
           onSuccess={() => {
             notify?.("success", "Mandatory-course removal request submitted.");

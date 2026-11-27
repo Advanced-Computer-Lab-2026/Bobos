@@ -1023,6 +1023,13 @@
 .records-blank img { flex:none; object-fit:contain; }
 .records-blank strong { font-size:14px; font-weight:550; }
 .records-blank p { margin:3px 0 0; color:var(--muted); font-size:13px; }
+.records-blank-tab {
+  display:grid; align-content:center; justify-items:center; gap:16px; min-height:280px;
+  padding:24px 12px; background:transparent; text-align:center;
+}
+.records-blank-tab img { width:clamp(100px,18vw,148px); height:auto; aspect-ratio:148 / 124; }
+.records-blank-tab strong { font-size:18px; }
+.records-blank-tab p { margin-block-start:7px; font-size:14px; max-width:44ch; }
 .records-courses { margin:0; padding:0; list-style:none; border-top:1px solid var(--line); }
 .records-courses > li {
   display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); align-items:center;
@@ -1039,7 +1046,7 @@
 .academic-dialog > .modal-card:has(> .academic-records) {
   --record-inset:clamp(15px,3vw,26px);
   display:flex; flex-direction:column; width:min(900px,100%);
-  max-height:calc(100dvh - 48px); padding:0; overflow:hidden;
+  height:min(740px,calc(100dvh - 48px)); padding:0; overflow:hidden;
 }
 .modal-card:has(> .academic-records) > .modal-heading {
   flex:none; align-items:center; margin:0; padding:16px var(--record-inset);
@@ -1048,13 +1055,15 @@
 .modal-card:has(> .academic-records) > .modal-heading h2 { font-size:22px; }
 .modal-card:has(> .academic-records) .modal-description { margin:3px 0 0; color:var(--muted); font-size:13px; }
 .modal-card:has(> .academic-records) .modal-heading button { flex:none; }
-.modal-card > .academic-records { grid-template-rows:auto minmax(0,1fr); min-height:0; gap:0; padding-top:14px; }
+.modal-card > .academic-records { flex:1; grid-template-rows:auto minmax(0,1fr); min-height:0; gap:0; padding-top:14px; }
 .modal-card > .academic-records > .tabs { margin-inline:var(--record-inset); max-width:calc(100% - 2 * var(--record-inset)); }
 .modal-card > .academic-records > .records-panel { overflow:auto; padding:16px var(--record-inset) 24px; overscroll-behavior:contain; }
+.modal-card .records-panel:has(> .records-blank-tab) { align-content:stretch; grid-template-rows:auto 1fr; }
+.modal-card .records-panel > .records-blank-tab:only-child { grid-row:1 / -1; }
 /* The shared ink overlay sits underneath native dialogs in the top layer. */
 .modal-card:has(> .academic-records) [data-service-ink-focus]:focus-visible { outline:2px solid var(--ink) !important; outline-offset:-2px; }
 @media (max-width:700px) {
-  .academic-dialog > .modal-card:has(> .academic-records) { max-height:calc(100dvh - 24px); }
+  .academic-dialog > .modal-card:has(> .academic-records) { height:min(740px,calc(100dvh - 24px)); }
   .modal-card:has(> .academic-records) > .modal-heading { padding-block:12px; }
   .modal-card:has(> .academic-records) > .modal-heading h2 { font-size:18px; }
   .modal-card:has(> .academic-records) > .modal-heading button { min-height:44px; padding-inline:8px; }
@@ -1306,67 +1315,43 @@
 .review-decision .graduation-term-heading h4 { margin:0; font-size:15px; }
 .review-decision .graduation-course-list, .review-decision .graduation-term > p { padding-inline:16px; }
 .review-decision .graduation-response p, .graduation-planner-page .planner-exams p { margin:0; }
-.academic-services-embedded .graduation-planner-page .planner-exams { border-top:1px solid var(--line); padding-top:22px; display:grid; gap:12px; }
-.planner-exams h2 { margin:0; }
-.exam-empty { color:var(--muted); }
-.exam-eligibility { padding:12px 16px; border-inline-start:3px solid var(--line); background:var(--paper); }
-.exam-eligibility strong { font-weight:550; }
-.exam-eligibility p,.planner-exam-record p { color:var(--muted); font-size:13px; }
-/* The advisor's submission opens as a course sheet with the review history beside it. */
+.planner-sections { display:grid; gap:28px; min-width:0; }
+.planner-sections > section { min-width:0; }
+.planner-sections .graduation-empty { border:0; background:transparent; padding:8px 0; align-items:center; }
+.academic-services-embedded .graduation-planner-page .planner-exams { display:grid; gap:14px; padding-block-start:24px; border-top:1px solid var(--line); }
+.planner-exams h2,.planner-exam-empty h3 { margin:0; }
+.planner-exam-empty h3 { font-size:15px; font-weight:550; }
+.planner-exam-empty { display:grid; gap:5px; }
+.planner-exams :is(.planner-exam-empty p,.exam-eligibility,.planner-exam-record p) { max-width:70ch; color:var(--muted); font-size:14px; line-height:1.55; }
+.planner-exams .form-stack { max-width:40rem; }
+.planner-exam-record .graduation-exam-course { flex-wrap:wrap; }
 .advisor-submissions { container-type:inline-size; }
-.submission-sheet { min-width:0; border:1px solid var(--line); background:var(--paper); border-radius:12px; overflow:hidden; }
-.submission-heading {
-  display:flex; align-items:center; gap:12px 20px; flex-wrap:wrap; list-style:none;
-  padding:clamp(16px,2.2vw,28px); background:var(--raised);
-}
+.submission-sheet { min-width:0; border-block-start:1px solid var(--line); }
+.submission-heading { display:flex; align-items:center; gap:10px 18px; flex-wrap:wrap; list-style:none; padding-block:16px; }
 .submission-heading::-webkit-details-marker { display:none; }
 summary.submission-heading { cursor:pointer; }
-.submission-heading .register-person { flex:1 1 190px; min-width:0; }
-.submission-heading .register-person strong { font-size:19px; font-weight:550; line-height:1.3; overflow-wrap:anywhere; }
+.submission-heading .register-person { flex:0 1 auto; min-width:0; }
+.submission-heading .register-person strong { font-size:20px; font-weight:550; line-height:1.3; overflow-wrap:anywhere; }
 .submission-heading .register-person small { display:block; color:var(--muted); font-size:13px; }
 .submission-heading .portal-person-avatar { width:46px; height:46px; flex-basis:46px; }
-.submission-load { color:var(--muted); font-size:13px; }
-.submission-chevron { width:9px; height:9px; margin:0 3px; border-right:1.5px solid; border-bottom:1.5px solid; transform:rotate(45deg); }
+.submission-chevron { width:9px; height:9px; margin-inline:auto 3px; border-right:1.5px solid; border-bottom:1.5px solid; transform:rotate(45deg); }
 .submission-sheet[open] .submission-chevron { transform:rotate(225deg); }
-.submission-body { display:grid; grid-template-columns:minmax(0,1fr) minmax(225px,.46fr); border-top:1px solid var(--line); }
-.submission-body > section { padding:clamp(16px,2.2vw,28px); min-width:0; }
-.submission-body h3 { margin:0 0 20px; font:550 17px/1.35 Styrene,system-ui,sans-serif; color:var(--ink); }
-.submission-body p, .submission-body h4 { margin:0; }
-.submission-history { border-inline-start:1px solid var(--line); }
-.submission-history ol { list-style:none; padding:0; margin:0; }
-.submission-history li { position:relative; padding-inline-start:24px; }
-.submission-history li + li { margin-top:20px; }
-.submission-history li::before { content:""; position:absolute; inset:5px auto auto 1px; width:9px; height:9px; border:2px solid var(--muted); border-radius:50%; background:var(--muted); }
-.submission-history li.waiting::before { background:var(--paper); }
-.submission-history li:not(:last-child)::after { content:""; position:absolute; top:17px; bottom:-25px; left:6px; border-inline-start:1px solid var(--line); }
-.submission-history li > * { display:block; }
-.submission-history strong { font-weight:550; }
-.submission-history :is(time,li > span) { margin-top:3px; color:var(--muted); font-size:13px; }
-.submission-history .graduation-response { margin-top:18px; }
+.submission-body { display:grid; gap:26px; padding-block-end:16px; }
+.submission-body p,.submission-body h4 { margin:0; }
+.submission-review > p { max-width:65ch; line-height:1.55; }
+.submission-facts { display:flex; flex-wrap:wrap; gap:12px 32px; margin:14px 0 0; }
+.submission-facts dt,.submission-course-heading > span { color:var(--muted); font-size:13px; }
+.submission-facts dd { margin:3px 0 0; font-size:14px; }
+.submission-review .graduation-response { margin-top:14px; }
+.submission-course-heading { display:flex; align-items:baseline; flex-wrap:wrap; gap:6px 14px; margin-bottom:12px; }
+.submission-course-heading h3 { margin:0; font:550 17px/1.35 Styrene,system-ui,sans-serif; }
 .submission-courses .graduation-term + .graduation-term,.submission-courses .graduation-exam-course { margin-top:18px; }
-.submission-courses .graduation-term-heading { padding:10px 14px; border:0; border-radius:6px; background:#e7e2d4; color:#35362e; }
+.submission-courses .graduation-term-heading { padding:9px 0; border-block:0; border-bottom:1px solid var(--line); }
 .submission-courses .graduation-term-heading h4 { font-size:15px; }
-.submission-courses .graduation-term-heading span { color:#505249; }
-.submission-courses .graduation-course-list li { padding:14px 6px; gap:12px; }
+.submission-courses .graduation-course-list li { padding:10px 0; gap:12px; }
+.submission-courses .graduation-course-list li + li { border:0; }
 .submission-courses .graduation-course-list strong { font-size:15px; }
-.submission-courses .offering-course-emblem { width:42px; height:42px; }
-.submission-courses .offering-course-emblem :is(img,svg) { width:32px; height:32px; }
-@container (max-width:660px) {
-  .submission-body { grid-template-columns:minmax(0,1fr); }
-  .submission-history { border-inline-start:0; border-block-start:1px solid var(--line); }
-  .submission-load { order:4; flex-basis:100%; }
-}
-.planner-sections { display:grid; gap:24px; min-width:0; }
-.planner-sections > section { min-width:0; }
-.graduation-planner-page { container-type:inline-size; }
-.planner-sections-empty { align-items:start; }
-.academic-services-embedded .planner-sections-empty > section {
-  display:grid; align-content:start; gap:16px; margin:0; padding:clamp(16px,2vw,24px);
-  border:1px solid var(--line); border-radius:10px; background:var(--paper);
-}
-.academic-services-embedded .planner-sections-empty .results-heading { margin:0; }
-.planner-sections-empty .graduation-empty { border:0; padding:4px 0; align-items:center; }
-.planner-sections-empty .exam-eligibility { background:var(--canvas); }
-@container (min-width: 760px) {
-  .planner-sections-empty { grid-template-columns:1.12fr 1fr; align-items:stretch; gap:18px; }
+@container (max-width:400px) {
+  .submission-heading .register-person { flex-basis:100%; }
+  .submission-heading .submission-chevron { margin-inline-start:auto; }
 }

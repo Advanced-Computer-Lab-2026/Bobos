@@ -16,7 +16,7 @@ const pendingRequestTypes = [
 ];
 const pretty = (value = "") => String(value || "—").replace(/([a-z])([A-Z])/g, "$1 $2").replace(/^./, (letter) => letter.toUpperCase());
 
-export default function AdvisingPage({ token, role, notify, onOpenPreferences, graduationOnly = false }) {
+export default function AdvisingPage({ token, role, advisorId, notify, onOpenPreferences, graduationOnly = false }) {
   const coordinator = role === "coordinator";
   const [rows, setRows] = useState([]);
   const [page, setPage] = useState(1);
@@ -145,7 +145,7 @@ export default function AdvisingPage({ token, role, notify, onOpenPreferences, g
       setAssigning(null);
       reload();
     }} />}
-    {removalStudent && <RequestRemovalModal token={token} initialStudent={removalStudent} onClose={() => setRemovalStudent(null)} onSuccess={() => {
+    {removalStudent && <RequestRemovalModal token={token} advisorId={advisorId} initialStudent={removalStudent} onClose={() => setRemovalStudent(null)} onSuccess={() => {
       notify("success", "Mandatory course removal request submitted.");
       setRemovalStudent(null);
       reload();
