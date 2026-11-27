@@ -1,0 +1,328 @@
+/* Staff schedule preferences */
+.portal-advising-services .academic-services-embedded .staff-preferences .preference-toolbar {
+  grid-template-columns: minmax(0, 1fr) minmax(185px, 220px) auto;
+  align-items: end;
+  gap: 12px 16px;
+}
+.portal-advising-services .academic-services-embedded .staff-preferences .preference-toolbar.has-selection {
+  grid-template-columns: minmax(210px, 250px) auto minmax(0, 1fr);
+}
+.academic-services-embedded .staff-preferences .preference-toolbar > .primary-button { margin: 0; align-self: end; }
+.staff-preferences .preference-toolbar.has-selection .preference-identify { grid-column: 1 / -1; }
+.portal-advising-services .academic-services-embedded .staff-preferences .preference-student-selected {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: nowrap;
+  gap: 12px;
+  padding: 16px;
+  border: 0;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--paper) 92%, #cdb792);
+}
+.preference-selected-identity {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 12px;
+}
+.preference-selected-identity strong { display: block; font-size: 16px; line-height: 1.35; overflow-wrap: anywhere; }
+.academic-services-embedded .staff-preferences .preference-selected-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 12px;
+  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.academic-services-embedded .staff-preferences .preference-selected-meta span {
+  flex: none;
+  min-width: 0;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.staff-preferences .preference-toolbar .preference-draft-action { justify-self: start; }
+.academic-services-embedded .staff-preferences .preference-student-results { grid-template-columns: minmax(0, 1fr); gap: 0; }
+.portal-advising-services .academic-services-embedded .staff-preferences .preference-student-result {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  overflow-wrap: anywhere;
+}
+.preference-student-result :is(strong, small) { display: block; }
+.staff-preferences .preference-student-result strong { color: var(--ink); font-weight: 500; }
+.staff-preferences .preference-student-result small { color: var(--muted); font-size: 12px; }
+
+.academic-services-embedded .staff-preferences .preference-reading { gap: 26px; }
+.staff-preferences .preference-reading .register-list-heading { margin-bottom: -12px; }
+.preference-ranked-sheets { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); align-items: start; gap: 16px; }
+.preference-ranked-sheet {
+  min-width: 0;
+  padding: 14px 16px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.preference-ranked-sheet .preference-section-heading { gap: 9px; margin-bottom: 4px; }
+.academic-services-embedded .preference-ranked-sheet .preference-section-heading h3 { margin: 0; }
+.preference-ranked-sheet .preference-section-icon { width: 28px; height: 28px; border: 0; background: transparent; color: var(--muted); }
+.preference-ranked-sheet .preference-section-icon svg { width: 23px; height: 23px; }
+.academic-services-embedded .preference-ranked-sheet .preference-facts > div {
+  grid-template-columns: minmax(106px, .72fr) minmax(0, 1fr);
+  gap: 8px;
+  padding: 9px 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+}
+.academic-services-embedded .preference-ranked-sheet .preference-facts dt { font-size: 13px; }
+.academic-services-embedded .preference-ranked-sheet .preference-facts ol { display: grid; gap: 5px; }
+.preference-facts li { display: flex; align-items: baseline; gap: 7px; font-variant-numeric: tabular-nums; }
+.staff-preferences .preference-reading .preference-rank {
+  display: inline-grid;
+  place-items: center;
+  width: 21px;
+  min-height: 21px;
+  flex: none;
+  margin: 0;
+  border-radius: 4px;
+  background: var(--raised);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.preferred-group-reading { max-width: 850px; }
+.academic-services-embedded .preferred-group-reading li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 10px 14px;
+  padding: 11px 0;
+  border-top: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+.preferred-group-reading :is(.preference-course-identity, .preference-group-meeting) { margin: 0; min-width: 0; }
+.preferred-group-reading strong { font-weight: 500; }
+.preferred-group-reading .preference-group-meeting strong { font-size: 14px; }
+.preferred-group-reading .preference-group-meeting small { line-height: 1.45; }
+.preference-note-sheet { padding: 15px 18px; border-inline-start: 2px solid var(--line); }
+.preference-note-sheet.has-note,
+.portal-request-note { background: color-mix(in srgb, var(--paper) 92%, #cdb792); }
+.preference-note-sheet .preference-note-reading { margin: 0; color: var(--muted); line-height: 1.55; }
+.preference-note-sheet.has-note .preference-note-reading { color: var(--ink); }
+
+/* Shared request queue rows keep all record fields available at every width. */
+.portal-request-list {
+  container-type: inline-size;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.portal-request-row {
+  display: grid;
+  grid-template-areas: "student course context status actions";
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr) minmax(0, .95fr) minmax(103px, .7fr) auto;
+  align-items: center;
+  gap: 9px 20px;
+  padding: 15px 0;
+  border-top: 1px solid var(--line);
+}
+.slot-request-list .portal-request-row:first-child { border-top: 0; }
+.portal-request-row :is(.request-row-student, .request-row-course, .request-row-context, .request-row-status) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.portal-request-row .request-row-student { grid-area: student; }
+.portal-request-row .request-row-course { grid-area: course; }
+.portal-request-row .request-row-context { grid-area: context; }
+.portal-request-row .request-row-status { grid-area: status; }
+.portal-request-row .request-row-actions { grid-area: actions; }
+.academic-services-embedded :is(.portal-request-row, .request-detail-identity, .slot-review-record) .portal-person-cell { min-width: 0; }
+.portal-request-row :is(.portal-person-cell, .request-row-context) strong { display: block; font-weight: 500; line-height: 1.4; }
+:is(.portal-request-row, .request-detail-body, .slot-review) small { display: block; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.portal-request-row small:first-of-type { margin-top: 2px; }
+.slot-request-list .request-row-context small {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+.portal-request-row .request-row-status .status-pill,
+.slot-review .status-pill { font-size: 13px; }
+.portal-request-row .request-row-status time, .slot-review time { font-variant-numeric: tabular-nums; }
+.portal-request-row .request-row-actions { display: grid; justify-items: end; gap: 2px; }
+.portal-request-row .request-row-actions > div { display: flex; flex-wrap: wrap; justify-content: end; gap: 0 8px; }
+.portal-request-row .request-row-actions .text-button { padding: 3px 2px; min-height: 30px; }
+.portal-request-row .request-row-actions .outline-button { min-height: 36px; padding: 7px 11px; white-space: nowrap; }
+.portal-request-row .offering-course-emblem { width: 36px; height: 36px; }
+.portal-request-row .offering-course-emblem :is(img, svg) { width: 26px; height: 26px; }
+
+@container (max-width: 860px) {
+  .portal-request-row {
+    grid-template-areas: "student course status actions" "context context status actions";
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) minmax(96px, .65fr) auto;
+    gap: 8px 14px;
+  }
+  .portal-request-row .request-row-context { display: flex; flex-wrap: wrap; gap: 0 8px; align-items: baseline; padding-inline-start: 48px; }
+  .portal-request-row .request-row-context small:first-of-type { margin-top: 0; }
+}
+@container (max-width: 540px) {
+  .portal-request-row {
+    grid-template-areas: "student status" "course status" "context context" "actions actions";
+    grid-template-columns: minmax(0, 1fr) minmax(102px, .58fr);
+    gap: 9px 10px;
+    padding: 15px 0;
+  }
+  .portal-request-row .request-row-status { align-self: start; }
+  .portal-request-row .request-row-context { padding-inline-start: 0; }
+  .portal-request-row .request-row-actions { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-start; gap: 2px 12px; }
+  .portal-request-row .request-row-actions :is(.outline-button, .text-button) { min-height: 44px; }
+}
+@container (max-width: 285px) {
+  .portal-request-row {
+    grid-template-areas: "student" "status" "course" "context" "actions";
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Course removals uses the open, course-first register. */
+.academic-services-embedded .removal-page .directory-filters { padding-block: 0; border: 0; }
+.academic-services-embedded .removal-page .directory-filters .filter-bar { max-width: 520px; }
+.academic-services-embedded .removal-page .removal-results { padding: 0; border: 0; }
+.removal-request-list .portal-request-row {
+  grid-template-areas: "course student context status actions";
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr) minmax(0, 1.1fr) minmax(116px, .68fr) minmax(120px, auto);
+  border: 0;
+  padding-block: 12px;
+}
+.removal-record-link {
+  display: inline-block;
+  padding: 0;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  color: var(--ink);
+  font: 500 14px/1.35 Styrene, system-ui, sans-serif;
+  text-align: start;
+  text-decoration: underline;
+  text-decoration-color: var(--muted);
+  text-underline-offset: 3px;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.removal-record-link:hover { text-decoration-color: currentColor; }
+.removal-record-link[aria-disabled="true"] { cursor: wait; }
+.removal-request-list .request-row-actions .outline-button { min-width: 120px; }
+@container (max-width: 860px) {
+  .removal-request-list .portal-request-row {
+    grid-template-areas: "course student status actions" "context context status actions";
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) minmax(96px, .65fr) auto;
+  }
+}
+@container (max-width: 540px) {
+  .removal-request-list .portal-request-row {
+    grid-template-areas: "course status" "student status" "context context" "actions actions";
+    grid-template-columns: minmax(0, 1fr) minmax(102px, .58fr);
+  }
+  .removal-record-link { min-height: 32px; }
+}
+@container (max-width: 285px) {
+  .removal-request-list .portal-request-row {
+    grid-template-areas: "course" "student" "status" "context" "actions";
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Request details */
+.request-detail-body { display: grid; gap: 20px; }
+.request-detail-identity { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.request-detail-identity .status-pill { flex: none; }
+.request-detail-identity strong { display: block; font-weight: 500; }
+.request-detail-identity :is(strong, small) { overflow-wrap: anywhere; }
+.request-detail-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 118px), 1fr));
+  gap: 8px 18px;
+  margin: 0;
+}
+.request-detail-facts dt { color: var(--muted); font-size: 12px; }
+.request-detail-facts dd { margin: 3px 0 0; overflow-wrap: anywhere; }
+.request-detail-facts strong { font-weight: 500; }
+.portal-request-note {
+  min-width: 0;
+  padding: 15px 17px;
+  border-radius: 8px;
+  border-inline-start: 2px solid color-mix(in srgb, var(--line) 75%, #c2a67e);
+}
+.portal-request-note h3, .slot-current-meeting h3 { margin: 0 0 7px; font-size: 14px; font-weight: 500; }
+.portal-request-note p, .slot-current-meeting p { margin: 0; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+.portal-note-attribution { margin-top: 12px; }
+.portal-note-attribution strong { display: block; font-size: 13px; font-weight: 500; }
+.removal-detail-card .removal-detail-kicker { margin: 0 0 4px; color: var(--muted); font-size: 12px; }
+.removal-detail-card .modal-heading h2 { margin: 0; font-size: 20px; }
+.removal-detail-course { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.removal-detail-course-meta { display: flex; flex-wrap: wrap; gap: 0 8px; margin-top: 3px; color: var(--muted); font-size: 12px; }
+.removal-detail-card .request-detail-actions, .slot-review-actions { gap: 8px; justify-content: end; }
+
+.slot-review { display: grid; gap: 16px; }
+.slot-review-back { justify-self: start; }
+.slot-review .slot-review-heading h2 { margin: 0; font-size: 20px; }
+.slot-review-record { display: grid; grid-template-columns: minmax(155px, .75fr) minmax(0, 2fr); gap: 12px 22px; padding-block: 14px; border-block: 1px solid var(--line); }
+.slot-review-notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 255px), 1fr)); gap: 12px; }
+.slot-current-meeting { min-width: 0; padding: 15px 17px; border: 1px solid var(--line); border-radius: 8px; }
+.slot-review-form .slot-alternatives legend { margin: 0 0 5px; padding: 0; color: var(--ink); font-size: 16px; font-weight: 500; }
+.slot-review .slot-alternative {
+  display: grid;
+  grid-template-columns: 17px minmax(0, 1fr) minmax(0, .5fr);
+  align-items: center;
+  gap: 10px 14px;
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+}
+.slot-review .slot-alternative:has(input:checked) {
+  background: color-mix(in srgb, var(--paper) 90%, #a3bea7);
+  border-radius: 5px;
+  border-color: var(--line);
+}
+.slot-review .slot-alternative:has(input:disabled) { cursor: default; }
+.slot-review .slot-alternative:has(input:enabled):hover { background: var(--raised); }
+.slot-review .slot-alternative input {
+  margin: 0;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--ink);
+}
+.slot-review .slot-alternative-meetings strong { font-weight: 500; }
+.slot-review .slot-alternative-state { justify-self: end; color: var(--muted); text-align: end; font-size: 12px; overflow-wrap: anywhere; }
+.slot-review .slot-alternative-state.is-unavailable { color: var(--ink); }
+.slot-review .slot-response-field textarea { min-height: 82px; padding: 9px 11px; font-size: 14px; }
+@media (max-width: 1100px) {
+  .portal-advising-services .academic-services-embedded .staff-preferences .preference-toolbar,
+  .portal-advising-services .academic-services-embedded .staff-preferences .preference-toolbar.has-selection { grid-template-columns: minmax(0, 1fr) auto; }
+  .staff-preferences .preference-toolbar .preference-identify { grid-column: 1 / -1; }
+  .staff-preferences .preference-toolbar .preference-draft-action { grid-column: 1 / -1; }
+}
+@media (max-width: 680px) {
+  .preference-ranked-sheets, .slot-review-record { grid-template-columns: minmax(0, 1fr); }
+  .preferred-group-reading .offering-course-emblem { width: 32px; height: 32px; }
+  .preferred-group-reading .offering-course-emblem :is(img, svg) { width: 23px; height: 23px; }
+  .academic-services-embedded .preferred-group-reading li { grid-template-columns: auto minmax(0, 1fr); gap: 6px 9px; }
+  .preferred-group-reading .preference-group-meeting { grid-column: 2; padding-inline-start: 42px; }
+  .portal-advising-services .academic-services-embedded .staff-preferences .preference-toolbar,
+  .portal-advising-services .academic-services-embedded .staff-preferences .preference-toolbar.has-selection { grid-template-columns: minmax(0, 1fr); }
+  .staff-preferences .preference-toolbar .preference-draft-action { justify-self: start; max-width: 100%; text-align: start; white-space: normal; }
+  .staff-preferences .preference-student-lookup { flex-wrap: wrap; }
+  .staff-preferences .preference-student-lookup .field { flex-basis: 190px; }
+  .staff-preferences .preference-student-result > small { grid-column: 2; }
+  .portal-advising-services .academic-services-embedded .staff-preferences .preference-student-selected { padding: 12px; gap: 8px; }
+  .staff-preferences .preference-selected-identity { gap: 8px; }
+  .staff-preferences .preference-student-selected .outline-button { min-height: 44px; padding-inline: 10px; }
+  .academic-services-embedded .staff-preferences .preference-selected-meta span { font-size: 12px; }
+  .slot-review .slot-alternative { grid-template-columns: 17px minmax(0, 1fr); }
+  .slot-review .slot-alternative-state { grid-column: 2; justify-self: start; text-align: start; }
+  .removal-page .workspace-header { flex-wrap: wrap; }
+  .removal-page .workspace-header-actions { flex-wrap: wrap; }
+}
+@media (max-width: 440px) {
+  .portal-advising-services .academic-services-embedded .staff-preferences .preference-student-selected { padding-inline: 10px; gap: 6px; }
+  .staff-preferences .preference-student-selected .outline-button { padding-inline: 8px; }
+}

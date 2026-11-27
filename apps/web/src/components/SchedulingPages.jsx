@@ -1,6 +1,7 @@
 import FilterDisclosure from "./FilterDisclosure.jsx";
 import OfferingCourseIcon from "./OfferingCourseIcon.jsx";
 import PortalAvatar from "./PortalAvatar.jsx";
+import { StudentIdentity, scheduleTone } from "./CoordinatorRecords.jsx";
 import { termLabel } from "../term-label.js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api.js";
@@ -68,6 +69,10 @@ export function GroupAssignmentsPage({ token, canAssign = false, notify }) {
   const targetGroups = useMemo(() => target ? groups.filter((group) =>
     group.major === target.major && Number(group.semester) === Number(target.currentSemester)
   ) : [], [groups, target]);
+  const rosterSections = [
+    { id: "unassigned", title: "Needs a group", students: students.filter((student) => !student.assignment) },
+    { id: "assigned", title: "Assigned students", students: students.filter((student) => student.assignment) },
+  ];
 
   async function submitAssignment(event) {
     event.preventDefault();
@@ -101,9 +106,7 @@ export function GroupAssignmentsPage({ token, canAssign = false, notify }) {
   }
 
   return <div className="page-stack scheduling-page group-register">
-    <div className="page-title-row"><div><p className="eyebrow">COORDINATOR</p><h1>Schedule group assignments</h1><p className="page-description">Assign or move active normal students to a published group for their major and semester.</p></div>
-
-    </div>
+    <div className="page-title-row"><div><h1>Schedule group assignments</h1><p className="page-description">Assign or move active normal students to a published group for their major and semester.</p></div></div>
     {error && <Feedback tone="error">{error}</Feedback>}
     {!loading && !terms.length && <Feedback tone="warning">Create an academic term before assigning schedules.</Feedback>}
     <section className="panel">
@@ -120,13 +123,33 @@ export function GroupAssignmentsPage({ token, canAssign = false, notify }) {
           <label className="field"><span>Assignment</span><select value={assigned} onChange={event => setAssigned(event.target.value)}><option value="">All</option><option value="false">Unassigned</option><option value="true">Assigned</option></select></label>
         </div>
       </FilterDisclosure></div>
-      <div className="register-list-heading"><h2>Student roster</h2><span className="register-count">{students.length} {students.length === 1 ? "student" : "students"}</span></div>
-      {loading ? <Loading /> : students.length ? <div className="table-scroll"><table><thead><tr><th>Student</th><th>Programme</th><th>Standing</th><th>Group</th><th /></tr></thead><tbody>{students.map((student) => <tr key={student._id}>
-        <td><div className="portal-person-cell"><PortalAvatar name={student.fullName}/><div><strong>{student.fullName}</strong><span className="secondary-text">{student.studentId} · {student.email}</span></div></div></td>
-        <td><strong>{student.major}</strong><span className="secondary-text">Semester {student.currentSemester}</span></td><td>{student.academicStanding === "probation" ? "Probation" : "Good standing"}</td>
-        <td className="assigned-group">{student.assignment ? <><strong>Group {student.assignment.studyGroup}</strong><span className="secondary-text">{student.assignment.courseCount} {student.assignment.courseCount === 1 ? "course" : "courses"}</span></> : "Unassigned"}</td>
-        <td>{canAssign ? <div className="assignment-actions"><button className="outline-button" type="button" disabled={busy || !student.isActive} onClick={() => { setTarget(student); setPickedGroup(student.assignment?.studyGroup || ""); }}>{student.assignment ? "Reassign" : "Assign"}</button>{student.assignment && <button className="unassign-action" type="button" disabled={busy} onClick={() => { setUnassignError(""); setUnassignTarget(student); }}>Unassign</button>}</div> : <span className="helper-text">Read only</span>}</td>
-      </tr>)}</tbody></table></div> : <Empty title="No students match" text="Adjust the search or filters and try again." />}
+      <div className="register-list-heading"><h2>Student roster</h2><span className="register-count" role="status">{students.length} {students.length === 1 ? "student" : "students"}</span></div>
+      {loading ? <Loading /> : students.length ? <div className="group-roster">
+        {rosterSections.filter((section) => section.students.length).map((section) => <section className="group-roster-section" key={section.id}>
+          <h3 id={`group-roster-${section.id}`}>{section.title}</h3>
+          <table className="group-roster-table" role="table" aria-labelledby={`group-roster-${section.id}`}>
+            <thead role="rowgroup"><tr className="group-roster-head" role="row">
+              {["Student", "Major", "Semester", "Standing", "Assignment"].map(label => <th key={label} role="columnheader" scope="col">{label}</th>)}
+              <th role="columnheader" scope="col"><span className="sr-only">Actions</span></th>
+            </tr></thead>
+            <tbody role="rowgroup">{section.students.map((student) => <tr className="group-roster-row" key={student._id} role="row">
+              <td role="cell"><StudentIdentity name={student.fullName} id={student.studentId} email={student.email} /></td>
+              <td role="cell"><span className="group-roster-label" aria-hidden="true">Major</span>{student.major || "—"}</td>
+              <td role="cell"><span className="group-roster-label" aria-hidden="true">Semester</span>{student.currentSemester ?? "—"}</td>
+              <td role="cell"><span className="group-roster-label" aria-hidden="true">Standing</span>{student.academicStanding === "probation" ? "Probation" : "Good standing"}</td>
+              <td role="cell"><span className="group-roster-label" aria-hidden="true">Assignment</span>
+                {student.assignment ? <><strong>Group {student.assignment.studyGroup}</strong><small>{student.assignment.courseCount} {student.assignment.courseCount === 1 ? "course" : "courses"}</small></> : "Unassigned"}
+              </td>
+              <td role="cell">
+                {canAssign ? <div className="group-roster-actions">
+                  <button className="outline-button" type="button" disabled={busy || !student.isActive} onClick={() => { setTarget(student); setPickedGroup(student.assignment?.studyGroup || ""); }}>{student.assignment ? "Reassign" : "Assign"}</button>
+                  {student.assignment && <button className="outline-button" type="button" disabled={busy} onClick={() => { setUnassignError(""); setUnassignTarget(student); }}>Unassign</button>}
+                </div> : <span className="group-roster-read-only helper-text">Read only</span>}
+              </td>
+            </tr>)}</tbody>
+          </table>
+        </section>)}
+      </div> : <Empty title="No students match" text="Adjust the search or filters and try again." />}
     </section>
     {unassignTarget && <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && !busy && setUnassignTarget(null)}><section className="modal-card narrow-modal" role="dialog" aria-modal="true" aria-labelledby="unassign-heading">
       <div className="modal-heading"><div><p className="eyebrow">REMOVE GROUP ASSIGNMENT</p><h2 id="unassign-heading">Unassign this student?</h2></div><button className="icon-button" type="button" aria-label="Close" disabled={busy} onClick={() => setUnassignTarget(null)}>×</button></div>
@@ -456,9 +479,17 @@ export function StaffSchedulesPage({ token, role, notify, initialStudent = null,
       <div className="register-controls"><label className="field roster-search"><span>Search students</span><input type="search" name="roster-search" autoComplete="off" value={search} onChange={(event) => setSearch(event.target.value)} maxLength={100} placeholder="Student ID, name or email…" /></label>
         {terms.length > 0 && <label className="field term-picker"><span>Academic term</span><select value={termId} onChange={(event) => { setTermId(event.target.value); setSelected(null); setSchedule(null); setOverviewStudent(null); setOverview(null); }}>{terms.map((term) => <option key={term._id} value={term.code}>{termLabel(term)}</option>)}</select></label>}</div>
       <div className="register-list-heading"><h2>Student roster</h2><span className="register-count" aria-live="polite">{students.length} {students.length === 1 ? "student" : "students"}</span></div>
-      {loading ? <Loading /> : students.length ? <div className="table-scroll"><table><thead><tr><th>Student</th><th>Type</th><th>Major / semester</th><th>Schedule status</th><th /></tr></thead><tbody>{students.map((student) => <tr key={student._id}><td><div className="portal-person-cell"><PortalAvatar name={student.fullName} /><div><strong>{student.fullName}</strong><span className="secondary-text">{student.studentId}</span></div></div></td><td>{student.studentType}</td><td>{student.major} · {student.currentSemester}</td><td><span className={`status-pill ${{
-        readyForStudentReview: "ready", draft: "draft", processed: "completed",
-      }[student.scheduleStatus] || "muted"}`}>{prettyStatus(student.scheduleStatus)}</span></td><td><div className="table-actions">{student.studentType === "advising" && ["advisor", "coordinator"].includes(role) && <button className="small-button primary-button" type="button" onClick={() => { setSelected(null); setSchedule(null); setDraftStudent(student); }}>{student.scheduleStatus === "draft" ? "Edit draft" : !student.scheduleStatus ? "Create draft" : student.scheduleStatus === "readyForStudentReview" ? "Review & Process" : "Manage schedule"}</button>}{student.scheduleStatus && <button className="small-button outline-button" type="button" onClick={() => openStudent(student)}>View schedule</button>}{role === "administrator" && student.studentType === "advising" && <button className="small-button outline-button" type="button" onClick={() => openOverview(student)}>Advising overview</button>}</div></td></tr>)}</tbody></table></div> : <div className="student-roster-empty" role="status"><img src="/portal-studio/images/extra-hours-folder.svg" alt="" width="104" height="80" /><h3>{search.trim() ? "No matching students" : "No students in this term"}</h3><p>{search.trim() ? "Check the student ID, name or email, or clear your search to see the roster." : "Choose another academic term to view its students."}</p>{search.trim() && <button className="outline-button" type="button" onClick={() => setSearch("")}>Clear search</button>}</div>}
+      {loading ? <Loading /> : students.length ? <div className="table-scroll roster-table"><table role="table" aria-label="Student roster"><thead role="rowgroup"><tr role="row"><th role="columnheader" scope="col">Student</th><th role="columnheader" scope="col">Type</th><th role="columnheader" scope="col">Programme</th><th role="columnheader" scope="col">Schedule status</th><th role="columnheader" scope="col">Actions</th></tr></thead><tbody role="rowgroup">{students.map((student) => <tr key={student._id} role="row">
+        <td role="cell"><StudentIdentity name={student.fullName} id={student.studentId} /></td>
+        <td role="cell" className="schedule-student-type">{student.studentType}</td>
+        <td role="cell"><strong>{student.major}</strong><span className="secondary-text">Semester {student.currentSemester}</span></td>
+        <td role="cell"><span className={`status-pill ${scheduleTone(student.scheduleStatus)}`}>{prettyStatus(student.scheduleStatus)}</span></td>
+        <td role="cell"><div className="roster-actions">
+          {student.studentType === "advising" && ["advisor", "coordinator"].includes(role) && <button className="small-button outline-button" type="button" onClick={() => { setSelected(null); setSchedule(null); setDraftStudent(student); }}>{student.scheduleStatus === "draft" ? "Edit draft" : !student.scheduleStatus ? "Create draft" : student.scheduleStatus === "readyForStudentReview" ? "Review & Process" : "Manage schedule"}</button>}
+          {student.scheduleStatus && <button className="small-button outline-button" type="button" onClick={() => openStudent(student)}>View schedule</button>}
+          {role === "administrator" && student.studentType === "advising" && <button className="small-button outline-button" type="button" onClick={() => openOverview(student)}>Advising overview</button>}
+        </div></td>
+      </tr>)}</tbody></table></div> : <div className="student-roster-empty" role="status"><img src="/portal-studio/images/extra-hours-folder.svg" alt="" width="104" height="80" /><h3>{search.trim() ? "No matching students" : "No students in this term"}</h3><p>{search.trim() ? "Check the student ID, name or email, or clear your search to see the roster." : "Choose another academic term to view its students."}</p>{search.trim() && <button className="outline-button" type="button" onClick={() => setSearch("")}>Clear search</button>}</div>}
     </section>
     {overviewStudent && overview && <div ref={overviewRef} aria-label={`${overviewStudent.fullName} advising overview`}><AdvisingOverviewPanel overview={overview} token={token} student={overviewStudent} termQuery={termId ? `?termId=${encodeURIComponent(termId)}` : ""} canEdit={false} notify={notify} onChanged={() => openOverview(overviewStudent)} /></div>}
     {selected && schedule?.schedule && <section className="panel staff-schedule-result" ref={scheduleResultRef} tabIndex={-1} aria-label={`${schedule.student?.fullName ?? "Student"} schedule`}><div className="results-heading"><div><p className="eyebrow">{schedule.student?.studentId} · {schedule.term?.season} {schedule.term?.academicYear}</p><h2>{schedule.student?.fullName}’s schedule</h2></div><span className="status-pill">{prettyStatus(schedule.schedule.status)}</span></div>{schedule.schedule.courses?.length ? <WeeklySchedule week={schedule.schedule.week} daysOff={schedule.schedule.daysOff} /> : <Feedback tone="info">{schedule.schedule.status === "readyForStudentReview" ? "This schedule is empty and is not processed, so it cannot be reopened. Select a schedule marked Processed, or complete a valid schedule and process it first." : schedule.schedule.status === "processed" ? "This processed schedule has no course details." : "This draft is empty. Choose “Edit draft” in the student list to add course groups."}</Feedback>}</section>}

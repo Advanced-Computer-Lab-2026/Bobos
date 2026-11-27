@@ -13,9 +13,10 @@ import pickerStyles from "../public/portal-studio/select-picker.css?inline";
 import coordinatorStyles from "./coordinator-services.css?inline";
 import coordinatorControls from "./coordinator-controls.css?inline";
 import statusStyles from "./portal-status.css?inline";
+import requestStyles from "./portal-requests.css?inline";
 import tabsStyles from "../public/portal-studio/view-tabs.css?inline";
 
-const styles = [tabsStyles, baseStyles, workspaceStyles, formStyles, serviceStyles, paperStyles, academicStyles, pickerStyles, statusStyles, coordinatorStyles, coordinatorControls].join("\n")
+const styles = [tabsStyles, baseStyles, workspaceStyles, formStyles, serviceStyles, paperStyles, academicStyles, pickerStyles, statusStyles, coordinatorStyles, coordinatorControls, requestStyles].join("\n")
   .replaceAll(":root", ".service-surface");
 
 export function mount(host) {
@@ -83,7 +84,7 @@ export function mount(host) {
   observer.observe(document.documentElement, { attributeFilter: ["data-theme"] });
   host.replaceChildren();
   shadow.append(style, surface);
-  const disposeInk = surface.dataset.portalRole === "coordinator" ? undefined : window.mountPortalControlInk?.(shadow);
+  const disposeInk = window.mountPortalControlInk?.(shadow, { coordinator: surface.dataset.portalRole === "coordinator" });
   const root = createRoot(surface);
   root.render(<App service={host.dataset.portalService} />);
   return () => {

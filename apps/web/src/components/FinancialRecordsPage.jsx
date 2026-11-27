@@ -47,9 +47,10 @@ function formatDate(dateString) {
   }
 }
 
+const formatAmount = (amount) => (Number(amount) || 0).toLocaleString();
+
 function formatCurrency(amount, currency = "EGP") {
-  const num = Number(amount) || 0;
-  return `${currency} ${num.toLocaleString()}`;
+  return `${currency} ${formatAmount(amount)}`;
 }
 
 function formatStatusClass(status = "") {
@@ -402,13 +403,11 @@ export default function FinancialRecordsPage({ token, role, notify }) {
       )}
 
       {/* Table & Results Panel */}
-      <section className="panel results-panel" aria-busy={loading}>
+      <section className="panel results-panel ledger-results" aria-busy={loading} aria-labelledby="transactions-heading">
         <div className="results-heading">
-          <div>
-            <h2>Transactions</h2>
-          </div>
+          <h2 id="transactions-heading">Transactions</h2>
           <span className="result-count">
-            {loading ? "Loading…" : `${total} ${total === 1 ? "record" : "records"} found`}
+            {loading ? "Loading…" : `${total} ${total === 1 ? "transaction" : "transactions"}`}
           </span>
         </div>
 
@@ -427,7 +426,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
               <table>
                 <thead>
                   <tr>
-                    {coordinator ? <><th>Student</th><th>Transaction</th><th>Amount</th></> : <><th>Date</th><th>Student ID</th><th>Student Name</th><th>Type</th><th>Request / Reference</th><th>Amount</th><th>Status</th></>}
+                    {coordinator ? <><th>Student</th><th>Transaction</th><th className="ledger-balance">Amount</th></> : <><th>Date</th><th>Student ID</th><th>Student Name</th><th>Type</th><th>Request / Reference</th><th>Amount</th><th>Status</th></>}
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -438,7 +437,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
                         <td className="ledger-student"><StudentIdentity name={r.student?.name || r.student?.user?.fullName} id={r.student?.studentId} /></td>
                         <td className="ledger-transaction"><strong>{ledgerLabel(r.type || r.kind)}</strong>
                           <small>{[SETTLEMENT_LABELS[r.settlementOption], (r.occurredAt || r.createdAt) && new Date(r.occurredAt || r.createdAt).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })].filter(Boolean).join(" · ")}</small></td>
-                        <td className="ledger-balance"><strong className="record-amount">{formatCurrency(r.amount, r.currency)}</strong>
+                        <td className="ledger-balance"><strong className="record-amount">{formatAmount(r.amount)} <span className="ledger-currency">{r.currency ?? "EGP"}</span></strong>
                           <span className={`status-pill ${formatStatusClass(r.status)}`}>{ledgerLabel(r.status)}</span></td>
                       </> : <>
                         <td>{formatDate(r.occurredAt || r.createdAt)}</td>
@@ -448,10 +447,10 @@ export default function FinancialRecordsPage({ token, role, notify }) {
                         <td><strong className="badge-currency">{formatCurrency(r.amount, r.currency)}</strong></td><td><span className={`status-pill ${formatStatusClass(r.status)}`}>{String(r.status || "—").toUpperCase()}</span></td>
                       </>}
                       <td>
-                        <div style={{ display: "inline-flex", gap: "6px" }}>
+                        <div className="ledger-actions">
                           <button
                             type="button"
-                            className="outline-button"
+                            className={coordinator ? "text-button" : "outline-button"}
                             onClick={() => openDetails(r)}
                             title="View complete record breakdown"
                           >

@@ -34,10 +34,12 @@ function drawInputEdges(form) {
 
 // React services mount inside a shadow root, so their controls need to be
 // resolved there. Keep the ink outside the control so its hit area stays put.
-window.mountPortalControlInk = function (shadow) {
+window.mountPortalControlInk = function (shadow, { coordinator = false } = {}) {
   const events = new AbortController();
   const capture = { capture: true, passive: true, signal: events.signal };
-  const selector = 'button, input:not([type=hidden]), select, textarea, a[href]';
+  const fields = 'input:not([type=hidden], [type=radio], [type=checkbox], [type=range], [type=file]), select, textarea';
+  const selector = coordinator ? `button, ${fields}, a[href]` : 'button, input:not([type=hidden]), select, textarea, a[href]';
+  const hoverSelector = coordinator ? `button, ${fields}` : selector;
   const createRing = (kind) => {
     const ring = document.createElement('span');
     ring.className = 'portal-focus-ring';
@@ -48,7 +50,9 @@ window.mountPortalControlInk = function (shadow) {
   };
   const hoverRing = createRing('hover');
   const focusRing = createRing('focus');
-  let hovered;
+  let pointer;
+  let pointerTarget;
+  let paintedHover;
   let focused;
   let frame;
 
@@ -57,26 +61,66 @@ window.mountPortalControlInk = function (shadow) {
       ring.remove();
       return;
     }
+    const dialogue = coordinator ? control.closest('dialog[open]') : null;
+    const host = dialogue || document.body;
     const rect = control.getBoundingClientRect();
+    const bounds = dialogue?.getBoundingClientRect();
+    const left = bounds ? bounds.left + dialogue.clientLeft - dialogue.scrollLeft : 0;
+    const top = bounds ? bounds.top + dialogue.clientTop - dialogue.scrollTop : 0;
+    const clip = { top: 0, right: 0, bottom: 0, left: 0 };
+    for (let parent = control.parentElement; parent && parent !== dialogue; parent = parent.parentElement || parent.getRootNode().host) {
+      const { overflowX, overflowY } = getComputedStyle(parent);
+      if (overflowX === 'visible' && overflowY === 'visible') continue;
+      const boundary = parent.getBoundingClientRect();
+      const x = boundary.left + parent.clientLeft;
+      const y = boundary.top + parent.clientTop;
+      if (overflowX !== 'visible') {
+        clip.left = Math.max(clip.left, x - rect.left + padding);
+        clip.right = Math.max(clip.right, rect.right + padding - x - parent.clientWidth);
+      }
+      if (overflowY !== 'visible') {
+        clip.top = Math.max(clip.top, y - rect.top + padding);
+        clip.bottom = Math.max(clip.bottom, rect.bottom + padding - y - parent.clientHeight);
+      }
+    }
     Object.assign(ring.style, {
-      left: `${rect.left - padding}px`,
-      top: `${rect.top - padding}px`,
+      left: `${rect.left - padding - left}px`,
+      top: `${rect.top - padding - top}px`,
       width: `${rect.width + padding * 2}px`,
       height: `${rect.height + padding * 2}px`,
+      clipPath: `inset(${clip.top}px ${clip.right}px ${clip.bottom}px ${clip.left}px)`,
     });
-    if (!ring.isConnected) document.body.append(ring);
+    if (coordinator) {
+      ring.style.color = getComputedStyle(control).getPropertyValue('--ink');
+    }
+    if (ring.parentNode !== host) host.append(ring);
   }
 
   function update() {
     const active = shadow.activeElement;
-    const next = active?.matches(`:focus-visible:is(${selector})`) ? active : null;
+    const drawFocus = active?.matches(`:focus-visible:is(${selector})`) ||
+      (coordinator && active?.matches(`:is(${fields})`));
+    const next = drawFocus ? active : null;
     if (focused !== next) {
       focused?.removeAttribute('data-service-ink-focus');
       focused = next;
       focused?.setAttribute('data-service-ink-focus', '');
     }
-    place(focusRing, focused, 3);
-    place(hoverRing, hovered !== focused && hovered?.matches(':hover') ? hovered : null, 1);
+    // Scroll can move a different control under a stationary pointer.
+    let pointed;
+    if (pointer && document.elementFromPoint(...pointer) === shadow.host) {
+      if (shadow.elementFromPoint) pointed = shadow.elementFromPoint(...pointer);
+      else if (pointerTarget?.matches(':hover')) pointed = pointerTarget;
+    }
+    const hovered = pointed?.closest(hoverSelector);
+    const nextHover = hovered && hovered !== focused && !hovered.matches(':disabled,[aria-disabled=true]') ? hovered : null;
+    if (coordinator && paintedHover !== nextHover) {
+      paintedHover?.removeAttribute('data-service-ink-hover');
+      paintedHover = nextHover;
+      paintedHover?.setAttribute('data-service-ink-hover', '');
+    }
+    place(focusRing, focused, coordinator ? 0 : 3);
+    place(hoverRing, nextHover, coordinator ? 0 : 1);
   }
 
   function schedule() {
@@ -84,16 +128,17 @@ window.mountPortalControlInk = function (shadow) {
     frame = requestAnimationFrame(update);
   }
 
-  shadow.addEventListener('pointerover', (event) => {
-    hovered = event.pointerType === 'mouse'
-      ? event.target.closest(selector)
-      : null;
-    if (hovered?.matches(':disabled,[aria-disabled=true]')) hovered = null;
+  function trackPointer(event) {
+    pointer = event.pointerType === 'mouse' ? [event.clientX, event.clientY] : null;
+    pointerTarget = pointer ? event.target : null;
     schedule();
-  }, capture);
+  }
+  shadow.addEventListener('pointerover', trackPointer, capture);
+  shadow.addEventListener('pointermove', trackPointer, capture);
   shadow.addEventListener('pointerout', (event) => {
-    if (hovered && !hovered.contains(event.relatedTarget)) {
-      hovered = null;
+    if (pointer && !shadow.contains(event.relatedTarget)) {
+      pointer = null;
+      pointerTarget = null;
       schedule();
     }
   }, capture);
@@ -109,6 +154,7 @@ window.mountPortalControlInk = function (shadow) {
     hoverRing.remove();
     focusRing.remove();
     focused?.removeAttribute('data-service-ink-focus');
+    paintedHover?.removeAttribute('data-service-ink-hover');
   };
 };
 

@@ -92,17 +92,21 @@ function CoursesWorkspace({ token, role, notify }) {
         <label className="field"><span>Search courses</span><input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Course code, name or major" /></label>
         <span className="register-count" role="status">{visible.length} {visible.length === 1 ? "course" : "courses"}</span>
       </div>
-      {loading ? <Loading /> : visible.length ? <div className="table-scroll"><table>
-        <thead><tr><th>Course</th><th>Credits</th><th>Type</th><th>Majors</th><th>Semester</th><th>Status</th><th><span className="sr-only">Actions</span></th></tr></thead>
-        <tbody>{visible.map(course => <tr key={course._id}>
-          <td><button type="button" className="catalogue-name" onClick={() => setViewing(course)}><OfferingCourseIcon code={course.code} /><span><small>{course.code}</small><strong>{course.name}</strong></span></button></td>
-          <td>{course.creditHours}</td><td>{course.courseType === "huma" ? "Humanities" : pretty(course.courseType)}</td><td>{catalogueMajors(course).join(", ") || "All"}</td><td>{course.recommendedSemester || "—"}</td>
-          <td><span className={`status-pill ${course.isActive ? "good" : "muted"}`}>{course.isActive ? "Active" : "Inactive"}</span></td>
-          <td><div className="table-actions"><button className="outline-button" type="button" onClick={() => setViewing(course)}>View</button>
-            {canManage && <><button className="outline-button" type="button" onClick={() => openCourseEditor(course)}>Edit</button><PaperTossButton label={`Delete course ${course.code}`} onClick={() => { setDeleteError(""); setConfirmingDelete(course); }}>Delete</PaperTossButton></>}
-          </div></td>
+      {loading ? <Loading /> : visible.length ? <table className="catalogue-table" role="table">
+        <thead role="rowgroup"><tr role="row">
+          {["Course", "Credits", "Type", "Majors", "Semester", "Status"].map(label => <th key={label} role="columnheader" scope="col">{label}</th>)}
+          {canManage && <th role="columnheader" scope="col"><span className="sr-only">Actions</span></th>}
+        </tr></thead>
+        <tbody role="rowgroup">{visible.map(course => <tr key={course._id} role="row">
+          <td role="cell"><button type="button" className="catalogue-name" aria-label={`View course ${course.code} · ${course.name}`} onClick={() => setViewing(course)}><OfferingCourseIcon code={course.code} /><span><strong>{course.name}</strong><small>{course.code}</small></span></button></td>
+          <td role="cell"><span className="catalogue-cell-label" aria-hidden="true">Credits</span>{course.creditHours}</td>
+          <td role="cell"><span className="catalogue-cell-label" aria-hidden="true">Type</span>{course.courseType === "huma" ? "Humanities" : pretty(course.courseType)}</td>
+          <td role="cell"><span className="catalogue-cell-label" aria-hidden="true">Majors</span>{catalogueMajors(course).join(", ") || "All"}</td>
+          <td role="cell"><span className="catalogue-cell-label" aria-hidden="true">Semester</span>{course.recommendedSemester || "—"}</td>
+          <td role="cell"><span className="catalogue-cell-label" aria-hidden="true">Status</span><span className={`status-pill ${course.isActive ? "good" : "muted"}`}>{course.isActive ? "Active" : "Inactive"}</span></td>
+          {canManage && <td className="catalogue-actions" role="cell"><div className="table-actions"><button className="outline-button" type="button" onClick={() => openCourseEditor(course)}>Edit</button><PaperTossButton label={`Delete course ${course.code}`} onClick={() => { setDeleteError(""); setConfirmingDelete(course); }}>Delete</PaperTossButton></div></td>}
         </tr>)}</tbody>
-      </table></div> : <EmptyState title="No courses found" text={query ? "Try another course code, name or major." : "Courses will appear here when added to the catalogue."} />}
+      </table> : <EmptyState title="No courses found" text={query ? "Try another course code, name or major." : "Courses will appear here when added to the catalogue."} />}
     </section>
     {viewing && <CourseDetailsModal course={viewing} allCourses={courses} onClose={() => setViewing(null)} onEdit={canManage ? () => { setViewing(null); openCourseEditor(viewing); } : undefined} />}
     {editing && <CourseEditor course={editing} courses={courses} onSave={saveCourse} onClose={() => !saving && setEditing(null)} saving={saving} error={editError} />}
@@ -123,6 +127,18 @@ const termDateGroups = {
   "Whole-schedule swap deadline": ["wholeScheduleSwapDeadline"],
 };
 const termDateFields = Object.values(termDateGroups).flat();
+
+function TermDates({ dates }) {
+  const values = dates.map(value => value ? new Date(value) : null);
+  const sameYear = values.length === 2 && values[0]?.getUTCFullYear() === values[1]?.getUTCFullYear();
+  return values.map((date, index) => {
+    const year = sameYear && index === 0 ? undefined : "numeric";
+    return <span key={index}>{index > 0 && " – "}{date && Number.isFinite(date.getTime())
+      ? <time dateTime={date.toISOString().slice(0, 10)}>{date.toLocaleDateString(undefined, { day: "numeric", month: "short", year, timeZone: "UTC" })}</time>
+      : "Unspecified"}</span>;
+  });
+}
+
 function TermCalendar({ term }) {
   const milestones = termDateFields.filter(key => term[key]).map(key => ({date:new Date(term[key]), label:pretty(key)})).filter(item => Number.isFinite(item.date.getTime()));
   const monthOf = date => date.getUTCFullYear() * 12 + date.getUTCMonth();
@@ -273,12 +289,12 @@ function TermsWorkspace({ token, role, notify }) {
       {error && <div className="feedback error" role="alert">{error}</div>}
       {fetchingTerms ? <Loading /> : !selectedTerm ? <EmptyState title="No academic terms" text="Configured terms and their dates will appear here." /> : <>
         <div className="term-read-layout">
-          <div className="term-overview"><label className="field term-selection"><span>Academic term</span><select value={selectedTerm._id || selectedTerm.code} onChange={event => setTermId(event.target.value)}>{terms.map(term => <option key={term._id || term.code} value={term._id || term.code}>{termLabel(term)}{term.isActive ? " · Active" : ""}</option>)}</select></label>
-            <TermCalendar key={selectedTerm._id || selectedTerm.code} term={selectedTerm}/>
-          </div>
-          <section className="term-milestones"><div className="register-list-heading"><h2>Dates and deadlines</h2>{selectedTerm.isActive && <span className="status-pill good">Active term</span>}</div>
-            <dl className="term-dates">{Object.entries(termDateGroups).map(([label, fields]) => <div key={label}><dt>{label}</dt><dd>{fields.map(field => selectedTerm[field] ? new Date(selectedTerm[field]).toLocaleDateString(undefined, {day:"numeric",month:"short",year:"numeric",timeZone:"UTC"}) : "Unspecified").join(" – ")}</dd></div>)}</dl>
+          <label className="field term-selection"><span>Academic term</span><select value={selectedTerm._id || selectedTerm.code} onChange={event => setTermId(event.target.value)}>{terms.map(term => <option key={term._id || term.code} value={term._id || term.code}>{termLabel(term)}{term.isActive ? " · Active" : ""}</option>)}</select></label>
+          <section className="term-milestones" aria-labelledby="term-dates-heading">
+            <div className="term-milestones-heading"><h2 id="term-dates-heading">Dates and deadlines</h2><span className={`status-pill ${selectedTerm.isActive ? "good" : "muted"}`}>{selectedTerm.isActive ? "Active term" : "Inactive term"}</span></div>
+            <dl className="term-dates">{Object.entries(termDateGroups).map(([label, fields]) => <div className={fields.length === 1 ? "term-deadline" : undefined} key={label}><dt>{label}</dt><dd><TermDates dates={fields.map(field => selectedTerm[field])} /></dd></div>)}</dl>
           </section>
+          <TermCalendar key={selectedTerm._id || selectedTerm.code} term={selectedTerm}/>
         </div>
       </>}
     </div>;
@@ -394,14 +410,15 @@ function TermsWorkspace({ token, role, notify }) {
                   className={`recent-term ${(term._id === termId || term.code === termId) ? "selected" : ""}`}
                   key={term._id || term.code}
                   onClick={() => useTerm(term)}
+                  aria-pressed={term._id === termId || term.code === termId}
                   type="button"
                 >
                   <span className="term-calendar-mark" aria-hidden="true">{term.termStart ? new Date(term.termStart).getUTCDate() : "–"}</span>
                   <span>
                     <strong>{termLabel(term)}</strong>
-                    <small>{term.isActive ? "Active term" : "View dates"}</small>
+                    <small><TermDates dates={[term.termStart, term.termEnd]} /></small>
                   </span>
-
+                  <span className={`status-pill ${term.isActive ? "good" : "muted"}`}>{term.isActive ? "Active" : "Inactive"}</span>
                 </button>
               ))}
             </div>
@@ -624,6 +641,7 @@ function TemplatesWorkspace({ token, notify }) {
   const [termOptions, setTermOptions] = useState([]);
   const blankForm = { major: "", semester: "", studyGroup: "", isPublished: false };
   const [termId, setTermId] = useState("");
+  const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const [editorOpen, setEditorOpen] = useState(false);
   const loadVersion = useRef(0);
   useEffect(() => {
@@ -746,9 +764,12 @@ function TemplatesWorkspace({ token, notify }) {
   };
 
   const selected = selectedOffers.map((id) => offerings.find((item) => item._id === id)).filter(Boolean);
+  const selectedTemplate = templates.find(template => template._id === selectedTemplateId)
+    || templates.find(template => template.isPublished) || templates[0];
+  const templateCourses = selectedTemplate?.courses || [];
   return <div className="page-stack template-register">
-    <PageTitle title="Schedule templates" description="Published course groups for each major and semester." action={<button className="primary-button" type="button" disabled={loading || !termId} onClick={() => { clearEditor(); setError(""); setEditorOpen(true); }}>Create template</button>} />
-    <div className="register-controls"><Field label="Academic term"><select required value={termId} onChange={event => { if (event.target.value !== termId) { setTemplates([]); setOfferings([]); setLoading(true); setTermId(event.target.value); } }}><option value="" disabled>Choose a term</option>{termOptions.map(term => <option key={term._id} value={term.code}>{termLabel(term)}</option>)}</select></Field></div>
+    <PageTitle title="Schedule templates" description="Course groups for each major and semester." action={<button className="primary-button" type="button" disabled={loading || !termId} onClick={() => { clearEditor(); setError(""); setEditorOpen(true); }}>Create template</button>} />
+    <div className="register-controls"><Field label="Academic term"><select required value={termId} onChange={event => { if (event.target.value !== termId) { setTemplates([]); setOfferings([]); setSelectedTemplateId(""); setLoading(true); setTermId(event.target.value); } }}><option value="" disabled>Choose a term</option>{termOptions.map(term => <option key={term._id} value={term.code}>{termLabel(term)}</option>)}</select></Field>{!loading && templates.length > 0 && <span className="register-count">{templates.length} {templates.length === 1 ? "template" : "templates"}</span>}</div>
     {error && !editorOpen && <div className="feedback error" role="alert">{error}</div>}
     {editorOpen && <Modal title={editingTemplate ? "Update schedule template" : "Create schedule template"} onClose={() => !saving && clearEditor()} wide>
         {error && <div className="feedback error" role="alert">{error}</div>}
@@ -772,14 +793,39 @@ function TemplatesWorkspace({ token, notify }) {
           <div className="form-footer"><span className="helper-text">{selected.length ? "Choose exactly one group for each available component." : "Load a term and add at least one published course offering."}</span><div className="table-actions"><button className="outline-button" type="button" onClick={clearEditor} disabled={saving}>Cancel</button><button className="primary-button" disabled={saving || !termId.trim()}>{saving ? "Saving…" : editingTemplate ? "Save changes" : "Create template"}<span>→</span></button></div></div>
         </form>
     </Modal>}
-    <section aria-label="Current templates">
-      <div className="results-heading"><h2>Current templates</h2><span className="register-count">{templates.length} {templates.length === 1 ? "template" : "templates"}</span></div>
-      {loading ? <Loading /> : templates.length ? <div className="template-list">{templates.map(template => <article className="template-register-row" key={template._id}>
-        <div><strong>{template.major}</strong><small>Semester {template.semester} · Group {template.studyGroup}</small></div>
-        <span>{template.courses?.length || 0} courses</span><span className={`status-pill ${template.isPublished ? "good" : "muted"}`}>{template.isPublished ? "Published" : "Draft"}</span>
-        <div className="table-actions"><button className="outline-button" type="button" onClick={() => editTemplate(template)}>Edit</button><button className="outline-button" type="button" onClick={() => togglePublished(template)}>{template.isPublished ? "Unpublish template" : "Publish template"}</button><PaperTossButton label={`Delete template for ${template.major}, semester ${template.semester}, group ${template.studyGroup}`} onClick={() => { setConfirmingDelete(template); setDeleteError(""); }}>Delete</PaperTossButton></div>
-      </article>)}</div> : <div className="register-empty"><img src="/portal-studio/images/extra-hours-folder.svg" alt="" width="144" height="105"/><h3>No schedule templates</h3><p>Create a template using this term’s published course offerings.</p></div>}
-    </section>
+    {loading ? <Loading /> : selectedTemplate ? <div className="template-library">
+      <section className="template-groups" aria-label="Current templates">{[
+        { label: "Published", tone: "good", isPublished: true },
+        { label: "Drafts", tone: "draft", isPublished: false },
+      ].map(({ label, tone, isPublished }) => {
+        const group = templates.filter(template => Boolean(template.isPublished) === isPublished);
+        return <section className="template-group" key={label} aria-labelledby={`template-group-${label}`}>
+          <div className="template-group-heading"><h2 className={`status-pill ${tone}`} id={`template-group-${label}`}>{label}</h2><span className="register-count">{group.length}</span></div>
+          {group.length ? <ul role="list">{group.map(template => {
+            const courseCount = template.courses?.length || 0;
+            return <li className="template-register-row" key={template._id}>
+              <button className="template-identity" type="button" aria-pressed={template._id === selectedTemplate._id} aria-controls="template-course-sheet" onClick={() => setSelectedTemplateId(template._id)}>
+                <strong>Group {template.studyGroup}</strong><small>{template.major} · Semester {template.semester}</small>
+              </button>
+              <span className="template-course-count">{courseCount} {courseCount === 1 ? "course" : "courses"}</span>
+              <div className="template-row-actions">
+                <button className="outline-button" type="button" onClick={() => editTemplate(template)}>Edit</button>
+                <button className="outline-button" type="button" aria-label={isPublished ? "Unpublish template" : "Publish template"} onClick={() => togglePublished(template)}>{isPublished ? "Unpublish" : "Publish"}</button>
+                <PaperTossButton label={`Delete template for ${template.major}, semester ${template.semester}, group ${template.studyGroup}`} onClick={() => { setConfirmingDelete(template); setDeleteError(""); }}>Delete</PaperTossButton>
+              </div>
+            </li>;
+          })}</ul> : <p className="template-group-empty">{isPublished ? "No published templates" : "No draft templates"}</p>}
+        </section>;
+      })}</section>
+      <section className="template-course-sheet" id="template-course-sheet" aria-labelledby="template-course-heading">
+        <h2 id="template-course-heading" aria-live="polite">Courses for Group {selectedTemplate.studyGroup}</h2>
+        <p>{selectedTemplate.major} · Semester {selectedTemplate.semester}</p>
+        {templateCourses.length ? <ul role="list">{templateCourses.map((entry, index) => <li key={entry.course?._id || index}>
+          <OfferingCourseIcon code={entry.course?.code} />
+          <div><strong>{entry.course?.name || "Course unavailable"}</strong>{entry.course?.code && <small>{entry.course.code}</small>}</div>
+        </li>)}</ul> : <p>No courses in this template</p>}
+      </section>
+    </div> : <div className="register-empty"><img src="/portal-studio/images/extra-hours-folder.svg" alt="" width="144" height="105"/><h3>No schedule templates</h3><p>Create a template using this term’s published course offerings.</p></div>}
     {confirmingDelete && <Modal title="Delete schedule template?" eyebrow="REMOVE STANDARD PLAN" onClose={() => !deleting && setConfirmingDelete(null)}>
       <div className="confirmation-content"><span className="confirmation-icon" aria-hidden="true">!</span><div><p>Delete the template for <strong>{confirmingDelete.major}</strong>, semester <strong>{confirmingDelete.semester}</strong>, group <strong>{confirmingDelete.studyGroup}</strong>?</p><p className="helper-text">Templates assigned to student schedules cannot be deleted. Reassign those students first.</p></div></div>
       {deleteError && <div className="feedback error" role="alert">{deleteError}</div>}
@@ -852,7 +898,7 @@ function SlotFields({ index, slot, onChange, onRemove, canRemove }) {
 
 function PageTitle({ eyebrow, title, description, action }) { return <div className="page-title-row"><div><p className="eyebrow">{eyebrow}</p><h1>{title}</h1><p className="page-description">{description}</p></div>{action}</div>; }
 function Field({ label, children, className = "" }) { return <label className={`field ${className}`}><span>{label}</span>{children || <input />}</label>; }
-function Modal({ title, eyebrow, onClose, children, wide = false }) {
+export function Modal({ title, eyebrow, onClose, children, wide = false }) {
   const ref = useRef(null);
   useEffect(() => {
     const dialog = ref.current;
@@ -938,7 +984,7 @@ function CourseEditor({ course, courses, onSave, onClose, saving, error }) {
   </Modal>;
 }
 
-function CourseDetailsModal({ course, allCourses, onClose, onEdit }) {
+export function CourseDetailsModal({ course, allCourses = [], onClose, onEdit }) {
   const prerequisites = (course.prerequisites || []).map(entry => entry?.code ? entry : allCourses.find(item => item._id === (entry?._id || entry)) || {code: String(entry?._id || entry)});
   const facts = [
     ["Credit hours", course.creditHours], ["Course type", course.courseType === "huma" ? "Humanities" : pretty(course.courseType)],

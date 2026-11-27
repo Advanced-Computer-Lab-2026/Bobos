@@ -120,6 +120,12 @@ const person = () => sessionStorage.getItem(workspaceAccountNameKey) || liveStud
 const href = (target, courseCode) => {
   const query = new URLSearchParams({page:target, role, preview:'live'});
   if (authPages.has(target) && returnAfterSignIn !== 'overview') query.set('next', returnAfterSignIn);
+  if (returnAfterSignIn === 'preferences' && (authPages.has(target) || target === 'preferences')) {
+    const current = new URLSearchParams(location.search);
+    for (const key of ['student', 'term']) {
+      if (current.has(key)) query.set(key, current.get(key));
+    }
+  }
   if (target === 'course-detail' && courseCode) query.set('course', courseCode);
   return '?' + query;
 };
@@ -1377,8 +1383,8 @@ document.addEventListener('portal:open-service', ({detail: {screen, context}}) =
   if (target === 'academic-services') url.searchParams.set('screen', screen);
   let portalContext = null;
   if (screen === 'preferences' && context?._id) {
-    const { _id, studentId, fullName, user } = context;
-    portalContext = { _id, studentId, fullName, user: { fullName: user?.fullName } };
+    const { _id, studentId, fullName, email, user } = context;
+    portalContext = { _id, studentId, fullName, user: { fullName: user?.fullName, email: user?.email || email } };
   } else if (screen === 'student-schedules' && context?.draftStudent) {
     const { _id, studentId, fullName } = context.draftStudent;
     portalContext = { termId: context.termId, draftStudent: { _id, studentId, fullName } };
