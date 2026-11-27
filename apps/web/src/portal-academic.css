@@ -62,9 +62,20 @@
 .graduation-record-heading > div { flex: 1 1 150px; min-width: 0; }
 .graduation-record h3 { font: 600 17px/1.4 Styrene, system-ui, sans-serif; overflow-wrap: anywhere; }
 .graduation-record-heading p { margin-top: 4px; }
-.graduation-meta, .graduation-record-empty { color: var(--muted); }
+.graduation-meta { color: var(--muted); }
 .graduation-meta { font-size: 12px; }
-.graduation-record-empty { padding-block: 7px; }
+.student-graduation .graduation-empty {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 10px;
+  min-block-size: clamp(140px, 19vw, 192px);
+  padding: 10px 12px 18px;
+  border: 0;
+  text-align: center;
+}
+.student-graduation .graduation-empty img { width: auto; max-width: 100%; height: clamp(84px, 13vw, 112px); }
+.student-graduation .graduation-empty p { margin: 0; color: var(--muted); font-size: 14px; text-wrap: pretty; }
 .graduation-term { min-width: 0; }
 .graduation-term-heading {
   padding-block: 10px;
@@ -580,6 +591,22 @@
 .offering-create-form .slot-row-title strong { font-size: 14px; font-weight: 500; }
 .offering-create-form > .form-footer { position: sticky; bottom: -28px; z-index: 2; margin: 0 -4px -4px; padding: 18px 4px; background: var(--paper); border-top: 1px solid var(--line); }
 .offering-create-form .field small { font-size: 12px; line-height: 1.5; color: var(--muted); }
+.offering-eligible-groups { min-width: 0; margin: 0; padding: 0; border: 0; }
+.offering-eligible-groups legend { margin-bottom: 9px; padding: 0; color: var(--ink); font-size: 15px; font-weight: 550; }
+.offering-eligible-row {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) repeat(2, minmax(80px, .8fr)) auto;
+  align-items: end;
+  gap: 8px 12px;
+  margin-block-end: 10px;
+}
+.offering-eligible-row .field { min-width: 0; }
+.offering-eligible-row .field :is(input, select) { width: 100%; }
+.offering-eligible-row > button { justify-self: start; }
+@media (max-width: 620px) {
+  .offering-eligible-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .offering-eligible-row .field:first-child { grid-column: 1 / -1; }
+}
 @media (max-width: 700px) {
   .service-surface[data-service="offerings"] .modal-card.wide-modal:has(.offering-create-form) { width: calc(100vw - 24px); padding: 18px; max-height: calc(100dvh - 24px); }
   .offering-create-form > .form-grid { grid-template-columns: minmax(0,1fr); }
@@ -852,50 +879,56 @@
  .student-advising-context dd { font-size: 15px; }
 }
 
-/* Schedule preferences: grouped Portal forms, with ranking controls unchanged. */
+/* Advising students edit the week first, then class groups and a note. */
 .portal-advising-services .academic-services-embedded .schedule-preferences-page { gap: 24px; }
+.schedule-preferences-page { container: student-preferences / inline-size; }
 .schedule-preferences-page .page-description { max-width: 68ch; }
-.portal-advising-services .academic-services-embedded .schedule-preferences-page .preference-toolbar { padding: 18px; border: 1px solid var(--line); border-radius: 10px; gap: 14px; align-items: end; }
-.portal-advising-services .academic-services-embedded .schedule-preferences-page .preference-grid { gap: 20px; align-items: start; }
-.portal-advising-services .academic-services-embedded .schedule-preferences-page .preference-grid > .panel { padding: 22px; border: 1px solid var(--line); border-radius: 10px; gap: 18px; }
-.preference-section-heading { display: flex; align-items: center; gap: 12px; }
-.preference-section-icon { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: 9px; color: #383e37; background: #bdd2c7; }
-.preference-section-icon.is-times { background: #a6c8e6; }
-.preference-section-icon.is-groups { background: #edb292; }
-.preference-section-icon.is-note { background: #e8e4d9; }
-.preference-section-icon svg { width: 25px; height: 25px; }
-.academic-services-embedded .preference-section-heading h2 { margin: 0; font-size: 18px; }
-.preference-section-heading p { margin: 4px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
-.academic-services-embedded .schedule-preferences-page .preference-grid .helper-text { font-size: 12px; line-height: 1.6; margin: 0; }
-.schedule-preferences-page .ranked-preference-field + .ranked-preference-field { padding-top: 16px; border-top: 1px solid var(--line); }
-.schedule-preferences-page .preference-note { grid-column: 1/-1; }
-.schedule-preferences-page .preference-note textarea { min-height: 100px; }
+.schedule-preferences-page .preference-toolbar { gap: 12px; }
+.schedule-preferences-page .preference-toolbar .field { flex: 1 1 210px; max-width: 330px; min-width: 0; margin: 0; }
+.schedule-preferences-page .preference-toolbar button { min-height: 40px; }
+.portal-advising-services .academic-services-embedded .schedule-preferences-page .preference-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px 18px; }
+.portal-advising-services .academic-services-embedded .schedule-preferences-page .preference-grid > .panel { padding: 16px clamp(14px,2.1cqw,26px) 20px; gap: 13px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
+.schedule-preferences-page :is(.preference-priority-intro, .preference-groups, .preference-note, .form-footer) { grid-column: 1 / -1; }
+.preference-priority-intro { margin: 0; color: var(--muted); font-size: 13px; }
+.schedule-preferences-page .preference-section-heading { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.schedule-preferences-page .preference-section-heading img { display: block; flex: none; width: clamp(57px,8cqw,94px); height: 62px; object-fit: contain; }
+.schedule-preferences-page .preference-section-heading h2 { margin: 0; font-size: 18px; line-height: 1.3; }
+.schedule-preferences-page .preference-section-heading p { margin: 4px 0 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
+.schedule-preferences-page :is(.preference-days, .preference-times) .preference-section-heading { flex-direction: row-reverse; justify-content: space-between; }
+.schedule-preferences-page .ranked-preference-field .field { margin: 0; }
+.schedule-preferences-page .ranked-preference-field select { background-color: var(--canvas); }
+.schedule-preferences-page :is(.preference-groups, .preference-note) { display: grid; gap: 12px; padding-block: 14px 0; }
+.schedule-preferences-page .preference-groups-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+.schedule-preferences-page .preference-groups-empty { margin: 0; padding: 12px 14px; border: 1px dashed var(--line); border-radius: 8px; color: var(--muted); font-size: 13px; }
+.schedule-preferences-page .preference-note { border-top: 1px solid var(--line); margin-top: 8px; }
+.schedule-preferences-page .preference-note .field { margin: 0; }
+.schedule-preferences-page .preference-note textarea { min-height: 104px; }
+.portal-advising-services .academic-services-embedded .schedule-preferences-page .field :is(select,textarea):focus { border-color: transparent; outline: 2px solid var(--ink); outline-offset: -2px; box-shadow: none; }
 .preference-course-identity { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
 .preference-course-identity small { display: block; font-size: 11px; color: var(--muted); margin-bottom: 4px; }
 .preference-course-identity strong { font-size: 14px; font-weight: 500; }
 .portal-advising-services .academic-services-embedded .schedule-preferences-page .preference-offering { padding-block: 18px; }
 .schedule-preferences-page .group-chip-list { gap: 10px; }
-.schedule-preferences-page .preference-grid > .form-footer { padding-top: 20px; border-top: 1px solid var(--line); gap: 16px; }
-@media(max-width:700px) {
- .portal-advising-services .academic-services-embedded .schedule-preferences-page .preference-grid { grid-template-columns: minmax(0,1fr); }
- .portal-advising-services .academic-services-embedded .schedule-preferences-page .preference-grid > .panel { padding: 16px; }
- .schedule-preferences-page .preference-groups, .schedule-preferences-page .preference-grid > .form-footer { grid-column: 1/-1; }
- .academic-services-embedded .preference-section-heading h2 { font-size: 16px; }
- .schedule-preferences-page .preference-toolbar { grid-template-columns: minmax(0,1fr); }
+.schedule-preferences-page .preference-grid > .form-footer { margin-top: 4px; padding-top: 16px; border-top: 1px solid var(--line); gap: 10px 16px; }
+.schedule-preferences-page .form-footer .helper-text { margin: 0; }
+@container student-preferences (max-width: 655px) {
+  .portal-advising-services .academic-services-embedded .schedule-preferences-page .preference-grid { grid-template-columns: minmax(0,1fr); }
+  .schedule-preferences-page .preference-section-heading h2 { font-size: 16px; }
+  .schedule-preferences-page :is(.preference-toolbar button, .preference-refresh-groups, .form-footer button) { min-height: 44px; }
+  .schedule-preferences-page .field select { min-height: 44px; }
+}
+@media (forced-colors: active) {
+  .portal-advising-services .academic-services-embedded .schedule-preferences-page .field :is(select,textarea):focus { outline-color: Highlight; }
 }
 
 .academic-services-embedded .schedule-preferences-page .preference-save-confirmation { color: var(--ink); font-weight: 500; }
 .academic-services-embedded .schedule-preferences-page .preference-save-confirmation::before { content: '✓'; display: inline-block; margin-right: 8px; color: #8aab99; }
 
 .schedule-preferences-page .priority-list li { display: flex; align-items: center; gap: 10px; }
-.schedule-preferences-page .priority-item-label { flex: 1; }
+.schedule-preferences-page .priority-item-label { flex: 1; font-size: 13px; }
 .academic-services-embedded .preference-remove-choice { flex: none; width: 32px; min-height: 32px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: var(--muted); font-size: 20px; cursor: pointer; }
 .academic-services-embedded .preference-remove-choice:hover { color: var(--ink); background: var(--raised); }
 
-.portal-advising-services .academic-services-embedded .schedule-preferences-page .preference-groups { gap: 12px; }
-.academic-services-embedded .schedule-preferences-page .preference-groups .preference-section-heading h2 { font-size: 16px; }
-.schedule-preferences-page .preference-groups .preference-section-icon { width: 34px; height: 34px; }
-.schedule-preferences-page .preference-groups .preference-section-icon svg { width: 22px; height: 22px; }
 .academic-services-embedded .preference-refresh-groups { display: inline-flex; justify-self: start; align-items: center; justify-content: center; gap: 8px; width: auto; min-height: 34px; padding: 7px 12px; font-size: 12px; }
 .preference-button-spinner { display: inline-block; width: 12px; height: 12px; border: 1.5px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: preference-spin .7s linear infinite; }
 .preference-group-feedback { margin: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; color: var(--ink); font-size: 13px; line-height: 1.5; }
@@ -935,10 +968,6 @@
 .service-surface[data-service] .academic-services-embedded .slot-changes-page .workspace-empty-icon { background-image:url("/portal-studio/images/student-schedules-calendar.png"); background-size:204px auto; }
 .service-surface[data-service] .academic-services-embedded :is(.slot-changes-page,.removal-page) .workspace-empty-icon svg { display:none; }
 .academic-services-embedded .assignment-target { display:flex; align-items:center; gap:12px; margin:0; }
-.academic-services-embedded .course-sheet dl { margin:0; }
-.academic-services-embedded .course-sheet dl > div { display:grid; grid-template-columns:minmax(150px,.8fr) 1fr; gap:18px; align-items:baseline; padding:13px 0; border-bottom:1px solid var(--line); }
-.academic-services-embedded .course-sheet dl dt { color:var(--muted); }
-.academic-services-embedded .course-sheet dl dd { margin:0; color:var(--ink); }
 .academic-services-embedded :is(.term-date-pair,.catalogue-editor fieldset) { padding:0; margin:0; border:0; min-width:0; }
 .academic-services-embedded :is(.term-date-pair,.catalogue-editor fieldset) legend { padding:0; margin-bottom:12px; font:500 16px/1.4 Styrene,system-ui,sans-serif; color:var(--ink); }
 .service-surface:is([data-service="courses"],[data-service="terms"],[data-service="templates"],[data-service="group-assignments"],[data-service="mandatory-removals"]) .academic-services-embedded .modal-card { background:var(--paper); color:var(--ink); border:1px solid var(--line); border-radius:12px; padding:clamp(18px,3vw,32px); max-height:calc(100dvh - 48px); }
@@ -946,13 +975,8 @@
 .service-surface:is([data-service="courses"],[data-service="templates"]) .academic-services-embedded .modal-card { width:min(100%,650px); }
 .service-surface:is([data-service="courses"],[data-service="templates"]) .academic-services-embedded .modal-card.wide-modal { width:min(100%,805px); }
 .service-surface:is([data-service="courses"],[data-service="templates"]) .academic-services-embedded .modal-card .eyebrow { display:none; }
-.academic-services-embedded .course-sheet, .academic-services-embedded .catalogue-editor { display:grid; gap:24px; }
-.academic-services-embedded .course-sheet-identity,.academic-services-embedded .course-checks,.academic-services-embedded .course-checks label,.academic-services-embedded .prerequisite-options label { display:flex; align-items:center; gap:10px; }
-.academic-services-embedded .course-sheet-identity .status-pill { margin-inline-start:auto; }
-.academic-services-embedded .course-sheet h3 { font:500 16px/1.4 Styrene,system-ui,sans-serif; color:var(--ink); margin:0 0 10px; }
-.academic-services-embedded .course-sheet-columns { display:grid; grid-template-columns:1.2fr 1fr; gap:36px; }
-.academic-services-embedded .course-sheet dl > div { grid-template-columns:minmax(90px,1fr) 1fr; gap:12px; padding:9px 0; }
-.academic-services-embedded .course-sheet p { color:var(--muted); margin:0; }
+.academic-services-embedded .catalogue-editor { display:grid; gap:24px; }
+.academic-services-embedded .course-checks,.academic-services-embedded .course-checks label,.academic-services-embedded .prerequisite-options label { display:flex; align-items:center; gap:10px; }
 .academic-services-embedded .prerequisite-list { padding:0; margin:0; list-style:none; }
 .academic-services-embedded .prerequisite-list li { display:flex; align-items:center; gap:12px; padding:10px 0; color:var(--ink); }
 .academic-services-embedded .teaching-hours { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
@@ -977,11 +1001,26 @@
 @media (max-width:520px) {
   .academic-services-embedded .catalogue-editor :is(.form-grid,.teaching-hours) { grid-template-columns:minmax(0,1fr); }
 }
-.academic-services-embedded .course-sheet .form-footer,.academic-services-embedded .catalogue-editor .form-footer { justify-content:flex-end; gap:10px; padding-top:15px; border-top:1px solid var(--line); }
+.catalogue-majors { min-width: 0; }
+.catalogue-majors .helper-text { margin: 7px 0 0; }
+.catalogue-major-list { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0; padding: 0; list-style: none; }
+.catalogue-major-list > li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 3px 4px 3px 9px;
+  border-radius: 7px;
+  background: var(--raised);
+  font-size: 13px;
+}
+.catalogue-major-list > li span { overflow-wrap: anywhere; }
+.catalogue-major-list .icon-button { flex: none; width: 25px; height: 25px; min-height: 25px; }
+.academic-services-embedded .catalogue-editor .register-count { display:block; margin:8px 0; }
+.academic-services-embedded .catalogue-editor .form-footer { justify-content:flex-end; gap:10px; padding-top:15px; border-top:1px solid var(--line); }
 @media(max-width:650px) {
   .academic-services-embedded .register-controls { gap:12px; }
   .academic-services-embedded .register-controls .field { width:100%; }
-  .academic-services-embedded .course-sheet-columns { grid-template-columns: minmax(0,1fr); }
 }
 
 .academic-dialog.modal-backdrop { backdrop-filter:none; width:100%; height:100%; max-width:none; max-height:none; margin:0; border:0; background:transparent; color:var(--ink); }
@@ -1140,7 +1179,7 @@
 .academic-services-embedded .term-milestones-heading .status-pill { flex:none; }
 .academic-services-embedded .term-milestones-heading .status-pill.good { padding:4px 9px 4px 5px; border-radius:5px; background:color-mix(in srgb,var(--canvas) 87%,#71988b); font-weight:600; }
 .academic-services-embedded .term-milestones-heading .status-pill::before { width:20px; height:20px; }
-.academic-services-embedded :is(.term-milestones,.catalogue-table,.course-sheet-identity) .status-pill.muted {
+.academic-services-embedded :is(.term-milestones,.catalogue-table,.record-dossier-intro) .status-pill.muted {
   color:color-mix(in srgb,var(--muted) 88%,#9c7955);
 }
 .academic-services-embedded .term-dates { display:grid; flex:1; align-content:space-between; margin:2px 0 0; }
@@ -1312,12 +1351,34 @@
   .planner-student-card { max-width:300px; }
   .planner-plan-list[data-empty] { min-height:285px; }
 }
-.service-surface[data-service="graduation-plans"] .advisor-graduation-review .workspace-header > div:first-child {
-  flex-direction:column; justify-content:center; text-align:start;
+.submission-masthead {
+  display: grid;
+  justify-items: center;
+  gap: 9px;
+  padding-block: clamp(14px, 3.2vw, 44px) clamp(14px, 2.8vw, 36px);
+  text-align: center;
 }
-.advisor-graduation-review .workspace-header h1 { align-self:flex-start; }
+.submission-masthead > div {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: clamp(7px, 1.2vw, 18px);
+}
+.academic-services-embedded .submission-masthead h1 {
+  margin: 0;
+  color: var(--ink);
+  font: 400 clamp(31px, 4.1vw, 53px)/1.06 Tiempos, Georgia, serif;
+  letter-spacing: -.048em;
+  text-wrap: balance;
+}
+.submission-masthead img { display: block; width: clamp(40px, 5.2vw, 72px); height: auto; }
+.submission-masthead p { max-width: 49ch; margin: 0; color: var(--muted); font-size: 15px; text-wrap: pretty; }
 .advisor-submissions {
-  display:grid; gap:20px; container-type:inline-size;
+  display: grid;
+  gap: 20px;
+  width: min(100%, 1000px);
+  margin-inline: auto;
+  container-type: inline-size;
 }
 .submission-index { display:flex; flex-wrap:wrap; gap:8px; }
 .submission-index button {
@@ -1327,50 +1388,92 @@
 }
 .submission-index button:is(:hover,[aria-pressed="true"]) { background:var(--raised); border-color:var(--muted); }
 .submission-index .status-pill { font-size:12px; }
-.submission-folio { min-width:0; background:var(--paper); border:1px solid var(--line); border-radius:12px; }
+.submission-record { min-width: 0; }
 .submission-cover {
-  display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px 20px;
-  padding:clamp(18px,3.4cqi,34px); background:var(--raised); border-radius:11px 11px 0 0;
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+  margin-bottom: clamp(24px, 4cqi, 40px);
 }
-.submission-cover .register-person { min-width:0; align-items:center; gap:14px; }
-.submission-cover h2 { margin:0; font-size:clamp(20px,3.1cqi,29px); font-weight:550; letter-spacing:-.025em; overflow-wrap:anywhere; }
-.submission-cover .register-person small { display:block; color:var(--muted); font-size:13px; }
-.submission-cover .portal-person-avatar { width:50px; height:50px; flex-basis:50px; }
-.submission-body { display:grid; grid-template-columns:minmax(0,1fr) minmax(225px,30%); }
-.submission-body :is(p,h3,h4,dl) { margin:0; }
-.submission-body h3 { font-size:17px; font-weight:550; }
-.submission-courses, .submission-review { min-width:0; padding:clamp(18px,3.4cqi,34px); }
-.submission-review { background:var(--canvas); border-radius:0 0 11px; border-inline-start:1px solid var(--line); }
-.submission-review img { display:block; margin-block-end:9px; object-fit:contain; }
-.submission-review > p { margin-top:6px; color:var(--muted); line-height:1.55; }
-.submission-review .submission-facts { display:flex; flex-wrap:wrap; gap:10px 20px; margin-top:18px; }
-.submission-facts dt,.submission-course-heading > p { color:var(--muted); font-size:13px; }
-.submission-facts dd { margin:2px 0 0; font-size:14px; }
-.submission-review .graduation-response { margin-top:16px; border-block-start:1px solid var(--line); }
-/* The terms share one ledger, with course credits aligned down its trailing edge. */
-.submission-course-heading { display:grid; gap:5px; margin-bottom:20px; }
-.submission-course-heading h3 { font-size:clamp(21px,2.4cqi,26px); letter-spacing:-.025em; }
-.submission-term-list { border:1px solid var(--line); border-radius:9px; overflow:hidden; }
+.submission-cover .register-person { min-width: 0; gap: 14px; align-items: center; }
+.service-surface .submission-cover .register-person h2 {
+  margin: 0;
+  font: 550 clamp(20px, 2.45cqi, 25px)/1.2 Styrene, system-ui, sans-serif;
+  letter-spacing: -.032em;
+  overflow-wrap: anywhere;
+}
+.submission-cover .portal-person-avatar { width: 46px; height: 46px; flex-basis: 46px; }
+.submission-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px 18px;
+  padding-inline-start: 60px;
+}
+.submission-meta p { margin: 0; font-size: 14px; }
+.submission-meta time { color: var(--ink); font-weight: 550; }
+.submission-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(216px, 1fr);
+  align-items: start;
+  gap: clamp(28px, 7cqi, 86px);
+}
+.submission-body :is(p,h3,h4,dl) { margin: 0; }
+.submission-body h3 { font-size: clamp(18px, 2.8cqi, 25px); font-weight: 550; letter-spacing: -.025em; }
+.submission-courses, .submission-review { min-width: 0; }
+.submission-courses-heading { display: grid; gap: 7px; margin-bottom: 21px; }
+.submission-courses-heading p { color: var(--muted); font-size: 14px; }
+.submission-term-list { display: grid; gap: 20px; }
 .submission-term-list .graduation-term-heading {
-  padding:12px 16px; background:var(--raised); border:0; border-block-end:1px solid var(--line);
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  align-items: start;
+  gap: 3px 13px;
+  padding: 0;
+  border: 0;
 }
-.submission-term-list .graduation-term + .graduation-term { border-block-start:1px solid var(--line); }
-.submission-term-list .graduation-term-heading h4 { font-size:16px; font-weight:600; }
-.submission-term-list .graduation-term-heading span { font-size:12px; font-weight:400; }
-.submission-term-list .graduation-course-list { padding-inline:16px; }
-.submission-term-list .graduation-course-list li { padding-block:14px; column-gap:12px; }
-.submission-term-list .graduation-course-list strong { font-size:15px; line-height:1.4; }
-.submission-term-list .graduation-course-list .graduation-meta { margin-top:3px; }
-.submission-term-list .graduation-term > p, .submission-term-list > p { padding:12px 16px; }
-.submission-term-list .graduation-course-credits { color:var(--ink); text-align:end; font-size:13px; }
-.submission-courses > .graduation-exam-course {
-  margin-block-start:13px; padding:11px 14px; border:1px solid var(--line); border-radius:9px;
-  background:var(--canvas);
+.submission-term-list .graduation-term-heading::before {
+  content: "";
+  grid-row: span 2;
+  align-self: center;
+  width: 34px;
+  height: 34px;
+  background: var(--muted);
+  mask: url("/portal-studio/images/symbols/project-calendar.svg") center / contain no-repeat;
 }
-.submission-courses > .graduation-exam-course h4 { font-size:14px; font-weight:550; }
-@container (max-width:670px) {
-  .submission-body { grid-template-columns:minmax(0,1fr); }
-  .submission-review { border-inline-start:0; border-block-start:1px solid var(--line); border-radius:0 0 11px 11px; }
+.submission-term-list .graduation-term-heading h4 { font-size: clamp(20px, 2.8cqi, 27px); font-weight: 500; letter-spacing: -.025em; }
+.submission-term-list .graduation-term-heading span { font-size: 13px; }
+.submission-term-list .graduation-course-list { padding: 13px 0 0; }
+.submission-term-list .graduation-course-list li {
+  padding-block: 11px;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  gap: 13px;
+  border: 0;
+}
+.submission-term-list .graduation-course-list .offering-course-emblem { width: 38px; height: 38px; }
+.submission-term-list .graduation-course-list strong { font-size: 16px; line-height: 1.28; }
+.submission-term-list .graduation-course-list .graduation-meta { margin-top: 3px; font-size: 13px; }
+.submission-term-list .graduation-course-credits {
+  justify-self: end;
+  min-width: 54px;
+  color: var(--muted);
+  text-align: end;
+  font-size: 14px;
+}
+.submission-courses > .graduation-exam-course { margin-block-start: 22px; }
+.submission-review { padding: 7px 0 0; }
+.submission-review img {
+  display: block;
+  width: min(46%, 132px);
+  height: auto;
+  margin: 0 0 12px -5px;
+}
+.submission-review > p { margin-top: 7px; color: var(--ink); font-size: 15px; line-height: 1.55; max-width: 36ch; }
+.submission-review .submission-decision-date { margin-top: 15px; color: var(--ink); }
+.submission-review .graduation-response { margin-top: 17px; border: 0; }
+@container (max-width: 670px) {
+  .submission-body { grid-template-columns: minmax(0, 1fr); gap: 30px; }
+  .submission-review img { width: 86px; }
 }
 
 /* Academic terms: browse first, edit only when needed. */
@@ -1486,4 +1589,180 @@
   .academic-services-embedded .terms-manager .terms-table td:nth-child(4) { grid-area:status; justify-self:start; }
   .academic-services-embedded .terms-manager .terms-table td:nth-child(5) { grid-area:actions; justify-self:end; }
   .academic-services-embedded .terms-table td[data-label]::before { content:attr(data-label); display:block; color:var(--muted); font-size:11px; margin-bottom:4px; }
+}
+
+.academic-services-embedded .record-dossier-dialog .modal-card.wide-modal { width: min(850px, 100%); }
+.record-dossier { display: grid; gap: 22px; min-width: 0; }
+.record-dossier-intro { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.record-dossier-intro :is(.portal-person-avatar, .offering-course-emblem) { width: 51px; height: 51px; flex: 0 0 51px; }
+.record-dossier-intro h3 { margin: 0; color: var(--ink); font: 550 25px/1.2 Styrene, system-ui, sans-serif; letter-spacing: -.03em; }
+.record-dossier-intro p { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
+.record-dossier-intro .status-pill { margin-inline-start: auto; }
+.record-dossier-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; }
+.record-dossier-grid > section, .record-dossier-workflow {
+  min-width: 0;
+  padding: clamp(13px, 2vw, 18px);
+  background: var(--raised);
+  border-radius: 9px;
+}
+.record-dossier :is(h4, section > h3) { margin: 0 0 12px; color: var(--ink); font: 550 15px/1.4 Styrene, system-ui, sans-serif; }
+.record-dossier-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; margin: 0; }
+.record-dossier-facts dt, .course-dossier-hours dt { color: var(--muted); font-size: 13px; line-height: 1.4; }
+.record-dossier-facts dd, .course-dossier-hours dd { margin: 3px 0 0; font-size: 15px; line-height: 1.45; overflow-wrap: anywhere; color: var(--ink); }
+.record-dossier-facts a { color: inherit; text-underline-offset: 2px; }
+.record-dossier-facts > div:has(a) { grid-column: 1 / -1; }
+.record-dossier-action { display: flex; justify-content: end; margin-block-start: 12px; }
+.record-dossier-activity { margin-block-start: 22px; }
+.course-dossier-hours { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0; }
+.course-dossier-hours dd { font-size: 22px; font-variant-numeric: tabular-nums; }
+.course-dossier-prerequisites p { margin: 0; color: var(--muted); }
+.service-surface[data-service="group-assignments"] .academic-services-embedded .group-unassign-dialog > .modal-card { width: min(560px, 100%); }
+.group-unassign-student { display: flex; flex-wrap: wrap; gap: 10px 20px; align-items: center; justify-content: space-between; }
+.group-unassign-copy { margin: 15px 0 16px; color: var(--muted); line-height: 1.55; }
+.schedule-preview-empty { display: grid; justify-items: center; gap: 7px; padding: 14px 12px 30px; text-align: center; }
+.schedule-preview-empty img { object-fit: contain; }
+.schedule-preview-empty h3 { color: var(--ink); margin: 0; font-size: 19px; }
+.schedule-preview-empty p { color: var(--muted); margin: 0; }
+.academic-services-embedded .records-blank-tab img { display: block; object-fit: contain; height: auto; max-width: 100%; }
+@media (max-width: 640px) {
+  .record-dossier-grid { grid-template-columns: 1fr; }
+}
+
+.admin-advising-record { display: grid; gap: 22px; margin-block-start: 28px; scroll-margin-block-start: 70px; }
+.admin-advising-record > header { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: baseline; justify-content: space-between; }
+.admin-advising-record > header h2 { margin: 0; font-size: 22px; }
+.advising-load-policy summary { width: fit-content; padding-block: 4px; cursor: pointer; color: var(--ink); }
+.advising-load-policy p { margin: 6px 0 0; }
+
+.academic-services-embedded .record-dossier-dialog .record-dossier-intro > .portal-person-avatar {
+  flex: 0 0 56px; inline-size: 56px; block-size: 56px; aspect-ratio: 1; font-size: 17px;
+}
+.record-dossier-grid { gap: clamp(16px, 4vw, 40px); }
+.record-dossier-grid > section, .record-dossier-workflow { padding: 4px 0; background: transparent; }
+.record-dossier-grid > section + section { border-inline-start: 1px solid var(--line); padding-inline-start: 21px; }
+.record-dossier-workflow { border-block-start: 1px solid var(--line); padding-block-start: 16px; }
+.record-dossier-facts { row-gap: 14px; }
+.course-dossier-prerequisites { padding-block-start: 14px; border-block-start: 1px solid var(--line); }
+.course-dossier-prerequisites h3 small { margin-inline-start: 7px; color: var(--muted); }
+.course-dossier-prerequisites .prerequisite-list { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 6px 16px; }
+.course-dossier-no-prerequisites .status-pill { gap: 8px; }
+.course-dossier-prerequisites .prerequisite-list li { padding: 4px 0; }
+.course-dossier-prerequisites .prerequisite-list strong { font-size: 14px; }
+.academic-services-embedded .catalogue-major-list li { gap: 8px; }
+.major-chip-remove { display: inline-grid; place-items: center; flex: none; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 50%; color: var(--ink); background: transparent; cursor: pointer; }
+.major-chip-remove:hover { background: color-mix(in srgb, var(--ink) 11%, transparent); }
+.major-chip-remove:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
+.academic-services-embedded .catalogue-editor .prerequisite-options { max-height: 310px; border-block-end: 0; }
+.academic-services-embedded .catalogue-editor .prerequisite-options label { padding: 9px 6px; border-bottom: 1px solid var(--line); cursor: pointer; }
+.catalogue-editor .prerequisite-options .offering-course-emblem { width: 33px; height: 33px; }
+.catalogue-editor .prerequisite-options :is(strong,small) { display: block; }
+.catalogue-editor .prerequisite-options strong { font-weight: 550; }
+
+.academic-services-embedded .term-calendar { min-width: 0; width: 100%; margin: 0; }
+.academic-services-embedded .term-calendar-paper {
+  padding: 15px; background: var(--paper); color: var(--ink); border: 1px solid var(--line); border-radius: 9px; box-shadow: none;
+}
+.academic-services-embedded .term-calendar-month h3 { color: var(--ink); font-size: 16px; }
+.academic-services-embedded .term-calendar-month > div { display: flex; gap: 5px; }
+.academic-services-embedded .term-calendar-month button { color: var(--ink); border: 1px solid var(--line); border-radius: 6px; width: 30px; height: 31px; padding: 0; }
+.academic-services-embedded .term-calendar-grid { gap: 3px; }
+.academic-services-embedded .term-calendar-grid small { color: var(--muted); }
+.academic-services-embedded .term-calendar-grid span { max-width: 100%; }
+.academic-services-embedded .term-calendar-grid .term-date-mark { background: #c4d6c6; color: #30433a; border: 0; border-radius: 7px; font-weight: 650; }
+.term-calendar-events { margin-block-start: 14px; }
+.term-calendar-events h4 { margin: 0 0 8px; font-size: 14px; }
+.term-calendar-events :is(ul,p) { margin: 0; padding: 0; color: var(--muted); font-size: 13px; }
+.term-calendar-events li { display: flex; gap: 9px; align-items: center; padding: 4px 0; }
+.term-calendar-events time { display: inline-grid; place-items: center; min-width: 25px; height: 24px; border-radius: 5px; background: #c4d6c6; color: #30433a; font-variant-numeric: tabular-nums; }
+.academic-services-embedded .term-reading-dialog .modal-card.wide-modal { width: min(898px, 100%); }
+.academic-services-embedded .terms-detail-layout { grid-template-columns: minmax(0, 1fr) minmax(230px, .9fr); gap: 27px; }
+.terms-detail-summary > header { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 12px; align-items: center; }
+.terms-detail-summary > header h3 { margin: 0; font-size: 16px; }
+.academic-services-embedded .terms-detail-dates > div { display: grid; grid-template-columns: minmax(90px,.9fr) 1fr; gap: 12px; align-items: baseline; }
+.academic-services-embedded .terms-detail-dates dt { margin: 0; font-size: 13px; }
+.academic-services-embedded .terms-toolbar { background: transparent; }
+.academic-services-embedded .terms-table .term-name .term-calendar-mark { width: 31px; height: 34px; font-size: 15px; }
+.academic-services-embedded .terms-manager .terms-table :is(th,td) { overflow-wrap: anywhere; }
+.offering-workspace .offering-register :is(th,td) { padding-inline: clamp(9px, 1.35vw, 18px); vertical-align: middle; }
+.offering-workspace .offering-register tbody td:nth-child(2), .offering-workspace .offering-register tbody td:nth-child(3) { font-variant-numeric: tabular-nums; }
+.offering-workspace .offering-register table { min-width: 750px; }
+.offering-workspace .offering-register .table-actions {
+  display: grid; grid-template-columns: auto minmax(82px, auto) auto; justify-content: end; align-items: center; gap: 7px;
+}
+.offering-workspace .offering-register th:last-child { text-align: end; }
+.offering-workspace .offering-register .table-actions > button { min-height: 34px; white-space: nowrap; padding-inline: 9px; }
+.offering-workspace .offering-register .table-actions :is(.text-button,.paper-toss-button) { border: 1px solid var(--line); background: transparent; color: var(--ink); }
+.offering-workspace .offering-register .table-actions :is(.text-button,.paper-toss-button):hover { background: var(--raised); }
+.offering-create-form > .form-grid { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, .75fr); align-items: start; }
+.offering-create-form > .field { width: 100%; }
+.offering-confirmation > .modal-card { width: min(100%, 550px); padding: clamp(17px, 3vw, 29px); }
+.offering-confirmation-context, .offering-copy-instructions { display: flex; align-items: center; gap: 13px; }
+.offering-confirmation-context strong { font-size: 17px; }
+.offering-confirmation-context small, .offering-meeting-summary small { display: block; margin-top: 3px; color: var(--muted); font-size: 13px; }
+.offering-confirmation-copy { color: var(--muted); line-height: 1.6; margin: 14px 0 18px; }
+.offering-copy-instructions { align-items: start; margin-bottom: 16px; }
+.offering-copy-instructions img { flex: none; align-self: center; object-fit: contain; }
+.offering-copy-instructions p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.6; }
+.offering-copy-modal > .modal-card { width: min(100%, 660px); }
+.offering-copy-dialog .form-footer { margin-block-start: 4px; }
+.offering-meeting { padding: 13px 0; border-block-start: 1px solid var(--line); }
+.offering-meeting-summary { display: flex; gap: 10px; align-items: center; justify-content: space-between; }
+.offering-meeting-summary strong { font-weight: 550; }
+.offering-meeting details > summary { margin-top: 7px; color: var(--muted); width: fit-content; cursor: pointer; }
+.offering-meeting details[open] > summary { color: var(--ink); }
+.offering-meeting-summary .paper-toss-button { white-space: nowrap; color: var(--ink); background: transparent; border: 1px solid var(--line); }
+
+.records-blank-tab .records-empty-art {
+  display: block; width: clamp(108px, 18vw, 155px); height: auto; aspect-ratio: 88 / 76; flex: none; object-fit: contain;
+}
+@media (max-width: 700px) {
+  .offering-create-form > .form-grid, .academic-services-embedded .terms-detail-layout { grid-template-columns: minmax(0, 1fr); }
+  .record-dossier-grid > section + section { padding-inline-start: 0; border: 0; }
+  .course-dossier-prerequisites .prerequisite-list { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Academic Records wallet. Each transaction keeps its own date and references. */
+.records-wallet { display: grid; gap: 22px; min-width: 0; container-type: inline-size; }
+.records-wallet-balance {
+  padding: 15px 20px 17px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: color-mix(in srgb, #a7c3bc 12%, var(--paper));
+}
+.academic-services-embedded .records-wallet-balance h2 { margin: 0; color: var(--muted); font-size: 13px; }
+.records-wallet-balance p { margin: 3px 0 0; font-size: clamp(25px, 5vw, 35px); line-height: 1.25; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+.records-wallet-balance small { margin-inline-start: 2px; color: var(--muted); font-size: 13px; font-weight: 500; letter-spacing: normal; }
+.records-wallet-history { display: grid; gap: 10px; min-width: 0; }
+.records-wallet-history h2 { margin: 0; }
+.records-wallet-list { margin: 0; padding: 0; list-style: none; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); }
+.records-wallet-entry {
+  display: grid;
+  grid-template-areas: "name date status amount" "refs refs refs amount";
+  grid-template-columns: minmax(0, 1fr) minmax(86px, 11%) minmax(110px, 14%) minmax(156px, 23%);
+  align-items: center;
+  gap: 5px 18px;
+  min-width: 0;
+  padding: 12px 16px;
+}
+.records-wallet-entry + .records-wallet-entry { border-top: 1px solid var(--line); }
+.records-wallet-entry h3 { grid-area: name; margin: 0; font-size: 15px; font-weight: 500; overflow-wrap: anywhere; }
+.records-wallet-date { grid-area: date; color: var(--muted); font-size: 13px; white-space: nowrap; }
+.records-wallet-status { grid-area: status; justify-self: start; }
+.records-wallet-amount { grid-area: amount; align-self: start; text-align: right; font-variant-numeric: tabular-nums; }
+.records-wallet-amount > strong { display: block; color: var(--ink); font-size: 15px; font-weight: 550; }
+.records-wallet-amount > strong.is-credit { color: var(--success-ink); }
+.records-wallet-amount small, .records-wallet-amount > span { color: var(--muted); font-size: 12px; font-weight: 400; }
+.records-wallet-amount > span strong { color: var(--ink); font-weight: 500; white-space: nowrap; }
+.records-wallet-references { grid-area: refs; display: flex; flex-wrap: wrap; gap: 1px 14px; margin: 0; color: var(--muted); font-size: 12px; }
+.records-wallet-references > div { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 5px; min-width: 0; }
+.records-wallet-references dd { min-width: 0; margin: 0; color: var(--ink); overflow-wrap: anywhere; }
+@container (max-width: 570px) {
+  .records-wallet-entry {
+    grid-template-areas: "name amount" "date status" "refs refs";
+    grid-template-columns: minmax(0, 1fr) minmax(100px, auto);
+    padding: 11px 13px;
+  }
+  .records-wallet-status { justify-self: end; }
+  .records-wallet-references { padding-top: 4px; }
+  .records-wallet-references > div { flex-basis: 100%; }
 }

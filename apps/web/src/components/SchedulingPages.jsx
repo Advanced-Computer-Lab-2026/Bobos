@@ -159,12 +159,15 @@ export function GroupAssignmentsPage({ token, canAssign = false, notify }) {
         </RegisterRow>)}
       </StudentRegister> : <Empty title="No students match" text="Adjust the search or filters and try again." />}
     </section>
-    {unassignTarget && <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && !busy && setUnassignTarget(null)}><section className="modal-card narrow-modal" role="dialog" aria-modal="true" aria-labelledby="unassign-heading">
-      <div className="modal-heading"><div><p className="eyebrow">REMOVE GROUP ASSIGNMENT</p><h2 id="unassign-heading">Unassign this student?</h2></div><button className="icon-button" type="button" aria-label="Close" disabled={busy} onClick={() => setUnassignTarget(null)}>×</button></div>
-      <div className="confirmation-content"><span className="confirmation-icon" aria-hidden="true">!</span><div><p>Remove <strong>{unassignTarget.fullName}</strong> from <strong>Group {unassignTarget.assignment.studyGroup}</strong>?</p><p className="helper-text">{unassignTarget.studentId} · {unassignTarget.major} · Semester {unassignTarget.currentSemester}</p><p className="helper-text">The student will become unassigned for this academic term.</p></div></div>
+    {unassignTarget && <Modal title="Unassign schedule group?" className="group-unassign-dialog" busy={busy} onClose={() => setUnassignTarget(null)}>
+      <div className="group-unassign-student">
+        <StudentIdentity name={unassignTarget.fullName} id={unassignTarget.studentId} />
+        <strong>Group {unassignTarget.assignment.studyGroup}</strong>
+      </div>
+      <p className="group-unassign-copy">The student will have no assigned group for {termLabel(terms.find(term => term.code === termId))}. You can assign a new group from the roster.</p>
       {unassignError && <Feedback tone="error">{unassignError}</Feedback>}
-      <div className="form-footer"><button type="button" className="outline-button" disabled={busy} onClick={() => setUnassignTarget(null)}>Cancel</button><PaperTossButton disabled={busy} tossing={busy} onClick={unassign}>{busy ? "Removing…" : "Unassign student"}</PaperTossButton></div>
-    </section></div>}
+      <div className="form-footer"><button type="button" className="outline-button" disabled={busy} onClick={() => setUnassignTarget(null)}>Cancel</button><button type="button" className="outline-button danger-button" disabled={busy} onClick={unassign}>{busy ? "Removing…" : "Unassign student"}</button></div>
+    </Modal>}
     {target && <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setTarget(null)}><section className="modal-card" role="dialog" aria-modal="true" aria-label="Assign schedule group">
       <div className="modal-heading"><div><p className="eyebrow">{target.studentId} · {target.major} semester {target.currentSemester}</p><h2>{target.assignment ? "Reassign schedule group" : "Assign schedule group"}</h2></div><button className="icon-button" type="button" aria-label="Close" onClick={() => setTarget(null)}>×</button></div>
       <form className="form-stack" onSubmit={submitAssignment}><p className="assignment-target"><PortalAvatar name={target.fullName}/><strong>{target.fullName}</strong></p>{!targetGroups.length && <p>No published group matches this student’s major and semester.</p>}<label className="field"><span>Published group</span><select required value={pickedGroup} onChange={(event) => setPickedGroup(event.target.value)}><option value="">Select a group</option>{targetGroups.map((group) => <option key={group._id} value={group.studyGroup} disabled={Boolean(group.issue)}>{group.studyGroup} · {group.courseCount} courses{group.issue ? " · Needs template fix" : ""}</option>)}</select></label>
@@ -182,6 +185,9 @@ const swapStatuses = {
   withdrawn: { label: "Withdrawn", tone: "muted" },
   expired: { label: "Expired", tone: "warning" },
 };
+const swapArt = "/portal-studio/images/schedule-exchange.svg";
+const swapDate = new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Cairo", dateStyle: "medium" });
+const swapTime = new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Cairo", timeStyle: "short" });
 
 function swapGroup(group) {
   return group == null ? "—" : `Group ${group}`;
@@ -191,19 +197,30 @@ function swapGroups(groups) {
   return groups?.length ? groups.map(swapGroup).join(", ") : "—";
 }
 
-function SwapTimetable({ week, daysOff, title = "Complete weekly schedule", compact = true }) {
+function SwapCairoTime({ value, showZone = false }) {
+  const date = new Date(value);
+  return <time dateTime={value}><span>{swapDate.format(date)}</span><small>{swapTime.format(date)}{showZone && " · Cairo time"}</small></time>;
+}
+
+function SwapTimetable({ week, daysOff, title, compact = true }) {
   const [expanded, setExpanded] = useState(false);
   const id = useId();
   return <div className="swap-timetable">
     <button className="swap-timetable-toggle" data-no-control-ink type="button" aria-expanded={expanded} aria-controls={id} onClick={() => setExpanded(value => !value)}>
-      <span>{title}</span><span className="swap-timetable-toggle-mark" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M4 10h12" />{!expanded && <path d="M10 4v12" />}</svg></span>
+      <span>{title}</span>
+      <span className="swap-timetable-toggle-mark" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M4 10h12" />{!expanded && <path d="M10 4v12" />}</svg></span>
     </button>
-    <div id={id} hidden={!expanded}><WeeklySchedule week={week} daysOff={daysOff} compact={compact} /></div>
+    <div className="swap-timetable-preview" id={id} hidden={!expanded}>
+      {expanded && <WeeklySchedule week={week} daysOff={daysOff} compact={compact} />}
+    </div>
   </div>;
 }
 
-function SwapEmpty({ title, children, action, onAction }) {
-  return <div className="swap-empty"><img src="/portal-studio/images/schedule-exchange.svg" alt="" /><div><h3>{title}</h3><p>{children}</p>{action && <button className="outline-button" type="button" onClick={onAction}>{action}</button>}</div></div>;
+function SwapEmpty({ title, children, action }) {
+  return <div className="swap-empty">
+    <img src={swapArt} width="88" height="75" alt="" />
+    <div><h3>{title}</h3><p>{children}</p>{action}</div>
+  </div>;
 }
 
 export function SwapManagement({ token }) {
@@ -216,14 +233,23 @@ export function SwapManagement({ token }) {
   const [confirm, setConfirm] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
+  const [notice, setNotice] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadErrors, setLoadErrors] = useState({});
+  const currentGroup = data?.currentGroup;
+  const destinationGroups = data?.eligibleGroups ?? [];
   const deadline = data?.term?.swapDeadline;
   const deadlinePassed = !deadline || new Date(deadline).getTime() <= Date.now();
   const active = mine.find(request => request.role !== "accepter" && request.status === "open");
   const confirmingWithdrawal = confirm?.action === "withdraw";
-  const submissionDisabled = busy || loading || Boolean(active) || deadlinePassed;
+  const confirmationAvailable = confirm && (confirmingWithdrawal
+    ? loadErrors.history || active?._id === confirm.request._id
+    : !deadlinePassed && (loadErrors.open || open.some(request => request._id === confirm.request._id)));
+  const canSelect = !active && !deadlinePassed;
+  const submissionDisabled = busy || loading || !canSelect;
+  const scheduleUrl = new URL(window.location.href);
+  scheduleUrl.searchParams.set("page", "my-schedule");
+  const scheduleHref = scheduleUrl.pathname + scheduleUrl.search;
 
   const refresh = useCallback(async (signal) => {
     setLoading(true);
@@ -256,9 +282,9 @@ export function SwapManagement({ token }) {
     if (busy || loading) return;
     setBusy(true);
     setError("");
-    setNotice("");
+    setNotice(null);
     const action = confirm?.action || "submit";
-    const fromGroup = data?.currentGroup?.studyGroup;
+    const fromGroup = currentGroup?.studyGroup;
     const toGroup = confirm?.request?.currentGroup;
     const requestedGroups = [...(body?.desiredGroups || confirm?.request?.desiredGroups || [])];
     try {
@@ -266,19 +292,16 @@ export function SwapManagement({ token }) {
       setNotice(action === "complete"
         ? { action, title: "Your schedules have been swapped", fromGroup, toGroup,
           message: `You’re now in ${swapGroup(toGroup)}. The other student has moved to ${swapGroup(fromGroup)}.`,
-          detail: "All lecture, tutorial and lab assignments have been exchanged. Your registered courses are unchanged." }
+          detail: "You exchanged all lecture, tutorial and lab times. Your registered courses stay the same." }
         : action === "withdraw"
-          ? { action, title: "Swap request withdrawn", message: `Your request for ${swapGroups(requestedGroups)} is no longer open.`, detail: `You’re still in ${swapGroup(fromGroup)}. You can choose other groups and send a new request before the deadline.` }
-          : { action, title: "Your swap request has been sent", message: `You’ve requested ${swapGroups(requestedGroups)}.`, detail: `You’ll stay in ${swapGroup(fromGroup)} until an eligible student completes the exchange. Follow its status in My swap requests.` });
+          ? { action, title: "Swap request withdrawn", message: `Your request for ${swapGroups(requestedGroups)} is closed.`, detail: `You’re still in ${swapGroup(fromGroup)}. You can send another request before the swap deadline.` }
+          : { action, title: "Your swap request has been sent", message: `You’ve requested ${swapGroups(requestedGroups)}.`, detail: `You’ll stay in ${swapGroup(fromGroup)} until an eligible student completes the exchange.` });
       setSelected([]);
       setConfirm(null);
       await refresh();
     } catch (err) {
       setError(err.message);
-      if (err.status === 404 || err.status === 409) {
-        setConfirm(null);
-        await refresh();
-      }
+      if (err.status === 404 || err.status === 409) await refresh();
     } finally {
       setBusy(false);
     }
@@ -298,85 +321,99 @@ export function SwapManagement({ token }) {
     setError("");
   }
 
+  function goToHeading(ref) {
+    ref.current?.focus({ preventScroll: true });
+    ref.current?.scrollIntoView({ block: "start" });
+  }
+
   function submitRequest() {
     const query = data?.term?._id ? `?termId=${encodeURIComponent(data.term._id)}` : "";
     void perform(`/api/swaps/requests${query}`, { desiredGroups: selected });
   }
 
   return <div className="page-stack scheduling-page student-swap-page" aria-busy={loading}>
-    <div className="page-title-row">
-      <div className="swap-page-intro"><img src="/portal-studio/images/schedule-exchange.svg" alt="" /><div><h1>Eligible swap groups</h1><p className="page-description">Keep your courses. Find a better teaching week.</p></div></div>
-    </div>
-    {error && !confirm && <Feedback tone="error">{error}</Feedback>}
-    {notice && <Modal title={notice.title} className="swap-result-dialog" onClose={() => setNotice("")}>
-      <div className="swap-result-mark" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="13" /><path d="m10 16 4 4 8-9" /></svg><span>{notice.action === "complete" ? "Exchange complete" : notice.action === "withdraw" ? "Request closed" : "Request sent"}</span></div>
-      {notice.action === "complete" && <div className="swap-result-route" aria-label={`${swapGroup(notice.fromGroup)} to ${swapGroup(notice.toGroup)}`}><span><small>Previous group</small><strong>{swapGroup(notice.fromGroup)}</strong></span><img src="/portal-studio/images/schedule-exchange.svg" alt="" /><span><small>Your new group</small><strong>{swapGroup(notice.toGroup)}</strong></span></div>}
-      <div role="status" aria-live="polite"><p className="swap-exchange-copy">{notice.message}</p><p className="swap-exchange-note">{notice.detail}</p></div>
-      <div className="form-footer"><button className="outline-button" type="button" onClick={() => setNotice("")}>Done</button>
-        {notice.action === "complete" ? <a className="primary-button swap-result-link" href={(() => { const url = new URL(window.location.href); url.searchParams.set("page", "my-schedule"); return url.pathname + url.search; })()}>View my updated schedule</a>
-          : <button className="primary-button" type="button" onClick={() => { setNotice(""); historyRef.current?.scrollIntoView({ behavior: "instant", block: "start" }); }}>View my requests</button>}
-      </div>
-    </Modal>}
+    <header className="swap-page-intro">
+      <img src={swapArt} width="94" height="80" alt="" />
+      <div><h1>Eligible swap groups</h1><p>Exchange your whole timetable with another student and keep your registered courses.</p></div>
+    </header>
+
     {loading && !data && <Loading />}
     {!data && !loading && loadErrors.schedule && (loadErrors.schedule.status === 404
-      ? <section className="panel swap-unavailable"><img src="/portal-studio/images/schedule-exchange.svg" alt="" /><h2>Your schedule comes first</h2><p>Eligible groups will appear when your processed standard schedule is available. You can then compare complete teaching weeks and request an exchange.</p><p className="helper-text">{loadErrors.schedule.message}</p></section>
-      : <Feedback tone="error">{loadErrors.schedule.message}</Feedback>)}
+      ? <section className="swap-section" aria-labelledby="swap-schedule-unavailable">
+        <h2 id="swap-schedule-unavailable">Your schedule</h2>
+        <SwapEmpty title="Your schedule isn’t ready for swaps" action={<a className="outline-button swap-link" href={scheduleHref}>View my schedule</a>}>Eligible groups will appear after your standard schedule is processed.</SwapEmpty>
+      </section>
+      : <Feedback tone="error">Couldn’t load your swap groups. {loadErrors.schedule.message}</Feedback>)}
+
     {data && <>
-      <section className="panel swap-schedule-overview" aria-label="Your schedule and swap deadline">
-        {data.currentGroup && <div className="swap-current-week"><SwapTimetable title="Your current weekly schedule" week={data.currentGroup.week} daysOff={data.currentGroup.daysOff} compact={false} /></div>}
+      <section className="swap-schedule-overview" aria-label="Your schedule and swap deadline">
+        {currentGroup && <div className="swap-current-week"><SwapTimetable title="Your current weekly schedule" week={currentGroup.week} daysOff={currentGroup.daysOff} compact={false} /></div>}
         <div className="swap-context">
-          <h2 className="swap-context-group">{swapGroup(data.currentGroup?.studyGroup)}</h2>
-          <dl className="swap-context-facts"><div><dt>Major</dt><dd>{data.currentGroup?.major || "—"}</dd></div><div><dt>Semester</dt><dd>{data.currentGroup?.semester ?? "—"}</dd></div><div><dt>Credits</dt><dd>{data.currentGroup?.totalCreditHours ?? "—"}</dd></div></dl>
-          <div className="swap-context-deadline"><span>Swap deadline</span>{deadline ? <><time dateTime={deadline}>{new Date(deadline).toLocaleDateString("en-GB", { timeZone: "Africa/Cairo", dateStyle: "medium" })}</time><small>{new Date(deadline).toLocaleTimeString("en-GB", { timeZone: "Africa/Cairo", timeStyle: "short" })} · Cairo time</small></> : <strong>Not set</strong>}</div>
+          <div className="swap-context-group"><span>Current group</span><strong>{swapGroup(currentGroup?.studyGroup)}</strong></div>
+          <dl className="swap-context-facts">
+            <div><dt>Major</dt><dd>{currentGroup?.major || "—"}</dd></div>
+            <div><dt>Semester</dt><dd>{currentGroup?.semester ?? "—"}</dd></div>
+            <div><dt>Credits</dt><dd>{currentGroup?.totalCreditHours ?? "—"}</dd></div>
+          </dl>
+          <div className="swap-context-deadline"><span>Swap deadline</span>{deadline ? <SwapCairoTime value={deadline} showZone /> : <strong>Not set</strong>}</div>
         </div>
       </section>
-      <section className="panel" ref={destinationsRef}>
-        <div className="results-heading"><div><p className="eyebrow">Destination groups</p><h2>Request a whole schedule swap</h2></div></div>
-        <p className="page-description">Select one or more groups with exactly your registered courses. A student in a selected group can complete the exchange.</p>
-        {active && <Feedback tone="info">Your request for {swapGroups(active.desiredGroups)} is open{active.term?.code ? ` in ${termLabel(active.term)}` : ""}. Withdraw it before making a different request.</Feedback>}
-        {data.eligibleGroups?.length ? <div className="swap-group-grid">
-          {data.eligibleGroups.map(group => <section className={`swap-option ${selected.includes(group.studyGroup) ? "is-selected" : ""}`} key={group.templateId}>
-            <label className="swap-option-heading">
-              <input type="checkbox" checked={selected.includes(group.studyGroup)} disabled={submissionDisabled} onChange={() => toggle(group.studyGroup)} />
-              <span><strong>{swapGroup(group.studyGroup)}</strong><small>{group.courseCodes.length} courses · {group.totalCreditHours} credit hours · {group.minRemainingCapacity ?? 0} seats available</small></span>
-            </label>
-            <SwapTimetable title={`${swapGroup(group.studyGroup)} teaching week`} week={group.week} daysOff={group.daysOff} />
-          </section>)}
-        </div> : <SwapEmpty title="No matching groups yet">Eligible groups appear here when a published schedule has exactly your registered subjects.</SwapEmpty>}
-        {deadlinePassed && <Feedback tone="warning">{deadline ? "The swap deadline has passed." : "Swaps are unavailable until a deadline is set."}</Feedback>}
-        <div className="form-footer">
-          <span className="swap-selection-summary" role="status">{selected.length ? `${selected.length} ${selected.length === 1 ? "group" : "groups"} selected · ${swapGroups(selected)}` : "Choose one or more destination groups"}</span>
-          <button className="primary-button" type="button" aria-busy={busy && !confirm && !notice} disabled={submissionDisabled || !selected.length} onClick={submitRequest}>{busy && !confirm && !notice ? <><span className="swap-button-spinner" aria-hidden="true" />Sending request…</> : "Submit swap request"}</button>
-        </div>
+
+      <section className="swap-section" aria-labelledby="swap-destinations-heading">
+        <header className="swap-section-heading">
+          <h2 id="swap-destinations-heading" ref={destinationsRef} tabIndex={-1}>Destination groups</h2>
+          {destinationGroups.length > 0 && <span>{destinationGroups.length} matching {destinationGroups.length === 1 ? "group" : "groups"}</span>}
+        </header>
+        {destinationGroups.length > 0 && <p className="swap-section-description">A student in any group you select can accept your request.</p>}
+        {active && <div className="swap-request-notice">
+          <p>Your request for {swapGroups(active.desiredGroups)} is open{active.term?.code ? ` in ${active.term.code}` : ""}. Withdraw it before making a different request.</p>
+          <button className="outline-button" type="button" onClick={() => goToHeading(historyRef)}>View my request</button>
+        </div>}
+        {deadlinePassed && <Feedback tone="warning">{deadline ? "The swap deadline has passed." : "Swaps will open when a deadline is set."}</Feedback>}
+        {destinationGroups.length ? <div className="swap-register">
+          <ul className="swap-options">
+            {destinationGroups.map(group => {
+              const isSelected = selected.includes(group.studyGroup);
+              const seats = group.minRemainingCapacity;
+              return <li className={`swap-option${isSelected ? " is-selected" : ""}`} key={group.templateId}>
+                <label className="swap-option-heading">
+                  <input type="checkbox" aria-label={`Select ${swapGroup(group.studyGroup)}`} checked={isSelected} disabled={submissionDisabled} onChange={() => toggle(group.studyGroup)} />
+                  <span><strong>{swapGroup(group.studyGroup)}</strong><small>{group.courseCodes.length} {group.courseCodes.length === 1 ? "course" : "courses"} · {group.totalCreditHours} credits · {seats == null ? "Capacity unavailable" : `${seats} ${seats === 1 ? "seat" : "seats"} available`}</small></span>
+                </label>
+                <SwapTimetable title={`${swapGroup(group.studyGroup)} teaching week`} week={group.week} daysOff={group.daysOff} />
+              </li>;
+            })}
+          </ul>
+          {canSelect && <div className="swap-register-footer">
+            <p className="swap-selection-summary" role="status">{selected.length ? <><strong>{selected.length} {selected.length === 1 ? "group" : "groups"} selected</strong><span>{swapGroups(selected)}</span></> : "Select one or more groups"}</p>
+            <button className="primary-button" type="button" aria-busy={busy && !confirm && !notice} disabled={submissionDisabled || !selected.length} onClick={submitRequest}>{busy && !confirm && !notice ? <><span className="swap-button-spinner" aria-hidden="true" />Sending request…</> : "Submit swap request"}</button>
+          </div>}
+        </div> : <SwapEmpty title="No matching groups yet">Eligible groups appear here when a published timetable has exactly your registered courses.</SwapEmpty>}
+        {error && !confirm && <Feedback tone="error">{error}</Feedback>}
       </section>
-      <section className="panel">
-        <div className="results-heading"><div><p className="eyebrow">Student requests</p><h2>Open requests from other groups</h2></div></div>
-        {loading ? <Loading /> : loadErrors.open ? <Feedback tone="error">{loadErrors.open}</Feedback> : open.length ? (
-          <div className="swap-group-grid">
+
+      <section className="swap-section" aria-labelledby="swap-open-heading">
+        <header className="swap-section-heading">
+          <h2 id="swap-open-heading">Open requests from other groups</h2>
+          {open.length > 0 && <span>{open.length} {open.length === 1 ? "request" : "requests"}</span>}
+        </header>
+        {loadErrors.open ? <Feedback tone="error">Couldn’t load open requests. {loadErrors.open}</Feedback> : open.length ? (
+          <ul className="swap-register swap-options">
             {open.map(request => (
-              <section className="swap-option" key={request._id}>
-                <div className="results-heading">
-                  <div><p className="eyebrow">Anonymous student</p><h3>{swapGroup(request.currentGroup)}</h3></div>
-                  <span className="status-pill good">Open</span>
-                </div>
-                <p className="page-description">
-                  <strong>Desired groups</strong> · {swapGroups(request.desiredGroups)}
-                </p>
+              <li className="swap-option swap-open-option" key={request._id}>
+                <div className="swap-open-identity"><h3>{swapGroup(request.currentGroup)}</h3><small>Anonymous student · Requested {swapGroups(request.desiredGroups)}</small></div>
                 <SwapTimetable title={`${swapGroup(request.currentGroup)} teaching week`} week={request.week} daysOff={request.daysOff} />
-                <div className="form-footer">
-                  <button className="primary-button" type="button" disabled={busy || deadlinePassed} onClick={() => openConfirmation("complete", request)}>
-                    Swap with {swapGroup(request.currentGroup)}
-                  </button>
-                </div>
-              </section>
+                <button className="outline-button swap-open-action" type="button" disabled={busy || loading || deadlinePassed} onClick={() => openConfirmation("complete", request)}>Swap with {swapGroup(request.currentGroup)}</button>
+              </li>
             ))}
-          </div>
-        ) : <SwapEmpty title="No exchanges to join right now" action={active ? "View your open request" : data.eligibleGroups?.length ? "Explore destination groups" : undefined} onAction={() => active ? historyRef.current?.scrollIntoView({ behavior: "instant", block: "start" }) : destinationsRef.current?.scrollIntoView({ behavior: "instant", block: "start" })}>{active ? "Your own request is still open. A matching student can complete it before the swap deadline." : "When a student with the same subjects requests your group, their exchange will appear here. You can also start a request of your own."}</SwapEmpty>}
+          </ul>
+        ) : <SwapEmpty title="No exchanges to join right now" action={!deadlinePassed && !active && destinationGroups.length > 0 && <button className="outline-button" type="button" onClick={() => goToHeading(destinationsRef)}>Explore destination groups</button>}>{deadlinePassed ? "Open requests will appear here when swaps are available." : "A request appears here when a student with the same courses asks to move to your group."}</SwapEmpty>}
       </section>
     </>}
-    <section className="panel swap-history" ref={historyRef}>
-      <div className="results-heading"><h2 id="swap-history-heading">My swap requests</h2></div>
-      {loading ? <Loading /> : loadErrors.history ? <Feedback tone="error">{loadErrors.history}</Feedback> : mine.length ? (
+
+    <section className="swap-section swap-history" aria-labelledby="swap-history-heading">
+      <header className="swap-section-heading"><h2 id="swap-history-heading" ref={historyRef} tabIndex={-1}>My swap requests</h2></header>
+      {loading && !data && !mine.length ? <Loading /> : loadErrors.history ? <Feedback tone="error">Couldn’t load your swap requests. {loadErrors.history}</Feedback> : mine.length ? (
         <div className="table-scroll swap-history-scroll" role="region" aria-label="Swap request history" tabIndex={0}>
           <table className="swap-history-table" aria-labelledby="swap-history-heading">
             <thead><tr>{["Term & activity", "Group change", "Requested groups", "Status", "Last update · Cairo", "Action"].map(label => <th scope="col" key={label}>{label}</th>)}</tr></thead>
@@ -385,36 +422,49 @@ export function SwapManagement({ token }) {
               const status = swapStatuses[request.status];
               const lastActivity = request.completedAt || request.withdrawnAt || request.createdAt;
               return <tr key={request._id}>
-                <td><strong>{termLabel(request.term)}</strong><small>{isRequester ? "Request sent" : "Exchange accepted"}</small></td>
+                <th scope="row"><strong>{request.term?.code || termLabel(request.term)}</strong><small>{isRequester ? "Request sent" : "Exchange accepted"}</small></th>
                 <td><div className="swap-history-movement"><span>{swapGroup(request.fromGroup ?? (isRequester ? request.currentGroup : null))}</span>{request.toGroup ? <><span aria-label="to">→</span><strong>{swapGroup(request.toGroup)}</strong></> : <small>No group change</small>}</div></td>
-                <td><div className="swap-history-groups">{request.desiredGroups?.map(group => <span key={group}>{swapGroup(group)}</span>)}</div></td>
+                <td><div className="swap-history-groups">{request.desiredGroups?.length ? request.desiredGroups.map(group => <span key={group}>{swapGroup(group)}</span>) : "—"}</div></td>
                 <td><span className={`status-pill ${status?.tone || "muted"}`}>{status?.label || "—"}</span></td>
-                <td>{lastActivity ? <time dateTime={lastActivity}>{new Date(lastActivity).toLocaleDateString("en-GB", { timeZone: "Africa/Cairo", dateStyle: "medium" })}<small>{new Date(lastActivity).toLocaleTimeString("en-GB", { timeZone: "Africa/Cairo", timeStyle: "short" })}</small></time> : "—"}</td>
-                <td>{isRequester && request.status === "open" ? <button className="outline-button small-button" type="button" disabled={busy} onClick={() => openConfirmation("withdraw", request)}>Withdraw</button> : <span className="swap-history-closed">Closed</span>}</td>
+                <td>{lastActivity ? <SwapCairoTime value={lastActivity} /> : "—"}</td>
+                <td>{isRequester && request.status === "open" ? <button className="outline-button small-button" type="button" disabled={busy || loading} onClick={() => openConfirmation("withdraw", request)}>Withdraw</button> : <span className="swap-history-closed">Closed</span>}</td>
               </tr>;
             })}</tbody>
           </table>
         </div>
-      ) : <SwapEmpty title="Your exchanges start here">Requests you send and swaps you complete will appear here, with their group details and latest status.</SwapEmpty>}
+      ) : <SwapEmpty title="No swap requests yet">You’ll find requests you send and exchanges you complete here.</SwapEmpty>}
     </section>
-    {confirm && <Modal title={confirmingWithdrawal ? "Withdraw swap request?" : "Swap your schedules?"} className="swap-confirm-dialog" onClose={() => !busy && closeConfirmation()}>
-        {confirmingWithdrawal ? <p className="page-description">Withdraw your request for {swapGroups(confirm.request.desiredGroups)}?</p> : <>
-          <div className="swap-exchange-visual" aria-label={`Your schedule changes from ${swapGroup(data?.currentGroup?.studyGroup)} to ${swapGroup(confirm.request.currentGroup)}`}>
-            <div className="swap-exchange-group"><span>Your current group</span><strong>{swapGroup(data?.currentGroup?.studyGroup)}</strong><small>The other student moves here</small></div>
-            <img src="/portal-studio/images/schedule-exchange.svg" alt="" />
-            <div className="swap-exchange-group swap-exchange-destination"><span>Your new group</span><strong>{swapGroup(confirm.request.currentGroup)}</strong><small>You move here</small></div>
-          </div>
-          <p className="swap-exchange-copy">You’ll take the {swapGroup(confirm.request.currentGroup)} timetable. The other student will take your {swapGroup(data?.currentGroup?.studyGroup)} timetable.</p>
-          <p className="swap-exchange-note">All lecture, tutorial and lab times swap together. Your registered courses stay the same.</p>
-        </>}
-        {error && <Feedback tone="error">{error}</Feedback>}
-        {busy && <p className="swap-action-progress" role="status"><span className="swap-button-spinner" aria-hidden="true" />{confirmingWithdrawal ? "Withdrawing your request…" : "Exchanging both schedules. Please wait…"}</p>}
-        <div className="form-footer">
-          <button className="outline-button" type="button" disabled={busy} onClick={closeConfirmation} autoFocus>Cancel</button>
-          <button className={confirmingWithdrawal ? "primary-button destructive-action" : "primary-button"} type="button" disabled={busy} aria-busy={busy} onClick={() => perform(`/api/swaps/requests/${confirm.request._id}/${confirm.action}`)}>
-            {confirmingWithdrawal ? (busy ? "Withdrawing…" : "Confirm withdrawal") : (busy ? "Swapping schedules…" : `Confirm swap to ${swapGroup(confirm.request.currentGroup)}`)}
-          </button>
+
+    {confirm && <Modal title={confirmingWithdrawal ? "Withdraw swap request?" : `Swap to ${swapGroup(confirm.request.currentGroup)}?`} className="swap-confirm-dialog" busy={busy} onClose={closeConfirmation}>
+      {confirmingWithdrawal ? <p className="swap-exchange-copy">Close your request for {swapGroups(confirm.request.desiredGroups)}. You’ll stay in {swapGroup(confirm.request.currentGroup)}.</p> : <>
+        <div className="swap-exchange-visual">
+          <div className="swap-exchange-group"><span>Your current group</span><strong>{swapGroup(currentGroup?.studyGroup)}</strong><small>The other student moves here</small></div>
+          <img src={swapArt} width="76" height="65" alt="" />
+          <div className="swap-exchange-group swap-exchange-destination"><span>Your new group</span><strong>{swapGroup(confirm.request.currentGroup)}</strong><small>You move here</small></div>
         </div>
+        <p className="swap-exchange-copy">You’ll exchange all lecture, tutorial and lab times. Your registered courses stay the same.</p>
+      </>}
+      {error && <Feedback tone="error">{error}</Feedback>}
+      {busy && <p className="swap-action-progress" role="status"><span className="swap-button-spinner" aria-hidden="true" />{confirmingWithdrawal ? "Withdrawing your request…" : "Exchanging both schedules…"}</p>}
+      <div className="form-footer">
+        <button className="outline-button" type="button" disabled={busy} onClick={closeConfirmation} autoFocus>{confirmationAvailable || busy ? "Cancel" : "Close"}</button>
+        {(confirmationAvailable || busy) && <button className={confirmingWithdrawal ? "primary-button destructive-action" : "primary-button"} type="button" disabled={busy || loading} aria-busy={busy} onClick={() => perform(`/api/swaps/requests/${confirm.request._id}/${confirm.action}`)}>
+          {confirmingWithdrawal ? (busy ? "Withdrawing…" : "Confirm withdrawal") : (busy ? "Swapping schedules…" : `Confirm swap to ${swapGroup(confirm.request.currentGroup)}`)}
+        </button>}
+      </div>
+    </Modal>}
+
+    {notice && <Modal title={notice.title} className="swap-result-dialog" onClose={() => setNotice(null)}>
+      {notice.action === "complete" && <div className="swap-exchange-visual">
+        <div className="swap-exchange-group"><span>Previous group</span><strong>{swapGroup(notice.fromGroup)}</strong></div>
+        <img src={swapArt} width="76" height="65" alt="" />
+        <div className="swap-exchange-group swap-exchange-destination"><span>Your new group</span><strong>{swapGroup(notice.toGroup)}</strong></div>
+      </div>}
+      <p className="swap-exchange-copy">{notice.message}</p><p className="swap-exchange-note">{notice.detail}</p>
+      <div className="form-footer"><button className="outline-button" type="button" onClick={() => setNotice(null)}>Done</button>
+        {notice.action === "complete" ? <a className="primary-button swap-link" href={scheduleHref}>View my updated schedule</a>
+          : <button className="primary-button" type="button" onClick={() => { setNotice(null); requestAnimationFrame(() => goToHeading(historyRef)); }}>View my requests</button>}
+      </div>
     </Modal>}
   </div>;
 }
@@ -565,13 +615,13 @@ export function StaffSchedulesPage({ token, role, notify, initialStudent = null,
     {overviewStudent && overview && <div ref={overviewRef} aria-label={`${overviewStudent.fullName} advising overview`}><AdminAdvisingOverview overview={overview} /></div>}
     {selected && <Modal title={`${schedule?.student?.fullName || selected.fullName}’s schedule`}
       description={[selected.studentId, schedule?.term && termLabel(schedule.term)].filter(Boolean).join(" · ")}
-      className="staff-schedule-dialog" onClose={() => setSelected(null)} wide>
+      className="staff-schedule-dialog" onClose={() => setSelected(null)} wide={Boolean(Object.values(schedule?.schedule?.week || {}).some(slots => slots.length))}>
       {scheduleError ? <Feedback tone="error">{scheduleError}</Feedback> : !schedule ? <Loading /> : schedule.schedule ? <>
         <p className={`status-pill schedule-dialog-status ${scheduleTone(schedule.schedule.status)}`}>{prettyStatus(schedule.schedule.status)}</p>
         {Object.values(schedule.schedule.week || {}).some(slots => slots.length) ?
           <WeeklySchedule week={schedule.schedule.week} daysOff={schedule.schedule.daysOff} /> :
-          <Feedback tone="info">There are no classes in this schedule yet.</Feedback>}
-      </> : <Feedback tone="info">There is no schedule for this term.</Feedback>}
+          <SchedulePreviewEmpty title="No classes scheduled yet" text="Classes will appear here once they are added to this draft." />}
+      </> : <SchedulePreviewEmpty title="No schedule for this term" text="A timetable will appear once a schedule is available." />}
     </Modal>}
   </div>;
 }
@@ -815,13 +865,13 @@ function AdvisingDraftEditor({ token, role, student, termId, notify, onBack, onS
       <section hidden={draftView !== "timetable"} className="panel draft-timetable" id="draft-timetable"><div className="panel-heading"><div><h2>Selected timetable</h2></div><span className="result-count">{selectedOfferings.length} subjects</span></div>{selectedOfferings.length ? <WeeklySchedule week={draftWeek} compact /> : <p className="helper-text">Selected class groups will appear here.</p>}</section>
       {role !== "administrator" && <div hidden={draftView !== "courses"} className="draft-other-courses"><EligibleCoursesPanel token={token} student={student} termQuery={termQuery} editable={editable} notify={notify} version={data.schedule?.version ?? 0} onChanged={async (status) => { onSaved?.(status); await load(); }} /></div>}
       <form hidden={draftView !== "courses"} className="panel draft-course-editor" id="draft-courses" tabIndex={-1} onSubmit={save}>
-        {data.offerings.length > 0 && <div className="results-heading draft-course-toolbar">
-          <h2>Courses and groups</h2>
-          <span className="result-count">{selectedOfferings.length} selected · {data.offerings.length} published</span>
-        </div>}
+        <div className="results-heading draft-course-toolbar">
+          <h2>{data.offerings.length ? "Courses and groups" : "Course offerings"}</h2>
+          {data.offerings.length > 0 && <span className="result-count">{selectedOfferings.length} selected · {data.offerings.length} published</span>}
+        </div>
         {data.offerings.length > 0 && creditPolicy && <section className={`draft-allowance${overCreditLimit ? " is-over-limit" : ""}`} aria-labelledby="draft-allowance-title">
           <div className="draft-allowance-main">
-            <div className="draft-allowance-readout"><h3 id="draft-allowance-title">Credit allowance</h3><span><strong>{credits}</strong> of {creditPolicy.maximumCreditHours} h selected</span></div>
+            <div className="draft-allowance-readout"><h3 id="draft-allowance-title">Credit allowance</h3><span><strong>{credits}</strong> / {creditPolicy.maximumCreditHours} h <span className="draft-allowance-selected">selected</span></span></div>
             <div className="draft-allowance-meter">
               <div className="draft-allowance-track" role="meter" aria-label="Selected credit hours" aria-valuemin={0} aria-valuemax={creditPolicy.maximumCreditHours} aria-valuenow={Math.min(credits, creditPolicy.maximumCreditHours)}><span style={{width: `${Math.min(100, credits / Math.max(1, creditPolicy.maximumCreditHours) * 100)}%`}} /></div>
               <span aria-live="polite">{overCreditLimit ? `${credits - creditPolicy.maximumCreditHours} h over limit` : `${Math.max(0, creditPolicy.maximumCreditHours - credits)} h remaining`}</span>
@@ -958,7 +1008,16 @@ const validationIssueTitles = {
 
 function DraftValidation({ issues, offerings, headingRef, onCheck, validating, busy, canCheck, editable }) {
   const orderedIssues = [...(issues || [])].sort((first, second) => Number(Boolean(second.blocksSave)) - Number(Boolean(first.blocksSave)));
-  const saveBlockers = issues?.filter((issue) => issue.blocksSave).length || 0;
+  const saveBlockers = orderedIssues.filter((issue) => issue.blocksSave).length;
+  const issueGroups = new Map();
+  for (const issue of orderedIssues) {
+    const courses = offerings.filter(({ course }) => issue.message.includes(course.code));
+    const title = courses.length ? courses.map(({ course }) => course.code).join(" and ") : validationIssueTitles[issue.code] || "Other issue";
+    const key = JSON.stringify([issue.blocksSave, issue.code === "creditHours", title, courses.map(({ _id }) => _id)]);
+    if (!issueGroups.has(key)) issueGroups.set(key, { key, title, courses, messages: [], issue });
+    const task = issue.code === "missingSlot" && courses.length === 1 ? issue.message.match(/ needs a (.+) group\.$/) : null;
+    issueGroups.get(key).messages.push({ text: task ? `Choose a ${task[1]} group` : issue.message, component: task?.[1] });
+  }
 
   function openIssueTarget(event) {
     const link = event.target.closest("a");
@@ -981,24 +1040,23 @@ function DraftValidation({ issues, offerings, headingRef, onCheck, validating, b
       {issues?.length > 0 && <>
         <div className="draft-validation-totals">
           <strong>{issues.length} {issues.length === 1 ? "issue" : "issues"} before review</strong>
-          {(saveBlockers > 0 || editable) && <span>{saveBlockers ? `${saveBlockers} marked for correction` : "You can still save this draft"}</span>}
+          {(saveBlockers > 0 || editable) && <span>{saveBlockers ? "Resolve the marked issues before saving." : "You can save this draft and finish it later."}</span>}
         </div>
         <ul className="draft-validation-list" onClick={openIssueTarget}>
-          {orderedIssues.map((issue, index) => {
-            const matchingCourses = offerings.filter(({ course }) => issue.message.includes(course.code));
-            return <li key={index}>
-              <div>
-                <h3>{validationIssueTitles[issue.code] || "Other issue"}</h3>
-                <p>{issue.message}</p>
-              </div>
-              <div className="draft-issue-actions">
-                <span className={`draft-issue-tag ${issue.blocksSave ? "is-blocking" : ""}`}>{issue.blocksSave ? "Needs correction" : "Required for review"}</span>
-                {issue.code === "creditHours" ? <a href="#draft-credit-summary">View credits</a>
-                  : matchingCourses.length ? matchingCourses.map(({ _id, course }) => <a key={_id} href={`#draft-course-${_id}`}>Go to {course.code}</a>)
-                  : <a href="#draft-courses">Review courses</a>}
-              </div>
-            </li>;
-          })}
+          {[...issueGroups.values()].map(({ key, title, courses, messages, issue }) => <li key={key}>
+            <div className="draft-issue-main">
+              {courses.length === 1 ? <OfferingCourseIcon code={courses[0].course.code} /> : <span className="draft-issue-mark" aria-hidden="true">!</span>}
+              <div><h3>{courses.length === 1 ? courses[0].course.name : title}</h3>{courses.length === 1 && <small>{title}</small>}
+              {messages.every(message => message.component) ? <ul className="draft-issue-components" aria-label="Missing groups">{messages.map(({ text, component }) => <li key={component}><span aria-hidden="true"></span>{text}</li>)}</ul>
+                : messages.map(({ text }, index) => <p key={index}>{text}</p>)}</div>
+            </div>
+            <div className="draft-issue-actions">
+              {issue.blocksSave && <span className="draft-issue-tag is-blocking">Blocks saving</span>}
+              {issue.code === "creditHours" ? <a href="#draft-credit-summary">View credits</a>
+                : courses.length ? courses.map(({ _id, course }) => <a key={_id} href={`#draft-course-${_id}`}>Go to {course.code} <span aria-hidden="true">↗</span></a>)
+                : <a href="#draft-courses">Review courses</a>}
+            </div>
+          </li>)}
         </ul>
       </>}
     </div>
@@ -1077,6 +1135,8 @@ const WORKFLOW_LABELS = { notStarted: "Not started", draft: "Draft", readyForStu
 
 function EligibleCoursesPanel({ token, student, termQuery, editable, notify, version, onChanged }) {
   const [result, setResult] = useState(null);
+  const [showUnavailable, setShowUnavailable] = useState(false);
+  const unavailableId = useId();
   const [search, setSearch] = useState("");
   const [busyId, setBusyId] = useState("");
   const [error, setError] = useState("");
@@ -1118,12 +1178,12 @@ function EligibleCoursesPanel({ token, student, termQuery, editable, notify, ver
         </RegisterRow>)}
       </StudentRegister>
     </> : search && <p className="draft-empty-result">No eligible course matches your search.</p>}
-    {result?.excluded?.length > 0 && <section className="draft-unavailable" aria-labelledby="draft-unavailable-title">
-      <div className="draft-unavailable-heading">
-        <h2 id="draft-unavailable-title">Unavailable courses</h2>
-        <span className="result-count">{result.excluded.length}</span>
-      </div>
-      <ul className="excluded-course-list">{result.excluded.map((entry) => <li key={entry._id}>
+    {result?.excluded?.length > 0 && <section className="draft-unavailable" aria-label="Unavailable courses">
+      <button className="outline-button draft-unavailable-toggle" data-no-control-ink type="button" aria-expanded={showUnavailable} aria-controls={unavailableId} onClick={() => setShowUnavailable(open => !open)}>
+        <span>Unavailable courses</span><span className="result-count" aria-label={`${result.excluded.length} courses`}>{result.excluded.length}</span>
+        <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="m5 8 5 5 5-5" /></svg>
+      </button>
+      <ul className="excluded-course-list" id={unavailableId} hidden={!showUnavailable}>{result.excluded.map((entry) => <li key={entry._id}>
         <div className="excluded-course-identity">
           <OfferingCourseIcon code={entry.code} />
           <div className="excluded-course-name"><strong>{entry.name}</strong><span>{entry.code}</span></div>
@@ -1141,6 +1201,8 @@ function EligibleCoursesPanel({ token, student, termQuery, editable, notify, ver
 
 function MandatoryCoursesPanel({ data, editable, busy, onSave }) {
   const available = data.mandatoryCourses.filter((course) => course.availableForTerm);
+  const mandatoryTableId = useId();
+  const [showMandatory, setShowMandatory] = useState(true);
   const [picked, setPicked] = useState(() => new Set(available.filter((course) => course.inDraft).map((course) => course._id)));
   useEffect(() => { setPicked(new Set(available.filter((course) => course.inDraft).map((course) => course._id))); }, [data.schedule?.version]);
   const summary = data.mandatorySummary;
@@ -1149,13 +1211,18 @@ function MandatoryCoursesPanel({ data, editable, busy, onSave }) {
     <h2 id="draft-mandatory-title">Mandatory courses</h2><span className="status-pill good">None required this term</span>
   </section>;
   return <section className="panel mandatory-panel" id="draft-mandatory" aria-labelledby="draft-mandatory-title">
-    <div className="draft-mandatory-heading"><h2 id="draft-mandatory-title">Mandatory courses</h2><span>{summary?.mandatoryHours ?? 0} / {summary?.allowedHours ?? data.creditPolicy.maximumCreditHours} h used</span></div>
-    <ul className="mandatory-list">{data.mandatoryCourses.map(course => <li key={course._id}>
-      <label className="draft-required-course">
-        {course.availableForTerm && <input type="checkbox" checked={picked.has(course._id)} disabled={!editable || busy} onChange={() => toggle(course._id)} />}
-        <OfferingCourseIcon code={course.code} /><span><strong>{course.name}</strong><span className="draft-course-meta">{course.code} · {course.creditHours} credits{!course.availableForTerm && " · No eligible published offering"}</span></span>
-      </label>
-    </li>)}</ul>
+    <div className="draft-mandatory-heading"><h2 id="draft-mandatory-title"><button className="mandatory-table-toggle" data-no-control-ink type="button" aria-expanded={showMandatory} aria-controls={mandatoryTableId} onClick={() => setShowMandatory(open => !open)}>Mandatory courses <span>{data.mandatoryCourses.length}</span><svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="m5 8 5 5 5-5" /></svg></button></h2><span>{summary?.mandatoryHours ?? 0} / {summary?.allowedHours ?? data.creditPolicy.maximumCreditHours} h used</span></div>
+    <div id={mandatoryTableId} className="mandatory-course-table" hidden={!showMandatory}>
+      <table><thead><tr><th scope="col">Course</th><th scope="col">Credits</th><th scope="col">Draft selection</th></tr></thead>
+        <tbody>{data.mandatoryCourses.map(course => <tr key={course._id}>
+          <td><div className="draft-required-course"><OfferingCourseIcon code={course.code} /><span><strong>{course.name}</strong><span className="draft-course-meta">{course.code}</span></span></div></td>
+          <td>{course.creditHours}</td>
+          <td>{!course.availableForTerm ? <span className="mandatory-course-unavailable">No eligible published offering</span> :
+            editable ? <label className="mandatory-course-select"><input type="checkbox" checked={picked.has(course._id)} disabled={busy} onChange={() => toggle(course._id)} aria-label={`Include ${course.name} in draft`} />{picked.has(course._id) ? "Included" : "Include"}</label>
+              : <span>{picked.has(course._id) ? "In draft" : "Not in draft"}</span>}</td>
+        </tr>)}</tbody>
+      </table>
+    </div>
     {summary && summary.mandatoryHours > 0 && (summary.otherCoursesNeedExtraHours
       ? <Feedback tone="warning">Mandatory courses use all {summary.allowedHours} allowed hours. No other course can be added without approved extra hours.</Feedback>
       : <p className="helper-text">{summary.remainingAllowedHours} allowed hours remain for other courses.</p>)}
@@ -1164,39 +1231,10 @@ function MandatoryCoursesPanel({ data, editable, busy, onSave }) {
 }
 
 function AdminAdvisingOverview({ overview }) {
-  const hours = overview.creditHours, bachelor = overview.bachelorProject;
-  return <section className="panel advising-overview" aria-label="Advising overview">
-    <dl className="student-advising-context">
-      <div><dt>Advising reason</dt><dd>{ADVISING_REASONS[overview.advisingReason] || overview.advisingReason || "Not recorded"}</dd></div>
-      <div><dt>Schedule status</dt><dd><span className={`status-pill ${overview.scheduleStatus === "draft" || overview.scheduleStatus === "processed" ? "good" : "muted"}`}>{WORKFLOW_LABELS[overview.scheduleStatus] || overview.scheduleStatus || "Not started"}</span></dd></div>
-    </dl>
-    <section className="student-allowance-sheet" aria-labelledby="student-allowance-title">
-      <div className="student-details-heading"><h2 id="student-allowance-title">Credit allowance</h2></div>
-      <dl className="student-hours-grid">
-        <div className="student-hours-primary"><dt>Allowed this term</dt><dd>{hours.allowedHours ?? "—"}<small> h</small></dd>{hours.probation && <span>Adjusted for probation</span>}</div>
-        <div><dt>Approved extra hours</dt><dd>{hours.approvedExtraHours}<small> h</small></dd>{hours.probation && <span>Unavailable during probation</span>}</div>
-        <div><dt>Maximum this term</dt><dd>{hours.maximumCreditHours ?? "—"}<small> h</small></dd></div>
-      </dl>
-      <details className="advising-facts"><summary>How the allowance is calculated</summary><p>Standing: {overview.academicStanding === "probation" ? "Probation" : "Good academic standing"}. Standard allowance: {hours.standardAllowance ?? "Not configured"} h.{hours.probation ? ` Probation reduction: ${hours.reductionForProbation} h.` : ""}</p></details>
-    </section>
-    <section className="student-project-panel" aria-labelledby="student-project-title">
-      <div className="student-details-heading"><div className="course-section-title"><span className="course-section-symbol mandatory-symbol" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.3"><path d="m2 8 10-5 10 5-10 5zM6 10v7q6 5 12 0v-7m4-2v9" /></svg></span><div><h2 id="student-project-title">Bachelor project</h2><p>Bachelor eligibility and project selection</p></div></div><span className={`status-pill ${bachelor.eligible ? "good" : "warning"}`}>{bachelor.eligible ? "Eligible" : "Not eligible"}</span></div>
-    {bachelor.selection && <p className="helper-text"><strong>Bachelor project selected for {bachelor.selection.season === "winter" ? "Winter" : "Spring"}.</strong> Up to four companion courses: two core and two humanities. All require approved extra hours, paid or deferred.</p>}
-    {overview.blockingStep && <p className="helper-text">Next step: {overview.blockingStep}</p>}
-    {bachelor.eligibleWithFailedCourses && <p className="helper-text">Eligible with {bachelor.outstandingCourses.map((course) => course.code).join(", ")} still outstanding (one or two failed courses are allowed).</p>}
-    {!bachelor.eligible && <div className="bachelor-requirements" aria-label="Bachelor project requirements">
-      <p className="bachelor-requirements-intro">All English courses must be complete. Only one or two failed semester 1–6 courses may remain.</p>
-      {[
-        ["English courses", bachelor.outstandingEnglishCourses || []],
-        ["Semester 1–6 courses", bachelor.outstandingCourses || []],
-      ].map(([label, courses]) => <details className="bachelor-requirement-group" key={label}>
-        <summary><span>{label}</span><span className={`requirement-count ${courses.length ? "is-missing" : "is-complete"}`}>{courses.length ? `${courses.length} outstanding` : "Complete"}</span></summary>
-        {courses.length > 0 && <ul className="bachelor-course-chips">{courses.map(course => <li key={course._id || course.code}><strong>{course.code}</strong>{course.name && <span>{course.name}</span>}</li>)}</ul>}
-      </details>)}
-      {bachelor.reasons.filter(reason => !reason.startsWith("English courses not completed:") && !reason.startsWith("Semester 1-6 courses not completed:")).map(reason => <p className="helper-text" key={reason}>{reason}</p>)}
-    </div>}
-    </section>
-  </section>;
+  return <div className="admin-advising-record">
+    <header><h2>Advising overview</h2><span className={`status-pill ${scheduleTone(overview.scheduleStatus)}`}>{WORKFLOW_LABELS[overview.scheduleStatus] || overview.scheduleStatus || "Not started"}</span></header>
+    <AdvisingOverviewPanel overview={overview} canEdit={false} />
+  </div>;
 }
 
 function AdvisingOverviewPanel({ overview, token, student, termQuery, canEdit, notify, onChanged, onStudentMissing }) {
@@ -1231,7 +1269,10 @@ function AdvisingOverviewPanel({ overview, token, student, termQuery, canEdit, n
         <div className="advising-load-detail"><dt>Allowed this term</dt><dd>{hours.allowedHours ?? "—"} h</dd></div>
         <div className="advising-load-detail"><dt>Approved extra hours</dt><dd>{hours.approvedExtraHours ?? "—"} h</dd></div>
       </dl>
-      {(hours.probation || hours.standardAllowance == null || hours.standardAllowance !== hours.allowedHours) && <p className="advising-load-policy">Standard allowance {hours.standardAllowance == null ? "not configured" : `${hours.standardAllowance} h`}.{hours.probation && ` Probation reduces the allowance by ${hours.reductionForProbation} h. Extra hours are unavailable during probation.`}</p>}
+      {(hours.probation || hours.standardAllowance == null || hours.standardAllowance !== hours.allowedHours) && <details className="advising-load-policy">
+        <summary>How the allowance is calculated</summary>
+        <p>Standard allowance {hours.standardAllowance == null ? "not configured" : `${hours.standardAllowance} h`}.{hours.probation && ` Probation reduces the allowance by ${hours.reductionForProbation} h. Extra hours are unavailable during probation.`}</p>
+      </details>}
       <div className="advising-record-reason"><span>Advising reason</span><strong>{ADVISING_REASONS[overview.advisingReason] || overview.advisingReason || "Not recorded"}</strong><span>{overview.academicStanding === "probation" ? "Academic probation" : "Good academic standing"}</span></div>
     </section>
     <section className="advising-project" aria-labelledby="student-project-title">
@@ -1284,6 +1325,13 @@ function ProjectRequirements({ bachelor }) {
 }
 
 function Feedback({ tone = "info", children }) { return <div className={`feedback ${tone}`} role={tone === "error" ? "alert" : "status"}>{children}</div>; }
+function SchedulePreviewEmpty({ title, text }) {
+  return <div className="schedule-preview-empty">
+    <img src="/portal-studio/images/student-schedules-calendar.png" alt="" width="124" height="96" />
+    <h3>{title}</h3>
+    <p>{text}</p>
+  </div>;
+}
 function Empty({ title, text }) { return <div className="empty-state"><span>▤</span><h3>{title}</h3><p>{text}</p></div>; }
 function Loading() { return <div className="loading-state"><span className="loader" />Loading…</div>; }
 function prettyStatus(status) { return ({ processed: "Processed", readyForStudentReview: "Ready for student review", draft: "Draft" })[status] || "No schedule"; }

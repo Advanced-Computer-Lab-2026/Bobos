@@ -74,6 +74,7 @@ function CoursesWorkspace({ token, role, notify }) {
     finally { setDeleting(false); }
   };
   const [viewing, setViewing] = useState(null);
+  const [directCourseDismissed, setDirectCourseDismissed] = useState(false);
   const initialCourse = useRef(new URLSearchParams(window.location.search).get("course"));
   useEffect(() => {
     if (!courses.length || !initialCourse.current) return;
@@ -89,7 +90,7 @@ function CoursesWorkspace({ token, role, notify }) {
     const prerequisites = form.getAll("prerequisites");
     const payload = {
       code: form.get("code"), name: form.get("name"), creditHours: Number(form.get("creditHours")), courseType: form.get("courseType"),
-      facultyMajors: splitLines(form.get("facultyMajors")), offeringSeasons: form.getAll("offeringSeasons"),
+      facultyMajors: form.getAll("facultyMajors"), offeringSeasons: form.getAll("offeringSeasons"),
       prerequisites, recommendedSemester: form.get("recommendedSemester") ? Number(form.get("recommendedSemester")) : undefined,
       lectureHours: form.get("lectureHours") ? Number(form.get("lectureHours")) : undefined,
       tutorialHours: form.get("tutorialHours") ? Number(form.get("tutorialHours")) : undefined,
@@ -102,6 +103,12 @@ function CoursesWorkspace({ token, role, notify }) {
     } catch (e) { setEditError(e.message); }
     finally { setSaving(false); }
   };
+  const routeCourse = new URLSearchParams(location.search);
+  const directCode = routeCourse.get("page") === "course-detail" ? routeCourse.get("course") : null;
+  const directCourse = directCode && courses.find(course => course.code.replace(/\s/g, "").toUpperCase() === directCode.replace(/\s/g, "").toUpperCase());
+  const activeCourse = viewing || (directCourseDismissed ? null : directCourse);
+  const closeCourse = () => { setViewing(null); setDirectCourseDismissed(true); };
+
   return <div className="page-stack course-register">
     <PageTitle title="Course catalogue" description="Course requirements, teaching hours and offering seasons." action={canManage && <div className="catalogue-tools">
       <button className="outline-button" type="button" onClick={() => setImportOpen(true)}>Import CSV</button>
@@ -129,7 +136,7 @@ function CoursesWorkspace({ token, role, notify }) {
         </tr>)}</tbody>
       </table> : <EmptyState title="No courses found" text={query ? "Try another course code, name or major." : "Courses will appear here when added to the catalogue."} />}
     </section>
-    {viewing && <CourseDetailsModal course={viewing} allCourses={courses} onClose={() => setViewing(null)} onEdit={canManage ? () => { setViewing(null); openCourseEditor(viewing); } : undefined} />}
+    {activeCourse && <CourseDetailsModal course={activeCourse} allCourses={courses} onClose={closeCourse} onEdit={canManage ? () => { closeCourse(); openCourseEditor(activeCourse); } : undefined} />}
     {editing && <CourseEditor course={editing} courses={courses} onSave={saveCourse} onClose={() => !saving && setEditing(null)} saving={saving} error={editError} />}
     {importOpen && <Modal title="Import courses from CSV" onClose={closeImport}>
       <form className="form-stack catalogue-import" onSubmit={importCsv}>
@@ -215,7 +222,6 @@ function TermCalendar({ term }) {
   const events = milestones.filter(item => monthOf(item.date) === month);
   return <section className="term-calendar" aria-label="Term calendar">
     <div className="term-calendar-paper">
-      <div className="term-calendar-binding" aria-hidden="true"><i/><i/><i/></div>
       <div className="term-calendar-month"><h3 aria-live="polite">{monthName}</h3><div>
         <button type="button" disabled={month <= first} onClick={() => setMonth(value => value - 1)} aria-label="Previous calendar month">‹</button>
         <button type="button" disabled={month >= last} onClick={() => setMonth(value => value + 1)} aria-label="Next calendar month">›</button>
@@ -226,7 +232,9 @@ function TermCalendar({ term }) {
         {Array.from({length:days}, (_,i) => { const day = i + 1; const labels = events.filter(item => item.date.getUTCDate() === day).map(item => item.label); return <span key={day} className={labels.length ? "term-date-mark" : undefined} title={labels.join(", ") || undefined}>{day}</span>; })}
       </div>
     </div>
-    {events.length > 0 && <p className="calendar-caption">{events.sort((a,b) => a.date-b.date).map(item => `${item.date.getUTCDate()} · ${item.label}`).join("  /  ")}</p>}
+    <div className="term-calendar-events"><h4>Dates this month</h4>
+      {events.length ? <ul>{events.sort((a,b) => a.date-b.date).map(item => <li key={item.label}><time dateTime={item.date.toISOString().slice(0, 10)}>{item.date.getUTCDate()}</time>{item.label}</li>)}</ul> : <p>No term dates this month.</p>}
+    </div>
   </section>;
 }
 
@@ -350,14 +358,22 @@ function TermsWorkspace({ token, role, notify }) {
       <button type="button" className="text-button terms-clear" aria-label="Clear filters" disabled={!search && !chips.length} onClick={resetFilters}>Clear</button>
     </section>
     <section className="terms-results" aria-label="Configured academic terms" aria-busy={fetchingTerms}>
-      <div className="terms-results-heading"><div><h2>Terms</h2><span role="status">{matching.length} of {terms.length}</span></div><button className="outline-button" type="button" disabled={!terms.length || fetchingTerms} onClick={() => { setMessage(''); setRecordingStanding(true); }}>Record standing</button></div>
+      <div className="terms-results-heading"><div><h2>{filters.status === 'inactive' ? 'Inactive terms' : filters.status === 'active' ? 'Active terms' : 'Terms'}</h2><span role="status">{matching.length} of {terms.length}</span></div><button className="outline-button" type="button" disabled={!terms.length || fetchingTerms} onClick={() => { setMessage(''); setRecordingStanding(true); }}>Record standing</button></div>
       {fetchingTerms && !terms.length ? <Loading /> : matching.length ? <StudentRegister label="Academic terms" columns={['Term', 'Starts', 'Ends', 'Status', 'Actions']} className="terms-table">
         {matching.map(term => <tr key={term._id || term.code}><td><button className="term-name" type="button" onClick={() => setViewing(term)}><span className="term-calendar-mark" aria-hidden="true">{term.termStart ? new Date(term.termStart).getUTCDate() : '–'}</span><span><strong>{termLabel(term)}</strong><small>{term.code}</small></span></button></td>
           <td data-label="Starts"><TermDates dates={[term.termStart]} /></td><td data-label="Ends"><TermDates dates={[term.termEnd]} /></td><td><span className={`status-pill ${term.isActive ? 'good' : 'muted'}`}>{term.isActive ? 'Active' : 'Inactive'}</span></td>
           <td><button className="outline-button" type="button" aria-label={`Edit ${termLabel(term)}`} onClick={() => openEditor(term)}>Edit</button></td></tr>)}
       </StudentRegister> : <div className="terms-empty"><img src="/portal-studio/images/extra-hours-folder.svg" alt="" width="76" height="60" /><h3>{terms.length ? 'No matching terms' : 'No academic terms yet'}</h3><p>{terms.length ? 'Try another search or clear the filters.' : 'Add your first term to set up its dates.'}</p><button className="outline-button" type="button" onClick={terms.length ? resetFilters : () => openEditor(null)}>{terms.length ? 'Reset filters' : 'Create term'}</button></div>}
     </section>
-    {viewing && <Modal title={termLabel(viewing)} onClose={() => setViewing(null)} wide><div className="terms-detail-layout"><dl className="terms-detail-dates">{Object.entries(termDateGroups).map(([label, fields]) => <div key={label}><dt>{label}</dt><dd><TermDates dates={fields.map(field => viewing[field])} /></dd></div>)}</dl><TermCalendar term={viewing} /></div><div className="form-footer"><button type="button" className="outline-button" onClick={() => setViewing(null)}>Close</button><button type="button" className="primary-button" onClick={() => openEditor(viewing)}>Edit term</button></div></Modal>}
+    {viewing && <Modal title={termLabel(viewing)} description={viewing.code} className="term-reading-dialog" onClose={() => setViewing(null)} wide>
+      <div className="terms-detail-layout">
+        <section className="terms-detail-summary"><header><h3>Dates and deadlines</h3><span className={`status-pill ${viewing.isActive ? 'good' : 'muted'}`}>{viewing.isActive ? 'Active' : 'Inactive'}</span></header>
+          <dl className="terms-detail-dates">{Object.entries(termDateGroups).map(([label, fields]) => <div key={label}><dt>{label}</dt><dd><TermDates dates={fields.map(field => viewing[field])} /></dd></div>)}</dl>
+        </section>
+        <TermCalendar term={viewing} />
+      </div>
+      <div className="form-footer"><button type="button" className="outline-button" onClick={() => setViewing(null)}>Close</button><button type="button" className="primary-button" onClick={() => openEditor(viewing)}>Edit term</button></div>
+    </Modal>}
     {editing && <Modal title={termId ? 'Edit term' : 'Create term'} busy={loading} onClose={() => { if (!loading) setEditing(false); }} wide>
       <form ref={editor} className="term-editor" noValidate onSubmit={submit}>
         {attempt > 0 && Object.keys(validation).length > 0 && <div className="term-validation-summary" role="alert">Complete {Object.keys(validation).length} highlighted {Object.keys(validation).length === 1 ? 'field' : 'fields'} before saving.</div>}
@@ -464,8 +480,9 @@ function OfferingsWorkspace({ token, notify }) {
   const togglePublish = async (offering) => { try { await api(`/api/catalogue/offerings/${offering._id}/publish`, { token, method: "PATCH", body: { isPublished: !offering.isPublished } }); notify("success", `${offering.course?.code || "Offering"} ${offering.isPublished ? "unpublished" : "published"}.`); load(); } catch (e) { setError(e.message); } };
   const removeOffering = async () => { if (!confirmingDelete) return; setDeleting(true); setDeleteError(""); try { await waitForPaperToss(); await api(`/api/catalogue/offerings/${confirmingDelete._id}`, { token, method: "DELETE" }); notify("success", `${confirmingDelete.course?.code || "Offering"} deleted.`); setConfirmingDelete(null); load(); } catch (e) { setDeleteError(e.message); } finally { setDeleting(false); } };
   const afterSave = (message) => { notify("success", message); setCreating(false); setDetails(null); load(); };
+  const majors = [...courses.flatMap(catalogueMajors), ...offeringMajors(offerings)];
   return <div className="page-stack"><div className="page-title-row"><div><p className="eyebrow">OFFERINGS</p><h1>Course offerings</h1><p className="page-description">Create term offerings, manage course groups, and publish the catalogue.</p></div><div className="form-actions"><button className="outline-button" type="button" disabled={!termSummary || loading} onClick={() => setDuplicating(true)}>Duplicate offerings</button><button className="primary-button" type="button" disabled={!termSummary || loading} onClick={() => setCreating(true)}>Create offering</button></div></div>
-    <section className="panel term-picker"><form className="inline-controls" onSubmit={load}><label className="field"><span>Target academic term</span><select required value={termId} onChange={(event) => { setTermId(event.target.value); setTermSummary(null); setOfferings([]); load(undefined, event.target.value); }}><option value="">Select a target term</option>{terms.map(term => <option key={term._id} value={term.code}>{pretty(term.season)} {term.academicYear}</option>)}</select></label></form><p className="helper-text">Offerings load automatically for the selected term. Choose a previous source term below to duplicate courses.</p></section>
+    <section className="panel term-picker"><form className="inline-controls" onSubmit={load}><label className="field"><span>Target academic term</span><select required value={termId} onChange={(event) => { setTermId(event.target.value); setTermSummary(null); setOfferings([]); load(undefined, event.target.value); }}><option value="">Select a target term</option>{terms.map(term => <option key={term._id} value={term.code}>{pretty(term.season)} {term.academicYear}</option>)}</select></label></form><p className="helper-text">Choose the term whose offerings you want to manage.</p></section>
     {termSummary && duplicating && <DuplicateOfferings key={termSummary._id} token={token} target={termSummary} targetOfferings={offerings} loading={loading} onClose={() => setDuplicating(false)} onCopied={() => load(undefined, termSummary.code)} />}
     {error && <div className="feedback error" role="alert">{error}</div>}
     <section className="panel results-panel"><div className="results-heading"><div><p className="eyebrow">TERM OFFERINGS</p><h2>Course groups</h2></div><span className="result-count">{loading ? "Loading" : `${offerings.length} offerings`}</span></div>{loading ? <Loading /> : offerings.length === 0 ? <div className="offering-empty" role="status"><img src="/portal-studio/images/extra-hours-folder.svg" alt="" width="100" height="76" /><h3>No offerings yet</h3><p>This term’s course register is empty. Use Create offering or Duplicate offerings above to get started.</p></div> : <div className="table-scroll offering-register"><table><thead><tr><th>Course</th><th>Credits</th><th>Groups</th><th>Instructors</th><th>Status</th><th>Actions</th></tr></thead><tbody>{offerings.map(offering => <tr key={offering._id}>
@@ -474,10 +491,11 @@ function OfferingsWorkspace({ token, notify }) {
       <td><span className={`status-pill ${offering.isPublished ? "good" : "muted"}`}>{offering.isPublished ? "Published" : "Draft"}</span></td>
       <td><div className="table-actions"><button type="button" className="text-button" onClick={() => openDetails(offering)}>Manage</button><button type="button" className="text-button" onClick={() => togglePublish(offering)}>{offering.isPublished ? "Unpublish" : "Publish"}</button><PaperTossButton label={`Delete ${offering.course?.code || 'course'} offering`} onClick={() => { setDeleteError(""); setConfirmingDelete(offering); }}>Delete</PaperTossButton></div></td>
     </tr>)}</tbody></table></div>}</section>
-    {creating && <OfferingModal token={token} courses={courses} termId={termId} term={termSummary} onClose={() => setCreating(false)} onSaved={() => afterSave("Course offering created.")} />}
-    {details && <OfferingDetailsModal token={token} offering={details} onClose={() => setDetails(null)} onChanged={afterSave} />}
-    {confirmingDelete && <Modal title="Delete course offering?" eyebrow="REMOVE OFFERING" onClose={() => !deleting && setConfirmingDelete(null)}>
-      <div className="confirmation-content"><span className="confirmation-icon" aria-hidden="true">!</span><div><p>Remove <strong>{confirmingDelete.course?.code || "this course"}</strong> from <strong>{termLabel(confirmingDelete.term || termSummary)}</strong>?</p><p className="helper-text">This also removes its lecture, tutorial, and lab groups. The API will block deletion if the offering is still referenced by schedules or templates.</p></div></div>
+    {creating && <OfferingModal token={token} courses={courses} majors={majors} termId={termId} term={termSummary} onClose={() => setCreating(false)} onSaved={() => afterSave("Course offering created.")} />}
+    {details && <OfferingDetailsModal token={token} offering={details} majors={majors} onClose={() => setDetails(null)} onChanged={afterSave} />}
+    {confirmingDelete && <Modal title="Delete course offering?" className="offering-confirmation" busy={deleting} onClose={() => setConfirmingDelete(null)}>
+      <div className="offering-confirmation-context"><OfferingCourseIcon code={confirmingDelete.course?.code} /><div><strong>{confirmingDelete.course?.name || confirmingDelete.course?.code || "Course offering"}</strong><small>{confirmingDelete.course?.code} · {termLabel(confirmingDelete.term || termSummary)}</small></div></div>
+      <p className="offering-confirmation-copy">Deleting this offering removes its meeting groups. You can delete it once it is no longer used in schedules or templates.</p>
       {deleteError && <div className="feedback error" role="alert">{deleteError}</div>}
       <div className="form-footer"><button type="button" className="outline-button" disabled={deleting} onClick={() => setConfirmingDelete(null)}>Cancel</button><PaperTossButton disabled={deleting} tossing={deleting} onClick={removeOffering}>{deleting ? "Deleting…" : "Delete offering"}</PaperTossButton></div>
     </Modal>}
@@ -537,8 +555,8 @@ function DuplicateOfferings({ token, target, targetOfferings, loading, onCopied,
     finally { setCopying(false); }
   }
 
-  return <Modal title="Duplicate course offerings" eyebrow="COURSE OFFERINGS" onClose={() => !copying && onClose()} wide><div className="offering-copy-dialog">
-    <p className="helper-text">Choose which courses to copy as unpublished drafts. Existing offerings are skipped.</p>
+  return <Modal title="Duplicate course offerings" description={`Copy to ${termLabel(target)}`} className="offering-copy-modal" busy={copying} onClose={onClose}><div className="offering-copy-dialog">
+    <div className="offering-copy-instructions"><img src="/portal-studio/images/extra-hours-folder.svg" alt="" width="68" height="52" /><p>Select a previous academic term to copy its course offerings as drafts. Courses already in {termLabel(target)} are skipped.</p></div>
     <form className="form-stack" onSubmit={copy}>
       <label className="field"><span>Source academic year and season</span><select required value={sourceId} disabled={fetching || copying} onChange={(event) => {
         setSourceId(event.target.value);
@@ -567,7 +585,7 @@ function DuplicateOfferings({ token, target, targetOfferings, loading, onCopied,
           {targetCourseIds.has(offering.course._id) && <span className="secondary-text">Already in target · will be skipped</span>}
         </label>)}
       </fieldset>}
-      <div><button className="outline-button" type="submit" disabled={loading || copying || !selectedIds.length}>{copying ? "Copying…" : `Copy selected as drafts (${selectedIds.length})`}</button></div>
+      <div className="form-footer"><button className="outline-button" type="button" onClick={onClose} disabled={copying}>Cancel</button><button className="primary-button" type="submit" disabled={loading || copying || !selectedIds.length}>{copying ? "Copying…" : selectedIds.length ? `Copy selected as drafts (${selectedIds.length})` : "Copy selected as drafts"}</button></div>
     </form>
     {error && <div className="feedback error" role="alert">{error}</div>}
     {result && <div role="status">
@@ -579,6 +597,10 @@ function DuplicateOfferings({ token, target, targetOfferings, loading, onCopied,
 }
 
 const blankTemplate = { major: "", semester: "", studyGroup: "", isPublished: false };
+const programmes = [
+  { code: "CS", name: "Computer Science" },
+  { code: "DMET", name: "Digital Media Engineering and Technology" },
+];
 const templateDays = [...week.slice(5), ...week.slice(0, 5)];
 const templateStatus = [
   { label: "All templates", value: "all" },
@@ -917,6 +939,11 @@ function TemplatesWorkspace({ token, notify }) {
     ? editingTemplate.isPublished === form.isPublished ? "Save changes" : form.isPublished ? "Save and publish" : "Save and unpublish"
     : form.isPublished ? "Create and publish" : "Save draft";
 
+  const majorOptions = [
+    ...templates.map(template => template.major),
+    ...offeringMajors(offerings),
+  ];
+
   const selectedCourses = selectedOffers.map((id, index) => {
     const offering = offerings.find(item => item._id === id);
     const original = editingTemplate?.courses?.find(entry => (entry.courseOffering?._id || entry.courseOffering) === id)
@@ -1002,7 +1029,10 @@ function TemplatesWorkspace({ token, notify }) {
           <section className="template-editor-cohort" aria-labelledby="template-cohort-heading">
             <h3 id="template-cohort-heading">Student cohort</h3>
             <div className="form-grid template-editor-identity">
-              <Field label="Major"><input required value={form.major} onChange={event => { setForm({ ...form, major: event.target.value }); setEditorError(""); }} placeholder="Computer Science" /></Field>
+              <Field label="Major">
+                <MajorSelect required value={form.major} available={majorOptions}
+                  onChange={event => { setForm({ ...form, major: event.target.value }); setEditorError(""); }} />
+              </Field>
               <Field label="Semester"><input required type="number" min="1" max="10" step="1" value={form.semester} onChange={event => setForm({ ...form, semester: event.target.value })} placeholder="4" /></Field>
               <Field label="Study group"><input required value={form.studyGroup} onChange={event => setForm({ ...form, studyGroup: event.target.value })} placeholder="G1" /></Field>
             </div>
@@ -1061,10 +1091,21 @@ function TemplatesWorkspace({ token, notify }) {
         </div>
       </form>
     </Modal>}
-    {confirmingDelete && <Modal title="Delete schedule template?" onClose={() => !deleting && setConfirmingDelete(null)}>
-      <div className="confirmation-content"><span className="confirmation-icon" aria-hidden="true">!</span><div><p>Delete the template for <strong>{confirmingDelete.major}</strong>, semester <strong>{confirmingDelete.semester}</strong>, group <strong>{confirmingDelete.studyGroup}</strong>?</p><p className="helper-text">Reassign any student schedules using this template before deleting it.</p></div></div>
+    {confirmingDelete && <Modal title="Delete schedule template?" className="template-delete" onClose={() => !deleting && setConfirmingDelete(null)}>
+      <div className="template-delete-selection">
+        <div>
+          <strong>Group {confirmingDelete.studyGroup}</strong>
+          <span>{confirmingDelete.major} · Semester {confirmingDelete.semester}</span>
+          <span>{termLabel(confirmingDelete.term || selectedTerm)}</span>
+        </div>
+        <TemplateStatus published={confirmingDelete.isPublished} />
+      </div>
+      <p className="template-delete-copy">Students assigned to this template must be moved to another group or unassigned before it can be deleted.</p>
       {deleteError && <div className="feedback error" role="alert">{deleteError}</div>}
-      <div className="form-footer"><button type="button" className="outline-button" disabled={deleting} onClick={() => setConfirmingDelete(null)}>Cancel</button><PaperTossButton disabled={deleting} tossing={deleting} onClick={deleteTemplate}>{deleting ? "Deleting…" : "Delete template"}</PaperTossButton></div>
+      <div className="form-footer">
+        <button type="button" className="outline-button" disabled={deleting} onClick={() => setConfirmingDelete(null)}>Cancel</button>
+        <PaperTossButton disabled={deleting} tossing={deleting} onClick={deleteTemplate}>{deleting ? "Deleting…" : "Delete template"}</PaperTossButton>
+      </div>
     </Modal>}
   </div>;
 }
@@ -1073,7 +1114,62 @@ function offeringComponentTypes(offering) {
   return [...new Set((offering?.slots || []).map((slot) => slot.componentType))];
 }
 
-function OfferingModal({ token, courses, termId, term, onClose, onSaved }) {
+function offeringMajors(offerings) {
+  return offerings.flatMap(offering => [
+    ...(offering.eligibleGroups || []).map(group => group.major),
+    ...catalogueMajors(offering.course),
+  ]);
+}
+
+function majorOptionLabel(major) {
+  const programme = programmes.find(({ code }) => majorsMatch(code, major));
+  return programme ? `${programme.name} (${programme.code})` : major;
+}
+
+function MajorSelect({ value, available, excluded = [], placeholder = "Choose a major", ...props }) {
+  const options = [value, ...programmes.map(({ code }) => code), ...available].reduce((result, major) => {
+    if (major && !result.some(option => majorsMatch(option, major)) && !excluded.some(option => majorsMatch(option, major))) result.push(major);
+    return result;
+  }, []);
+  return <select value={value} {...props}>
+    <option value="" disabled>{placeholder}</option>
+    {options.map(major => <option key={major} value={major}>{majorOptionLabel(major)}</option>)}
+  </select>;
+}
+
+function EligibleGroupFields({ groups, onChange, available, disabled }) {
+  const update = (index, values) => onChange(groups.map((group, position) => position === index ? { ...group, ...values } : group));
+  return <fieldset className="offering-eligible-groups" disabled={disabled}>
+    <legend>Eligible student groups</legend>
+    {groups.map((group, index) => <div className="offering-eligible-row" key={index}>
+      <Field label="Major"><MajorSelect required value={group.major} available={available} onChange={event => update(index, { major: event.target.value })} /></Field>
+      <Field label="Semester"><input type="number" min="1" max="10" step="1" placeholder="Any" value={group.semester ?? ""}
+        onChange={event => update(index, { semester: event.target.value })} /></Field>
+      <Field label="Study group"><input placeholder="Any" value={group.studyGroup ?? ""}
+        onChange={event => update(index, { studyGroup: event.target.value })} /></Field>
+      <button type="button" className="outline-button" aria-label={`Remove eligible group ${index + 1}`}
+        onClick={() => onChange(groups.filter((_, position) => position !== index))}>Remove</button>
+    </div>)}
+    <button type="button" className="outline-button" onClick={() => onChange([...groups, { major: "" }])}>Add eligible group</button>
+  </fieldset>;
+}
+
+function offeringInstructors(form) {
+  return splitLines(form.get("instructors")).map(line => {
+    const [fullName, email] = line.split("|").map(part => part.trim());
+    return { fullName, ...(email ? { email } : {}) };
+  });
+}
+
+function eligibleGroupsPayload(groups) {
+  return groups.map(({ major, semester, studyGroup }) => ({
+    major, ...(semester ? { semester: Number(semester) } : {}),
+    ...(studyGroup?.trim() ? { studyGroup: studyGroup.trim() } : {}),
+  }));
+}
+
+function OfferingModal({ token, courses, majors, termId, term, onClose, onSaved }) {
+  const [groups, setGroups] = useState([]);
   const [slots, setSlots] = useState([emptySlot("1")]); const [isPublished, setIsPublished] = useState(false); const [saving, setSaving] = useState(false); const [error, setError] = useState("");
   const setSlot = (index, key, value) => setSlots((current) => current.map((slot, position) => {
     if (position !== index) return slot;
@@ -1082,16 +1178,77 @@ function OfferingModal({ token, courses, termId, term, onClose, onSaved }) {
     return { ...slot, [key]: value };
   }));
   const addSlot = () => setSlots((current) => [...current, emptySlot(nextGroupNumber(current, -1, "lecture"))]);
-  const submit = async (event) => { event.preventDefault(); setSaving(true); setError(""); const form = new FormData(event.currentTarget); const instructors = splitLines(form.get("instructors")).map((line) => { const [fullName, email] = line.split("|").map((part) => part.trim()); return { fullName, ...(email ? { email } : {}) }; }); const eligibleGroups = splitLines(form.get("eligibleGroups")).map((line) => { const [major, semester, studyGroup] = line.split("|").map((part) => part.trim()); return { major, ...(semester ? { semester: Number(semester) } : {}), ...(studyGroup ? { studyGroup } : {}) }; }); const payload = { course: form.get("course"), term: termId.trim(), instructors, eligibleGroups, isPublished, slots: slots.map((slot) => ({ componentType: slot.componentType, groupNumber: slot.groupNumber.trim(), day: slot.day, startMinute: timeToMinutes(slot.startTime), endMinute: timeToMinutes(slot.endTime), room: slot.room.trim(), capacity: Number(slot.capacity) })) }; try { await api("/api/catalogue/offerings", { token, method: "POST", body: payload }); onSaved(); } catch (e) { setError(e.message); } finally { setSaving(false); } };
-  return <Modal title="Create course offering" eyebrow="COURSE OFFERING" onClose={onClose} wide><form className="form-stack offering-create-form" onSubmit={submit}><div className="form-grid"><Field label="Course"><select name="course" required defaultValue=""><option value="" disabled>Choose a course</option>{courses.map((course) => <option key={course._id} value={course._id}>{course.code} · {course.name}</option>)}</select></Field><Field label="Academic term"><input value={[pretty(term?.season), term?.academicYear].filter(Boolean).join(" ")} readOnly /></Field><Field label="Publication status"><select value={isPublished ? "published" : "draft"} onChange={(event) => setIsPublished(event.target.value === "published")}><option value="draft">Draft</option><option value="published">Published</option></select></Field><Field label="Instructors"><textarea name="instructors" rows={3} placeholder="Dr. Sara Hassan | sara.hassan@guc.edu.eg" /><small>One instructor per line: Name | email</small></Field><Field label="Eligible student groups"><textarea name="eligibleGroups" rows={3} placeholder="Computer Science | 4 | G1" /><small>One group per line: Major | semester | group</small></Field></div><div className="slot-editor-heading"><div><p className="eyebrow">MEETING TIMES</p><h3>Course groups</h3></div><button className="outline-button small-button" type="button" onClick={addSlot}>＋ Add group</button></div>{slots.map((slot, index) => <SlotFields key={index} index={index} slot={slot} onChange={setSlot} onRemove={() => setSlots((current) => current.filter((_, i) => i !== index))} canRemove={slots.length > 1} />)}{error && <div className="feedback error" role="alert">{error}</div>}<FormFooter onCancel={onClose} busy={saving} submitText="Create offering" /></form></Modal>;
+  const submit = async (event) => {
+    event.preventDefault();
+    setSaving(true);
+    setError("");
+    const form = new FormData(event.currentTarget);
+    try {
+      await api("/api/catalogue/offerings", { token, method: "POST", body: {
+        course: form.get("course"), term: termId.trim(), instructors: offeringInstructors(form),
+        eligibleGroups: eligibleGroupsPayload(groups), isPublished,
+        slots: slots.map(slot => ({
+          componentType: slot.componentType, groupNumber: slot.groupNumber.trim(), day: slot.day,
+          startMinute: timeToMinutes(slot.startTime), endMinute: timeToMinutes(slot.endTime),
+          room: slot.room.trim(), capacity: Number(slot.capacity),
+        })),
+      } });
+      onSaved();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+  return <Modal title="Create course offering" eyebrow="COURSE OFFERING" onClose={onClose} wide>
+    <form className="form-stack offering-create-form" onSubmit={submit}>
+      <div className="form-grid">
+        <Field label="Course"><select name="course" required defaultValue="">
+          <option value="" disabled>Choose a course</option>
+          {courses.map(course => <option key={course._id} value={course._id}>{course.code} · {course.name}</option>)}
+        </select></Field>
+        <Field label="Academic term"><input value={[pretty(term?.season), term?.academicYear].filter(Boolean).join(" ")} readOnly /></Field>
+        <Field label="Publication status"><select value={isPublished ? "published" : "draft"} onChange={event => setIsPublished(event.target.value === "published")}>
+          <option value="draft">Draft</option><option value="published">Published</option>
+        </select></Field>
+      </div>
+      <Field label="Instructors">
+        <textarea name="instructors" rows={2} placeholder="Dr. Sara Hassan | sara.hassan@guc.edu.eg" />
+        <small>One instructor per line: Name | email</small>
+      </Field>
+      <EligibleGroupFields groups={groups} onChange={setGroups} available={majors} disabled={saving} />
+      <div className="slot-editor-heading"><div><p className="eyebrow">MEETING TIMES</p><h3>Course groups</h3></div>
+        <button className="outline-button small-button" type="button" onClick={addSlot}>＋ Add group</button>
+      </div>
+      {slots.map((slot, index) => <SlotFields key={index} index={index} slot={slot} onChange={setSlot}
+        onRemove={() => setSlots(current => current.filter((_, position) => position !== index))} canRemove={slots.length > 1} />)}
+      {error && <div className="feedback error" role="alert">{error}</div>}
+      <FormFooter onCancel={onClose} busy={saving} submitText="Create offering" />
+    </form>
+  </Modal>;
 }
 
-function OfferingDetailsModal({ token, offering, onClose, onChanged }) {
-  const [error, setError] = useState(""); const [busySlot, setBusySlot] = useState(""); const [instructors, setInstructors] = useState(""); const [groups, setGroups] = useState(""); const [savingMeta, setSavingMeta] = useState(false); const [addingGroups, setAddingGroups] = useState(false); const [newSlots, setNewSlots] = useState([]); const [savingGroups, setSavingGroups] = useState(false); const [removeSlotTarget, setRemoveSlotTarget] = useState(null); const [removingSlot, setRemovingSlot] = useState(false); const [removeSlotError, setRemoveSlotError] = useState("");
-  useEffect(() => { if (!offering?.loading && !offering?.error) { setInstructors((offering.instructors || []).map((item) => `${item.fullName}${item.email ? ` | ${item.email}` : ""}`).join("\n")); setGroups((offering.eligibleGroups || []).map((item) => `${item.major} | ${item.semester || ""} | ${item.studyGroup || ""}`).join("\n")); } }, [offering]);
+function OfferingDetailsModal({ token, offering, majors, onClose, onChanged }) {
+  const [error, setError] = useState(""); const [busySlot, setBusySlot] = useState(""); const [instructors, setInstructors] = useState(""); const [groups, setGroups] = useState([]); const [savingMeta, setSavingMeta] = useState(false); const [addingGroups, setAddingGroups] = useState(false); const [newSlots, setNewSlots] = useState([]); const [savingGroups, setSavingGroups] = useState(false); const [removeSlotTarget, setRemoveSlotTarget] = useState(null); const [removingSlot, setRemovingSlot] = useState(false); const [removeSlotError, setRemoveSlotError] = useState("");
+  useEffect(() => { if (!offering?.loading && !offering?.error) { setInstructors((offering.instructors || []).map((item) => `${item.fullName}${item.email ? ` | ${item.email}` : ""}`).join("\n")); setGroups(offering.eligibleGroups || []); } }, [offering]);
   if (offering?.loading) return <Modal title="Offering details" eyebrow="COURSE OFFERING" onClose={onClose}><Loading /></Modal>;
   if (offering?.error) return <Modal title="Offering details" eyebrow="COURSE OFFERING" onClose={onClose}><div className="feedback error" role="alert">{offering.error}</div></Modal>;
-  const saveMeta = async (event) => { event.preventDefault(); setSavingMeta(true); setError(""); const form = new FormData(event.currentTarget); const instructorsPayload = splitLines(form.get("instructors")).map((line) => { const [fullName, email] = line.split("|").map((part) => part.trim()); return { fullName, ...(email ? { email } : {}) }; }); const groupsPayload = splitLines(form.get("eligibleGroups")).map((line) => { const [major, semester, studyGroup] = line.split("|").map((part) => part.trim()); return { major, ...(semester ? { semester: Number(semester) } : {}), ...(studyGroup ? { studyGroup } : {}) }; }); try { await api(`/api/catalogue/offerings/${offering._id}`, { token, method: "PUT", body: { instructors: instructorsPayload, eligibleGroups: groupsPayload } }); onChanged("Offering details saved."); } catch (e) { setError(e.message); } finally { setSavingMeta(false); } };
+  const saveMeta = async (event) => {
+    event.preventDefault();
+    setSavingMeta(true);
+    setError("");
+    const form = new FormData(event.currentTarget);
+    try {
+      await api(`/api/catalogue/offerings/${offering._id}`, { token, method: "PUT", body: {
+        instructors: offeringInstructors(form), eligibleGroups: eligibleGroupsPayload(groups),
+      } });
+      onChanged("Offering details saved.");
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setSavingMeta(false);
+    }
+  };
   const addNewGroup = () => {
     setNewSlots((current) => [...current, emptySlot(nextGroupNumber([...(offering.slots || []), ...current], -1, "lecture"))]);
     setAddingGroups(true);
@@ -1122,7 +1279,18 @@ function OfferingDetailsModal({ token, offering, onClose, onChanged }) {
     } catch (e) { setRemoveSlotError(e.message); }
     finally { setRemovingSlot(false); }
   };
-  return <Modal title={`${offering.course?.code || "Offering"} · Manage`} eyebrow="COURSE OFFERING" onClose={onClose} wide><div className="offering-detail-head"><div><h3>{offering.course?.name}</h3><p>{termLabel(offering.term)} · {offering.course?.creditHours} credits</p></div><div className="offering-status"><span className="eyebrow">PUBLICATION STATUS</span><span className={`status-pill ${offering.isPublished ? "good" : "muted"}`}>{offering.isPublished ? "Published" : "Draft"}</span></div></div>{error && <div className="feedback error" role="alert">{error}</div>}<form className="form-stack offering-meta-form" onSubmit={saveMeta}><p className="eyebrow">INSTRUCTORS AND ELIGIBLE GROUPS</p><div className="form-grid"><Field label="Instructors · one per line: Name | email"><textarea name="instructors" rows={3} value={instructors} onChange={(e) => setInstructors(e.target.value)} /></Field><Field label="Eligible groups · one per line: Major | semester | group"><textarea name="eligibleGroups" rows={3} value={groups} onChange={(e) => setGroups(e.target.value)} /></Field></div><button className="outline-button" disabled={savingMeta}>{savingMeta ? "Saving…" : "Save offering details"}</button></form><div className="slot-editor-heading"><div><p className="eyebrow">MEETING TIMES</p><h3>Course groups</h3></div><button type="button" className="outline-button small-button" onClick={addNewGroup}>＋ Add group</button></div>{(offering.slots || []).map((slot) => <form className="slot-row slot-row-existing" key={slot._id} onSubmit={(event) => updateSlot(slot._id, event)}><div className="form-grid"><Field label="Component"><select name="componentType" defaultValue={slot.componentType}>{["lecture", "tutorial", "lab"].map((type) => <option value={type} key={type}>{pretty(type)}</option>)}</select></Field><Field label="Group"><input name="groupNumber" required defaultValue={slot.groupNumber} /></Field><Field label="Day"><select name="day" defaultValue={slot.day}>{week.map((day) => <option key={day}>{day}</option>)}</select></Field><Field label="Start"><input name="startTime" type="time" required defaultValue={minutesToTime(slot.startMinute)} /></Field><Field label="End"><input name="endTime" type="time" required defaultValue={minutesToTime(slot.endMinute)} /></Field><Field label="Room"><input name="room" required defaultValue={slot.room} /></Field><Field label="Capacity"><input name="capacity" type="number" min={slot.assignedStudentCount || 0} required defaultValue={slot.capacity} /></Field></div><div className="slot-capacity-summary"><div><span>Assigned student count</span><strong>{slot.assignedStudentCount || 0}</strong></div><div><span>Remaining capacity</span><strong>{slot.remainingCapacity ?? Math.max(0, slot.capacity - (slot.assignedStudentCount || 0))}</strong></div><div className="slot-actions"><PaperTossButton label={`Remove group ${slot.groupNumber} (${pretty(slot.componentType)})`} onClick={() => { setRemoveSlotError(""); setRemoveSlotTarget(slot); }}>Remove group</PaperTossButton><button className="outline-button small-button" disabled={busySlot === slot._id}>{busySlot === slot._id ? "Saving…" : "Update group"}</button></div></div></form>)}{addingGroups && <form className="form-stack new-groups-form" onSubmit={saveNewGroups}><div className="slot-editor-heading"><div><p className="eyebrow">NEW MEETING TIMES</p><h3>Add groups</h3></div><button type="button" className="text-button" onClick={() => { setAddingGroups(false); setNewSlots([]); }}>Cancel</button></div>{newSlots.map((slot, index) => <SlotFields key={index} index={index} slot={slot} onChange={changeNewSlot} onRemove={() => setNewSlots((current) => current.filter((_, position) => position !== index))} canRemove />)}<div className="form-footer"><button type="button" className="outline-button" onClick={addNewGroup}>＋ Add another group</button><button className="primary-button" disabled={savingGroups || !newSlots.length}>{savingGroups ? "Adding…" : "Save groups"}</button></div></form>}<div className="form-footer"><button className="outline-button" type="button" onClick={onClose}>Close</button></div>{removeSlotTarget && <Modal title="Remove this course group?" eyebrow="REMOVE MEETING GROUP" onClose={() => !removingSlot && setRemoveSlotTarget(null)}><div className="confirmation-content"><span className="confirmation-icon" aria-hidden="true">!</span><div><p>Remove <strong>{pretty(removeSlotTarget.componentType)} group {removeSlotTarget.groupNumber}</strong> on <strong>{removeSlotTarget.day}</strong> at <strong>{formatMinutes(removeSlotTarget.startMinute)}–{formatMinutes(removeSlotTarget.endMinute)}</strong>?</p><p className="helper-text">Groups used by students, schedules, or templates cannot be removed. The system will explain what needs to be updated first.</p></div></div>{removeSlotError && <div className="feedback error" role="alert">{removeSlotError}</div>}<div className="form-footer"><button className="outline-button" type="button" disabled={removingSlot} onClick={() => setRemoveSlotTarget(null)}>Cancel</button><PaperTossButton disabled={removingSlot} tossing={removingSlot} onClick={deleteSlot}>{removingSlot ? "Removing…" : "Remove group"}</PaperTossButton></div></Modal>}</Modal>;
+  return <Modal title={`${offering.course?.code || "Offering"} · Manage`} className="offering-manage-dialog" onClose={onClose} wide><div className="offering-detail-head"><div><h3>{offering.course?.name}</h3><p>{termLabel(offering.term)} · {offering.course?.creditHours} credits</p></div><div className="offering-status"><span className="eyebrow">PUBLICATION STATUS</span><span className={`status-pill ${offering.isPublished ? "good" : "muted"}`}>{offering.isPublished ? "Published" : "Draft"}</span></div></div>{error && <div className="feedback error" role="alert">{error}</div>}<form className="form-stack offering-meta-form" onSubmit={saveMeta}>
+      <Field label="Instructors">
+        <textarea name="instructors" rows={3} value={instructors} onChange={event => setInstructors(event.target.value)} />
+        <small>One instructor per line: Name | email</small>
+      </Field>
+      <EligibleGroupFields groups={groups} onChange={setGroups} available={majors} disabled={savingMeta} />
+      <button className="outline-button" disabled={savingMeta}>{savingMeta ? "Saving…" : "Save offering details"}</button>
+    </form><div className="slot-editor-heading"><div><p className="eyebrow">MEETING TIMES</p><h3>Course groups</h3></div><button type="button" className="outline-button small-button" onClick={addNewGroup}>＋ Add group</button></div>{(offering.slots || []).map((slot) => <div className="offering-meeting" key={slot._id}>
+      <header className="offering-meeting-summary"><div><strong>{pretty(slot.componentType)} · Group {slot.groupNumber}</strong><small>{slot.day} · {formatMinutes(slot.startMinute)}–{formatMinutes(slot.endMinute)} · {slot.room}</small></div><PaperTossButton label={`Remove group ${slot.groupNumber} (${pretty(slot.componentType)})`} onClick={() => { setRemoveSlotError(""); setRemoveSlotTarget(slot); }}>Remove group</PaperTossButton></header>
+      <details><summary>Edit meeting</summary><form className="slot-row slot-row-existing" onSubmit={(event) => updateSlot(slot._id, event)}><div className="form-grid"><Field label="Component"><select name="componentType" defaultValue={slot.componentType}>{["lecture", "tutorial", "lab"].map((type) => <option value={type} key={type}>{pretty(type)}</option>)}</select></Field><Field label="Group"><input name="groupNumber" required defaultValue={slot.groupNumber} /></Field><Field label="Day"><select name="day" defaultValue={slot.day}>{week.map((day) => <option key={day}>{day}</option>)}</select></Field><Field label="Start"><input name="startTime" type="time" required defaultValue={minutesToTime(slot.startMinute)} /></Field><Field label="End"><input name="endTime" type="time" required defaultValue={minutesToTime(slot.endMinute)} /></Field><Field label="Room"><input name="room" required defaultValue={slot.room} /></Field><Field label="Capacity"><input name="capacity" type="number" min={slot.assignedStudentCount || 0} required defaultValue={slot.capacity} /></Field></div><div className="slot-capacity-summary"><div><span>Assigned student count</span><strong>{slot.assignedStudentCount || 0}</strong></div><div><span>Remaining capacity</span><strong>{slot.remainingCapacity ?? Math.max(0, slot.capacity - (slot.assignedStudentCount || 0))}</strong></div><div className="slot-actions"><button className="outline-button small-button" disabled={busySlot === slot._id}>{busySlot === slot._id ? "Saving…" : "Update group"}</button></div></div></form></details></div>)}{addingGroups && <form className="form-stack new-groups-form" onSubmit={saveNewGroups}><div className="slot-editor-heading"><div><p className="eyebrow">NEW MEETING TIMES</p><h3>Add groups</h3></div><button type="button" className="text-button" onClick={() => { setAddingGroups(false); setNewSlots([]); }}>Cancel</button></div>{newSlots.map((slot, index) => <SlotFields key={index} index={index} slot={slot} onChange={changeNewSlot} onRemove={() => setNewSlots((current) => current.filter((_, position) => position !== index))} canRemove />)}<div className="form-footer"><button type="button" className="outline-button" onClick={addNewGroup}>＋ Add another group</button><button className="primary-button" disabled={savingGroups || !newSlots.length}>{savingGroups ? "Adding…" : "Save groups"}</button></div></form>}<div className="form-footer"><button className="outline-button" type="button" onClick={onClose}>Close</button></div>{removeSlotTarget && <Modal title="Remove this course group?" className="offering-confirmation" busy={removingSlot} onClose={() => setRemoveSlotTarget(null)}>
+      <div className="offering-confirmation-context"><OfferingCourseIcon code={offering.course?.code} /><div><strong>{pretty(removeSlotTarget.componentType)} · Group {removeSlotTarget.groupNumber}</strong><small>{removeSlotTarget.day} · {formatMinutes(removeSlotTarget.startMinute)}–{formatMinutes(removeSlotTarget.endMinute)} · {removeSlotTarget.room}</small></div></div>
+      <p className="offering-confirmation-copy">You can remove this meeting once no students, schedules, or templates use it.</p>{removeSlotError && <div className="feedback error" role="alert">{removeSlotError}</div>}<div className="form-footer"><button className="outline-button" type="button" disabled={removingSlot} onClick={() => setRemoveSlotTarget(null)}>Cancel</button><PaperTossButton disabled={removingSlot} tossing={removingSlot} onClick={deleteSlot}>{removingSlot ? "Removing…" : "Remove group"}</PaperTossButton></div></Modal>}</Modal>;
 }
 
 function SlotFields({ index, slot, onChange, onRemove, canRemove }) {
@@ -1133,14 +1301,14 @@ function SlotFields({ index, slot, onChange, onRemove, canRemove }) {
 
 function PageTitle({ eyebrow, title, description, action }) { return <div className="page-title-row"><div><p className="eyebrow">{eyebrow}</p><h1>{title}</h1><p className="page-description">{description}</p></div>{action}</div>; }
 function Field({ label, children, className = "" }) { return <label className={`field ${className}`}><span>{label}</span>{children || <input />}</label>; }
-export function Modal({ title, eyebrow, description, onClose, closeLabel, children, wide = false, className = "", busy = false }) {
+export function Modal({ title, accessibleName = title, eyebrow, description, onClose, closeLabel, children, wide = false, className = "", busy = false }) {
   const ref = useRef(null);
   useLayoutEffect(() => {
     const dialog = ref.current;
     dialog.showModal();
     return () => dialog.close();
   }, []);
-  return <dialog ref={ref} className={`academic-dialog modal-backdrop ${className}`} aria-label={title}
+  return <dialog ref={ref} className={`academic-dialog modal-backdrop ${className}`} aria-label={accessibleName}
     onCancel={event => { event.preventDefault(); if (!busy) onClose(); }}
     onClick={event => { if (!busy && event.target === ref.current) onClose(); }}>
     <section className={`modal-card ${wide ? "wide-modal" : ""}`}>
@@ -1187,12 +1355,14 @@ function termToForm(term) {
 function readRecentTerms() { try { return JSON.parse(window.localStorage.getItem("bobos.recentTerms") || "[]"); } catch { return []; } }
 
 function catalogueMajors(course) {
-  return (course.facultyMajors || []).flatMap(major => splitLines(String(major).replaceAll("\\n", "\n")));
+  return (course?.facultyMajors || []).flatMap(major => splitLines(String(major).replaceAll("\\n", "\n")));
 }
 
 function CourseEditor({ course, courses, onSave, onClose, saving, error }) {
   const [section, setSection] = useState("details");
   const [search, setSearch] = useState("");
+  const [majors, setMajors] = useState(() => catalogueMajors(course));
+  const availableMajors = courses.flatMap(catalogueMajors);
   const [requiredIds, setRequiredIds] = useState(() => (course.prerequisites || []).map(item => item._id || item));
   const options = courses.filter(item => item._id !== course._id && `${item.code} ${item.name}`.toLowerCase().includes(search.trim().toLowerCase()));
   return <Modal title={course._id ? "Edit course" : "Add a course"} onClose={onClose} wide>
@@ -1215,7 +1385,20 @@ function CourseEditor({ course, courses, onSave, onClose, saving, error }) {
       </div></fieldset>
       <fieldset id="course-editor-curriculum" data-course-section="curriculum" hidden={section !== "curriculum"}><legend>Curriculum placement</legend><div className="form-grid">
         <Field label="Recommended semester"><input name="recommendedSemester" type="number" min="1" max="10" defaultValue={course.recommendedSemester} /></Field>
-        <Field label="Majors (one per line)"><textarea name="facultyMajors" rows={2} defaultValue={catalogueMajors(course).join("\n")} placeholder="One major per line" /></Field>
+        <div className="catalogue-majors">
+          <Field label="Majors">
+            <MajorSelect value="" available={availableMajors} excluded={majors} placeholder="Add a major"
+              onChange={event => setMajors(current => [...current, event.target.value])} />
+          </Field>
+          {majors.length ? <ul className="catalogue-major-list" role="list" aria-label="Selected majors">
+            {majors.map((major, index) => <li key={`${major}-${index}`}>
+              <input type="hidden" name="facultyMajors" value={major} />
+              <span>{majorOptionLabel(major)}</span>
+              <button type="button" className="major-chip-remove" data-no-control-ink aria-label={`Remove ${major}`}
+                onClick={() => setMajors(current => current.filter((_, position) => position !== index))}><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.45" aria-hidden="true"><path d="m3 3 6 6m0-6L3 9"/></svg></button>
+            </li>)}
+          </ul> : <p className="helper-text">All majors</p>}
+        </div>
       </div></fieldset>
       <fieldset id="course-editor-teaching" data-course-section="teaching" hidden={section !== "teaching"}><legend>Teaching and availability</legend>
         <div className="teaching-hours">
@@ -1228,7 +1411,7 @@ function CourseEditor({ course, courses, onSave, onClose, saving, error }) {
         <legend>Prerequisites</legend>
         <label className="field"><span>Find a prerequisite</span><input type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Course code or name" /></label>
         {requiredIds.map(id => <input key={id} type="hidden" name="prerequisites" value={id} />)}
-        <div className="prerequisite-options">{options.map(item => <label key={item._id}><input type="checkbox" checked={requiredIds.includes(item._id)} onChange={event => setRequiredIds(ids => event.target.checked ? [...ids, item._id] : ids.filter(id => id !== item._id))} /><span><small>{item.code}</small> {item.name}</span></label>)}{!options.length && <p>No matching courses.</p>}</div>
+        <div className="prerequisite-options">{options.map(item => <label key={item._id}><input type="checkbox" checked={requiredIds.includes(item._id)} onChange={event => setRequiredIds(ids => event.target.checked ? [...ids, item._id] : ids.filter(id => id !== item._id))} /><OfferingCourseIcon code={item.code} /><span><strong>{item.name}</strong><small>{item.code}</small></span></label>)}{!options.length && <p>No matching courses.</p>}</div>
       </fieldset>
       {error && <div className="feedback error" role="alert">{error}</div>}
       <FormFooter onCancel={onClose} busy={saving} submitText={course._id ? "Save changes" : "Create course"} />
@@ -1239,18 +1422,28 @@ function CourseEditor({ course, courses, onSave, onClose, saving, error }) {
 export function CourseDetailsModal({ course, allCourses = [], onClose, onEdit }) {
   const prerequisites = (course.prerequisites || []).map(entry => entry?.code ? entry : allCourses.find(item => item._id === (entry?._id || entry)) || {code: String(entry?._id || entry)});
   const facts = [
-    ["Credit hours", course.creditHours], ["Course type", course.courseType === "huma" ? "Humanities" : pretty(course.courseType)],
+    ["Course type", course.courseType === "huma" ? "Humanities" : pretty(course.courseType)],
     ["Recommended semester", course.recommendedSemester || "Unspecified"], ["Majors", catalogueMajors(course).join(", ") || "All majors"],
     ["Offering seasons", (course.offeringSeasons || []).map(pretty).join(", ") || "All seasons"],
     ...(course.isBachelorProject ? [["Project", "Bachelor project"]] : []),
   ];
-  return <Modal title={course.name} eyebrow={course.code} onClose={onClose} wide>
-    <div className="course-sheet">
-      <div className="course-sheet-identity"><OfferingCourseIcon code={course.code}/><strong>{course.code}</strong><span className={`status-pill ${course.isActive ? "good" : "muted"}`}>{course.isActive ? "Active" : "Inactive"}</span></div>
-      <div className="course-sheet-columns"><section><h3>Course information</h3><dl>{facts.map(([label,value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl></section>
-      <section><h3>Weekly teaching hours</h3><dl>{["lecture", "tutorial", "lab"].map(type => <div key={type}><dt>{pretty(type)}</dt><dd>{course[`${type}Hours`] ?? "—"}</dd></div>)}</dl></section></div>
-      <section><h3>Prerequisites</h3>{prerequisites.length ? <ul className="prerequisite-list">{prerequisites.map(item => <li key={item.code}><OfferingCourseIcon code={item.code}/><span><small>{item.code}</small><strong>{item.name || item.code}</strong></span></li>)}</ul> : <p>No prerequisites required.</p>}</section>
-      <div className="form-footer"><button type="button" className="outline-button" onClick={onClose}>Close</button>{onEdit && <button type="button" className="primary-button" onClick={onEdit}>Edit course</button>}</div>
+  return <Modal title={course.name} className="record-dossier-dialog" onClose={onClose} wide>
+    <div className="record-dossier">
+      <div className="record-dossier-intro">
+        <OfferingCourseIcon code={course.code} />
+        <div><h3>{course.code}</h3><p>{course.creditHours == null ? "Credits unspecified" : `${course.creditHours} ${course.creditHours === 1 ? "credit" : "credits"}`}</p></div>
+        <span className={`status-pill ${course.isActive ? "good" : "muted"}`}>{course.isActive ? "Active" : "Inactive"}</span>
+      </div>
+      <div className="record-dossier-grid">
+        <section><h3>Course information</h3><dl className="record-dossier-facts">{facts.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl></section>
+        <section><h3>Weekly teaching hours</h3><dl className="course-dossier-hours">{["lecture", "tutorial", "lab"].map(type => <div key={type}><dt>{pretty(type)}</dt><dd>{course[`${type}Hours`] ?? "—"}</dd></div>)}</dl></section>
+      </div>
+      <section className="course-dossier-prerequisites">
+        <h3>Prerequisites {prerequisites.length > 0 && <small>{prerequisites.length}</small>}</h3>
+        {prerequisites.length ? <ul className="prerequisite-list">{prerequisites.map(item => <li key={item.code}><OfferingCourseIcon code={item.code}/><span><strong>{item.name || item.code}</strong><small>{item.code}</small></span></li>)}</ul>
+          : <p className="course-dossier-no-prerequisites"><span className="status-pill good">No prerequisites required</span></p>}
+      </section>
+      {onEdit && <div className="record-dossier-action"><button type="button" className="primary-button" onClick={onEdit}>Edit course</button></div>}
     </div>
   </Modal>;
 }

@@ -44,19 +44,23 @@ function AdvisorSubmissions({ rows }) {
         <Status status={row.status} />
       </button>)}
     </div>}
-    <article className="submission-folio" aria-labelledby="submission-student-name">
+    <article className="submission-record" aria-labelledby="submission-student-name">
       <header className="submission-cover">
         <StudentIdentity name={plan.student?.user?.fullName} id={plan.student?.studentId}
           nameAction={<h2 id="submission-student-name">{plan.student?.user?.fullName || "Advising student"}</h2>} />
-        <Status status={plan.status} />
+        <div className="submission-meta">
+          {plan.submittedAt && <p>Submitted <time dateTime={plan.submittedAt}>{studentDate.format(new Date(plan.submittedAt))}</time></p>}
+          <Status status={plan.status} />
+        </div>
       </header>
       <div className="submission-body">
         <section className="submission-courses" aria-labelledby="submission-courses-title">
-          <header className="submission-course-heading"><h3 id="submission-courses-title">Courses by term</h3>
+          <header className="submission-courses-heading">
+            <h3 id="submission-courses-title">Submitted plan</h3>
             <p>{plan.termPlans.length} {plan.termPlans.length === 1 ? "term" : "terms"} · {courseCount(courses.length)} · {creditLabel(courses.reduce((sum, course) => sum + course.creditHours, 0))}</p>
           </header>
           <div className="submission-term-list">
-            {plan.termPlans.length ? <StudentPlanTerms plan={plan} showCourseCount /> : <p className="graduation-meta">No courses listed.</p>}
+            {plan.termPlans.length ? <StudentPlanTerms plan={plan} /> : !plan.exitExamRequest && <p className="graduation-meta">No courses listed.</p>}
           </div>
           {plan.exitExamRequest && <div className="graduation-exam-course">
             <OfferingCourseIcon code={plan.exitExamRequest.course?.code} />
@@ -68,11 +72,10 @@ function AdvisorSubmissions({ rows }) {
         <aside className="submission-review" aria-label="Coordinator review">
           <img src="/portal-studio/images/submitted-plan.svg" width="78" height="58" alt="" />
           <h3>{accepted ? "Shared with the student" : "With the coordinator"}</h3>
-          <p>{accepted ? "The accepted plan is available in the student’s My graduation workspace." : "The coordinator can accept the plan or return it to you for changes."}</p>
-          <dl className="submission-facts">
-            {plan.submittedAt && <div><dt>Submitted</dt><dd><time dateTime={plan.submittedAt}>{studentDate.format(new Date(plan.submittedAt))}</time></dd></div>}
-            {accepted && plan.decidedAt && <div><dt>Accepted</dt><dd><time dateTime={plan.decidedAt}>{studentDate.format(new Date(plan.decidedAt))}</time></dd></div>}
-          </dl>
+          <p>{accepted ? "The student can now see this plan under My graduation." : "This plan is waiting for a decision. If it comes back to you, you can edit it and submit it again."}</p>
+          {accepted && plan.decidedAt && <p className="submission-decision-date">
+            Accepted <time dateTime={plan.decidedAt}>{studentDate.format(new Date(plan.decidedAt))}</time>
+          </p>}
           <GraduationResponse note={plan.responseNote} />
         </aside>
       </div>
@@ -205,7 +208,13 @@ export default function GraduationReview({ token, role }) {
   const plans = kind === "plans";
   const rows = (plans ? result?.plans : result?.requests) ?? [];
   return <div className={`page-stack workspace-page graduation-review-page${coordinator ? "" : " advisor-graduation-review"}`}>
-    <WorkspaceHeader title={coordinator ? "Graduation review" : "My submitted plans"} description={!coordinator ? "Track the graduation plans you’ve sent for coordinator review." : undefined} />
+    {coordinator ? <WorkspaceHeader title="Graduation review" /> : <header className="submission-masthead">
+      <div>
+        <h1>My submitted plans</h1>
+        <img src="/portal-studio/images/graduation-cap.svg" width="66" height="56" alt="" />
+      </div>
+      <p>See the graduation plans you sent to the coordinator and which ones have been accepted.</p>
+    </header>}
     {coordinator && <div className="tabs" role="group" aria-label="Review queue">
       <button aria-pressed={plans}
         disabled={busy} onClick={() => changeView("plans")}>Graduation plans</button>
@@ -304,12 +313,12 @@ function GraduationResponse({ note }) {
   </div>;
 }
 
-function StudentPlanTerms({ plan, showCourseCount = false }) {
+function StudentPlanTerms({ plan }) {
   return orderedTerms(plan).map(({ term, courses }, index) => (
     <div className="graduation-term" key={term?._id ?? index}>
       <div className="graduation-term-heading">
         <h4>{term ? termLabel(term) : "Archived term"}</h4>
-        <span>{showCourseCount && <>{courseCount(courses.length)} · </>}{creditLabel(courses.reduce((sum, course) => sum + course.creditHours, 0))} total</span>
+        <span>{creditLabel(courses.reduce((sum, course) => sum + course.creditHours, 0))} total</span>
       </div>
       {courses.length ? <ul className="graduation-course-list" role="list">
         {courses.map((course) => <li key={course._id ?? course.code}>
@@ -360,7 +369,10 @@ export function StudentGraduation({ token, embedded = false }) {
           </div>}
           <GraduationResponse note={plan.responseNote} />
         </article>
-      )) : <p className="graduation-record-empty">No graduation plan has been accepted yet.</p>)}
+      )) : <div className="graduation-empty">
+        <img src="/portal-studio/images/graduation-plan-sheet.svg" width="244" height="160" alt="" />
+        <p>No graduation plan has been accepted yet.</p>
+      </div>)}
     </section>
     {result && <section className="panel" aria-labelledby="exit-exams-heading">
       <div className="graduation-section-heading"><h2 id="exit-exams-heading">Exit-exam requests</h2></div>
@@ -381,7 +393,10 @@ export function StudentGraduation({ token, embedded = false }) {
           </header>
           <GraduationResponse note={exam.responseNote} />
         </article>
-      )) : <p className="graduation-record-empty">No exit exam has been requested for you.</p>}
+      )) : <div className="graduation-empty">
+        <img src="/portal-studio/images/exit-exam-form.svg" width="158" height="116" alt="" />
+        <p>No exit exam has been requested for you.</p>
+      </div>}
     </section>}
   </div>;
 }
