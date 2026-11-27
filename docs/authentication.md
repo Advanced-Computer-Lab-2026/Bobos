@@ -29,7 +29,7 @@ The npm startup command loads the root `.env` using Node's built-in environment-
 `POST /api/identity/login`
 
 ```json
-{ "email": "karim.normal@student.guc.edu.eg", "password": "Password123!" }
+{ "email": "name@student.guc.edu.eg", "password": "<current university password>" }
 ```
 
 The backend normalizes email case and whitespace, checks the GUC domain, looks up an existing active account, and verifies its bcrypt password hash. It returns `200` with a signed token and safe user fields, `400` for invalid input, or `401` for invalid credentials/inactive accounts. All five roles are supported.
@@ -41,7 +41,7 @@ Protected requests use `Authorization: Bearer <token>`. Tokens expire after seve
 1. `POST /api/identity/forgot-password`
 
 ```json
-{ "email": "karim.normal@student.guc.edu.eg" }
+{ "email": "name@student.guc.edu.eg" }
 ```
 
 The user receives a six-digit code by email. The response never contains the code and gives the same success message for unknown/inactive accounts. Only a keyed hash is stored, in the user's hidden `passwordReset` field. Codes expire after 10 minutes. Requests for the same account have a 60-second cooldown.
@@ -49,7 +49,7 @@ The user receives a six-digit code by email. The response never contains the cod
 2. `POST /api/identity/reset-password`
 
 ```json
-{ "email": "karim.normal@student.guc.edu.eg", "otp": "123456", "newPassword": "NewPassword123!" }
+{ "email": "name@student.guc.edu.eg", "otp": "123456", "newPassword": "<new university password>" }
 ```
 
 Keep the OTP as a string to preserve leading zeros. Five incorrect attempts invalidate the code. A successful reset atomically replaces the password hash, removes the code and invalidates existing sessions. A used, expired or replaced code cannot change the password again. New passwords require at least eight characters and at most 72 UTF-8 bytes, matching bcrypt's input limit. The user then logs in with the new password.
@@ -64,9 +64,7 @@ Logout increments the account's persisted authentication version. All existing s
 
 The endpoint identifies the user only through the authenticated token; request-body user IDs cannot log out another account. Missing, invalid, expired and already invalidated tokens return `401`.
 
-## Development accounts and request limits
-
-The pre-existing `POST /api/identity/seed-demo` endpoint is disabled by default. For an empty development database only, explicitly set `ALLOW_DEMO_SEED=true` to enable it. It resets the demo accounts to their shared development password, so do not use it with accounts you need to preserve. It is always disabled in production.
+## Request limits
 
 Authentication verification is limited to 30 unsuccessful requests per IP per minute. Successful sign-ins and resets are excluded. Forgot-password email requests have a separate limit of 10 per IP per 15 minutes. Excess requests return `429`. These IP counters use the process-local store; a deployment with multiple API processes needs a shared store. Account OTP expiry, cooldown and attempt limits are enforced by MongoDB and persist across restarts. Configure trusted proxies narrowly if hosting behind a reverse proxy.
 

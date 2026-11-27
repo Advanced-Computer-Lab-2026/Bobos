@@ -177,7 +177,7 @@ Bachelor-project mutations refresh the draft and overview together without unmou
 
 Mandatory selection now saves on checkbox changes; omit the separate save button. Deselecting required courses while other courses remain is blocked. Existing bachelor-season changes save from the selector; retain Add bachelor project only before selection and label removal Remove bachelor. A missing/deleted student returns to the roster with a useful message. Student schedule heading art is larger while retaining responsive spacing.
 
-Local manual fixtures now use existing Excel curriculum courses: 93-00063 has CSEN501 and CSEN503 as mandatory repeats; 93-00062 is a fresh optional-preferences draft example. Curriculum cleanup removes non-explicit codes with a local backup and remaps applicable demo references to real courses. Seeds must not invent R60/R63/B1LAB or numbered ELEC courses. The curriculum CSV is the existing export of the workbook curriculum sheet.
+Local manual fixtures now use existing Excel curriculum courses: 93-00063 has CSEN501 and CSEN503 as mandatory repeats; 93-00062 is a fresh optional-preferences draft example. Curriculum cleanup removes non-explicit codes with a local backup and remaps applicable local records to existing courses. Seeds must not invent R60/R63/B1LAB or numbered ELEC courses. The curriculum CSV is the existing export of the workbook curriculum sheet.
 
 Student details has no manual preferences Refresh button. Preferences still load when opening/reloading the draft and after saved changes; retain the latest-submission timestamp and optional empty state.
 
