@@ -3,13 +3,10 @@
 const workspaceSessionKey = 'bobos.token';
 function normalizePortalLocation() {
   const url = new URL(location.href);
-  const accountRole = localStorage.getItem(workspaceSessionKey) && localStorage.getItem('portal-account-role');
-  if (accountRole) url.searchParams.set('role', accountRole);
-  BobosPortalRoutes.normalize(url.searchParams);
+  normalizePortalRoute(url.searchParams);
   if (url.href !== location.href) history.replaceState(history.state, '', url);
   return url.searchParams;
 }
-const params = normalizePortalLocation();
 const pages = {
   'academic-services':'Academic services', 'graduation-plans':'Graduation plans', 'my-submitted-plans':'My submitted plans', overview:'Home', notifications:'Notifications', profile:'My profile',
   directory:'Student directory', 'extra-hours':'Extra-hours requests', advising:'Advising students',
@@ -26,6 +23,18 @@ const pages = {
 };
 const roleNames = {coordinator:'Coordinator', administrator:'Administrator', advisor:'Advisor', advisingStudent:'Advising student', normalStudent:'Normal student'};
 const authPages = new Set(['login','forgot','reset']);
+function normalizePortalRoute(query) {
+  const accountRole = localStorage.getItem(workspaceSessionKey) && localStorage.getItem('portal-account-role');
+  if (accountRole && !Object.hasOwn(roleNames, query.get('role'))) query.set('role', accountRole);
+  BobosPortalRoutes.normalize(query);
+  const target = query.get('page');
+  const requestedRole = query.get('role');
+  const explicitDestination = authPages.has(target)
+    ? query.has('next') && Object.hasOwn(roleNames, requestedRole)
+    : roleCanOpen(requestedRole, target);
+  if (accountRole && !explicitDestination) query.set('role', accountRole);
+}
+const params = normalizePortalLocation();
 const previewSessionKey = 'portal-studio-preview-session';
 const workspaceAccountNameKey = 'portal-account-name';
 let liveStudent = { token: null, loading: false, error: '', data: null };
@@ -398,10 +407,10 @@ function courseLink(code,label,cls) {
   const course = resolveCourse(code);
   return `<a class="${cls}" href="${href('course-detail',course[0])}" data-page="course-detail">${label}</a>`;
 }
-function groups(){
+function groups(role){
   const managesAcademics = role === 'coordinator' || role === 'administrator';
   const advises = role === 'coordinator' || role === 'advisor';
-  if (student()) return [
+  if (['normalStudent','advisingStudent'].includes(role)) return [
     ['', ['overview']],
     ['Classes', ['my-schedule','my-courses', ...(role === 'normalStudent' ? ['schedule-swap'] : ['preferences'])]],
     ['Support', [...(role === 'advisingStudent' ? ['my-advisor','slot-changes'] : []),'calendar-sync', ...(role === 'advisingStudent' ? ['records','extra-hours','graduation-plans'] : [])]]
@@ -422,15 +431,25 @@ function groups(){
       ? ['courses','terms',role === 'administrator' ? 'offerings' : 'templates','group-assignments'] : []]
   ].filter(([, items]) => items.length);
 }
+function navigationParent(target, accountRole) {
+  if (target === 'course-detail') return ['normalStudent','advisingStudent'].includes(accountRole) ? 'my-courses' : 'courses';
+  return {'draft-schedule':'student-schedules','copy-offerings':'offerings'}[target] || target;
+}
+function roleCanOpen(accountRole, target) {
+  const parent = navigationParent(target, accountRole);
+  return Object.hasOwn(roleNames, accountRole) && (
+    ['profile','notifications'].includes(target) || groups(accountRole).some(([, pages]) => pages.includes(parent))
+  );
+}
 function sidebar(){
-  const parent = {'draft-schedule':'student-schedules','course-detail':student()?'my-courses':'courses','copy-offerings':'offerings'};
+  const currentScreen = navigationParent(page, role);
   const study = workspaces[lab.layout].name==='Claude Study';
   const sectionIcons = ['home','people','calendar','book'];
   return `<aside class="sidebar">
     <div class="brand">${link('overview',portalWordmark(),'wordmark')}<span>Academic workspace</span></div>
-    <nav aria-label="Main navigation">${groups().map(([name,items],groupIndex)=>{
+    <nav aria-label="Main navigation">${groups(role).map(([name,items],groupIndex)=>{
       const contents = `<ul>${items.map(id => {
-        const current = page === id || parent[page] === id;
+        const current = currentScreen === id;
         return `<li><a class="navlink${current ? ' active' : ''}" href="${href(id)}" data-page="${id}" ${current ? 'aria-current="page"' : ''}>${id==='overview' ? icon('home') : ''}<span>${navigationLabel(id)}</span></a></li>`;
       }).join('')}</ul>`;
       if (!name) return `<div class="nav-home">${contents}</div>`;
@@ -438,7 +457,7 @@ function sidebar(){
         const key = `portal-study-nav:${role}:${name}`;
         return `<details class="study-nav-group" data-nav-key="${key}" ${localStorage.getItem(key)==='closed'?'':'open'}><summary>${name}${icon('down')}</summary>${contents}</details>`;
       }
-      const isOpen = groupIndex === 0 || items.includes(page) || items.includes(parent[page]);
+      const isOpen = groupIndex === 0 || items.includes(currentScreen);
       return `<details class="navgroup" ${isOpen?'open':''}><summary>${icon(sectionIcons[groupIndex])}<span>${name}</span>${icon('down')}</summary>${contents}</details>`;
     }).join('')}</nav>
     <div class="sidebar-foot"><span class="term-dot"></span><span>${usesStaffPresentation() ? `<span data-sidebar-term>${escapeHtml(sidebarTerm())}</span>` : escapeHtml(displayTerm(currentAcademicTerm()))}<span class="side-sub">German University in Cairo</span></span></div>
@@ -1040,7 +1059,7 @@ function auth(){
       <header><span class="wordmark">${portalWordmark()}</span></header>
       <section class="auth-card">
         <h1>${title}</h1>
-        ${page==='login'?'':`<p>${page==='forgot'?'We’ll send a reset code to your university email.':'Enter the six-digit code from your email.'}</p>`}
+        ${page==='login' ? (returnAfterSignIn !== 'overview' ? `<p>Sign in as ${roleNames[role]} to open ${navigationLabel(returnAfterSignIn)}.</p>` : '') : `<p>${page==='forgot'?'We’ll send a reset code to your university email.':'Enter the six-digit code from your email.'}</p>`}
         <form id="auth-form">
           ${page==='login' ? `<label>University email<input name="email" type="email" autocomplete="username" required value="${previewEmail}"></label>
             <label>Password<input name="password" type="password" autocomplete="current-password" required value="portal-demo"></label>
@@ -1383,18 +1402,19 @@ function mountPortalService(host) {
 }
 
 function render(focus=false){
-  loadStudentSchedule();
-  loadAccountData(focus);
   closeDeadline();
   if (page === 'graduation-plans' && role === 'advisor' && new URLSearchParams(location.search).get('view') === 'submitted') {
     page = 'my-submitted-plans';
     history.replaceState(history.state, '', href(page));
   }
-  if (!authPages.has(page) && !signedIn()) {
+  const accountRole = localStorage.getItem('portal-account-role');
+  if (!authPages.has(page) && (!signedIn() || (accountRole && accountRole !== role))) {
     returnAfterSignIn = page;
     page = 'login';
     history.replaceState(history.state,'',href(page));
   }
+  loadStudentSchedule();
+  loadAccountData(focus);
   const pageLabel = navigationLabel(page);
   document.body.dataset.portalRole = authPages.has(page) ? '' : role;
   document.title = `Portal · ${pageLabel}`;
@@ -1432,8 +1452,10 @@ function navigate(target, url, state = {}) {
   page = pageKey(target);
   tab = '';
   const destination = new URL(url || href(page), location.href);
-  BobosPortalRoutes.normalize(destination.searchParams);
+  if (authPages.has(target)) BobosPortalRoutes.normalize(destination.searchParams);
+  else normalizePortalRoute(destination.searchParams);
   page = pageKey(destination.searchParams.get('page'));
+  if (Object.hasOwn(roleNames, destination.searchParams.get('role'))) role = destination.searchParams.get('role');
   selectedCourse = resolveCourse(destination.searchParams.get('course'));
   history.pushState(state, '', destination);
   render(true);
@@ -1454,6 +1476,7 @@ document.addEventListener('portal:open-service', ({detail: {screen, context}}) =
   navigate(target, url, { portalScreen: screen, portalContext });
 });
 function startPreview(destination){
+  if (!roleCanOpen(role, destination)) destination = 'overview';
   localStorage.setItem(previewSessionKey,'1');
   const url = href(destination);
   returnAfterSignIn = 'overview';
@@ -1551,10 +1574,10 @@ function action(name,el){
       returnAfterSignIn = 'overview';
       navigate('login');
       break;
-    case 'quick-find':modal('Find a page',fields('<label>Search pages<input id="page-finder" type="search" placeholder="Schedule, students, courses…" autofocus></label>')+`<nav class="page-results">${groups().flatMap(([,ids])=>ids).map(id=>navigationLink(id,navigationLabel(id),'navlink')).join('')}</nav>`,'Close','close');break;
+    case 'quick-find':modal('Find a page',fields('<label>Search pages<input id="page-finder" type="search" placeholder="Schedule, students, courses…" autofocus></label>')+`<nav class="page-results">${groups(role).flatMap(([,ids])=>ids).map(id=>navigationLink(id,navigationLabel(id),'navlink')).join('')}</nav>`,'Close','close');break;
     case 'retry-schedule-review': coordinatorSchedules = undefined; render(); break;
     case 'mobile-menu': {
-      const sections = [...groups(), ['Account', ['profile']]];
+      const sections = [...groups(role), ['Account', ['profile']]];
       const menu = sections.map(([name,items])=>`<section>${name ? `<h3>${name}</h3>` : ''}<ul>${items.map(id=>
         `<li><a href="${href(id)}" data-page="${id}"${id===page?' aria-current="page"':''}>${navigationLabel(id)}</a></li>`
       ).join('')}</ul></section>`).join('');

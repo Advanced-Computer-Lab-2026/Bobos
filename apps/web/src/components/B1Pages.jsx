@@ -1,7 +1,6 @@
 import { Modal } from "./AcademicWorkspace.jsx";
 import OfferingCourseIcon from "./OfferingCourseIcon.jsx";
 import PortalAvatar from "./PortalAvatar.jsx";
-import { ChromeIcon } from "./PortalChrome.jsx";
 import { RecordPages, RegisterEmpty, RegisterRow, StudentIdentity, StudentRegister } from "./CoordinatorRecords.jsx";
 import { useEffect, useState } from "react";
 import FilterDisclosure from "./FilterDisclosure.jsx";
@@ -11,13 +10,14 @@ import { WorkspaceHeader, WorkspaceEmpty, displayLabel } from "./WorkspaceUI.jsx
 const dateValue = (value) => value ? new Date(value).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "—";
 const requestDestinations = { extraHours: "extra-hours", slotChange: "slot-changes", mandatoryCourseRemoval: "mandatory-removals", graduationPlan: "graduation-plans", exitExam: "graduation-plans", financialReversal: "financial-records" };
 const requestArtwork = {
-  wholeScheduleSwap: "schedule-exchange.svg",
-  slotChange: "schedule-exchange.svg",
-  mandatoryCourseRemoval: "course-removal-slip.svg",
-  graduationPlan: "graduation-cap.svg",
-  exitExam: "symbols/management-checklist.svg",
+  wholeScheduleSwap: "whole-schedule-swap.svg",
+  slotChange: "slot-change.svg",
+  mandatoryCourseRemoval: "course-removal.svg",
+  extraHours: "extra-hours.svg",
+  graduationPlan: "graduation-plan.svg",
+  exitExam: "exit-exam.svg",
+  financialReversal: "financial-reversal.svg",
 };
-const requestIcons = { extraHours: "clock", financialReversal: "coins" };
 const requestStatusLabel = (request) => {
   if (request.type !== "extraHours") return displayLabel(request.status);
   if (request.status === "pending") return "Awaiting coordinator decision";
@@ -30,6 +30,11 @@ const groupLabels = { studentType: "Student type", requestType: "Request type", 
 const allGroupLabels = { studentType: "All student types", requestType: "All request types", advisor: "All advisors" };
 const workflowColumns = ["Student", "Schedule status", "Blocking step", "Requests"];
 const requestCount = count => count === 1 ? "1 request" : `${count} requests`;
+
+function PendingRequestArtwork({ type }) {
+  const artwork = requestArtwork[type] || "request-pages.svg";
+  return <img className="pending-request-art" src={`/portal-studio/images/pending-requests/${artwork}`} width="40" height="40" alt="" />;
+}
 
 function requestTitle(item) {
   if (item.type === "extraHours" && item.requestedHours) return `${item.requestedHours} extra credit ${item.requestedHours === 1 ? "hour" : "hours"}`;
@@ -61,7 +66,7 @@ function StudentWorkDetail({ student, term, requestType, requestsOnly, onClose }
       {requests.length > 0 && <ol className="pending-file-requests" start={(page - 1) * pageSize + 1}>{requests.slice((page - 1) * pageSize, page * pageSize).map(item => {
         const destination = requestDestinations[item.type];
         return <li key={item.id}>
-          <div className="pending-file-request-head"><strong>{requestTitle(item)}</strong>
+          <div className="pending-file-request-head"><strong><PendingRequestArtwork type={item.type} />{requestTitle(item)}</strong>
             {destination && <a className="outline-button workflow-action" href={`?page=${destination}&role=coordinator${item.type === "exitExam" ? "&queue=exams" : ""}`}>Review queue</a>}</div>
           {item.courses?.map(({code, name}) => <div className="pending-course" key={code || name}><OfferingCourseIcon code={code} /><span>{[code, name].filter(Boolean).join(" · ")}</span></div>)}
           <p>{requestStatusLabel(item)}{item.updatedAt && <> · <time dateTime={item.updatedAt}>Updated {dateValue(item.updatedAt)}</time></>}</p>
@@ -76,7 +81,6 @@ function WorkflowRow({ student, requestType, term, onOpen }) {
   const requests = student.requests.filter(item => !requestType || item.type === requestType);
   const scheduleUrl = scheduleDestination(student, term);
   const singleRequest = requests.length === 1 ? requests[0] : null;
-  const artwork = requestArtwork[singleRequest?.type];
   const hours = singleRequest?.type === "extraHours" && singleRequest.requestedHours;
   const subject = hours ? `${hours} extra ${hours === 1 ? "hour" : "hours"}`
     : singleRequest ? requestTitle(singleRequest) : requestCount(requests.length);
@@ -90,8 +94,7 @@ function WorkflowRow({ student, requestType, term, onOpen }) {
     <td role="cell">{requests.length ? <button type="button" className="workflow-request-link" aria-haspopup="dialog"
       onClick={() => onOpen({ student, requestType, requestsOnly:true })}
       aria-label={`View ${subject.toLowerCase()} for ${student.fullName || student.studentId}`}>
-      {artwork ? <img src={`/portal-studio/images/${artwork}`} width="30" height="28" alt="" />
-        : <ChromeIcon name={requestIcons[singleRequest?.type] || "document"} />}
+      <PendingRequestArtwork type={singleRequest?.type} />
       <span>{subject}</span>
     </button> : <span className="workflow-none">No requests</span>}</td>
   </tr>;

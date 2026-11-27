@@ -260,6 +260,8 @@
 .removal-record-link:is(:hover, :focus-visible) { text-decoration: underline; }
 .removal-record-link[aria-disabled="true"] { cursor: wait; }
 .removal-request-list .request-row-actions .outline-button { min-width: 120px; }
+.removal-register .request-row-actions { grid-template-columns: minmax(0, 124px); }
+.student-register.removal-register .request-row-actions .removal-decision-action { width: 100%; }
 @container (max-width: 860px) {
   .removal-request-list .portal-request-row {
     grid-template-areas: "course student status actions" "context context status actions";
@@ -306,9 +308,16 @@
 .portal-request-note p, .slot-current-meeting p { margin: 0; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
 .portal-note-attribution { margin-top: 12px; }
 .portal-note-attribution strong { display: block; font-size: 13px; font-weight: 500; }
-.removal-explanation { min-width:0; padding-block:6px; }
-.removal-explanation h3 { margin:0 0 8px; font-size:15px; font-weight:550; }
-.removal-explanation p { margin:0; font-size:15px; line-height:1.55; white-space:pre-wrap; overflow-wrap:anywhere; }
+.removal-rationale { display: grid; gap: 16px; padding-block: 16px; border-block-start: 1px solid var(--line); }
+.removal-explanation, .removal-reason { min-width: 0; }
+.removal-reason h3 { margin: 0 0 4px; color: var(--muted); font-size: 13px; font-weight: 500; }
+.removal-reason p { margin: 0; font-size: 16px; font-weight: 550; overflow-wrap: anywhere; }
+.removal-submission { display: flex; flex-wrap: wrap; gap: 10px 28px; margin: 0; }
+.removal-submission div { display: grid; gap: 3px; }
+.removal-submission dt { color: var(--muted); font-size: 13px; }
+.removal-submission dd { margin: 0; font-size: 14px; }
+.removal-explanation h3 { margin:0 0 7px; font-size:16px; font-weight:550; }
+.removal-explanation p { margin:0; font-size:16px; line-height:1.6; white-space:pre-wrap; overflow-wrap:anywhere; }
 .removal-explanation-author { display:flex; align-items:center; gap:9px; margin-top:12px; }
 .removal-explanation-author .portal-person-avatar { width:30px; height:30px; flex-basis:30px; }
 .removal-explanation-author strong, .removal-explanation-author small { display:block; overflow-wrap:anywhere; }
@@ -318,6 +327,108 @@
 .removal-detail-course { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .removal-detail-course-meta { display: flex; flex-wrap: wrap; gap: 0 8px; margin-top: 3px; color: var(--muted); font-size: 12px; }
 .removal-detail-card .request-detail-actions, .slot-review-actions { gap: 8px; justify-content: end; }
+
+.removal-decision-dialog .modal-heading h2 { margin: 0; font-size: 20px; }
+.removal-detail-dialog .request-detail-identity strong, .removal-decision-identities strong { font-size: 16px; }
+.removal-decision-title-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; min-width: 0; }
+.removal-decision-term {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--raised);
+  font-size: 13px;
+  font-weight: 500;
+}
+.removal-decision-term svg { flex: none; width: 14px; height: 14px; color: var(--muted); }
+.removal-decision-identities {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 20px;
+  margin: 0;
+}
+.removal-decision-identities dt { margin-block-end: 7px; color: var(--muted); font-size: 13px; }
+.removal-decision-identities dd { min-width: 0; margin: 0; }
+.removal-decision-identities :is(.offering-course-emblem, .portal-person-avatar) { flex: none; }
+.removal-decision-identities :is(strong, small) { display: block; overflow-wrap: anywhere; }
+.removal-decision-identities small { margin-block-start: 2px; color: var(--muted); font-size: 13px; }
+
+.removal-decision-dialog .removal-rationale { gap: 18px; padding-block-end: 0; }
+.removal-decision-dialog :is(.removal-reason, .removal-explanation) h3 {
+  margin: 0 0 5px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 550;
+}
+.removal-decision-dialog .removal-reason p { font-size: 19px; line-height: 1.35; }
+.removal-decision-dialog .removal-explanation-author { margin-block: 9px 10px; gap: 10px; }
+.removal-decision-dialog .removal-explanation-author .portal-person-avatar { width: 38px; height: 38px; flex-basis: 38px; }
+.removal-decision-dialog .removal-explanation-author strong { font-size: 16px; font-weight: 550; }
+.removal-decision-dialog .removal-explanation-author small { font-size: 13px; }
+.removal-decision-dialog .removal-explanation blockquote { margin: 10px 0 0; max-inline-size: 56ch; }
+.removal-decision-dialog .removal-explanation q { quotes: "“" "”" "‘" "’"; }
+
+.removal-decision-entry { display: grid; grid-template-columns: minmax(0, 252px) minmax(0, 1fr); align-items: start; gap: 16px 20px; }
+.removal-decision-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  min-width: 0;
+  width: min(100%, 252px);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.removal-decision-options label {
+  --choice-ink: #263e4d;
+  --choice-bg: #bfccd0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+  aspect-ratio: 1;
+  padding: 6px;
+  border: 1px solid var(--choice-edge);
+  border-radius: 8px 10px 8px 7px;
+  --choice-edge: color-mix(in srgb, var(--choice-ink) 32%, var(--choice-bg));
+  background: var(--choice-bg);
+  color: var(--choice-ink);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.removal-decision-options label:has([value="rejected"]) {
+  --choice-ink: #63382f;
+  --choice-bg: #d9b4aa;
+}
+.removal-decision-options input { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: inherit; }
+.removal-decision-options svg { flex: none; transform: rotate(-6deg); }
+.removal-decision-options label:has([value="rejected"]) svg { transform: rotate(5deg); }
+.removal-decision-options:enabled label:hover {
+  background: color-mix(in srgb, var(--choice-bg) 74%, white);
+}
+.removal-decision-options label:has(:checked)::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border: 2px solid var(--choice-ink);
+  border-radius: 7px 6px 8px 5px;
+  pointer-events: none;
+}
+.removal-decision-options label:has(:focus-visible) { outline: 2px solid var(--ink); outline-offset: 2px; }
+.removal-decision-options:disabled label { cursor: default; }
+.removal-decision-dialog .removal-note-count { text-align: end; }
+.removal-decision-dialog .form-footer { border-block-start: 0; }
+@media (max-width: 620px) {
+  .removal-decision-entry { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 460px) {
+  .removal-decision-identities { grid-template-columns: 1fr; }
+}
 
 .slot-review { display: grid; gap: 22px; container-type: inline-size; }
 .slot-review-back { justify-self: start; }

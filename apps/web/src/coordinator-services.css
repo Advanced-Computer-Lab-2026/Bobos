@@ -82,12 +82,12 @@
 & .pending-workspace .workflow-action { min-height:36px; max-width:100%; padding:6px 11px; border:1px solid var(--line); background:var(--paper); text-decoration:none; white-space:normal; font:500 14px/1.35 Styrene,system-ui,sans-serif; }
 & .pending-workspace .workflow-action:hover { background:var(--raised); border-color:var(--muted); }
 .workflow-request-link {
-  display:inline-flex; align-items:center; gap:7px; min-height:36px; max-width:100%;
-  padding:4px 6px; margin-inline-start:-6px; border:0; border-radius:6px;
+  display:inline-flex; align-items:center; gap:8px; min-height:44px; max-width:calc(100% + 6px);
+  padding:2px 6px; margin-inline-start:-6px; border:0; border-radius:6px;
   color:var(--ink); background:transparent; cursor:pointer; text-align:start;
   font:500 13px/1.35 Styrene,system-ui,sans-serif;
 }
-.workflow-request-link :is(svg,img) { width:30px; height:28px; flex:none; color:var(--muted); object-fit:contain; }
+.pending-request-art { flex:none; }
 .workflow-request-link:hover { background:var(--raised); }
 .workflow-none { color:var(--muted); }
 .pending-file { display:grid; gap:20px; }
@@ -98,8 +98,8 @@
 .pending-facts dd { font-size:16px; line-height:1.5; }
 .pending-file-requests { display:grid; gap:20px; padding:0; list-style:none; }
 .pending-file-requests li { min-width:0; }
-.pending-file-request-head { display:flex; align-items:baseline; justify-content:space-between; gap:16px; }
-.pending-file-request-head strong { font-size:17px; }
+.pending-file-request-head { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.pending-file-request-head strong { display:flex; align-items:center; gap:8px; min-width:0; font-size:17px; }
 .pending-file-request-head a { flex:none; font-size:14px; }
 .pending-course { display:flex; align-items:center; gap:8px; margin-block:5px; font-size:15px; overflow-wrap:anywhere; }
 .pending-course .offering-course-emblem { width:28px; height:28px; flex:none; }
@@ -115,7 +115,6 @@
   .workflow-options .workflow-filter { flex:1 1 min(100%,140px); }
   .workflow-grouping button { min-height:40px; }
   & .pending-workspace .workflow-action { min-height:44px; padding:6px 8px; }
-  .workflow-request-link { min-height:44px; }
 }
 @container (max-width:790px) {
   & .academic-services-embedded .workflow-register.student-register > table > tbody > .workflow-record > td:first-child { padding-inline-start:0; }
@@ -321,8 +320,27 @@
   padding-inline:9px;
 }
 .service-surface[data-staff-presentation] .schedule-register :is(.roster-actions > button,.roster-actions > .record-actions > button) { min-height:38px; }
-.student-register:is(.removal-register,.slot-register) .request-review-action { margin-inline:0; }
-.student-register.removal-register .request-row-actions > div { display:grid; grid-template-columns:repeat(2,1fr); }
+.student-register.slot-register .request-review-action { margin-inline:0; }
+.student-register.removal-register .request-row-actions {
+  display:grid;
+  gap:6px;
+  width:min(100%, 160px);
+  margin-inline:auto;
+}
+.student-register.removal-register .request-row-actions .outline-button {
+  min-width:0;
+  min-height:38px;
+  padding-inline:6px;
+  white-space:nowrap;
+}
+.student-register.removal-register .removal-view-action {
+  width:100%;
+  background:var(--raised);
+}
+@container (max-width: 790px) {
+  .student-register.removal-register .request-row-actions { margin-inline:0; }
+  .student-register.removal-register .request-row-actions .outline-button { min-height:44px; }
+}
 .service-surface[data-staff-presentation] :is(.academic-services-embedded,.extra-hours-page) .register-with-actions.table-scroll > table > :is(thead,tbody) > tr > :is(th,td):last-child:not([colspan]) {
   text-align:center; vertical-align:middle;
 }
@@ -363,8 +381,6 @@
 .service-surface .removal-register .register-person { min-width:0; }
 .removal-register .register-person .offering-course-emblem { flex:0 0 34px; width:34px; height:34px; }
 .student-register.removal-register .register-person small { margin:0; line-height:1.35; }
-.service-surface[data-staff-presentation] .removal-register .removal-approve { color:var(--success-ink); }
-.service-surface[data-staff-presentation] .removal-register .removal-reject { color:var(--danger-ink); }
 
 @container (width > 790px) {
   .student-register:is(.directory-register,.finance-register,.schedule-register,.slot-register,.activity-register,.removal-register) > table { table-layout:fixed; }
@@ -391,7 +407,7 @@
   .removal-register th:nth-child(1) { width:20%; }
   .removal-register th:nth-child(2) { width:25%; }
   .removal-register th:nth-child(3) { width:24%; }
-  .removal-register th:nth-child(4) { width:15%; }
+  .removal-register th:last-child { width:176px; }
 }
 
 @container (max-width: 790px) {

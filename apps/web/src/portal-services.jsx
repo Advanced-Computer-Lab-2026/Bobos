@@ -10,6 +10,7 @@ import serviceStyles from "./extra-hours-study.css?inline";
 
 import paperStyles from "./components/paper-toss-button.css?inline";
 import academicStyles from "./portal-academic.css?inline";
+import templateStyles from "./schedule-templates.css?inline";
 import pickerStyles from "../public/portal-studio/select-picker.css?inline";
 import coordinatorStyles from "./coordinator-services.css?inline";
 import coordinatorControls from "./coordinator-controls.css?inline";
@@ -19,7 +20,7 @@ import draftCourseStyles from "./draft-course-selection.css?inline";
 import draftStudentStyles from "./draft-student.css?inline";
 import tabsStyles from "../public/portal-studio/view-tabs.css?inline";
 
-const styles = [tabsStyles, baseStyles, workspaceStyles, formStyles, serviceStyles, paperStyles, academicStyles, pickerStyles, statusStyles, coordinatorStyles, coordinatorControls, requestStyles, draftCourseStyles, draftStudentStyles].join("\n")
+const styles = [tabsStyles, baseStyles, workspaceStyles, formStyles, serviceStyles, paperStyles, academicStyles, pickerStyles, statusStyles, coordinatorStyles, coordinatorControls, requestStyles, draftCourseStyles, draftStudentStyles, templateStyles].join("\n")
   .replaceAll(":root", ".service-surface");
 
 export function mount(host) {

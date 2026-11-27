@@ -398,7 +398,7 @@ test("retired Portal paths cannot serve design studies or alternate workflow scr
   await expect(page.getByRole("heading", { name: "Student directory", exact: true })).toBeVisible();
 });
 
-test("Req 29: the old template bookmark opens the live editor and saves to the database", async ({ page }) => {
+test("Req 28–29: create, edit and publish templates from the live workspace", async ({ page }) => {
   const coordinator = await User.create({
     fullName: "Template Coordinator", role: "coordinator", email: "template.coordinator@guc.edu.eg",
     passwordHash: await bcrypt.hash(password, 4),
@@ -434,22 +434,63 @@ test("Req 29: the old template bookmark opens the live editor and saves to the d
   await page.evaluate(termCode => localStorage.setItem("bobos.lastTermId", termCode), historicalTerm.code);
   await mainNavigation(page).getByRole("link", { name: "Schedule templates", exact: true }).click();
   await expect(termSelect).toHaveValue(term.code);
-  const drafts = page.getByRole("region", { name: "Drafts", exact: true });
-  await expect(drafts.getByRole("button", { name: "Group 1 CS · Semester 5", pressed: true })).toBeVisible();
+  const templateIndex = page.getByRole("region", { name: "Templates for this term" });
+  const selectedTemplate = page.getByRole("region", { name: "Selected schedule template" });
+  await expect(templateIndex.getByRole("button", { name: "Group 1 CS · Semester 5", pressed: true })).toBeVisible();
   await expect(page.getByRole("region", { name: "Courses for Group 1" })).toContainText(course.name);
-  await drafts.getByRole("button", { name: "Edit", exact: true }).click();
+  await selectedTemplate.getByRole("button", { name: "Edit template", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Update schedule template" })).toBeVisible();
   await page.getByLabel("Study group").fill("2");
   await page.getByRole("button", { name: /save changes/i }).click();
-  await expect(drafts.getByRole("button", { name: "Group 2 CS · Semester 5", pressed: true })).toBeVisible();
+  await expect(templateIndex.getByRole("button", { name: "Group 2 CS · Semester 5", pressed: true })).toBeVisible();
   expect((await ScheduleTemplate.findById(template._id)).studyGroup).toBe("2");
-  await drafts.getByRole("button", { name: "Publish template", exact: true }).click();
-  const published = page.getByRole("region", { name: "Published", exact: true });
-  await published.getByRole("button", { name: "Unpublish template" }).click();
-  await drafts.getByRole("button", { name: /delete template for CS/i }).click();
+  await selectedTemplate.getByRole("button", { name: "Publish template", exact: true }).click();
+  await selectedTemplate.getByRole("button", { name: "Unpublish template", exact: true }).click();
+  await selectedTemplate.getByRole("button", { name: "Publish template", exact: true }).waitFor();
+  await selectedTemplate.getByRole("button", { name: /delete template for CS/i }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Delete template", exact: true }).click();
   await expect(empty).toBeVisible();
   expect(await ScheduleTemplate.exists({ _id: template._id })).toBeNull();
+
+  await page.getByRole("button", { name: "Create template", exact: true }).first().click();
+  const editor = page.getByRole("dialog", { name: "Create schedule template" });
+  await editor.getByLabel("Major").fill("CS");
+  await editor.getByLabel("Semester").fill("5");
+  await editor.getByLabel("Study group").fill("3");
+  await editor.getByLabel("Add published offering").selectOption(String(offering._id));
+  await editor.getByLabel("Lecture group").selectOption(String(offering.slots[0]._id));
+  await editor.getByRole("radio", { name: "Published", exact: true }).check();
+  await editor.getByRole("button", { name: "Create and publish" }).click();
+  await expect(templateIndex.getByRole("button", { name: "Group 3 CS · Semester 5", pressed: true })).toBeVisible();
+  const created = await ScheduleTemplate.findOne({ term: term._id, major: "CS", semester: 5, studyGroup: "3" });
+  expect(created?.isPublished).toBe(true);
+  expect(String(created?.courses[0]?.slots[0]?.slotGroupId)).toBe(String(offering.slots[0]._id));
+
+  await page.getByLabel("Find a template").fill(course.code);
+  const createdGroup = templateIndex.getByRole("button", { name: "Group 3 CS · Semester 5", pressed: true });
+  await expect(createdGroup).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await createdGroup.click();
+  await selectedTemplate.getByRole("button", { name: "Teaching week" }).click();
+  await expect(selectedTemplate.getByRole("heading", { name: "Monday" })).toBeVisible();
+  await expect(selectedTemplate).toContainText("09:00–10:00");
+  await selectedTemplate.getByRole("button", { name: "Back to templates" }).click();
+  await expect(createdGroup).toBeFocused();
+  await page.setViewportSize({ width: 1280, height: 900 });
+
+  const administratorTab = await page.context().newPage();
+  await administratorTab.goto(baseURL + "/portal-studio/index.html?page=login&role=administrator");
+  await signIn(administratorTab, "regression@guc.edu.eg", password);
+  await expect(administratorTab.getByRole("button", { name: "Account menu for Regression Administrator" })).toBeVisible();
+  await administratorTab.close();
+
+  const reviewLink = baseURL + "/portal-studio/index.html?page=templates&role=coordinator&preview=live";
+  await page.goto(reviewLink);
+  await expect(page.getByText("Sign in as Coordinator to open Schedule templates.")).toBeVisible();
+  await expect(page).toHaveURL(/[?&]next=templates(?:&|$)/);
+  await signIn(page, coordinator.email, password);
+  await expect(page).toHaveURL(reviewLink);
+  await expect(page.getByRole("heading", { name: "Schedule templates", exact: true })).toBeVisible();
 });
 
 async function auditTerm() {
@@ -897,16 +938,32 @@ test("Coordinator can read ranked preferences, change term and review a removal 
   await page.getByRole("dialog").getByRole("button", {name:"Close",exact:true}).click();
   await expect(studentButton).toBeFocused();
   await expect(removalSearch).toHaveValue(student.studentId);
-  await page.getByRole("button", {name:"View Details"}).click();
+  const viewRemoval = page.getByRole("button", {name:"View Details"});
+  await viewRemoval.click();
   await expect(page.getByRole("dialog").getByRole("heading", {name:"Advisor explanation"})).toBeVisible();
   await expect(page.getByRole("dialog")).toContainText(removal.explanation);
-  await page.getByRole("dialog").getByRole("button", {name:"Close",exact:true}).last().click();
-  await page.getByRole("button", {name:"Reject",exact:true}).click();
-  const decision = page.getByRole("dialog");
-  await expect(decision.getByRole("button", {name:"Reject Request"})).toBeDisabled();
-  await decision.getByRole("textbox").fill("The transfer record does not cover this course.");
-  await decision.getByRole("button", {name:"Reject Request"}).click();
+  await page.getByRole("dialog").getByRole("button", {name:"Make decision"}).click();
+  const decision = page.getByRole("dialog", {name:"Decide course removal"});
+  await expect(decision).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(viewRemoval).toBeFocused();
+  const makeDecision = page.getByRole("button", {name:"Make decision"});
+  await makeDecision.click();
+  await decision.getByRole("button", {name:"Cancel", exact:true}).click();
+  await expect(makeDecision).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(decision.getByRole("button", {name:"Save decision"})).toBeDisabled();
+  const approve = decision.getByRole("radio", {name:"Approve", exact:true});
+  await approve.check();
+  await expect(decision.getByRole("button", {name:"Approve removal"})).toBeDisabled();
+  await approve.press("ArrowDown");
+  await expect(decision.getByRole("radio", {name:"Reject", exact:true})).toBeChecked();
+  const reject = decision.getByRole("button", {name:"Reject request"});
+  await expect(reject).toBeDisabled();
+  await decision.getByRole("textbox", {name:"Decision note (required)"}).fill("The transfer record does not cover this course.");
+  await reject.click();
   await expect(decision).toHaveCount(0);
+  await expect(makeDecision).toHaveCount(0);
   expect((await MandatoryCourseRemovalRequest.findById(removal._id)).status).toBe("rejected");
 
   const advisorPage = await browser.newPage();

@@ -627,91 +627,269 @@ function DuplicateOfferings({ token, target, targetOfferings, loading, onCopied,
   </div></Modal>;
 }
 
+const blankTemplate = { major: "", semester: "", studyGroup: "", isPublished: false };
+const templateDays = [...week.slice(5), ...week.slice(0, 5)];
+const templateStatus = [
+  { label: "All templates", value: "all" },
+  { label: "Published", value: "published" },
+  { label: "Drafts", value: "draft" },
+];
+
+function templateMatches(template, query) {
+  const terms = query.trim().toLowerCase().split(/\s+/);
+  const courses = (template.courses || []).map(entry => `${entry.course?.code || ""} ${entry.course?.name || ""}`).join(" ");
+  const text = `Group ${template.studyGroup} ${template.major} Semester ${template.semester} ${courses}`.toLowerCase();
+  return terms.every(term => text.includes(term));
+}
+
+function templateMeeting(entry, slot) {
+  return entry.courseOffering?.slots?.find(group => group._id === slot.slotGroupId);
+}
+
+function TemplateStatus({ published }) {
+  return <span className={`status-pill ${published ? "good" : "draft"}`}>{published ? "Published" : "Draft"}</span>;
+}
+
+function TemplateMeetingTime({ meeting }) {
+  return <span className="template-meeting-time">
+    <span>{minutesToTime(meeting.startMinute)}–{minutesToTime(meeting.endMinute)}</span>
+    {meeting.room && <span>{meeting.room}</span>}
+  </span>;
+}
+
+function TemplateCourses({ template }) {
+  const [view, setView] = useState("courses");
+  const courses = template.courses || [];
+  const meetings = courses.flatMap(entry => (entry.slots || []).flatMap(slot => {
+    const meeting = templateMeeting(entry, slot);
+    return meeting ? [{ entry, meeting }] : [];
+  }));
+
+  return <section className="template-course-sheet" aria-labelledby="template-course-heading">
+    <div className="template-course-toolbar">
+      <h3 id="template-course-heading">{view === "courses" ? `Courses for Group ${template.studyGroup}` : `Teaching week for Group ${template.studyGroup}`}</h3>
+      <div className="template-view-switch" role="group" aria-label="Schedule view">
+        <button type="button" aria-pressed={view === "courses"} onClick={() => setView("courses")}>Courses</button>
+        <button type="button" aria-pressed={view === "week"} onClick={() => setView("week")}>Teaching week</button>
+      </div>
+    </div>
+    {view === "courses" ? <>
+      {courses.length ? <ul className="template-course-list" role="list">{courses.map((entry, index) => <li key={entry.course?._id || index}>
+        <div className="template-course-identity">
+          <OfferingCourseIcon code={entry.course?.code} />
+          <div><strong>{entry.course?.name || "Course unavailable"}</strong>{entry.course?.code && <small>{entry.course.code}</small>}</div>
+        </div>
+        <ul className="template-assigned-groups" role="list" aria-label="Assigned meeting groups">
+          {(entry.slots || []).map(slot => {
+            const meeting = templateMeeting(entry, slot);
+            return <li key={slot.slotGroupId}>
+              <strong>{pretty(slot.componentType)}{meeting ? ` ${meeting.groupNumber}` : ""}</strong>
+              {meeting ? <div><span>{meeting.day}</span><TemplateMeetingTime meeting={meeting} /></div> : <span>Group unavailable</span>}
+            </li>;
+          })}
+        </ul>
+      </li>)}</ul> : <p className="template-muted">No courses in this template.</p>}
+    </> : meetings.length ? <div className="template-teaching-week">
+      {templateDays.map(day => {
+        const daily = meetings.filter(({ meeting }) => meeting.day === day).sort((left, right) => left.meeting.startMinute - right.meeting.startMinute);
+        if (!daily.length) return null;
+        return <section key={day} className="template-teaching-day">
+          <h4>{day}</h4>
+          <ul role="list">{daily.map(({ entry, meeting }) => <li key={meeting._id}>
+            <div className="template-course-identity">
+              <OfferingCourseIcon code={entry.course?.code} />
+              <div><strong>{entry.course?.name || "Course unavailable"}</strong><small>{pretty(meeting.componentType)} {meeting.groupNumber}</small></div>
+            </div>
+            <TemplateMeetingTime meeting={meeting} />
+          </li>)}</ul>
+        </section>;
+      })}
+    </div> : <p className="template-muted">No meeting times available.</p>}
+  </section>;
+}
+
 function TemplatesWorkspace({ token, notify }) {
   const [termOptions, setTermOptions] = useState([]);
-  const blankForm = { major: "", semester: "", studyGroup: "", isPublished: false };
   const [termId, setTermId] = useState("");
+  const [termsLoading, setTermsLoading] = useState(true);
+  const [templates, setTemplates] = useState([]);
+  const [offerings, setOfferings] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [query, setQuery] = useState("");
+  const [status, setStatus] = useState("all");
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
-  const [editorOpen, setEditorOpen] = useState(false);
+  const [inspecting, setInspecting] = useState(false);
   const loadVersion = useRef(0);
+  const indexRef = useRef(null);
+  const inspectorRef = useRef(null);
+
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [form, setForm] = useState(blankTemplate);
+  const [selectedOffers, setSelectedOffers] = useState([]);
+  const [slotSelections, setSlotSelections] = useState({});
+  const [editingTemplate, setEditingTemplate] = useState(null);
+  const [editorError, setEditorError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+
   useEffect(() => {
     const controller = new AbortController();
-    api("/api/academic-terms/academicTerm", {token, signal: controller.signal}).then(terms => {
+    api("/api/academic-terms/academicTerm", { token, signal: controller.signal }).then(terms => {
       setTermOptions(terms);
       const term = terms.find(item => item.isActive) || terms[0];
-      setTermId(term?.code || "");
-    }).catch(e => { if (!controller.signal.aborted) setError(e.message); });
+      if (term) {
+        setLoading(true);
+        setTermId(term.code);
+      }
+    }).catch(e => {
+      if (!controller.signal.aborted) setError(explainApiError(e, "Academic terms"));
+    }).finally(() => {
+      if (!controller.signal.aborted) setTermsLoading(false);
+    });
     return () => controller.abort();
   }, [token]);
-  const [templates, setTemplates] = useState([]); const [offerings, setOfferings] = useState([]);
-  const [loading, setLoading] = useState(false); const [error, setError] = useState("");
-  const [form, setForm] = useState(blankForm); const [selectedOffers, setSelectedOffers] = useState([]);
-  const [slotSelections, setSlotSelections] = useState({}); const [editingTemplate, setEditingTemplate] = useState(null); const [saving, setSaving] = useState(false);
-  const [confirmingDelete, setConfirmingDelete] = useState(null); const [deleting, setDeleting] = useState(false); const [deleteError, setDeleteError] = useState("");
 
-  const load = useCallback(async () => {
+  const load = useCallback(async ({ refresh = false } = {}) => {
     if (!termId) return;
     const version = ++loadVersion.current;
-    setLoading(true); setError("");
+    if (!refresh) setLoading(true);
+    setError("");
     try {
       const [templateData, offeringData] = await Promise.all([
-        api(`/api/academics/schedule-templates?termId=${encodeURIComponent(termId)}`, {token}),
-        api(`/api/catalogue/offerings?termId=${encodeURIComponent(termId)}&publishedOnly=true`, {token}),
+        api(`/api/academics/schedule-templates?termId=${encodeURIComponent(termId)}`, { token }),
+        api(`/api/catalogue/offerings?termId=${encodeURIComponent(termId)}&publishedOnly=true`, { token }),
       ]);
       if (version !== loadVersion.current) return;
-      setTemplates(templateData.templates || []); setOfferings(offeringData.offerings || []);
-    } catch (e) { if (version === loadVersion.current) setError(explainApiError(e, "Schedule templates")); }
-    finally { if (version === loadVersion.current) setLoading(false); }
+      setTemplates(templateData.templates || []);
+      setOfferings(offeringData.offerings || []);
+    } catch (e) {
+      if (version === loadVersion.current) setError(explainApiError(e, "Schedule templates"));
+    } finally {
+      if (version === loadVersion.current) setLoading(false);
+    }
   }, [termId, token]);
+
   useEffect(() => { load(); return () => { loadVersion.current++; }; }, [load]);
 
-  const clearEditor = () => { setEditorOpen(false); setEditingTemplate(null); setForm(blankForm); setSelectedOffers([]); setSlotSelections({}); };
+  const selectTerm = (event) => {
+    if (event.target.value === termId) return;
+    setTemplates([]);
+    setOfferings([]);
+    setSelectedTemplateId("");
+    setInspecting(false);
+    setLoading(true);
+    setTermId(event.target.value);
+  };
+
+  // The paper inspector replaces the index at narrow container widths.
+  const selectTemplate = (template) => {
+    setSelectedTemplateId(template._id);
+    setInspecting(true);
+    requestAnimationFrame(() => {
+      const inspector = inspectorRef.current;
+      if (inspector?.querySelector(".template-back").getClientRects().length) {
+        inspector.querySelector("h2").focus();
+      }
+    });
+  };
+
+  const backToIndex = () => {
+    setInspecting(false);
+    requestAnimationFrame(() => indexRef.current?.querySelector('[aria-pressed="true"].template-identity')?.focus());
+  };
+
+  const clearEditor = () => {
+    setEditorOpen(false);
+    setEditingTemplate(null);
+    setForm(blankTemplate);
+    setSelectedOffers([]);
+    setSlotSelections({});
+    setEditorError("");
+  };
+
   const addOffering = (event) => {
-    const id = event.target.value; event.target.value = "";
+    const id = event.target.value;
     if (!id || selectedOffers.includes(id)) return;
-    const offering = offerings.find((item) => item._id === id);
-    if (!offeringMatchesMajor(offering, form.major)) { setError(`${offering?.course?.code || "This course"} is not listed for the template major ${form.major.trim()}.`); return; }
-    setError("");
-    const emptyChoices = Object.fromEntries(offeringComponentTypes(offering).map((type) => [type, ""]));
-    setSelectedOffers((current) => [...current, id]);
-    setSlotSelections((current) => ({ ...current, [id]: emptyChoices }));
+    const offering = offerings.find(item => item._id === id);
+    if (!offeringMatchesMajor(offering, form.major)) {
+      setEditorError(`${offering?.course?.code || "This course"} is not listed for the template major ${form.major.trim()}.`);
+      return;
+    }
+    setEditorError("");
+    setSelectedOffers(current => [...current, id]);
+    setSlotSelections(current => ({ ...current, [id]: {} }));
   };
+
   const removeSelected = (id) => {
-    setSelectedOffers((current) => current.filter((value) => value !== id));
-    setSlotSelections((current) => { const next = { ...current }; delete next[id]; return next; });
+    setSelectedOffers(current => current.filter(value => value !== id));
+    setSlotSelections(current => Object.fromEntries(Object.entries(current).filter(([key]) => key !== id)));
+    setEditorError("");
   };
+
   const editTemplate = (template) => {
     const nextSelections = {};
     const ids = [];
-    for (const entry of template.courses || []) {
-      const id = entry.courseOffering?._id || entry.courseOffering;
+    for (const [index, entry] of (template.courses || []).entries()) {
+      const id = entry.courseOffering?._id || entry.courseOffering || `unavailable-${index}`;
       const choices = {};
       for (const slot of entry.slots || []) if (!choices[slot.componentType]) choices[slot.componentType] = String(slot.slotGroupId);
       nextSelections[id] = choices;
       ids.push(id);
     }
-    setEditingTemplate(template); setEditorOpen(true);
+    setEditingTemplate(template);
+    setEditorOpen(true);
     setForm({ major: template.major || "", semester: String(template.semester || ""), studyGroup: template.studyGroup || "", isPublished: Boolean(template.isPublished) });
-    setSelectedOffers(ids); setSlotSelections(nextSelections); setError("");
+    setSelectedOffers(ids);
+    setSlotSelections(nextSelections);
+    setEditorError("");
+  };
+
+  const revealSavedTemplate = (template) => {
+    setTemplates(current => current.some(item => item._id === template._id)
+      ? current.map(item => item._id === template._id ? template : item)
+      : [...current, template]);
+    setSelectedTemplateId(template._id);
+    if (!templateMatches(template, query)) setQuery("");
+    if (status !== "all") setStatus(template.isPublished ? "published" : "draft");
   };
 
   const saveTemplate = async (event) => {
-    event.preventDefault(); setSaving(true); setError("");
+    event.preventDefault();
+    setEditorError("");
+    if (!selectedOffers.length) {
+      setEditorError("Add at least one course to the schedule template.");
+      return;
+    }
     const courses = [];
     for (const id of selectedOffers) {
-      const offering = offerings.find((entry) => entry._id === id);
-      if (!offering) { setError("A selected offering is no longer available. Reload the term and try again."); setSaving(false); return; }
-      if (!offeringMatchesMajor(offering, form.major)) { setError(`${offering.course?.code || "This course"} is not listed for the template major ${form.major.trim()}. Remove it or correct the major before saving.`); setSaving(false); return; }
+      const offering = offerings.find(entry => entry._id === id);
+      if (!offering) {
+        setEditorError("Remove the unavailable offering or replace it with a published offering before saving.");
+        return;
+      }
+      if (!offeringMatchesMajor(offering, form.major)) {
+        setEditorError(`${offering.course?.code || "This course"} is not listed for the template major ${form.major.trim()}. Remove it or correct the major before saving.`);
+        return;
+      }
       const selectedSlots = [];
       for (const componentType of offeringComponentTypes(offering)) {
         const slotId = slotSelections[id]?.[componentType];
-        if (!slotId) { setError(`Choose one ${pretty(componentType)} group for ${offering.course?.code || "each selected course"}.`); setSaving(false); return; }
-        const slot = offering.slots.find((candidate) => candidate._id === slotId);
-        if (!slot) { setError(`The selected ${pretty(componentType)} group no longer exists. Reload the term.`); setSaving(false); return; }
+        if (!slotId) {
+          setEditorError(`Choose one ${pretty(componentType)} group for ${offering.course?.code || "each selected course"}.`);
+          return;
+        }
+        const slot = offering.slots.find(candidate => candidate._id === slotId);
+        if (!slot) {
+          setEditorError(`The selected ${pretty(componentType)} group no longer exists. Reload the term.`);
+          return;
+        }
         selectedSlots.push({ componentType, slotGroupId: slot._id, courseOffering: id });
       }
-      const courseId = offering.course?._id || offering.course;
-      courses.push({ course: courseId, courseOffering: id, slots: selectedSlots });
+      courses.push({ course: offering.course?._id || offering.course, courseOffering: id, slots: selectedSlots });
     }
 
     const payload = {
@@ -719,133 +897,221 @@ function TemplatesWorkspace({ token, notify }) {
       major: form.major.trim(), semester: Number(form.semester), studyGroup: form.studyGroup.trim(),
       courses, isPublished: form.isPublished,
     };
+    setSaving(true);
     try {
       const saved = await api(editingTemplate ? `/api/academics/schedule-templates/${editingTemplate._id}` : "/api/academics/schedule-templates", {
         token, method: editingTemplate ? "PUT" : "POST", body: payload,
       });
-      setSelectedTemplateId(saved._id);
+      revealSavedTemplate(saved);
       notify("success", editingTemplate ? "Schedule template updated." : "Schedule template created.");
-      clearEditor(); await load();
-    } catch (e) { setError(e.message); }
-    finally { setSaving(false); }
+      clearEditor();
+      selectTemplate(saved);
+      await load({ refresh: true });
+    } catch (e) {
+      setEditorError(e.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const togglePublished = async (template) => {
+    if (publishing) return;
+    setPublishing(true);
     setError("");
     try {
-      await api(`/api/academics/schedule-templates/${template._id}`, { token, method: "PUT", body: { isPublished: !template.isPublished } });
-      setSelectedTemplateId(template._id);
-      notify("success", `Template ${template.isPublished ? "unpublished" : "published"}.`); await load();
-    } catch (e) { setError(e.message); }
+      const saved = await api(`/api/academics/schedule-templates/${template._id}`, { token, method: "PUT", body: { isPublished: !template.isPublished } });
+      revealSavedTemplate(saved);
+      notify("success", `Template ${saved.isPublished ? "published" : "unpublished"}.`);
+      await load({ refresh: true });
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setPublishing(false);
+    }
   };
 
   const deleteTemplate = async () => {
-    if (!confirmingDelete) return;
-    setDeleting(true); setDeleteError("");
+    if (!confirmingDelete || deleting) return;
+    setDeleting(true);
+    setDeleteError("");
     try {
       await waitForPaperToss();
       await api(`/api/academics/schedule-templates/${confirmingDelete._id}`, { token, method: "DELETE" });
-      notify("success", "Schedule template deleted.");
-      if (editingTemplate?._id === confirmingDelete._id) clearEditor();
+      setTemplates(current => current.filter(template => template._id !== confirmingDelete._id));
+      setSelectedTemplateId("");
       setConfirmingDelete(null);
-      await load();
-    } catch (e) { setDeleteError(e.message); return false; }
-    finally { setDeleting(false); }
+      setInspecting(false);
+      notify("success", "Schedule template deleted.");
+      await load({ refresh: true });
+    } catch (e) {
+      setDeleteError(e.message);
+    } finally {
+      setDeleting(false);
+    }
   };
 
-  const selected = selectedOffers.map((id) => offerings.find((item) => item._id === id)).filter(Boolean);
-  const selectedTemplate = templates.find(template => template._id === selectedTemplateId)
-    || templates.find(template => template.isPublished) || templates[0];
-  return <div className="page-stack template-register">
-    <PageTitle title="Schedule templates" description="Course groups for each major and semester." action={<button className="primary-button" type="button" disabled={loading || !termId} onClick={() => { clearEditor(); setError(""); setEditorOpen(true); }}>Create template</button>} />
-    <div className="register-controls"><Field label="Academic term"><select required value={termId} onChange={event => { if (event.target.value !== termId) { setTemplates([]); setOfferings([]); setSelectedTemplateId(""); setLoading(true); setTermId(event.target.value); } }}><option value="" disabled>Choose a term</option>{termOptions.map(term => <option key={term._id} value={term.code}>{termLabel(term)}</option>)}</select></Field></div>
-    {error && !editorOpen && <div className="feedback error" role="alert">{error}</div>}
-    {editorOpen && <Modal title={editingTemplate ? "Update schedule template" : "Create schedule template"} onClose={() => !saving && clearEditor()} wide className="template-editor">
-        {error && <div className="feedback error" role="alert">{error}</div>}
-        <form className="form-stack template-editor-form" onSubmit={saveTemplate}>
-          <div className="form-grid template-editor-identity">
-            <Field label="Major"><input required value={form.major} onChange={(event) => { setForm({ ...form, major: event.target.value }); setError(""); }} placeholder="Computer Science" /></Field>
-            <Field label="Semester"><input required type="number" min="1" max="10" step="1" value={form.semester} onChange={(event) => setForm({ ...form, semester: event.target.value })} placeholder="4" /></Field>
-            <Field label="Study group"><input required value={form.studyGroup} onChange={(event) => setForm({ ...form, studyGroup: event.target.value })} placeholder="G1" /></Field>
-          </div>
-          <section className="template-editor-courses" aria-labelledby="template-editor-courses-heading">
-            <h3 id="template-editor-courses-heading">Courses in this template</h3>
-            <Field label="Add published offering"><select value="" onChange={addOffering}><option value="">Choose a course</option>{offerings.map((offering) => { const wrongMajor = !offeringMatchesMajor(offering, form.major); return <option key={offering._id} value={offering._id} disabled={!offering.isPublished || selectedOffers.includes(offering._id) || wrongMajor}>{offering.course?.code} · {offering.course?.name}{!offering.isPublished ? " (draft)" : wrongMajor ? " (different major)" : ""}</option>; })}</select></Field>
-            {selected.length > 0 && <ul className="template-editor-course-list" role="list">{selected.map((offering) => <li key={offering._id}>
-              <div className="template-editor-course-heading">
-                <OfferingCourseIcon code={offering.course?.code} />
-                <div><strong>{offering.course?.name}</strong><small>{offering.course?.code}</small></div>
-                <button type="button" className="text-button danger-text" onClick={() => removeSelected(offering._id)} aria-label={`Remove ${offering.course?.name || "course"}`}>Remove course</button>
+  const selectedTerm = termOptions.find(term => term.code === termId);
+  const matches = templates.filter(template => templateMatches(template, query));
+  const counts = {
+    all: matches.length,
+    published: matches.filter(template => template.isPublished).length,
+  };
+  counts.draft = counts.all - counts.published;
+  const visibleTemplates = matches.filter(template => status === "all" || Boolean(template.isPublished) === (status === "published"));
+  const selectedTemplate = visibleTemplates.find(template => template._id === selectedTemplateId)
+    || visibleTemplates.find(template => template.isPublished) || visibleTemplates[0];
+  const isBusy = saving || publishing || deleting;
+  const canCreate = Boolean(termId && !loading && !termsLoading);
+  const submitLabel = editingTemplate
+    ? editingTemplate.isPublished === form.isPublished ? "Save changes" : form.isPublished ? "Save and publish" : "Save and unpublish"
+    : form.isPublished ? "Create and publish" : "Save draft";
+
+  const selectedCourses = selectedOffers.map((id, index) => {
+    const offering = offerings.find(item => item._id === id);
+    const original = editingTemplate?.courses?.find(entry => (entry.courseOffering?._id || entry.courseOffering) === id)
+      || (id.startsWith("unavailable-") ? editingTemplate.courses[Number(id.split("-")[1])] : null);
+    return { id, offering, course: offering?.course || original?.course, index };
+  });
+
+  return <div className="template-register" data-inspecting={Boolean(inspecting && selectedTemplate)}>
+    <PageTitle title="Schedule templates" description="Standard schedules for normal students, organized by major, semester, and study group." action={
+      <button className="primary-button template-create" type="button" disabled={!canCreate || isBusy} onClick={() => { clearEditor(); setEditorOpen(true); }}>
+        Create template
+      </button>
+    } />
+    <div className="template-scope">
+      <Field label="Academic term">
+        <select required value={termId} disabled={termsLoading || isBusy} onChange={selectTerm}>
+          <option value="" disabled>Choose a term</option>
+          {termOptions.map(term => <option key={term._id} value={term.code}>{termLabel(term)}{term.isActive ? " · Active" : ""}</option>)}
+        </select>
+      </Field>
+      <Field label="Find a template" className="template-search">
+        <input type="search" placeholder="Group, major, semester or course" value={query} disabled={!termId || isBusy}
+          onChange={event => { setQuery(event.target.value); setInspecting(false); }} />
+      </Field>
+    </div>
+    {error && <div className="feedback error template-feedback" role="alert">{error}{termId && <button className="outline-button" type="button" onClick={() => load()}>Retry</button>}</div>}
+    {termsLoading || loading ? <Loading /> : !termId ? !error && <div className="register-empty"><h3>No academic terms</h3><p>Schedule templates are filed by academic term.</p></div> : <>
+      <div className="template-filters" role="group" aria-label="Filter by publication status">
+        {templateStatus.map(filter => <button key={filter.value} type="button" aria-pressed={status === filter.value} disabled={isBusy}
+          onClick={() => { setStatus(filter.value); setInspecting(false); }}>
+          <span>{filter.label}</span><span className="template-filter-count">{counts[filter.value]}</span>
+        </button>)}
+      </div>
+      {selectedTemplate ? <div className="template-library">
+        <section className="template-index" aria-label="Templates for this term" ref={indexRef}>
+          <div className="template-index-labels" aria-hidden="true"><span>Study group</span><span>Publication</span></div>
+          <ul role="list">{visibleTemplates.map(template => {
+            const isSelected = template._id === selectedTemplate._id;
+            const labelId = `template-label-${template._id}`;
+            const statusId = `template-status-${template._id}`;
+            return <li key={template._id}>
+              <button className="template-identity" type="button" aria-pressed={isSelected} aria-controls="template-inspector"
+                aria-labelledby={labelId} aria-describedby={statusId} disabled={isBusy} onClick={() => selectTemplate(template)}>
+                <span id={labelId}><strong>Group {template.studyGroup}</strong><small>{template.major} · Semester {template.semester}</small></span>
+                <span id={statusId}><TemplateStatus published={template.isPublished} /></span>
+              </button>
+            </li>;
+          })}</ul>
+        </section>
+        <section className="template-inspector" id="template-inspector" aria-label="Selected schedule template" ref={inspectorRef}>
+          <button type="button" className="text-button template-back" onClick={backToIndex}><span aria-hidden="true">←</span> Back to templates</button>
+          <div className="template-paper">
+            <header className="template-paper-head">
+              <div>
+                <p className="template-sheet-term">{termLabel(selectedTemplate.term || selectedTerm)}</p>
+                <h2 tabIndex="-1">Group {selectedTemplate.studyGroup}</h2>
+                <p className="template-sheet-cohort">{selectedTemplate.major} <span aria-hidden="true">·</span> Semester {selectedTemplate.semester}</p>
               </div>
-              <fieldset className="template-editor-groups">
+              <TemplateStatus published={selectedTemplate.isPublished} />
+            </header>
+            <div className="template-paper-actions" role="group" aria-label={`Actions for Group ${selectedTemplate.studyGroup}`}>
+              <button className="outline-button" type="button" disabled={isBusy} onClick={() => editTemplate(selectedTemplate)}>Edit template</button>
+              <button className={selectedTemplate.isPublished ? "outline-button" : "primary-button"} type="button" disabled={isBusy}
+                onClick={() => togglePublished(selectedTemplate)}>{selectedTemplate.isPublished ? "Unpublish template" : "Publish template"}</button>
+              <PaperTossButton disabled={isBusy} label={`Delete template for ${selectedTemplate.major}, semester ${selectedTemplate.semester}, group ${selectedTemplate.studyGroup}`}
+                onClick={() => { setConfirmingDelete(selectedTemplate); setDeleteError(""); }}>Delete</PaperTossButton>
+              <p>{selectedTemplate.isPublished ? "Available for new group assignments." : "Publish to make this template available for group assignments."}</p>
+            </div>
+            <TemplateCourses key={selectedTemplate._id} template={selectedTemplate} />
+          </div>
+        </section>
+      </div> : !error && <div className="register-empty">
+        <img src="/portal-studio/images/extra-hours-folder.svg" alt="" width="144" height="105" />
+        <h3>{templates.length ? "No matching templates" : "No schedule templates"}</h3>
+        <p>{templates.length ? "Change the search or publication filter to see more templates." : "Create a template using this term’s published course offerings."}</p>
+        {templates.length > 0 && <button className="outline-button" type="button" onClick={() => { setQuery(""); setStatus("all"); }}>Clear filters</button>}
+      </div>}
+    </>}
+    {editorOpen && <Modal title={editingTemplate ? "Update schedule template" : "Create schedule template"}
+      description={termLabel(selectedTerm)} onClose={() => !saving && clearEditor()} wide className="template-editor">
+      <form className="template-editor-form" onSubmit={saveTemplate}>
+        <div className="template-editor-body">
+          <section className="template-editor-cohort" aria-labelledby="template-cohort-heading">
+            <h3 id="template-cohort-heading">Student cohort</h3>
+            <div className="form-grid template-editor-identity">
+              <Field label="Major"><input required value={form.major} onChange={event => { setForm({ ...form, major: event.target.value }); setEditorError(""); }} placeholder="Computer Science" /></Field>
+              <Field label="Semester"><input required type="number" min="1" max="10" step="1" value={form.semester} onChange={event => setForm({ ...form, semester: event.target.value })} placeholder="4" /></Field>
+              <Field label="Study group"><input required value={form.studyGroup} onChange={event => setForm({ ...form, studyGroup: event.target.value })} placeholder="G1" /></Field>
+            </div>
+          </section>
+          <section className="template-editor-courses" aria-labelledby="template-editor-courses-heading">
+            <h3 id="template-editor-courses-heading">Courses and meeting groups</h3>
+            <Field label="Add published offering">
+              <select value="" onChange={addOffering} disabled={!offerings.length}>
+                <option value="">{offerings.length ? "Choose a course" : "No published offerings for this term"}</option>
+                {offerings.map(offering => {
+                  const wrongMajor = !offeringMatchesMajor(offering, form.major);
+                  return <option key={offering._id} value={offering._id} disabled={!offering.isPublished || selectedOffers.includes(offering._id) || wrongMajor}>
+                    {offering.course?.code} · {offering.course?.name}{!offering.isPublished ? " (draft)" : wrongMajor ? " (different major)" : ""}
+                  </option>;
+                })}
+              </select>
+            </Field>
+            {selectedCourses.length ? <ul className="template-editor-course-list" role="list">{selectedCourses.map(({ id, offering, course }) => <li key={id}>
+              <div className="template-editor-course-heading">
+                <div className="template-course-identity"><OfferingCourseIcon code={course?.code} />
+                  <div><strong>{course?.name || "Course unavailable"}</strong>{course?.code && <small>{course.code}</small>}</div>
+                </div>
+                <button type="button" className="text-button danger-text" onClick={() => removeSelected(id)} aria-label={`Remove ${course?.name || "course"}`}>Remove</button>
+              </div>
+              {offering ? <fieldset className="template-editor-groups">
                 <legend>Meeting groups</legend>
-                <div className="form-grid">{offeringComponentTypes(offering).map((componentType) => <Field key={componentType} label={`${pretty(componentType)} group`}>
-                  <select required value={slotSelections[offering._id]?.[componentType] || ""} onChange={(event) => setSlotSelections((current) => ({ ...current, [offering._id]: { ...current[offering._id], [componentType]: event.target.value } }))}>
-                    <option value="">Choose a group</option>{offering.slots.filter((slot) => slot.componentType === componentType).map((slot) => <option key={slot._id} value={slot._id}>{slot.groupNumber} · {slot.day} {minutesToTime(slot.startMinute)}–{minutesToTime(slot.endMinute)} · {slot.room}</option>)}
+                <div className="form-grid">{offeringComponentTypes(offering).map(componentType => <Field key={componentType} label={`${pretty(componentType)} group`}>
+                  <select required value={slotSelections[id]?.[componentType] || ""} onChange={event => setSlotSelections(current => ({ ...current, [id]: { ...current[id], [componentType]: event.target.value } }))}>
+                    <option value="">Choose a group</option>
+                    {offering.slots.filter(slot => slot.componentType === componentType).map(slot => <option key={slot._id} value={slot._id}>
+                      {slot.groupNumber} · {slot.day} · {minutesToTime(slot.startMinute)}–{minutesToTime(slot.endMinute)}{slot.room ? ` · ${slot.room}` : ""}
+                    </option>)}
                   </select>
                 </Field>)}</div>
-              </fieldset>
-            </li>)}</ul>}
+              </fieldset> : <p className="template-muted">This offering is no longer available. Remove it before saving.</p>}
+            </li>)}</ul> : <p className="template-muted">Add at least one course and choose a group for every meeting type.</p>}
           </section>
           <fieldset className="template-editor-publication">
             <legend>Publication status</legend>
             <div>{[
-              { label: "Draft", description: "Keep the template out of group assignments.", published: false },
-              { label: "Published", description: "Make the template available for group assignments.", published: true },
+              { label: "Draft", description: "Keep this schedule in the template library.", published: false },
+              { label: "Published", description: "Make this template available for new group assignments.", published: true },
             ].map(({ label, description, published }) => <label key={label}>
-              <input type="radio" name="template-publication" checked={form.isPublished === published} onChange={() => setForm({ ...form, isPublished: published })} />
-              <span><strong>{label}</strong><small>{description}</small></span>
+              <input type="radio" name="template-publication" aria-label={label} aria-describedby={`template-publication-${label}`}
+                checked={form.isPublished === published} onChange={() => setForm({ ...form, isPublished: published })} />
+              <span><strong>{label}</strong><small id={`template-publication-${label}`}>{description}</small></span>
             </label>)}</div>
           </fieldset>
-          <div className="form-footer"><button className="outline-button" type="button" onClick={clearEditor} disabled={saving}>Cancel</button><button className="primary-button" disabled={saving || !termId.trim()}>{saving ? "Saving…" : editingTemplate ? "Save changes" : "Create template"}</button></div>
-        </form>
+        </div>
+        <div className="template-editor-footer">
+          {editorError && <div className="feedback error" role="alert">{editorError}</div>}
+          <div className="form-footer">
+            <button className="outline-button" type="button" onClick={clearEditor} disabled={saving}>Cancel</button>
+            <button className="primary-button" disabled={saving || !termId.trim()}>{saving ? "Saving…" : submitLabel}</button>
+          </div>
+        </div>
+      </form>
     </Modal>}
-    {loading ? <Loading /> : selectedTemplate ? <section className="template-library" aria-label="Current templates">{[
-        { label: "Published", tone: "good", isPublished: true },
-        { label: "Drafts", tone: "draft", isPublished: false },
-      ].map(({ label, tone, isPublished }) => {
-        const group = templates.filter(template => Boolean(template.isPublished) === isPublished);
-        return <section className="template-group" key={label} aria-labelledby={`template-group-${label}`}>
-          <div className="template-group-heading"><h2 className={`status-pill ${tone}`} id={`template-group-${label}`}>{label}</h2><span className="register-count">{group.length}</span></div>
-          {group.length ? <ul role="list">{group.map(template => {
-            const courses = template.courses || [];
-            const isSelected = template._id === selectedTemplate._id;
-            const labelId = `template-label-${template._id}`;
-            const countId = `template-count-${template._id}`;
-            return <li className="template-register-row" key={template._id}>
-              <button className="template-identity" type="button" aria-pressed={isSelected} aria-controls="template-course-sheet"
-                aria-labelledby={labelId} aria-describedby={countId} onClick={() => setSelectedTemplateId(template._id)}>
-                <span id={labelId}><strong>Group {template.studyGroup}</strong><small>{template.major} · Semester {template.semester}</small></span>
-                <span className="template-course-count" id={countId}>{courses.length} {courses.length === 1 ? "course" : "courses"}</span>
-              </button>
-              {isSelected && <>
-                <div className="template-row-actions" role="group" aria-label={`Actions for Group ${template.studyGroup}`}>
-                  <button className="outline-button" type="button" onClick={() => editTemplate(template)}>Edit</button>
-                  <button className="outline-button" type="button" aria-label={isPublished ? "Unpublish template" : "Publish template"} onClick={() => togglePublished(template)}>{isPublished ? "Unpublish" : "Publish"}</button>
-                  <PaperTossButton label={`Delete template for ${template.major}, semester ${template.semester}, group ${template.studyGroup}`} onClick={() => { setConfirmingDelete(template); setDeleteError(""); }}>Delete</PaperTossButton>
-                </div>
-                <section className="template-course-sheet" id="template-course-sheet" aria-labelledby="template-course-heading">
-                  <h3 id="template-course-heading">Courses for Group {template.studyGroup}</h3>
-                  {courses.length ? <ul role="list">{courses.map((entry, index) => {
-                    const groups = (entry.slots || []).flatMap((slot) => {
-                      const group = entry.courseOffering?.slots?.find(item => item._id === slot.slotGroupId);
-                      return group ? [`${pretty(slot.componentType)} ${group.groupNumber}`] : [];
-                    });
-                    return <li key={entry.course?._id || index}>
-                      <OfferingCourseIcon code={entry.course?.code} />
-                      <div><strong>{entry.course?.name || "Course unavailable"}</strong>
-                        {entry.course?.code && <small>{entry.course.code}</small>}
-                        {groups.length > 0 && <small>{groups.join(" · ")}</small>}</div>
-                    </li>;
-                  })}</ul> : <p>No courses in this template</p>}
-                </section>
-              </>}
-            </li>;
-          })}</ul> : <p className="template-group-empty">{isPublished ? "No published templates" : "No draft templates"}</p>}
-        </section>;
-      })}</section> : <div className="register-empty"><img src="/portal-studio/images/extra-hours-folder.svg" alt="" width="144" height="105"/><h3>No schedule templates</h3><p>Create a template using this term’s published course offerings.</p></div>}
-    {confirmingDelete && <Modal title="Delete schedule template?" eyebrow="REMOVE STANDARD PLAN" onClose={() => !deleting && setConfirmingDelete(null)}>
-      <div className="confirmation-content"><span className="confirmation-icon" aria-hidden="true">!</span><div><p>Delete the template for <strong>{confirmingDelete.major}</strong>, semester <strong>{confirmingDelete.semester}</strong>, group <strong>{confirmingDelete.studyGroup}</strong>?</p><p className="helper-text">Templates assigned to student schedules cannot be deleted. Reassign those students first.</p></div></div>
+    {confirmingDelete && <Modal title="Delete schedule template?" onClose={() => !deleting && setConfirmingDelete(null)}>
+      <div className="confirmation-content"><span className="confirmation-icon" aria-hidden="true">!</span><div><p>Delete the template for <strong>{confirmingDelete.major}</strong>, semester <strong>{confirmingDelete.semester}</strong>, group <strong>{confirmingDelete.studyGroup}</strong>?</p><p className="helper-text">Reassign any student schedules using this template before deleting it.</p></div></div>
       {deleteError && <div className="feedback error" role="alert">{deleteError}</div>}
       <div className="form-footer"><button type="button" className="outline-button" disabled={deleting} onClick={() => setConfirmingDelete(null)}>Cancel</button><PaperTossButton disabled={deleting} tossing={deleting} onClick={deleteTemplate}>{deleting ? "Deleting…" : "Delete template"}</PaperTossButton></div>
     </Modal>}
