@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { StudentProfile, User } from "../models/identity.js";
 import { ExitExamRequest, GraduationPlan } from "../models/requests.js";
+import { notifyStudentOfGraduationDecision } from "../services/student-notifications.js";
 import { validateSelections } from "./graduation-plans.controller.js";
 
 const reviewableStatuses = ["submitted", "accepted"];
@@ -96,14 +97,18 @@ export async function decideGraduationPlan(req, res) {
   }
 
   const status = decision === "accept" ? "accepted" : "draft";
-  const updated = await GraduationPlan.findOneAndUpdate({
-    _id: plan._id,
-    status: "submitted",
-    __v: plan.__v ?? { $exists: false },
-  }, {
-    $set: { status, responseNote: note, decidedBy: req.user._id, decidedAt: new Date() },
-    $inc: { __v: 1 },
-  }, { returnDocument: "after", runValidators: true }).lean();
+  const updated = await mongoose.connection.transaction(async (session) => {
+    const result = await GraduationPlan.findOneAndUpdate({
+      _id: plan._id,
+      status: "submitted",
+      __v: plan.__v ?? { $exists: false },
+    }, {
+      $set: { status, responseNote: note, decidedBy: req.user._id, decidedAt: new Date() },
+      $inc: { __v: 1 },
+    }, { session, returnDocument: "after", runValidators: true }).lean();
+    if (result) await notifyStudentOfGraduationDecision(result, session);
+    return result;
+  });
   if (!updated) return conflict();
   res.json({ _id: updated._id, status: updated.status, responseNote: updated.responseNote, decidedAt: updated.decidedAt });
 }

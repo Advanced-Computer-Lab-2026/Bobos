@@ -341,7 +341,7 @@ function studentCourses() {
 function studentWeek() {
   const colors = ['ice','cherry','teal','clay'];
   const courses = studentCourses();
-  return Object.entries(liveStudent.data?.schedule?.week || {}).filter(([day,meetings]) => day !== 'Friday').map(([day,meetings]) => [day, meetings.map(m => [m.startTime, displayStudentCode(m.courseCode), escapeHtml(`${m.type[0].toUpperCase()+m.type.slice(1)} · ${m.room}`), colors[Math.max(0,courses.findIndex(c => c[0]===displayStudentCode(m.courseCode))) % colors.length]])]);
+  return Object.entries(liveStudent.data?.schedule?.week || {}).map(([day,meetings]) => [day, meetings.map(m => [m.startTime, displayStudentCode(m.courseCode), escapeHtml(`${m.type[0].toUpperCase()+m.type.slice(1)} · ${m.room}`), colors[Math.max(0,courses.findIndex(c => c[0]===displayStudentCode(m.courseCode))) % colors.length], m.endTime])]);
 }
 function loadStudentSchedule() {
   if (!student() || authPages.has(page)) return;
@@ -682,8 +682,8 @@ function courseDetail(){
       'Offering seasons': ['seasons', 'gold'],
     };
     const sectionArt = {Lecture: ['lecture', 'blue'], Tutorial: ['tutorial', 'lilac'], Lab: ['lab', 'sage']};
-    const meetings = studentWeek().flatMap(([day,classes]) =>
-      classes.filter(([,course])=>course===code).map(([time,,detail])=>({day,time,detail})));
+    const meetings = liveStudent.data?.schedule?.courses
+      .find(course => escapeHtml(displayStudentCode(course.courseCode)) === code)?.slots || [];
     return `<div class="student-course-detail">
       ${link('my-courses','← Registered courses','course-back')}
       <header class="course-detail-identity">
@@ -693,10 +693,10 @@ function courseDetail(){
       <div class="course-detail-columns">
       <section aria-labelledby="course-offering-heading">
         <h2 id="course-offering-heading">Your sections</h2>
-        ${meetings.length?`<ul class="course-meetings">${meetings.map(({day,time,detail})=>{
-          const [type,room] = detail.split(' · ');
-          return `<li>${courseDetailArt(...(sectionArt[type] ?? sectionArt.Tutorial))}
-            <div><strong>${type}</strong><small>${day} · ${room}</small></div><time>${time}</time></li>`;
+        ${meetings.length?`<ul class="course-meetings">${meetings.map(({day,startTime,endTime,type,room,groupNumber})=>{
+          const label = type[0].toUpperCase() + type.slice(1);
+          return `<li>${courseDetailArt(...(sectionArt[label] ?? sectionArt.Tutorial))}
+            <div><strong>${escapeHtml(label)}${groupNumber ? ` · Group ${escapeHtml(groupNumber)}` : ''}</strong><small>${escapeHtml(day)} · ${escapeHtml(room)}</small></div><time datetime="${escapeHtml(startTime)}">${escapeHtml(startTime)}–${escapeHtml(endTime)}</time></li>`;
         }).join('')}</ul>`:'<p>No sections on your timetable.</p>'}
         ${link('my-schedule','View schedule','btn schedule-sections-link course-schedule-link')}
       </section>
@@ -752,8 +752,8 @@ function weekly(){
     return `<div class="student-schedule-empty"><p role="status">${escapeHtml(message)}</p>${!localStorage.getItem(workspaceSessionKey) || liveStudent.error.includes("expired") ? link('login','Sign in to Portal','btn') : ''}</div>`;
   }
   const illustrated = workspaces[lab.layout].name === 'Claude Study';
-  function classCard([time, code, detail, color]) {
-    return `<div class="week-class ${color}">${illustrated ? (timetableDrawing(code) || courseDrawing('CSEN 701')) : ''}<time datetime="${time}">${time}</time>
+  function classCard([time, code, detail, color, endTime]) {
+    return `<div class="week-class ${color}">${illustrated ? (timetableDrawing(code) || courseDrawing('CSEN 701')) : ''}<time datetime="${time}">${time}–${endTime}</time>
       <strong>${resolveCourse(code)?.[1] || escapeHtml(code)}</strong>
       <small>${illustrated ? `${code}<span class="study-place">${detail}</span>` : `${code} · ${detail}`}</small></div>`;
   }

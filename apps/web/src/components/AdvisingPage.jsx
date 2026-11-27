@@ -7,8 +7,6 @@ import GraduationPlans from "./GraduationPlans.jsx";
 import FilterDisclosure from "./FilterDisclosure.jsx";
 
 const reasons = ["probation", "failedCourses", "unattendedCourses", "undeclaredMajor", "transfer"];
-const statuses = ["notStarted", "draft", "readyForStudentReview", "processed"];
-const majors = ["CS", "DMET"];
 const pendingRequestTypes = [
   { value: "slotChange", label: "Slot change" },
   { value: "extraHours", label: "Extra hours" },
@@ -19,6 +17,13 @@ const pretty = (value = "") => String(value || "—").replace(/([a-z])([A-Z])/g,
 
 export default function AdvisingPage({ token, role, notify, onOpenPreferences, graduationOnly = false }) {
   const [rows, setRows] = useState([]);
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({ total: 0, pages: 1 });
+  const [majors, setMajors] = useState([]);
+  const [statuses, setStatuses] = useState([]);
+  const [refresh, setRefresh] = useState(0);
+  const reload = () => setRefresh((current) => current + 1);
+  const changeFilter = (set, value) => { setPage(1); set(value); };
   const [hasActiveTerm, setHasActiveTerm] = useState(false);
   const [advisors, setAdvisors] = useState([]);
   const [search, setSearch] = useState("");
@@ -35,9 +40,9 @@ export default function AdvisingPage({ token, role, notify, onOpenPreferences, g
   const [removalStudent, setRemovalStudent] = useState(null);
   const [graduationStudent, setGraduationStudent] = useState(null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (signal) => {
     setLoading(true); setError("");
-    const params = new URLSearchParams();
+    const params = new URLSearchParams({ page });
     if (search) params.set("search", search);
     if (advisorFilter) params.set("advisorId", advisorFilter);
     if (majorFilter) params.set("major", majorFilter);
@@ -46,14 +51,25 @@ export default function AdvisingPage({ token, role, notify, onOpenPreferences, g
     if (pendingType) params.set("pendingRequestType", pendingType);
     try {
       const [result, advisorList] = await Promise.all([
-        api(`/api/advisor/students?${params.toString()}`, { token }),
-        api("/api/advisor/advisors", { token }),
+        api(`/api/advisor/students?${params.toString()}`, { token, signal }),
+        api("/api/advisor/advisors", { token, signal }),
       ]);
-      setRows(result.data || result.students || []); setHasActiveTerm(Boolean(result.activeTerm)); setAdvisors(advisorList.advisors || advisorList || []);
-    } catch (requestError) { setError(explainApiError(requestError, "Advising directory")); }
-    finally { setLoading(false); }
-  }, [token, search, advisorFilter, majorFilter, reason, status, pendingType]);
+      if (signal.aborted) return;
+      setRows(result.data);
+      setPagination(result.pagination);
+      setStatuses(result.scheduleStatuses);
+      setMajors(result.majors);
+      setHasActiveTerm(Boolean(result.activeTerm));
+      setAdvisors(advisorList.advisors || advisorList || []);
+      if (page > result.pagination.pages) setPage(result.pagination.pages);
+    } catch (requestError) {
+      if (!signal.aborted) setError(explainApiError(requestError, "Advising directory"));
+    } finally {
+      if (!signal.aborted) setLoading(false);
+    }
+  }, [token, search, advisorFilter, majorFilter, reason, status, pendingType, page]);
   const clearDropdownFilters = () => {
+    setPage(1);
     setAdvisorFilter("");
     setMajorFilter("");
     setReason("");
@@ -61,38 +77,49 @@ export default function AdvisingPage({ token, role, notify, onOpenPreferences, g
     setPendingType("");
   };
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    const controller = new AbortController();
+    void load(controller.signal);
+    return () => controller.abort();
+  }, [load, refresh]);
 
   const filterChips = [
-    advisorFilter && { key: "advisor", label: `Advisor: ${advisors.find((advisor) => advisor._id === advisorFilter)?.fullName || advisorFilter}`, onRemove: () => setAdvisorFilter("") },
-    majorFilter && { key: "major", label: `Major: ${majorFilter}`, onRemove: () => setMajorFilter("") },
-    reason && { key: "reason", label: `Reason: ${pretty(reason)}`, onRemove: () => setReason("") },
-    status && { key: "status", label: `Status: ${pretty(status)}`, onRemove: () => setStatus("") },
-    pendingType && { key: "pending", label: `Request: ${pendingRequestTypes.find((item) => item.value === pendingType)?.label || pendingType}`, onRemove: () => setPendingType("") },
+    advisorFilter && { key: "advisor", label: `Advisor: ${advisors.find((advisor) => advisor._id === advisorFilter)?.fullName || advisorFilter}`, onRemove: () => changeFilter(setAdvisorFilter, "") },
+    majorFilter && { key: "major", label: `Major: ${majorFilter}`, onRemove: () => changeFilter(setMajorFilter, "") },
+    reason && { key: "reason", label: `Reason: ${pretty(reason)}`, onRemove: () => changeFilter(setReason, "") },
+    status && { key: "status", label: `Status: ${pretty(status)}`, onRemove: () => changeFilter(setStatus, "") },
+    pendingType && { key: "pending", label: `Request: ${pendingRequestTypes.find((item) => item.value === pendingType)?.label || pendingType}`, onRemove: () => { changeFilter(setPendingType, ""); if (pendingType === "scheduleSwap") { setStatus(""); setMajorFilter(""); } } },
   ].filter(Boolean);
 
   if (graduationStudent) {
     return <GraduationPlans student={graduationStudent} token={token} onBack={() => setGraduationStudent(null)} />;
   }
-  return <div className="page-stack"><div className="page-title-row"><div><p className="eyebrow">ADVISING</p><h1>{pendingType === "scheduleSwap" ? "Schedule swap requests" : "Advising students"}</h1><p className="page-description">{pendingType === "scheduleSwap" ? "Normal students with open whole schedule swap requests." : "Review assigned advising students and their current workflow status."}</p></div><button className="outline-button" type="button" onClick={load}>↻ Refresh</button></div>
+  return <div className="page-stack"><div className="page-title-row"><div><p className="eyebrow">ADVISING</p><h1>{pendingType === "scheduleSwap" ? "Schedule swap requests" : "Advising students"}</h1><p className="page-description">{pendingType === "scheduleSwap" ? "Normal students with open whole schedule swap requests." : "Review assigned advising students and their current workflow status."}</p></div><button className="outline-button" type="button" onClick={reload}>↻ Refresh</button></div>
     <section className="panel directory-filters"><FilterDisclosure
-      search={<label className="field filter-search"><span>Search by student, ID, or email</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Type to search" /></label>}
+      search={<label className="field filter-search"><span>Search by student, ID, or email</span><input value={search} onChange={(event) => changeFilter(setSearch, event.target.value)} placeholder="Type to search" /></label>}
       chips={filterChips}
       onClear={filterChips.length ? clearDropdownFilters : undefined}
-    ><div className="filter-grid advisor-filters"><label className="field"><span>Advisor</span><select value={advisorFilter} disabled={pendingType === "scheduleSwap"} onChange={(event) => setAdvisorFilter(event.target.value)}><option value="">All advisors</option>{advisors.map((advisor) => <option key={advisor._id} value={advisor._id}>{advisor.fullName}</option>)}</select></label><label className="field"><span>Major</span><select value={majorFilter} onChange={(event) => setMajorFilter(event.target.value)}><option value="">All majors</option>{majors.map((item) => <option key={item} value={item}>{item}</option>)}</select></label><label className="field"><span>Advising reason</span><select value={reason} disabled={pendingType === "scheduleSwap"} onChange={(event) => setReason(event.target.value)}><option value="">All reasons</option>{reasons.map((item) => <option key={item} value={item}>{pretty(item)}</option>)}</select></label><label className="field"><span>Schedule status</span><select value={status} onChange={(event) => setStatus(event.target.value)}><option value="">All statuses</option>{statuses.map((item) => <option key={item} value={item}>{pretty(item)}</option>)}</select></label><label className="field"><span>Pending request type</span><select value={pendingType} onChange={(event) => { const next = event.target.value; setPendingType(next); if (next === "scheduleSwap") { setAdvisorFilter(""); setReason(""); } }}><option value="">All pending request types</option>{pendingRequestTypes.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label></div></FilterDisclosure></section>
+    ><div className="filter-grid advisor-filters"><label className="field"><span>Advisor</span><select value={advisorFilter} disabled={pendingType === "scheduleSwap"} onChange={(event) => changeFilter(setAdvisorFilter, event.target.value)}><option value="">All advisors</option>{advisors.map((advisor) => <option key={advisor._id} value={advisor._id}>{advisor.fullName}</option>)}</select></label><label className="field"><span>Major</span><select value={majorFilter} onChange={(event) => changeFilter(setMajorFilter, event.target.value)}><option value="">All majors</option>{majors.map((item) => <option key={item} value={item}>{item}</option>)}</select></label><label className="field"><span>Advising reason</span><select value={reason} disabled={pendingType === "scheduleSwap"} onChange={(event) => changeFilter(setReason, event.target.value)}><option value="">All reasons</option>{reasons.map((item) => <option key={item} value={item}>{pretty(item)}</option>)}</select></label><label className="field"><span>Schedule status</span><select value={status} onChange={(event) => changeFilter(setStatus, event.target.value)}><option value="">All statuses</option>{statuses.map((item) => <option key={item} value={item}>{pretty(item)}</option>)}</select></label><label className="field"><span>Pending request type</span><select value={pendingType} onChange={(event) => { const next = event.target.value; changeFilter(setPendingType, next); if ((next === "scheduleSwap") !== (pendingType === "scheduleSwap")) { setStatus(""); setMajorFilter(""); } if (next === "scheduleSwap") { setAdvisorFilter(""); setReason(""); } }}><option value="">All pending request types</option>{pendingRequestTypes.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label></div></FilterDisclosure></section>
     {error && <div className="feedback error" role="alert">{error}</div>}
-    <section className="panel results-panel" aria-busy={loading}><div className="results-heading"><div><p className="eyebrow">ADVISOR WORKSPACE</p><h2>{pendingType === "scheduleSwap" ? "Students with open swaps" : "Assigned students"}</h2></div><span className="result-count">{loading ? "Loading" : `${rows.length} students`}</span></div>{loading ? <div className="loading-state"><span className="loader" />Loading advising students…</div> : rows.length === 0 ? <div className="empty-state"><span>♧</span><h3>{pendingType === "scheduleSwap" ? "No open schedule swaps" : "No advising students found"}</h3><p>{error || "Change your filters to see more students."}</p></div> : <div className="table-scroll"><table><thead><tr><th>Student ID</th><th>Name and email</th><th>Major</th><th>Advisor</th><th>Workflow status</th><th>Blocking step</th><th>Last update</th><th>Actions</th></tr></thead><tbody>{rows.map((student) => <tr key={student._id}><td><strong>{student.studentId}</strong></td><td><div className="portal-person-cell"><PortalAvatar name={student.user?.fullName} /><div><strong>{student.user?.fullName || "—"}</strong><span className="secondary-text">{student.user?.email}</span></div></div></td><td>{student.major || "—"}</td><td>{student.studentType === "normal" ? "Not applicable" : student.assignedAdvisor?.fullName || "Unassigned"}</td><td>{student.workflowStatus ? pretty(student.workflowStatus) : hasActiveTerm ? "Not Started" : "No Active Term"}</td><td>{pretty(student.blockingStep)}</td><td>{student.lastActivityAt ? new Date(student.lastActivityAt).toLocaleDateString() : "—"}</td><td>{student.studentType === "normal" ? <span className="helper-text">Read only</span> : <div className="table-actions">{!graduationOnly && <><button className="text-button" type="button" onClick={() => setRecordsStudent(student)}>Profile</button><button className="text-button" type="button" onClick={async () => { try { setSelected(await api(`/api/advisor/students/${student._id}`, { token })); } catch (requestError) { setError(explainApiError(requestError, "Student details")); } }}>Details</button><button className="text-button" type="button" onClick={() => setAssigning(student)}>{student.assignedAdvisor?._id ? "Reassign" : "Assign"}</button><button className="text-button" type="button" onClick={() => onOpenPreferences?.(student)}>Preferences</button><button className="text-button" type="button" onClick={() => setRemovalStudent(student)}>Removal</button></>}{role === "advisor" && <button className="text-button" type="button" onClick={() => setGraduationStudent(student)}>Graduation plan</button>}</div>}</td></tr>)}</tbody></table></div>}</section>
+    <section className="panel results-panel" aria-busy={loading}><div className="results-heading"><div><p className="eyebrow">ADVISOR WORKSPACE</p><h2>{pendingType === "scheduleSwap" ? "Students with open swaps" : "Assigned students"}</h2></div><span className="result-count">{loading ? "Loading" : `${pagination.total} ${pagination.total === 1 ? "student" : "students"}`}</span></div>{loading ? <div className="loading-state"><span className="loader" />Loading advising students…</div> : rows.length === 0 ? <div className="empty-state"><span>♧</span><h3>{pendingType === "scheduleSwap" ? "No open schedule swaps" : "No advising students found"}</h3><p>{error || "Change your filters to see more students."}</p></div> : <div className="table-scroll"><table><thead><tr><th>Student ID</th><th>Name and email</th><th>Major</th><th>Advisor</th><th>Workflow status</th><th>Blocking step</th><th>Last update</th><th>Actions</th></tr></thead><tbody>{rows.map((student) => <tr key={student._id}><td><strong>{student.studentId}</strong></td><td><div className="portal-person-cell"><PortalAvatar name={student.user?.fullName} /><div><strong>{student.user?.fullName || "—"}</strong><span className="secondary-text">{student.user?.email}</span></div></div></td><td>{student.major || "—"}</td><td>{student.studentType === "normal" ? "Not applicable" : student.assignedAdvisor?.fullName || "Unassigned"}</td><td>{student.workflowStatus ? pretty(student.workflowStatus) : hasActiveTerm ? "Not Started" : "No Active Term"}</td><td>{pretty(student.blockingStep)}</td><td>{student.lastActivityAt ? new Date(student.lastActivityAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "—"}</td><td>{student.studentType === "normal" ? <span className="helper-text">Read only</span> : <div className="table-actions">{!graduationOnly && <><button className="text-button" type="button" onClick={() => setRecordsStudent(student)}>Profile</button><button className="text-button" type="button" onClick={async () => { try { setSelected(await api(`/api/advisor/students/${student._id}`, { token })); } catch (requestError) { setError(explainApiError(requestError, "Student details")); } }}>Details</button><button className="text-button" type="button" onClick={() => setAssigning(student)}>{student.assignedAdvisor?._id ? "Reassign" : "Assign"}</button><button className="text-button" type="button" onClick={() => onOpenPreferences?.(student)}>Preferences</button><button className="text-button" type="button" onClick={() => setRemovalStudent(student)}>Removal</button></>}{role === "advisor" && <button className="text-button" type="button" onClick={() => setGraduationStudent(student)}>Graduation plan</button>}</div>}</td></tr>)}</tbody></table></div>}</section>
+    {pagination.pages > 1 && <nav className="pagination-bar" aria-label="Advising students pages">
+      <span>Page {page} of {pagination.pages}</span>
+      <div className="table-actions">
+        <button className="outline-button" type="button" disabled={loading || page <= 1} onClick={() => setPage(page - 1)}>Previous page</button>
+        <button className="outline-button" type="button" disabled={loading || page >= pagination.pages} onClick={() => setPage(page + 1)}>Next page</button>
+      </div>
+    </nav>}
     {selected && <StudentModal student={selected} onClose={() => setSelected(null)} onOpenGraduationPlans={role === "advisor" ? () => { setGraduationStudent(selected.profile); setSelected(null); } : undefined} />}
     {recordsStudent && <div className="modal-backdrop" onClick={() => setRecordsStudent(null)}><section className="modal-card wide-modal" role="dialog" aria-modal="true" aria-label="Academic records" onClick={(event) => event.stopPropagation()}><StudentRecordsPage token={token} profile={{ role }} profileId={recordsStudent._id} viewerRole={role} subjectName={recordsStudent.user?.fullName || recordsStudent.studentId} onClose={() => setRecordsStudent(null)} notify={notify} /></section></div>}
     {assigning && <AssignModal token={token} student={assigning} advisors={advisors} onClose={() => setAssigning(null)} onSaved={() => {
       notify("success", assigning.assignedAdvisor?._id ? "Advisor reassignment saved." : "Advisor assignment saved.");
       setAssigning(null);
-      load();
+      reload();
     }} />}
     {removalStudent && <RequestRemovalModal token={token} initialStudent={removalStudent} onClose={() => setRemovalStudent(null)} onSuccess={() => {
       notify("success", "Mandatory course removal request submitted.");
       setRemovalStudent(null);
-      load();
+      reload();
     }} />}
   </div>;
 }

@@ -8,11 +8,12 @@ import mongoose from "mongoose";
 import { MongoMemoryReplSet } from "mongodb-memory-server";
 import { SMTPServer } from "smtp-server";
 import api from "../../apps/api/src/app.js";
-import { FinancialTransaction } from "../../apps/api/src/models/finance.js";
-import { ScheduleTemplate } from "../../apps/api/src/models/academics.js";
+import { FinancialReversalRequest, FinancialTransaction } from "../../apps/api/src/models/finance.js";
+import { ScheduleTemplate, StudentSchedule } from "../../apps/api/src/models/academics.js";
 import { AcademicTerm, Course, CourseOffering } from "../../apps/api/src/models/catalogue.js";
 import { Notification } from "../../apps/api/src/models/communications.js";
 import { StudentProfile, User } from "../../apps/api/src/models/identity.js";
+import { ExtraHoursRequest } from "../../apps/api/src/models/requests.js";
 
 let database, server, smtp, baseURL, regressionStudent;
 const messages = [];
@@ -303,4 +304,141 @@ test("Req 29: the old template bookmark opens the live editor and saves to the d
   await page.getByRole("button", { name: /save changes/i }).click();
   await expect(page.getByText("Semester 5 · Group 2", { exact: true })).toBeVisible();
   expect((await ScheduleTemplate.findById(template._id)).studyGroup).toBe("2");
+});
+
+async function auditTerm() {
+  return AcademicTerm.findOne({ code: "AUD31" }).then(existing => existing || AcademicTerm.create({
+    code: "AUD31", academicYear: "2030/2031", season: "winter", isActive: true,
+    termStart: "2030-09-01", termEnd: "2031-03-01", teachingStart: "2030-09-07", teachingEnd: "2031-02-01",
+    registrationStart: "2030-08-20", registrationEnd: "2030-09-07", advisingDeadline: "2030-09-12", wholeScheduleSwapDeadline: "2030-09-18",
+  }));
+}
+
+async function auditAdvisingStudent({ email, fullName, studentId, assignedAdvisor, passwordHash }) {
+  const user = await User.create({ fullName, email, role: "advisingStudent", passwordHash });
+  return StudentProfile.create({
+    user: user._id, studentId, studentType: "advising", major: "CS", currentSemester: 5,
+    gpa: 2.3, academicStanding: "goodAcademicStanding", advisingReason: "failedCourses", assignedAdvisor,
+  });
+}
+
+function mainNavigation(page) {
+  return page.getByRole("navigation", { name: "Main navigation" });
+}
+
+test("Req 31, 33, 81–82: student meeting details and read-only Administrator access", async ({ page }) => {
+  const term = await auditTerm();
+  const passwordHash = await bcrypt.hash(password, 4);
+  const studentEmail = "schedule.audit@student.guc.edu.eg";
+  const student = await auditAdvisingStudent({ email: studentEmail, fullName: "Timetable Audit Student", studentId: "46-00131", passwordHash });
+  const admin = await User.findOne({ role: "administrator" });
+  const course = await Course.create({ code: "CSEN931", name: "Timetable Audit Course", creditHours: 3, courseType: "core" });
+  const offering = await CourseOffering.create({
+    course: course._id, term: term._id, isPublished: true, instructors: [{ fullName: "Audit Instructor" }],
+    eligibleGroups: [{ major: "CS", semester: 5 }],
+    slots: [
+      { componentType: "lecture", groupNumber: "L21", day: "Friday", room: "Hall 21", startMinute: 570, endMinute: 645, capacity: 20 },
+      { componentType: "tutorial", groupNumber: "T11", day: "Wednesday", room: "Hall 22", startMinute: 700, endMinute: 780, capacity: 20 },
+      { componentType: "lab", groupNumber: "B19", day: "Sunday", room: "Lab 19", startMinute: 800, endMinute: 860, capacity: 20 },
+    ],
+  });
+  await StudentSchedule.create({
+    student: student._id, term: term._id, scheduleType: "advising", status: "processed", createdBy: admin._id,
+    courses: [{ course: course._id, courseOffering: offering._id, creditHoursSnapshot: 3,
+      slots: offering.slots.map(slot => ({ componentType: slot.componentType, courseOffering: offering._id, slotGroupId: slot._id })) }],
+  });
+  await page.goto(baseURL);
+  await signIn(page, studentEmail, password);
+  await mainNavigation(page).getByRole("link", { name: "My schedule", exact: true }).click();
+  await expect(page.getByRole("region", { name: "Friday", exact: true })).toContainText("09:30–10:45");
+  await mainNavigation(page).getByRole("link", { name: "Registered courses", exact: true }).click();
+  await page.getByRole("link", { name: "View sections" }).click();
+  const sections = page.getByRole("region", { name: "Your sections" });
+  for (const group of ["L21", "T11", "B19"]) await expect(sections).toContainText(`Group ${group}`);
+  await expect(sections).toContainText("09:30–10:45");
+
+  await page.getByRole("button", { name: /account/i }).click();
+  await page.getByRole("button", { name: "Sign out" }).click();
+  await signIn(page, admin.email, password);
+  await mainNavigation(page).getByRole("link", { name: "Student schedules", exact: true }).click();
+  const row = page.getByRole("row", { name: /46-00131/ });
+  await expect(row).toBeVisible();
+  await expect(row.getByRole("button", { name: /manage|process|reopen/i })).toHaveCount(0);
+  await row.getByRole("button", { name: "View schedule", exact: true }).click();
+  await expect(page.getByRole("main")).toContainText("09:30–10:45");
+});
+
+test("Req 50, 52: browse beyond the first 20 students and filter by real payment status", async ({ page }) => {
+  const term = await auditTerm();
+  const passwordHash = await bcrypt.hash(password, 4);
+  const advisor = await User.create({ fullName: "Roster Advisor", role: "advisor", email: "roster.audit@guc.edu.eg", passwordHash, isAdvisorInSystem: true });
+  const profiles = await Promise.all(Array.from({ length: 21 }, (_, index) => auditAdvisingStudent({
+    email: `roster${index}@student.guc.edu.eg`, fullName: `Roster Student ${index + 1}`,
+    studentId: `47-${String(index + 1).padStart(5, "0")}`, assignedAdvisor: advisor._id, passwordHash,
+  })));
+  await StudentProfile.updateOne({ _id: profiles[20]._id }, { major: "undeclared" });
+  const course = await Course.create({ code: "CSEN952", name: "Roster Audit Course", creditHours: 3, courseType: "core" });
+  await ExtraHoursRequest.create({
+    student: profiles[20]._id, advisor: advisor._id, term: term._id,
+    courses: [{ course: course._id, hours: 3, isRepeated: false, pricePerHour: 800, subtotal: 2400 }],
+    requestedHours: 3, totalCost: 2400, decisionStatus: "approved", settlementStatus: "awaitingChoice",
+    eligibilitySnapshot: { standardAllowance: 30, hoursBeforeRequest: 30, hoursAfterRequest: 33, isProbation: false, graduatingWithinOneYear: false },
+  });
+  await page.goto(baseURL);
+  await signIn(page, advisor.email, password);
+  await mainNavigation(page).getByRole("link", { name: "Advising students", exact: true }).click();
+  await expect(page.getByText("Page 1 of 2")).toBeVisible();
+  const finalStudent = page.getByRole("row", { name: /47-00021/ });
+  await expect(finalStudent).toHaveCount(0);
+  await page.getByRole("button", { name: "Next page" }).click();
+  await expect(finalStudent).toBeVisible();
+  await expect(page.getByText("Page 2 of 2")).toBeVisible();
+  await page.getByRole("button", { name: /^Filters\b/i }).click();
+  await page.getByRole("combobox", { name: "Schedule status" }).selectOption("awaitingPaymentChoice");
+  await page.getByRole("combobox", { name: "Major", exact: true }).selectOption("undeclared");
+  await expect(page.getByText("1 student", { exact: true })).toBeVisible();
+  await expect(finalStudent).toContainText(/awaiting payment choice/i);
+  await expect(page.getByRole("button", { name: "Next page" })).toHaveCount(0);
+});
+
+test("Req 102, 120: staff queue and cancel an unpaid charge through the Portal", async ({ page }) => {
+  const term = await auditTerm();
+  const passwordHash = await bcrypt.hash(password, 4);
+  const [advisor, coordinator] = await User.create([
+    { fullName: "Reversal Advisor", role: "advisor", email: "reversal.advisor@guc.edu.eg", passwordHash },
+    { fullName: "Reversal Coordinator", role: "coordinator", email: "reversal.coordinator@guc.edu.eg", passwordHash },
+  ]);
+  const student = await auditAdvisingStudent({
+    email: "reversal.audit@student.guc.edu.eg", fullName: "Reversal Student", studentId: "46-00102", passwordHash, assignedAdvisor: advisor._id,
+  });
+  const course = await Course.create({ code: "CSEN902", name: "Reversal Audit Course", creditHours: 3, courseType: "core" });
+  const request = await ExtraHoursRequest.create({
+    student: student._id, advisor: advisor._id, term: term._id,
+    courses: [{ course: course._id, hours: 3, isRepeated: false, pricePerHour: 800, subtotal: 2400 }],
+    requestedHours: 3, totalCost: 2400, decisionStatus: "approved", settlementStatus: "deferred", settlementOption: "deferred",
+    eligibilitySnapshot: { standardAllowance: 30, hoursBeforeRequest: 30, hoursAfterRequest: 33, isProbation: false, graduatingWithinOneYear: false },
+  });
+  const charge = await FinancialTransaction.create({
+    student: student._id, extraHoursRequest: request._id, kind: "deferredCharge", status: "pending", amount: 2400,
+    settlementOption: "deferred", deferredChargeReference: "CANCEL-AUDIT-102",
+  });
+
+  await page.goto(baseURL);
+  await signIn(page, coordinator.email, password);
+  await mainNavigation(page).getByRole("link", { name: "Financial records", exact: true }).click();
+  const row = page.getByRole("row", { name: /CANCEL-AUDIT-102/ }).filter({ has: page.getByRole("button", { name: /^View$/ }) });
+  await row.getByRole("button", { name: "Request cancellation" }).click();
+  let dialog = page.getByRole("dialog", { name: "Request charge cancellation" });
+  await dialog.getByLabel(/reason/i).fill("Course no longer needed");
+  await dialog.getByRole("button", { name: "Submit request" }).click();
+  await row.getByRole("button", { name: "Cancel charge" }).click();
+  dialog = page.getByRole("dialog", { name: "Cancel deferred charge" });
+  await expect(dialog.getByLabel(/reason/i)).toHaveValue("Course no longer needed");
+  await dialog.getByRole("button", { name: "Confirm cancellation" }).click();
+  await expect.poll(async () => (await FinancialTransaction.findById(charge._id)).status).toBe("cancelled");
+  const reversal = await FinancialReversalRequest.findOne({ originalTransaction: charge._id });
+  expect(reversal.status).toBe("completed");
+  await expect(row.getByRole("button", { name: "Cancel charge" })).toHaveCount(0);
+  await page.getByRole("link", { name: "Notifications", exact: true }).click();
+  await expect(page.getByRole("main")).toContainText("Financial reversal requested");
 });

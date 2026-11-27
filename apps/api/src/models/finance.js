@@ -121,6 +121,7 @@ const financialReversalRequestSchema = withTimestamps({
   extraHoursRequest: ref("ExtraHoursRequest", { required: true }),
   originalTransaction: ref("FinancialTransaction", { required: true, unique: true }),
   requestedBy: ref("User", { required: true }),
+  reason: { type: String, trim: true, maxlength: 500 },
   reversalType: { type: String, required: true, enum: ["refundToWallet", "cancelDeferredCharge"] },
   status: { type: String, required: true, enum: ["pending", "completed"], default: "pending" },
   decidedBy: ref("User", { default: null }),

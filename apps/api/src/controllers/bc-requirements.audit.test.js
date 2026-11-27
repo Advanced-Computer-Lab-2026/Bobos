@@ -6,7 +6,7 @@ import app from "../app.js";
 import {
   User, StudentProfile, AcademicTerm, Course, CourseOffering, StudentSchedule,
   CourseAttempt, ScheduleActivity, CalendarConnection, SlotChangeRequest,
-  MandatoryCourseRemovalRequest, ExtraHoursRequest, FinancialTransaction,
+  MandatoryCourseRemovalRequest, ExtraHoursRequest, FinancialTransaction, WholeScheduleSwapRequest,
   FinancialReversalRequest, GraduationPlan, ExitExamRequest, StudentWorkflowState,
 } from "../models/index.js";
 import { generateToken } from "../middleware/auth.middleware.js";
@@ -460,6 +460,7 @@ test("B2 Req 102: refund revokes hours and releases seats from unprocessed addit
   const payment = await FinancialTransaction.create({ student: student._id, extraHoursRequest: request._id, kind: "gatewayPayment", amount: 3200, status: "succeeded", settlementOption: "gateway" });
   await FinancialReversalRequest.create({ student: student._id, extraHoursRequest: request._id, originalTransaction: payment._id, requestedBy: users.advisor._id, reversalType: "refundToWallet" });
   const before = await schedule(student, "readyForStudentReview");
+  await StudentWorkflowState.create({ student: student._id, studentType: "advising", term: term._id, status: "readyForStudentReview" });
   await CourseOffering.updateOne({ _id: offering._id }, { $set: { "slots.$[slot].assignedStudentCount": 1 } }, { arrayFilters: [{ "slot.groupNumber": "1" }] });
   const res = await call(`/finance/${payment._id}/refund`, { method: "POST", body: {} });
   assert.equal(res.status, 200);
@@ -469,6 +470,8 @@ test("B2 Req 102: refund revokes hours and releases seats from unprocessed addit
   assert.equal(after.courses.length, 0);
   assert.equal(after.version, before.version + 1);
   assert.ok((await CourseOffering.findById(offering._id)).slots.every(slot => slot.assignedStudentCount === 0));
+  const profile = await call("/identity/profile", { role: "advisingStudent" });
+  assert.equal(profile.body.profile.scheduleStatus, "draft");
 });
 
 test("B2 Req 102: simultaneous refund requests produce only one credit", async () => {
@@ -668,4 +671,139 @@ test("B1 Req 116: reconciliation recovers missed changes and Google errors; revo
     assert.equal(response.body.connected, false);
     assert.ok(state.refreshes >= 1);
   } finally { await stop(); }
+});
+
+test("Req 31, 81–82: Administrators read schedules but cannot process or reopen them", async () => {
+  const draft = await schedule();
+  const payload = { termId: String(term._id) };
+  const admin = { method: "POST", role: "administrator" };
+  const studentSchedule = `/schedules/student/${student._id}?termId=${term._id}`;
+  assert.equal((await call(studentSchedule, { role: "administrator" })).body.readOnly, true);
+  assert.equal((await call(schedulePath() + "/process", { ...admin, body: payload })).status, 403);
+  assert.equal((await StudentSchedule.findById(draft._id)).status, "readyForStudentReview");
+  assert.equal((await call(schedulePath() + "/process", { method: "POST", role: "advisor", body: payload })).status, 200);
+  const reopen = { ...payload, reason: "Correct the schedule" };
+  assert.equal((await call(schedulePath() + "/reopen", { ...admin, body: reopen })).status, 403);
+  assert.equal((await StudentSchedule.findById(draft._id)).status, "processed");
+  assert.equal((await call(schedulePath() + "/reopen", { method: "POST", body: reopen })).status, 200);
+  assert.equal((await StudentSchedule.findById(draft._id)).status, "draft");
+});
+
+test("Req 22, 25, 31: Friday offerings remain usable and assigned slot edits protect the timetable", async () => {
+  const meeting = { componentType: "lecture", groupNumber: "A", day: "Friday", startMinute: 480, endMinute: 555, room: "F1", capacity: 12 };
+  const fridayCourse = await Course.create({ code: "FRIDAY31", name: "Friday lab", creditHours: 3, courseType: "core" });
+  const admin = { role: "administrator" };
+  const created = await call("/catalogue/offerings", { ...admin, method: "POST", body: {
+    course: String(fridayCourse._id), term: String(term._id), instructors: [{ fullName: "Friday Instructor" }],
+    eligibleGroups: [{ major: "DMET", semester: 5 }], slots: [meeting],
+  } });
+  assert.equal(created.status, 201);
+  assert.equal((await call(`/catalogue/offerings/${created.body._id}/publish`, { ...admin, method: "PATCH", body: { isPublished: true } })).status, 200);
+
+  await schedule(student, "processed");
+  const [lecture, , tutorial] = offering.slots;
+  const slot = `/catalogue/offerings/${offering._id}/slots/${lecture._id}`;
+  const edit = (body) => call(slot, { ...admin, method: "PUT", body });
+  assert.equal((await edit({ componentType: "lab", groupNumber: "New group" })).status, 409);
+  assert.equal((await edit({ day: tutorial.day, startMinute: tutorial.startMinute, endMinute: tutorial.endMinute })).status, 409);
+  assert.equal((await edit({ day: "Friday" })).status, 200);
+
+  const scheduleUrl = `/schedules/me?termId=${term._id}`;
+  const weekly = await call(scheduleUrl, { role: "advisingStudent" });
+  assert.equal(weekly.status, 200);
+  assert.equal(weekly.body.schedule.week.Friday[0].groupNumber, lecture.groupNumber);
+  assert.ok(!weekly.body.schedule.daysOff.includes("Friday"));
+  const pdf = await call(`/schedules/me/download?termId=${term._id}`, { role: "advisingStudent" });
+  assert.equal(pdf.status, 200);
+  assert.match(pdf.body, /^%PDF-/);
+});
+
+test("Req 50, 52, 82: a settled deferral does not hide processing or reopening in the roster", async () => {
+  await schedule(student);
+  await extraRequest({ settlementStatus: "deferred", settlementOption: "deferred" });
+  const rosterStatus = async status => {
+    const matches = await call(`/advisor/students?scheduleStatus=${status}`, { role: "advisor" });
+    return matches.body.data.some(row => row._id === String(student._id));
+  };
+  assert.ok(await rosterStatus("deferredToNextInstallment"));
+  const termId = String(term._id);
+  assert.equal((await call(schedulePath() + "/process", { method: "POST", body: { termId } })).status, 200);
+  assert.ok(await rosterStatus("processed"));
+  assert.ok(!await rosterStatus("deferredToNextInstallment"));
+  assert.equal((await call(schedulePath() + "/reopen", { method: "POST", body: { termId, reason: "Review new information" } })).status, 200);
+  assert.ok(await rosterStatus("reopened"));
+  assert.ok(!await rosterStatus("deferredToNextInstallment"));
+  assert.equal((await call(`/advisor/students/${student._id}`, { role: "advisor" })).body.workflowState.status, "reopened");
+});
+
+test("Req 25, 27: simultaneous edits cannot double-book a room and incomplete drafts cannot publish", async () => {
+  const admin = { role: "administrator" };
+  const otherCourse = await Course.create({ code: "RACE25", name: "Audit capacity", creditHours: 3, courseType: "core" });
+  const slot = { componentType: "lecture", groupNumber: "A", day: "Friday", startMinute: 480, endMinute: 555, room: "F1", capacity: 12 };
+  const created = await call("/catalogue/offerings", { ...admin, method: "POST", body: {
+    course: String(otherCourse._id), term: String(term._id), instructors: [],
+    eligibleGroups: [{ major: "DMET" }], slots: [slot],
+  } });
+  assert.equal(created.status, 201);
+  const draft = await CourseOffering.findById(created.body._id);
+  const publish = () => call(`/catalogue/offerings/${draft._id}/publish`, { ...admin, method: "PATCH", body: { isPublished: true } });
+  assert.equal((await publish()).status, 400);
+  assert.equal((await CourseOffering.findById(draft._id)).isPublished, false);
+  draft.instructors.push({ fullName: "Different Instructor" });
+  await draft.save();
+  assert.equal((await publish()).status, 200);
+  const results = await Promise.all([offering, draft].map(row => call(
+    `/catalogue/offerings/${row._id}/slots/${row.slots[0]._id}`, { ...admin, method: "PUT", body: {
+      day: "Sunday", startMinute: 540, endMinute: 600, room: "Shared Hall",
+    } },
+  )));
+  assert.deepEqual(results.map(result => result.status).sort(), [200, 409]);
+});
+
+test("Req 122: expired open swaps disappear from pending work before the student visits swap history", async () => {
+  const normalSchedule = await StudentSchedule.create({
+    student: normal._id, term: term._id, scheduleType: "normal", status: "processed", createdBy: users.coordinator._id,
+    createdAt: new Date(Date.now() - 120000),
+  });
+  await WholeScheduleSwapRequest.create({
+    student: normal._id, term: term._id, currentSchedule: normalSchedule._id, currentGroup: "1",
+    desiredGroups: ["2"], courseCodesSnapshot: [course.code], status: "open", expiresAt: new Date(Date.now() - 60000),
+  });
+  const dashboard = await call("/admin/pending-work");
+  assert.equal(dashboard.status, 200);
+  const row = dashboard.body.students.find(item => item.id === String(normal._id));
+  assert.equal(row.workflowStatus, "swapExpired");
+  assert.equal(row.requests.some(request => request.type === "wholeScheduleSwap"), false);
+  assert.equal(dashboard.body.groups.requestType.wholeScheduleSwap, 0);
+});
+
+test("Req 64: the second makeup is available only after the first and with at most two failed courses", async () => {
+  const firstMakeup = await AcademicTerm.create({
+    ...term.toObject(), _id: undefined, code: "AUD-MAKEUP", season: "firstMakeup", isActive: false,
+    termStart: "2026-03-01", termEnd: "2026-04-01", teachingStart: "2026-03-05", teachingEnd: "2026-03-22",
+    registrationStart: "2026-02-20", registrationEnd: "2026-03-02",
+    advisingDeadline: "2026-03-07", wholeScheduleSwapDeadline: "2026-03-09",
+  });
+  const others = await Course.create([{ code: "MAKE640", name: "Another failure", creditHours: 3, courseType: "core" },
+    { code: "MAKE641", name: "Third failure", creditHours: 3, courseType: "core" }]);
+  const record = courses => CourseAttempt.create(courses.map(entry => ({
+    student: student._id, course: entry._id, term: firstMakeup._id, attendance: "attended", result: "failed", grade: "F",
+  })));
+  await record([course, others[0]]);
+  const create = makeupAttempt => call("/mandatory-removals", { role: "advisor", method: "POST", body: {
+    studentProfileId: String(student._id), courseId: String(course._id), termId: String(term._id), reason: "makeupEligibility",
+    explanation: "The student passed the original attendance requirement.", makeupAttempt,
+  } });
+  assert.equal((await create(1)).status, 400);
+  const result = await create(2);
+  assert.equal(result.status, 201);
+  assert.equal(result.body.makeupAttempt, 2);
+  await record([others[1]]);
+  const decide = decision => call(`/mandatory-removals/${result.body._id}/decision`, { method: "PATCH", body: {
+    decision, responseNote: "Checked the latest results.",
+  } });
+  assert.equal((await decide("approved")).status, 409);
+  assert.equal((await decide("rejected")).status, 200);
+  assert.equal((await create(2)).status, 400);
+  assert.equal((await create()).status, 400, "legacy request must not bypass the second-makeup limit");
 });

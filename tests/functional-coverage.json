@@ -109,5 +109,16 @@
   {"requirements": [86], "file": "apps/api/src/controllers/group-a.audit.test.js", "test": "A1 Req 86: requesting advisor filter includes advisors outside the active directory"},
   {"requirements": [100, 127], "file": "apps/api/src/controllers/finance.integration.test.js", "test": "Req 100 and 127: listing and export use the transaction date and the same filters"},
   {"requirements": [128], "file": "apps/api/src/controllers/bc-requirements.audit.test.js", "test": "Req 128: catalogue import reports physical CSV rows and creates or updates by course code"},
-  {"requirements": [128], "file": "apps/api/src/controllers/bc-requirements.audit.test.js", "test": "Req 128: a write error rolls back the full CSV import"}
+  {"requirements": [128], "file": "apps/api/src/controllers/bc-requirements.audit.test.js", "test": "Req 128: a write error rolls back the full CSV import"},
+  {"requirements": [31, 81, 82], "file": "apps/api/src/controllers/bc-requirements.audit.test.js", "test": "Req 31, 81–82: Administrators read schedules but cannot process or reopen them"},
+  {"requirements": [22, 25, 31], "file": "apps/api/src/controllers/bc-requirements.audit.test.js", "test": "Req 22, 25, 31: Friday offerings remain usable and assigned slot edits protect the timetable"},
+  {"requirements": [6, 50, 52, 82], "file": "apps/api/src/controllers/bc-requirements.audit.test.js", "test": "Req 50, 52, 82: a settled deferral does not hide processing or reopening in the roster"},
+  {"requirements": [27, 103, 107], "file": "apps/api/src/controllers/graduation-plans.integration.test.js", "test": "Req 27, 103, 107: a graduation assignment requires its exact offering to stay published"},
+  {"requirements": [50, 52, 59, 102, 120], "file": "apps/api/src/controllers/group-a.audit.test.js", "test": "Req 50, 52, 102, 120: live wallet requests reach the roster, reversal queue and coordinator inbox"},
+  {"requirements": [50, 52, 59, 102, 120], "file": "apps/api/src/controllers/group-a.audit.test.js", "test": "Req 50, 52, 102, 120: live deferred requests reach the roster, reversal queue and coordinator inbox"},
+  {"requirements": [25, 27], "file": "apps/api/src/controllers/bc-requirements.audit.test.js", "test": "Req 25, 27: simultaneous edits cannot double-book a room and incomplete drafts cannot publish"},
+  {"requirements": [122], "file": "apps/api/src/controllers/bc-requirements.audit.test.js", "test": "Req 122: expired open swaps disappear from pending work before the student visits swap history"},
+  {"requirements": [64], "file": "apps/api/src/controllers/bc-requirements.audit.test.js", "test": "Req 64: the second makeup is available only after the first and with at most two failed courses"},
+  {"requirements": [108], "file": "apps/api/src/controllers/graduation-plans.integration.test.js", "test": "Req 108: the only unpublished repeat does not prevent a justified exit exam"},
+  {"requirements": [117], "file": "apps/api/src/controllers/group-a.audit.test.js", "test": "Req 117: a returned and resubmitted plan retains both decisions before the first inbox visit"}
 ]

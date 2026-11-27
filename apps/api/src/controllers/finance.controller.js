@@ -4,6 +4,7 @@ import { StudentProfile, User } from "../models/identity.js";
 import { AcademicTerm } from "../models/catalogue.js";
 import { ExtraHoursRequest } from "../models/requests.js";
 import { StudentSchedule } from "../models/academics.js";
+import { notifyCoordinatorsOfRequest } from "../services/coordinator-notifications.js";
 import { changeSlotCount, collectSlotRefs } from "./scheduling.controller.js";
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -207,26 +208,38 @@ async function buildFinancialQuery(req) {
 /**
  * Format raw transaction object into standardized response shape
  */
-function availableReversal(transaction, linkedRequest, reversal) {
+function settledReversal(transaction, linkedRequest) {
   if (transaction.refundedAt || ["REFUNDED", "refunded"].includes(transaction.status)
     || ["REFUND", "refund", "deferredChargeCancellation", "walletTopUp"].includes(transaction.kind)) return null;
 
-  const deferred = transaction.kind === "deferredCharge";
-  const action = deferred ? "cancelDeferredCharge" : "refundToWallet";
   const completed = ["COMPLETED", "succeeded", "completed"].includes(transaction.status);
-  if (!linkedRequest) return !deferred && completed && !transaction.extraHoursRequest ? action : null;
+  const deferred = transaction.kind === "deferredCharge";
+  if (!linkedRequest) return !deferred && completed && !transaction.extraHoursRequest ? "refundToWallet" : null;
   if (String(linkedRequest.student) !== String(transaction.student?._id || transaction.student)) return null;
 
-  const approvedReversal = reversal?.reversalType === action
-    && String(reversal.student) === String(linkedRequest.student)
-    && String(reversal.extraHoursRequest) === String(linkedRequest._id);
-  if (linkedRequest.decisionStatus !== "withdrawn" && !approvedReversal) return null;
   if (deferred) {
-    return linkedRequest.settlementStatus === "deferred"
-      && (completed || ["pending", "PENDING"].includes(transaction.status)) ? action : null;
+    return linkedRequest.settlementStatus === "deferred" && ["pending", "PENDING"].includes(transaction.status)
+      ? "cancelDeferredCharge" : null;
   }
   return completed && linkedRequest.settlementStatus === "paid"
-    && ["extraHoursWalletPayment", "gatewayPayment"].includes(transaction.kind) ? action : null;
+    && ["extraHoursWalletPayment", "gatewayPayment"].includes(transaction.kind) ? "refundToWallet" : null;
+}
+
+function availableReversal(transaction, linkedRequest, reversal) {
+  const action = settledReversal(transaction, linkedRequest);
+  if (!action || !linkedRequest || linkedRequest.decisionStatus === "withdrawn") return action;
+  const matchingReversal = reversal?.reversalType === action
+    && String(reversal.student) === String(linkedRequest.student)
+    && String(reversal.extraHoursRequest) === String(linkedRequest._id);
+  return matchingReversal ? action : null;
+}
+
+function addReversalActions(record, reversal) {
+  const request = record.extraHoursRequest;
+  record.availableReversal = availableReversal(record, request, reversal);
+  record.requestableReversal = !reversal && request?.decisionStatus === "approved"
+    ? settledReversal(record, request) : null;
+  record.reversalReason = record.availableReversal && reversal?.reason || null;
 }
 
 async function pendingReversals(records) {
@@ -323,7 +336,7 @@ export async function getRecords(req, res) {
     if (req.user.role !== "advisingStudent") {
       const reversals = await pendingReversals(rawRecords);
       for (const record of records) {
-        record.availableReversal = availableReversal(record, record.extraHoursRequest, reversals.get(String(record._id)));
+        addReversalActions(record, reversals.get(String(record._id)));
       }
     }
     const totalPages = total === 0 ? 0 : Math.ceil(total / limit);
@@ -376,11 +389,44 @@ export async function getRecordById(req, res) {
     const record = formatTransactionRecord(rawRecord);
     if (req.user.role !== "advisingStudent") {
       const reversals = await pendingReversals([rawRecord]);
-      record.availableReversal = availableReversal(record, record.extraHoursRequest, reversals.get(String(record._id)));
+      addReversalActions(record, reversals.get(String(record._id)));
     }
     return res.status(200).json(record);
   } catch (error) {
     return res.status(500).json({ message: "Failed to retrieve financial record details.", error: error.message });
+  }
+}
+
+/** Req. 102, 120: open a cancellation for staff to process and put it in the coordinator inbox. */
+export async function requestFinancialReversal(req, res) {
+  const { id } = req.params;
+  const reason = typeof req.body?.reason === "string" ? req.body.reason.trim() : "";
+  if (!mongoose.isValidObjectId(id)) return res.status(404).json({ message: "Financial record not found." });
+  if (!reason || reason.length > 500) return res.status(400).json({ message: "Enter a reason between 1 and 500 characters." });
+  try {
+    const outcome = await mongoose.connection.transaction(async (session) => {
+      const transaction = await FinancialTransaction.findById(id).session(session);
+      if (!transaction) return { status: 404, message: "Financial record not found." };
+      const request = await ExtraHoursRequest.findById(transaction.extraHoursRequest).session(session);
+      const reversalType = settledReversal(transaction, request);
+      if (!reversalType || request?.decisionStatus !== "approved") {
+        return { status: 409, message: "Only an approved, paid request or an outstanding installment charge can be queued for reversal." };
+      }
+      const prior = await FinancialReversalRequest.exists({ extraHoursRequest: request._id }).session(session);
+      if (prior) return { status: 409, message: "A reversal already exists for this request." };
+
+      const [reversal] = await FinancialReversalRequest.create([{
+        student: request.student, extraHoursRequest: request._id, originalTransaction: transaction._id,
+        requestedBy: req.user._id, reversalType, reason,
+      }], { session });
+      const student = await StudentProfile.findById(request.student).select("studentId").session(session);
+      await notifyCoordinatorsOfRequest(FinancialReversalRequest, reversal, student?.studentId, session);
+      return { status: 201, message: "Reversal requested.", reversal };
+    });
+    return res.status(outcome.status).json({ message: outcome.message, reversal: outcome.reversal });
+  } catch (error) {
+    if (error.code === 11000) return res.status(409).json({ message: "A reversal already exists for this request." });
+    return res.status(500).json({ message: "Failed to request reversal." });
   }
 }
 
@@ -430,7 +476,7 @@ export async function processRefund(req, res) {
       }
 
       const isDeferred = action === "cancelDeferredCharge";
-      const refundReason = String(body.reason || body.refundReason || "Administrative refund").trim();
+      const refundReason = String(body.reason || body.refundReason || reversalReq?.reason || "Administrative reversal").trim();
       const refundAmount = body.amount === undefined ? transaction.amount : Number(body.amount);
       if (!Number.isFinite(refundAmount) || refundAmount <= 0 || refundAmount > transaction.amount
         || (linkedReq && refundAmount !== transaction.amount)) {

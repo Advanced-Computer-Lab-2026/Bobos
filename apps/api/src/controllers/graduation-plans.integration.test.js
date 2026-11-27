@@ -4,7 +4,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import mongoose from "mongoose";
-import { MongoMemoryServer } from "mongodb-memory-server";
+import { MongoMemoryReplSet } from "mongodb-memory-server";
 import app from "../app.js";
 import { generateToken } from "../middleware/auth.middleware.js";
 import { CourseAttempt } from "../models/academics.js";
@@ -17,7 +17,7 @@ let database, databasePath, server, base, users, student, terms, courses;
 
 before(async () => {
   databasePath = await mkdtemp(join(tmpdir(), "bobos-graduation-"));
-  database = await MongoMemoryServer.create({ instance: { dbPath: databasePath } });
+  database = await MongoMemoryReplSet.create({ instanceOpts: [{ dbPath: databasePath }], replSet: { count: 1 } });
   await mongoose.connect(database.getUri());
   await Promise.all([AcademicTerm.init(), Course.init(), CourseOffering.init(), CourseAttempt.init(), ExitExamRequest.init(),
     ExtraHoursRequest.init(), FinancialTransaction.init(), GraduationPlan.init(), StudentProfile.init(), User.init()]);
@@ -64,6 +64,10 @@ beforeEach(async () => {
   const first = await Course.create({ ...common, code: "CS101", name: "Intro", offeringSeasons: ["winter", "spring"] });
   const second = await Course.create({ ...common, code: "CS102", name: "Advanced", prerequisites: [first._id], offeringSeasons: ["winter", "spring"] });
   courses = [first, second];
+  for (const [index, course] of courses.entries()) {
+    await publishFixture(course, terms[0], index);
+    await publishFixture(course, terms[1], index);
+  }
   const electives = await Course.create(Array.from({ length: 4 }, (_, index) => ({
     code: `ELEC${index}`, name: `Completed elective ${index}`, creditHours: 4, courseType: "elective", facultyMajors: ["CS"],
   })));
@@ -71,6 +75,15 @@ beforeEach(async () => {
     course: course._id, student: student._id, term: terms[0]._id, attendance: "attended", result: "passed", grade: "A",
   })));
 });
+
+function publishFixture(course, term, index = 2) {
+  const startMinute = 480 + index * 45;
+  return CourseOffering.create({
+    course: course._id, term: term._id, isPublished: true,
+    instructors: [{ fullName: "Fixture Instructor" }], eligibleGroups: [{ major: "CS" }],
+    slots: [{ componentType: "lecture", groupNumber: "1", day: "Monday", startMinute, endMinute: startMinute + 45, room: "Fixture room", capacity: 20 }],
+  });
+}
 
 async function apiCall(path, { user = "owner", method = "GET", body } = {}) {
   const headers = {};
@@ -141,6 +154,7 @@ test("plan validation requires eligible terms and earlier prerequisites, then lo
 
 test("credits are term-specific, activated, course-specific, and rechecked for reversals at submission", async () => {
   const additional = await Course.create({ code: "CS103", name: "Project", courseType: "core", creditHours: 22, offeringSeasons: ["winter"] });
+  await publishFixture(additional, terms[0]);
   const body = assignments([terms[0], courses[0], additional], [terms[1], courses[1]]);
   const request = await ExtraHoursRequest.create({
     student: student._id, advisor: users.owner._id, term: terms[0]._id, decisionStatus: "approved",
@@ -187,6 +201,7 @@ test("exam eligibility checks whether the remaining courses can fit around the f
   const [first, failed] = courses;
   await Course.updateOne({ _id: first._id }, { offeringSeasons: ["winter"], creditHours: 19 });
   await Course.updateOne({ _id: failed._id }, { offeringSeasons: [], prerequisites: [] });
+  await CourseOffering.deleteMany({ course: failed._id });
   await recordFailure(failed);
   const body = { courseId: String(failed._id), reason: "The only published term would exceed the credit limit." };
   const request = () => call("/exit-exam-requests", { method: "POST", body });
@@ -362,6 +377,7 @@ test("electives are choices and submission checks remaining count and hours", as
     code: `CHOICE${index}`, name: `Elective ${index}`, creditHours: 4, courseType: "elective",
     offeringSeasons: ["winter"], facultyMajors: ["CS"],
   })));
+  await Promise.all(choices.map((choice, index) => publishFixture(choice, terms[0], index + 2)));
   const body = assignments([terms[0], courses[0], ...choices.slice(0, 4)], [terms[1], courses[1]]);
   const draft = await call("", { method: "POST", body });
   assert.equal(draft.status, 201);
@@ -410,4 +426,42 @@ test("a current course ending beyond the planning year still needs an in-window 
   const submitted = await call(`/${secondDraft.data._id}/submit`, { method: "POST" });
   assert.equal(submitted.status, 422, JSON.stringify(submitted.data));
   assert.match(submitted.data.issues.join(" "), /Assign CS103/);
+});
+
+test("Req 27, 103, 107: a graduation assignment requires its exact offering to stay published", async () => {
+  const winter = await CourseOffering.findOne({ course: courses[0]._id, term: terms[0]._id });
+  users.admin = await User.create({ fullName: "Catalogue Admin", role: "administrator", email: "catalogue@guc.edu.eg", passwordHash: "test" });
+  const publish = (isPublished) => apiCall(`/catalogue/offerings/${winter._id}/publish`, { user: "admin", method: "PATCH", body: { isPublished } });
+  const body = assignments([terms[0], courses[0]], [terms[1], courses[1]]);
+  const save = () => call("", { method: "POST", body });
+  assert.equal((await publish(false)).status, 200);
+  const options = (await call()).data.courses.find(course => course._id === String(courses[0]._id));
+  assert.deepEqual(options.termIds, [String(terms[1]._id)]);
+  assert.equal((await save()).status, 422);
+  assert.equal((await publish(true)).status, 200);
+  const draft = await save();
+  assert.equal(draft.status, 201);
+  const submit = () => call(`/${draft.data._id}/submit`, { method: "POST" });
+  assert.equal((await publish(false)).status, 200);
+  assert.equal((await submit()).status, 422);
+  assert.equal((await publish(true)).status, 200);
+  const [submitted, unpublished] = await Promise.all([submit(), publish(false)]);
+  assert.ok([200, 422].includes(submitted.status));
+  assert.ok([200, 409].includes(unpublished.status));
+  assert.notDeepEqual([submitted.status, unpublished.status], [200, 200]);
+  if (submitted.status === 422) {
+    assert.equal((await publish(true)).status, 200);
+    assert.equal((await submit()).status, 200);
+  }
+  assert.equal((await publish(false)).status, 409);
+});
+
+test("Req 108: the only unpublished repeat does not prevent a justified exit exam", async () => {
+  const [first, failed] = courses;
+  await CourseAttempt.create({ course: first._id, student: student._id, term: terms[0]._id, attendance: "attended", result: "passed", grade: "A" });
+  await recordFailure(failed);
+  await Course.updateOne({ _id: failed._id }, { offeringSeasons: [] });
+  await CourseOffering.updateMany({ course: failed._id }, { isPublished: false });
+  const exam = { method: "POST", body: { courseId: String(failed._id), reason: "No published repeat in the planning window." } };
+  assert.equal((await call("/exit-exam-requests", exam)).status, 201);
 });

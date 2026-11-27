@@ -19,7 +19,8 @@ const REASON_LABELS = {
   other: "Other",
 };
 
-function formatReason(val) {
+function formatReason(val, makeupAttempt) {
+  if (val === "makeupEligibility" && makeupAttempt) return makeupAttempt === 1 ? "First makeup eligibility" : "Second makeup eligibility";
   return REASON_LABELS[val] || val || "—";
 }
 
@@ -310,7 +311,7 @@ export default function MandatoryRemovalDashboard({ token, role, notify }) {
                       </td>
                       <td>{termCode}</td>
                       <td>{advisorName}</td>
-                      <td>{formatReason(item.reason)}</td>
+                      <td>{formatReason(item.reason, item.makeupAttempt)}</td>
                       <td>
                         <span className={statusClass}>
                           {status[0].toUpperCase() + status.slice(1)}
@@ -420,7 +421,7 @@ export default function MandatoryRemovalDashboard({ token, role, notify }) {
                 <div>
                   <small className="secondary-text">Removal Reason</small>
                   <p>
-                    <strong>{formatReason(selectedDetail.reason)}</strong>
+                    <strong>{formatReason(selectedDetail.reason, selectedDetail.makeupAttempt)}</strong>
                   </p>
                 </div>
                 <div>
@@ -553,7 +554,7 @@ export default function MandatoryRemovalDashboard({ token, role, notify }) {
                   <strong>Term:</strong> {termLabel(reviewingRequest.term)}
                 </p>
                 <p style={{ margin: "0 0 4px 0" }}>
-                  <strong>Reason:</strong> {formatReason(reviewingRequest.reason)}
+                  <strong>Reason:</strong> {formatReason(reviewingRequest.reason, reviewingRequest.makeupAttempt)}
                 </p>
                 <p style={{ margin: 0 }}>
                   <strong>Advisor Explanation:</strong> {reviewingRequest.explanation}

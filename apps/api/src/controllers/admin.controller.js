@@ -1,7 +1,7 @@
+import { loadStudentWorkflows } from "../services/student-workflow-status.js";
 import mongoose from "mongoose";
 import { isSmtpConfigured, sendEmail } from "../services/smtp-email.js";
-import { StudentSchedule } from "../models/academics.js";
-import { Notification, ScheduleActivity } from "../models/communications.js";
+import { Notification } from "../models/communications.js";
 import { AcademicTerm } from "../models/catalogue.js";
 import { ACADEMIC_STANDINGS, STUDENT_TYPES, WORKFLOW_STATUSES } from "../models/shared.js";
 import { AdvisorAssignment, StudentProfile, User } from "../models/identity.js";
@@ -136,7 +136,7 @@ export async function getStudents(req, res) {
 
     const [profiles, advisors] = await Promise.all([
       StudentProfile.find(profileFilter)
-        .select("user studentId studentType major currentSemester academicStanding assignedAdvisor")
+        .select("user studentId studentType major currentSemester academicStanding assignedAdvisor updatedAt")
         .populate("user", "fullName email isActive")
         .populate("assignedAdvisor", "fullName email")
         .sort({ studentId: 1 })
@@ -147,149 +147,7 @@ export async function getStudents(req, res) {
         .lean(),
     ]);
 
-    const studentIds = profiles.map((profile) => profile._id);
-    const [schedules, swapRequests, scheduleActivities, slotChanges, removalRequests, extraHourRequests] = activeTerm && studentIds.length
-      ? await Promise.all([
-          StudentSchedule.find({ term: activeTerm._id, student: { $in: studentIds } })
-            .select("_id student scheduleType status version updatedAt processedAt createdAt")
-            .lean(),
-          WholeScheduleSwapRequest.find({ term: activeTerm._id, student: { $in: studentIds } })
-            .select("student status expiresAt updatedAt")
-            .sort({ updatedAt: -1 })
-            .lean(),
-          ScheduleActivity.find({ term: activeTerm._id, student: { $in: studentIds } })
-            .select("student schedule action scheduleVersion occurredAt")
-            .sort({ occurredAt: -1 })
-            .lean(),
-          SlotChangeRequest.find({ term: activeTerm._id, student: { $in: studentIds } })
-            .select("student status updatedAt")
-            .lean(),
-          MandatoryCourseRemovalRequest.find({ term: activeTerm._id, student: { $in: studentIds } })
-            .select("student status updatedAt")
-            .lean(),
-          ExtraHoursRequest.find({ term: activeTerm._id, student: { $in: studentIds } })
-            .select("student decisionStatus settlementStatus updatedAt")
-            .lean(),
-        ])
-      : [[], [], [], [], [], []];
-    const workflowByStudent = new Map();
-    const scheduleCycleStartedAtByStudent = new Map();
-    const applyWorkflow = (student, status, blockingStep, updatedAt, priority) => {
-      const id = String(student);
-      const current = workflowByStudent.get(id);
-      const time = updatedAt ? new Date(updatedAt) : null;
-      const lastUpdatedAt = !current?.lastUpdatedAt || time > current.lastUpdatedAt
-        ? time
-        : current.lastUpdatedAt;
-      if (!current || priority > current.priority ||
-        (priority === current.priority && time && (!current.statusUpdatedAt || time >= current.statusUpdatedAt))) {
-        workflowByStudent.set(id, { status, blockingStep, lastUpdatedAt, statusUpdatedAt: time, priority });
-      } else {
-        current.lastUpdatedAt = lastUpdatedAt;
-      }
-    };
-    const latestActivityBySchedule = new Map();
-    for (const activity of scheduleActivities) {
-      const key = String(activity.schedule);
-      if (!latestActivityBySchedule.has(key)) latestActivityBySchedule.set(key, activity);
-    }
-    for (const schedule of schedules) {
-      const latestActivity = latestActivityBySchedule.get(String(schedule._id));
-      if (schedule.scheduleType === "advising") {
-        scheduleCycleStartedAtByStudent.set(
-          String(schedule.student),
-          latestActivity?.action === "reopened" && latestActivity.scheduleVersion === schedule.version
-            ? latestActivity.occurredAt
-            : schedule.createdAt,
-        );
-      }
-      const reopened = schedule.scheduleType === "advising" && schedule.status === "draft" &&
-        latestActivity?.action === "reopened" && latestActivity.scheduleVersion === schedule.version;
-      const status = schedule.scheduleType === "advising"
-        ? reopened ? "reopened" : schedule.status
-        : schedule.status === "processed" ? "scheduleAssigned" : null;
-      if (status) {
-        const scheduleUpdatedAt = schedule.updatedAt ?? schedule.processedAt ?? schedule.createdAt ?? null;
-        const lastUpdatedAt = latestActivity?.occurredAt &&
-          (!scheduleUpdatedAt || latestActivity.occurredAt > scheduleUpdatedAt)
-          ? latestActivity.occurredAt
-          : scheduleUpdatedAt;
-        applyWorkflow(schedule.student, status, {
-          draft: "Complete draft schedule",
-          reopened: "Complete reopened schedule",
-        }[status] ?? null,
-        lastUpdatedAt, schedule.scheduleType === "normal" ? 2 : 1);
-      }
-    }
-    if (activeTerm) {
-      for (const profile of profiles) {
-        if (workflowByStudent.has(String(profile._id))) continue;
-        if (profile.studentType === "advising") {
-          applyWorkflow(profile._id, "notStarted", "Create advising schedule", null, 1);
-        } else {
-          applyWorkflow(profile._id, "notStarted", "Assign standard schedule", null, 1);
-        }
-      }
-    }
-    const resolvedWorkflowByStudent = new Map();
-    const markResolved = (request) => {
-      const id = String(request.student);
-      const updatedAt = request.updatedAt;
-      if (!resolvedWorkflowByStudent.has(id) || updatedAt > resolvedWorkflowByStudent.get(id)) {
-        resolvedWorkflowByStudent.set(id, updatedAt);
-      }
-    };
-    const now = new Date();
-    for (const request of swapRequests) {
-      const expired = request.status === "open" && request.expiresAt <= now;
-      const status = expired ? "swapExpired" : {
-        open: "swapRequestOpen",
-        completed: "swapCompleted",
-        withdrawn: "swapWithdrawn",
-        expired: "swapExpired",
-      }[request.status];
-      if (status) {
-        applyWorkflow(request.student, status, null, expired ? request.expiresAt : request.updatedAt, 2);
-      }
-    }
-    for (const request of slotChanges) {
-      if (request.status === "pending") {
-        applyWorkflow(request.student, "changeRequestPending", "Resolve pending slot-change requests", request.updatedAt, 3);
-      } else {
-        markResolved(request);
-      }
-    }
-    for (const request of removalRequests) {
-      if (request.status === "pending") {
-        applyWorkflow(request.student, "pendingApproval", "Resolve pending coordinator approval", request.updatedAt, 4);
-      } else {
-        markResolved(request);
-      }
-    }
-    for (const request of extraHourRequests) {
-      const status = request.decisionStatus === "pending"
-        ? "pendingApproval"
-        : request.decisionStatus === "approved" && ["none", "awaitingChoice", "failed"].includes(request.settlementStatus)
-          ? "awaitingPaymentChoice"
-          : request.decisionStatus === "approved" && request.settlementStatus === "deferred" ? "deferredToNextInstallment" : null;
-      if (status) {
-        applyWorkflow(request.student, status, {
-          pendingApproval: "Resolve pending coordinator approval",
-          awaitingPaymentChoice: "Choose payment option",
-        }[status] ?? null, request.updatedAt, status === "pendingApproval" ? 4 : 3);
-      } else {
-        markResolved(request);
-      }
-    }
-    for (const profile of profiles) {
-      const workflow = workflowByStudent.get(String(profile._id));
-      const resolvedAt = resolvedWorkflowByStudent.get(String(profile._id));
-      const cycleStartedAt = scheduleCycleStartedAtByStudent.get(String(profile._id));
-      if (profile.studentType === "advising" && workflow?.status === "readyForStudentReview" &&
-        resolvedAt && cycleStartedAt && resolvedAt >= cycleStartedAt) {
-        applyWorkflow(profile._id, "readyToProcess", null, resolvedAt, 2);
-      }
-    }
+    const workflowByStudent = await loadStudentWorkflows(profiles, activeTerm?._id);
     const blockingSteps = [...new Set([...workflowByStudent.values()].map((workflow) => workflow.blockingStep).filter(Boolean))].sort();
     const visibleProfiles = profiles.filter((profile) => {
       const workflow = workflowByStudent.get(String(profile._id));
@@ -359,7 +217,7 @@ export async function getPendingWork(req, res) {
   let termId = null;
   if (term) termId = await AcademicTerm.findOne({ isActive: true }).sort({ termStart: -1 }).select("_id").lean().then((value) => value?._id);
   const currentTermRequests = ids.length ? await Promise.all([
-    termId && normalStudentIds.length ? WholeScheduleSwapRequest.find({ term: termId, student: { $in: normalStudentIds }, status: { $in: ["open", "completed"] } })
+    termId && normalStudentIds.length ? WholeScheduleSwapRequest.find({ term: termId, student: { $in: normalStudentIds }, $or: [{ status: "completed" }, { status: "open", expiresAt: { $gt: new Date() } }] })
       .select("student status expiresAt updatedAt").lean().then((rows) => rows.map((row) => ({ ...row, type: "wholeScheduleSwap" }))) : [],
     termId ? SlotChangeRequest.find({ term: termId, student: { $in: ids }, status: "pending" })
       .select("student status updatedAt").lean().then((rows) => rows.map((row) => ({ ...row, type: "slotChange" }))) : [],
@@ -376,8 +234,8 @@ export async function getPendingWork(req, res) {
   const actionableExtraHours = extraHours.filter((request) => request.decisionStatus === "pending" ||
     (request.decisionStatus === "approved" && ["none", "awaitingChoice", "failed", "deferred"].includes(request.settlementStatus)))
     .map((row) => ({ ...row, type: "extraHours" }));
-  const financialReversals = extraHours.length ? await FinancialReversalRequest.find({
-    student: { $in: ids }, extraHoursRequest: { $in: extraHours.map((row) => row._id) }, status: "pending",
+  const financialReversals = ids.length ? await FinancialReversalRequest.find({
+    student: { $in: ids }, status: "pending",
   }).select("student extraHoursRequest reversalType status updatedAt").lean()
     .then((rows) => rows.map((row) => ({ ...row, type: "financialReversal" }))) : [];
   const requests = [...swapRequests, ...slotChanges, ...removalRequests, ...actionableExtraHours, ...graduationPlans, ...exitExams, ...financialReversals];

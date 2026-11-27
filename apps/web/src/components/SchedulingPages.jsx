@@ -427,7 +427,7 @@ export function StaffSchedulesPage({ token, role, notify, initialStudent = null,
       <label className="field roster-search"><span>Search students</span><input type="search" name="roster-search" autoComplete="off" value={search} onChange={(event) => setSearch(event.target.value)} maxLength={100} placeholder="Student ID, name or email…" /></label>
       {loading ? <Loading /> : students.length ? <div className="table-scroll"><table><thead><tr><th>Student</th><th>Type</th><th>Major / semester</th><th>Schedule status</th><th /></tr></thead><tbody>{students.map((student) => <tr key={student._id}><td><div className="portal-person-cell"><PortalAvatar name={student.fullName} /><div><strong>{student.fullName}</strong><span className="secondary-text">{student.studentId}</span></div></div></td><td>{student.studentType}</td><td>{student.major} · {student.currentSemester}</td><td><span className={`status-pill ${{
         readyForStudentReview: "ready", draft: "draft", processed: "completed",
-      }[student.scheduleStatus] || "muted"}`}>{prettyStatus(student.scheduleStatus)}</span></td><td><div className="table-actions">{student.studentType === "advising" && (["advisor", "coordinator"].includes(role) || (role === "administrator" && ["readyForStudentReview", "processed"].includes(student.scheduleStatus))) && <button className="small-button primary-button" type="button" onClick={() => { setSelected(null); setSchedule(null); setDraftStudent(student); }}>{role === "administrator" ? "Manage schedule" : student.scheduleStatus === "draft" ? "Edit draft" : !student.scheduleStatus ? "Create draft" : student.scheduleStatus === "readyForStudentReview" ? "Review & Process" : "Manage schedule"}</button>}{student.scheduleStatus && <button className="small-button outline-button" type="button" onClick={() => openStudent(student)}>View schedule</button>}{role === "administrator" && student.studentType === "advising" && <button className="small-button outline-button" type="button" onClick={() => openOverview(student)}>Advising overview</button>}</div></td></tr>)}</tbody></table></div> : <div className="student-roster-empty" role="status"><img src="/portal-studio/images/extra-hours-folder.svg" alt="" width="104" height="80" /><h3>{search.trim() ? "No matching students" : "No students in this term"}</h3><p>{search.trim() ? "Check the student ID, name or email, or clear your search to see the roster." : "Choose another academic term to view its students."}</p>{search.trim() && <button className="outline-button" type="button" onClick={() => setSearch("")}>Clear search</button>}</div>}
+      }[student.scheduleStatus] || "muted"}`}>{prettyStatus(student.scheduleStatus)}</span></td><td><div className="table-actions">{student.studentType === "advising" && ["advisor", "coordinator"].includes(role) && <button className="small-button primary-button" type="button" onClick={() => { setSelected(null); setSchedule(null); setDraftStudent(student); }}>{student.scheduleStatus === "draft" ? "Edit draft" : !student.scheduleStatus ? "Create draft" : student.scheduleStatus === "readyForStudentReview" ? "Review & Process" : "Manage schedule"}</button>}{student.scheduleStatus && <button className="small-button outline-button" type="button" onClick={() => openStudent(student)}>View schedule</button>}{role === "administrator" && student.studentType === "advising" && <button className="small-button outline-button" type="button" onClick={() => openOverview(student)}>Advising overview</button>}</div></td></tr>)}</tbody></table></div> : <div className="student-roster-empty" role="status"><img src="/portal-studio/images/extra-hours-folder.svg" alt="" width="104" height="80" /><h3>{search.trim() ? "No matching students" : "No students in this term"}</h3><p>{search.trim() ? "Check the student ID, name or email, or clear your search to see the roster." : "Choose another academic term to view its students."}</p>{search.trim() && <button className="outline-button" type="button" onClick={() => setSearch("")}>Clear search</button>}</div>}
     </section>
     {overviewStudent && overview && <div ref={overviewRef} aria-label={`${overviewStudent.fullName} advising overview`}><AdvisingOverviewPanel overview={overview} token={token} student={overviewStudent} termQuery={termId ? `?termId=${encodeURIComponent(termId)}` : ""} canEdit={false} notify={notify} onChanged={() => openOverview(overviewStudent)} /></div>}
     {selected && schedule?.schedule && <section className="panel staff-schedule-result" ref={scheduleResultRef} tabIndex={-1} aria-label={`${schedule.student?.fullName ?? "Student"} schedule`}><div className="results-heading"><div><p className="eyebrow">{schedule.student?.studentId} · {schedule.term?.season} {schedule.term?.academicYear}</p><h2>{schedule.student?.fullName}’s schedule</h2></div><span className="status-pill">{prettyStatus(schedule.schedule.status)}</span></div>{schedule.schedule.courses?.length ? <WeeklySchedule week={schedule.schedule.week} daysOff={schedule.schedule.daysOff} /> : <Feedback tone="info">{schedule.schedule.status === "readyForStudentReview" ? "This schedule is empty and is not processed, so it cannot be reopened. Select a schedule marked Processed, or complete a valid schedule and process it first." : schedule.schedule.status === "processed" ? "This processed schedule has no course details." : "This draft is empty. Choose “Edit draft” in the student list to add course groups."}</Feedback>}</section>}
@@ -667,7 +667,7 @@ function AdvisingDraftEditor({ token, role, student, termId, notify, onBack, onS
         </>}
       </section>
       <div hidden={draftView !== "courses"}><MandatoryCoursesPanel data={data} editable={editable} busy={savingMandatory} onSave={saveMandatory} /></div>
-      {!editable && data.schedule?.status === "readyForStudentReview" && (
+      {role !== "administrator" && data.schedule?.status === "readyForStudentReview" && (
         <section className="panel schedule-process-panel">
           <div>
             <h3 style={{ margin: "0 0 4px 0", fontSize: "14px", color: "var(--green-dark)" }}>Ready for Student Review</h3>
@@ -686,7 +686,7 @@ function AdvisingDraftEditor({ token, role, student, termId, notify, onBack, onS
           {processError && <div className="feedback error schedule-process-feedback" role="alert">{processError}</div>}
         </section>
       )}
-      {!editable && data.schedule?.status === "processed" && (
+      {role !== "administrator" && data.schedule?.status === "processed" && (
         <section className="panel" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--draft-bg)", border: "1px solid var(--line)", padding: "16px 20px", borderRadius: "8px" }}>
           <div>
             <h3 style={{ margin: "0 0 4px 0", fontSize: "14px", color: "var(--draft-ink)" }}>Schedule Processed</h3>
@@ -782,7 +782,7 @@ function AdvisingDraftEditor({ token, role, student, termId, notify, onBack, onS
             {editable && <button className="primary-button draft-send-button" type="button" aria-describedby="draft-review-hint" onClick={(event) => save(event, true)} disabled={selectedOfferings.length === 0 || busy || Boolean(selectedConflict) || Boolean(incompleteSelection) || missingMandatory.length > 0 || overCreditLimit || extraHoursNotCovered}>{sendingForReview ? "Sending…" : "Send for student review"}<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="m4 5 16 7-16 7 3-7zM7 12h13" /></svg></button>}
           </div>
         </div>
-        {data.schedule?.status === "processed" && <div className="form-footer" style={{ borderTop: "1px solid var(--line)", paddingTop: "14px" }}><span className="helper-text">Reopening reverts this schedule to draft status for further edits.</span><button className="primary-button destructive-action" type="button" onClick={() => { setReopenReason(""); setReopenError(""); setReopenModalOpen(true); }}>Reopen Schedule</button></div>}
+        {role !== "administrator" && data.schedule?.status === "processed" && <div className="form-footer" style={{ borderTop: "1px solid var(--line)", paddingTop: "14px" }}><span className="helper-text">Reopening reverts this schedule to draft status for further edits.</span><button className="primary-button destructive-action" type="button" onClick={() => { setReopenReason(""); setReopenError(""); setReopenModalOpen(true); }}>Reopen Schedule</button></div>}
       </form>
       {reopenModalOpen && (
         <div className="modal-backdrop" onClick={() => !reopening && setReopenModalOpen(false)}>
@@ -896,7 +896,7 @@ function formatDraftTime(minutes) { return `${String(Math.floor(minutes / 60)).p
 function formatDraftDate(value) { return value ? new Date(value).toLocaleString() : "—"; }
 
 function buildDraftWeek(selections, offerings) {
-  const week = Object.fromEntries(WEEK.map((day) => [day, []]));
+  const week = Object.fromEntries([...WEEK, "Friday"].map((day) => [day, []]));
   for (const selected of selections) {
     const offering = offerings.find((item) => item._id === selected.courseOffering);
     if (!offering) continue;
@@ -905,7 +905,7 @@ function buildDraftWeek(selections, offerings) {
       for (const slot of group?.slots || []) week[slot.day]?.push({ courseCode: offering.course.code, courseName: offering.course.name, type: choice.componentType, groupNumber: choice.groupNumber, startTime: slot.startTime, endTime: slot.endTime, room: slot.room });
     }
   }
-  for (const day of WEEK) week[day].sort((a, b) => a.startTime.localeCompare(b.startTime));
+  for (const day of Object.keys(week)) week[day].sort((a, b) => a.startTime.localeCompare(b.startTime));
   return week;
 }
 
@@ -937,8 +937,8 @@ function WeeklySchedule({ week = {}, daysOff = [], compact = false }) {
   const codes = [...new Set(Object.values(week).flat().map(slot => slot.courseCode))].sort();
   const knownTones = { CSEN701: "blue", CSEN703: "coral", CSEN704: "sage", DMET701: "ivory" };
   const tones = ["blue", "coral", "sage", "ivory"];
-  return <div className={`weekly-schedule portal-week ${compact ? "compact" : ""}`}>
-    {WEEK.map(day => <section className={`schedule-day ${daysOff.includes(day) ? "day-off" : ""}`} key={day}>
+  return <div className={`weekly-schedule portal-week ${compact ? "compact" : ""}`} data-friday={Boolean(week.Friday?.length)}>
+    {(week.Friday?.length ? [...WEEK, "Friday"] : WEEK).map(day => <section className={`schedule-day ${daysOff.includes(day) ? "day-off" : ""}`} key={day}>
       <h3>{day}</h3>
       {(week[day] || []).length ? week[day].map((slot, index) => {
         const code = String(slot.courseCode || "").replace(/\s/g, "");

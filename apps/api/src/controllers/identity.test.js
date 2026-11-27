@@ -6,6 +6,11 @@ import { requireAuth, generateToken, JWT_SECRET } from "../middleware/auth.middl
 import { getProfile } from "./identity.controller.js";
 import { User, StudentProfile } from "../models/identity.js";
 import { StudentWorkflowState, StudentSchedule } from "../models/academics.js";
+import { AcademicTerm } from "../models/catalogue.js";
+
+test.beforeEach(({ mock }) => {
+  mock.method(AcademicTerm, "findOne", () => ({ sort: () => ({ select: () => ({ lean: async () => null }) }) }));
+});
 
 const createMockReqRes = ({ user = null, headers = {}, query = {}, body = {}, params = {} } = {}) => {
   const req = {

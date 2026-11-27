@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import { User, StudentProfile } from "../models/identity.js";
 import { StudentWorkflowState, StudentSchedule } from "../models/academics.js";
 import { AcademicTerm } from "../models/catalogue.js";
+import { loadStudentWorkflows } from "../services/student-workflow-status.js";
 import { generateToken } from "../middleware/auth.middleware.js";
 
 /**
@@ -72,22 +73,17 @@ export const getProfile = async (req, res) => {
         };
       }
 
-      // Schedule status: resolve from StudentWorkflowState, fallback to StudentSchedule
-      const workflowState = await StudentWorkflowState.findOne({ student: studentProfile._id })
-        .sort({ calculatedAt: -1, updatedAt: -1 });
-
-      if (workflowState?.status) {
-        studentData.scheduleStatus = workflowState.status;
+      const activeTerm = await AcademicTerm.findOne({ isActive: true }).sort({ termStart: -1 }).select("_id").lean();
+      if (activeTerm) {
+        const workflows = await loadStudentWorkflows([studentProfile], activeTerm._id);
+        studentData.scheduleStatus = workflows.get(String(studentProfile._id))?.status || studentData.scheduleStatus;
       } else {
-        const schedule = await StudentSchedule.findOne({ student: studentProfile._id })
+        const workflowState = await StudentWorkflowState.findOne({ student: studentProfile._id })
+          .sort({ calculatedAt: -1, updatedAt: -1 });
+        const schedule = workflowState ? null : await StudentSchedule.findOne({ student: studentProfile._id })
           .sort({ updatedAt: -1 });
-        if (schedule?.status) {
-          studentData.scheduleStatus = schedule.status;
-        } else if (studentProfile.studentType === "advising") {
-          studentData.scheduleStatus = "notStarted";
-        } else {
-          studentData.scheduleStatus = "Not Assigned";
-        }
+        studentData.scheduleStatus = workflowState?.status || schedule?.status
+          || (studentProfile.studentType === "advising" ? "notStarted" : "Not Assigned");
       }
     }
 

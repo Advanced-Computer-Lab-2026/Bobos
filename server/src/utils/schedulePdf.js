@@ -5,7 +5,6 @@
 // The calendar input is the SAME buildWeeklyCalendar() output req 31 serves,
 // so courses, days off and credit-hour totals always agree with the screen.
 import PDFDocument from 'pdfkit';
-import { TEACHING_DAYS } from './weeklyCalendar.js';
 import { toMinutes } from './timetable.js';
 
 const TYPE_SHORT = { lecture: 'L', tutorial: 'T', lab: 'Lab' };
@@ -35,7 +34,8 @@ function formatTimestamp(date) {
 }
 
 export function buildPdfModel({ student, term, schedule, calendar, generatedAt = new Date() }) {
-  const blocks = TEACHING_DAYS.flatMap((day) =>
+  const days = Object.keys(calendar.week);
+  const blocks = days.flatMap((day) =>
     (calendar.week[day] || []).map((s) => ({
       day,
       type: s.type,
@@ -73,7 +73,7 @@ export function buildPdfModel({ student, term, schedule, calendar, generatedAt =
       { label: 'Status', value: STATUS_LABEL[schedule.status] || schedule.status },
       { label: 'Generated', value: formatTimestamp(generatedAt) }
     ],
-    days: TEACHING_DAYS,
+    days,
     daysOff: calendar.daysOff,
     daysOffLine: `Days off: ${calendar.daysOff.length ? calendar.daysOff.join(', ') : 'none'}`,
     grid: {

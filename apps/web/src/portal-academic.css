@@ -298,9 +298,10 @@
 }
 
 /* Live schedules use the same course-colored teaching week as the Portal home. */
+.academic-services-embedded .portal-week[data-friday="true"] { --schedule-days: 7; }
 .academic-services-embedded .portal-week {
   display: grid;
-  grid-template-columns: repeat(6, minmax(150px, 1fr));
+  grid-template-columns: repeat(var(--schedule-days, 6), minmax(150px, 1fr));
   align-items: start;
   gap: 14px;
   padding-bottom: 12px;
@@ -343,9 +344,9 @@
 .academic-services-embedded .portal-week .schedule-course-art { position: absolute; top: 12px; right: 10px; width: 24px; height: 24px; object-fit: contain; opacity: .8; }
 .academic-services-embedded .portal-week .empty-day { display: grid; justify-items: center; gap: 8px; padding: 16px 4px; color: var(--muted); font-size: 12px; line-height: 1.5; }
 .academic-services-embedded .portal-week .empty-day svg { width: 78px; height: 70px; }
-.academic-services-embedded .portal-week.compact { grid-template-columns: repeat(6, minmax(150px, 1fr)); }
+.academic-services-embedded .portal-week.compact { grid-template-columns: repeat(var(--schedule-days, 6), minmax(150px, 1fr)); }
 @media (max-width: 700px) {
-  .academic-services-embedded .portal-week { grid-template-columns: repeat(6, 160px); }
+  .academic-services-embedded .portal-week { grid-template-columns: repeat(var(--schedule-days, 6), 160px); }
 }
 
 /* Advising, preference and graduation tools share the Portal control language. */
