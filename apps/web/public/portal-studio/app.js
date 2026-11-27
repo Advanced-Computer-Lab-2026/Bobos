@@ -73,8 +73,7 @@ function loadAccountData(refresh) {
       if (termDirectory !== state) return;
       state.data = data;
       updateSidebarTerm();
-      if (studentDashboard()) updateStudentHomeTerm();
-      else if (page === 'overview') render();
+      if (page === 'overview') updateHomeTerm();
     }).catch(() => { if (termDirectory === state) { state.error = true; updateSidebarTerm(); } });
   }
   if (usesStaffPresentation() && page === 'overview' && (refresh || coordinatorSchedules?.token !== token)) {
@@ -659,11 +658,13 @@ function updateStudentHomeSchedule() {
   home.querySelector('.page-head p').innerHTML = studentHomeContext();
   home.querySelector('.student-upcoming').outerHTML = studentUpcoming();
 }
-function updateStudentHomeTerm() {
-  const home = app.querySelector('.student-dashboard');
+function updateHomeTerm() {
+  const home = app.querySelector('[data-screen="overview"]');
   if (!home) return;
-  home.querySelector('.page-head p').innerHTML = studentHomeContext();
-  const calendar = home.querySelector('.student-overview-calendar');
+  const context = home.querySelector('.page-head p');
+  if (context) context.innerHTML = student() ? studentHomeContext() : termContext(`${roleNames[role]} workspace`);
+  const calendar = home.querySelector('.desk-calendar');
+  if (!calendar) return;
   const paper = calendar.querySelector('.folio-paper:not(.binder-waiting-sheet) .folio-inner');
   if (paper) paper.outerHTML = calendarPage();
   calendar.querySelector('.folio-agenda').innerHTML = calendarAgenda();
@@ -789,7 +790,7 @@ function updateNotificationsView() {
     drawInputEdges(panel);
     observeNotificationPlate(panel.querySelector('.notification-plate'));
     updateNotificationBadge();
-  } else if (['notifications','overview'].includes(page)) render();
+  } else if (page === 'notifications') render();
   else updateNotificationBadge();
 }
 
