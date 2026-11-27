@@ -2,6 +2,14 @@
 (() => {
   'use strict';
   const scenes = {
+    graduationCap: `<g stroke="#3e3b43" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path fill="#839aab" d="m19 28 2 14c9 8 22 8 31-1l.8-14-18 8Z"/>
+      <path fill="#acc3cd" d="M5 24 35 10l31 14-30 17Z"/>
+      <path fill="none" d="m16 25 19 10 22-12" opacity=".65"/>
+      <path fill="none" stroke="#a6753c" stroke-width="2.1" d="M36 24q19-2 21 4v14"/>
+      <path fill="#e4b56e" d="m57 40-4 10 7 1Z"/>
+      <circle cx="36" cy="24" r="2" fill="#e4b56e"/>
+    </g>`,
     bag: `
       <path class="sa-sage" d="M23 48q-5-18 10-22 18-5 27-4l10 13-8 22z"/>
       <path class="sa-paper" d="m36 45-7-29q17-9 35-9l6 34z"/>
@@ -134,7 +142,7 @@
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('class', 'student-desk-art');
     svg.setAttribute('data-object', name);
-    svg.setAttribute('viewBox', '0 0 110 92');
+    svg.setAttribute('viewBox', name === 'graduationCap' ? '3 8 65 45' : '0 0 110 92');
     svg.setAttribute('aria-hidden', 'true');
     svg.setAttribute('focusable', 'false');
     svg.innerHTML = scenes[name];
@@ -148,6 +156,7 @@
     directory: ['index'],
     advising: ['advising'],
     'extra-hours': ['extraHoursSlip'],
+    'graduation-plans': ['graduationCap'],
     'student-detail': ['badge', '.person-title'],
     'my-schedule': ['week'],
     'my-courses': ['books'],
@@ -163,6 +172,7 @@
     const entry = placements[page];
     if (!entry || !root || root.querySelector('.student-desk-art,.campus-id')) return;
     if (page === 'overview' && (root.querySelector('.student-dashboard') || !['advisingStudent', 'normalStudent'].includes(role))) return;
+    if (page === 'graduation-plans' && role !== 'advisingStudent') return;
     const [name, selector] = entry;
     const target = (selector && root.querySelector(selector)) || root.querySelector('.page-head > div');
     if (!target) return;

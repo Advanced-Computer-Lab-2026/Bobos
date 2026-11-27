@@ -39,6 +39,11 @@
   grid-row:1 / span 3;
 }
 .page-head > .student-object-host > :not(.student-desk-art) {grid-column:2}
+[data-screen=graduation-plans] .page-head > .student-object-host > [data-object=graduationCap] {
+  grid-row:1;
+  width:clamp(44px,5vw,60px);
+  aspect-ratio:65/45;
+}
 .student-object-summary {display:flex;align-items:center;gap:clamp(12px,2.4vw,35px);margin-bottom:24px}
 [data-workspace] .student-object-summary > dl {margin:0;min-width:0}
 .student-object-host.person-title > .student-desk-art {order:3;margin-inline-start:auto}

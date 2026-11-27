@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join, relative, resolve } from "node:path";
+import { join, posix, relative, resolve } from "node:path";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
@@ -107,7 +107,7 @@ function portalSite() {
       for (const page of htmlEntries) {
         const file = join(out, page);
         const html = readFileSync(file, "utf8").replace(/(src|href)="([^"?]+\.(?:js|css))(?:\?[^"]*)?"/g, (original, attr, url) => {
-          const path = url.startsWith("/") ? url.slice(1) : join(dirname(page), url);
+          const path = url.startsWith("/") ? url.slice(1) : posix.join(posix.dirname(page), url);
           if (!path.startsWith("portal-studio/")) return original;
           return `${attr}="/${fingerprint(path)}"`;
         });

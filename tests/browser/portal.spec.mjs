@@ -35,6 +35,7 @@ test.beforeAll(async () => {
   });
   await Notification.create([
     { recipient: student._id, type: "scheduleProcessed", title: "Regression timetable", message: "Your schedule is available." },
+    { recipient: student._id, type: "scheduleReopened", title: "Regression schedule review", message: "Review the latest changes." },
     { recipient: administrator._id, type: "scheduleProcessed", title: "Private administrator notice", message: "This belongs to a different user." },
   ]);
   smtp = new SMTPServer({
@@ -101,18 +102,39 @@ test("Req 1–5: reset through email, view your profile and inbox, and sign out"
   await expect(page.getByRole("status").filter({ hasText: /password reset successfully/i })).toBeVisible();
   await signIn(page, email, nextPassword);
   await expect(page.getByRole("button", { name: /account menu for regression student/i })).toBeVisible();
+  const navigation = page.getByRole("navigation", { name: "Main navigation" });
+  await expect(navigation.getByRole("link", { name: "Home", exact: true })).toHaveAttribute("aria-current", "page");
+  await expect(navigation.getByText("Overview", { exact: true })).toHaveCount(0);
+  await expect(page.locator(".student-inbox .notification-plate")).toHaveCount(0);
+  const homeInbox = page.getByRole("region", { name: /Notifications/ });
+  const timetable = homeInbox.locator("details").filter({ hasText: "Regression timetable" });
+  await expect(homeInbox.locator("details")).toHaveCount(2);
+  await expect(timetable.getByText("Your schedule is available.")).toBeHidden();
+  await timetable.locator("summary").press("Enter");
+  await expect(timetable.getByText("Your schedule is available.")).toBeVisible();
+  await expect(page.locator(".workspace")).toHaveCSS("overflow-y", "visible");
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
   await page.getByRole("button", { name: /account/i }).click();
   await page.getByRole("link", { name: "My profile", exact: true }).click();
   await expect(page.getByRole("main")).toContainText(email);
   await expect(page.getByRole("main")).toContainText("28-90001");
-  await page.getByRole("link", { name: "Notifications", exact: true }).click();
+  await page.reload();
+  const bell = page.locator("[data-notification-bell]");
+  await expect(bell).toHaveAccessibleName("Notifications, 2 unread");
+  await bell.click();
   const notice = page.getByRole("article").filter({ hasText: "Regression timetable" });
   await expect(notice).toBeVisible();
   await expect(page.getByText("Private administrator notice")).toHaveCount(0);
   await notice.getByRole("button", { name: "Mark as read", exact: true }).click();
   await expect(notice.getByText("Read", { exact: true })).toBeVisible();
+  await expect(bell).toHaveAccessibleName("Notifications, 1 unread");
   await page.reload();
   await expect(notice.getByText("Read", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Mark all as read" }).click();
+  await expect(bell).toHaveAccessibleName("Notifications");
+  await expect(bell.locator(".notification-count")).toHaveCount(0);
+  await navigation.getByRole("link", { name: "Home", exact: true }).click();
+  await expect(page).toHaveTitle("Portal · Home");
   await page.getByRole("button", { name: /account/i }).click();
   await page.getByRole("button", { name: "Sign out" }).click();
   await expect(page.getByRole("heading", { name: "Sign in", exact: true })).toBeVisible();
@@ -502,7 +524,7 @@ test("Req 92, 94, 102, 120: confirm, download and cancel an installment charge t
   const reversal = await FinancialReversalRequest.findOne({ originalTransaction: charge._id });
   expect(reversal.status).toBe("completed");
   await expect(row.getByRole("button", { name: "Cancel charge" })).toHaveCount(0);
-  await page.getByRole("link", { name: "Notifications", exact: true }).click();
+  await page.getByRole("link", { name: /^Notifications(?:, \d+ unread)?$/ }).click();
   await expect(page.getByRole("main")).toContainText("Financial reversal requested");
 });
 

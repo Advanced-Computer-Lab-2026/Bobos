@@ -130,8 +130,8 @@ export default function App({ service }) {
     if (!["advisor", "coordinator", "advisingStudent"].includes(role) || workspaceParams.get("role") !== role) {
       return <p className="feedback error" role="alert">Sign in with the matching portal role to view graduation plans.</p>;
     }
-    return <div className={`extra-hours-shell extra-hours-embedded ${role !== "advisingStudent" ? "academic-services-embedded" : ""}`}>
-      {role === "advisingStudent" ? <StudentGraduation token={token} />
+    return <div className="extra-hours-shell extra-hours-embedded academic-services-embedded">
+      {role === "advisingStudent" ? <StudentGraduation token={token} embedded />
         : role === "advisor" && workspaceParams.get("view") !== "submitted"
           ? <AdvisingPage token={token} role={role} graduationOnly />
           : <GraduationReview token={token} role={role} />}
