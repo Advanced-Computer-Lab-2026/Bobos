@@ -1,5 +1,6 @@
 import { standardStudents, standardAdvisors } from "./portal-names.js";
 import mongoose from "mongoose";
+import bcrypt from "bcryptjs";
 import { User, StudentProfile } from "../models/identity.js";
 import { Course, AcademicTerm, CourseOffering } from "../models/catalogue.js";
 
@@ -7,6 +8,10 @@ const MONGODB_URI = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/bobos"
 
 async function seed() {
   try {
+    const enablePreviewAdmin = process.env.NODE_ENV !== "production" &&
+      process.env.BOBOS_PORTAL_DEMO === "standard" &&
+      ["localhost", "127.0.0.1", "[::1]"].includes(new URL(MONGODB_URI).hostname);
+    const adminPasswordHash = enablePreviewAdmin ? await bcrypt.hash("Password123!", 10) : "dummy_hash";
     await mongoose.connect(MONGODB_URI);
     console.log("Connected to MongoDB for seeding...");
 
@@ -23,7 +28,7 @@ async function seed() {
     const admin = await User.create({
       email: "admin@guc.edu.eg",
       fullName: "System Administrator",
-      passwordHash: "dummy_hash",
+      passwordHash: adminPasswordHash,
       role: "administrator"
     });
 
