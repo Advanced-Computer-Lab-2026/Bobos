@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, explainApiError } from "../api.js";
 import { minutesToTime, preferenceGroupOptions, preferenceMeetingLabel } from "../preference-groups.js";
-import { PREFERENCE_DAYS } from "../preference-inputs.js";
 import { termLabel } from "../term-label.js";
 import { RegisterEmpty, StudentIdentity } from "./CoordinatorRecords.jsx";
 import OfferingCourseIcon from "./OfferingCourseIcon.jsx";
@@ -220,8 +219,9 @@ function PreferenceSubmission({ preferences, offerings, updatedAt }) {
       {updatedAt && <p>Last updated <time dateTime={updatedAt}>{updatedAtFormat.format(new Date(updatedAt))} Cairo</time></p>}
     </header>
     <div className="preference-planners">
-      <DayPlanner preferred={preferredDays} avoided={avoidedDays} daysOff={desiredDaysOff} />
-      <TimePlanner preferred={preferredTimes} avoided={avoidedTimes} />
+      <PreferenceColumn kind="prefer" title="Preferred" dayLabel="Preferred days" days={preferredDays} timeLabel="Preferred times" times={preferredTimes} />
+      <PreferenceColumn kind="avoid" title="To avoid" dayLabel="Days to avoid" days={avoidedDays} timeLabel="Times to avoid" times={avoidedTimes} />
+      <PreferenceColumn kind="off" title="Requested days off" dayLabel="Desired days off" days={desiredDaysOff} />
     </div>
     <div className="preference-details">
     <section className="preference-group-register">
@@ -251,53 +251,38 @@ function PreferenceSubmission({ preferences, offerings, updatedAt }) {
   </div>;
 }
 
-const dayRows = [
-  ["Preferred days", "prefer"],
-  ["Days to avoid", "avoid"],
-  ["Desired days off", "off"],
-];
-
-function DayPlanner({ preferred = [], avoided = [], daysOff = [] }) {
-  const selections = [preferred, avoided, daysOff];
-  return <section className="preference-day-planner" aria-label="Weekday priorities">
-    <div className="preference-week-heading"><h3>Weekdays</h3><small>1 = highest priority</small></div>
-    <div className="preference-week-sheet">
-      <div className="preference-day-head" aria-hidden="true">
-        {PREFERENCE_DAYS.map(day => <span key={day}>{day.slice(0, 3)}</span>)}
-      </div>
-      {dayRows.map(([label, kind], row) => <div className="preference-day-row" key={kind}>
-        <span className="preference-day-label">{label}</span>
-        {selections[row].length ? <ol role="list" aria-label={label + ", highest priority first"}>
-          {selections[row].map(({day, priority}, index) => <li className={`preference-day-mark is-${kind}`} key={day}
-            style={{ gridColumn: PREFERENCE_DAYS.indexOf(day) + 1, gridRow: 1 }} title={`${day} · Priority ${priority ?? index + 1}`}>
-            <span className="preference-sr">Priority </span>{priority ?? index + 1}<span className="preference-sr">{day}</span>
-          </li>)}
-        </ol> : <small className="preference-missing">None submitted</small>}
-      </div>)}
-    </div>
-  </section>;
+// The day-off cup follows the free day in Portal’s teaching week.
+function DayOffCup() {
+  return <svg className="preference-day-off-cup" viewBox="8 3 70 58" fill="none" stroke="#504339" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path fill="#d6bd9f" d="M13 52c5-5 23-7 43-5 11 1 18 3 19 6-1 4-18 7-35 6-14 0-26-2-27-7Z"/>
+    <path fill="#faf0d8" d="M18 51c12-4 34-4 49 1-4 4-34 7-49-1Z"/>
+    <path fill="#a7c3bc" fillRule="evenodd" d="M55 33c13-8 20-2 16 6-2 5-8 8-17 7l1-13Zm3 3-1 6c5 0 9-2 10-5 1-3-3-4-9-1Z"/>
+    <path fill="#adc8c0" d="M22 30q18-5 37 0c-1 12-3 22-16 24-14 2-20-8-21-24Z"/>
+    <ellipse cx="40.5" cy="30" rx="18.5" ry="5.4" fill="#f6ecd6"/><ellipse cx="40.5" cy="30.4" rx="15.8" ry="3.3" fill="#705044" stroke="none"/>
+    <path stroke="currentColor" d="M35 23c-7-7 7-9 2-16m9 14c-3-5 5-6 4-12"/>
+  </svg>;
 }
 
-function TimePlanner({ preferred = [], avoided = [] }) {
-  const windows = [...preferred, ...avoided];
-  const start = Math.floor(Math.min(480, ...windows.map(item => item.startMinute)) / 60) * 60;
-  const end = Math.ceil(Math.max(1080, ...windows.map(item => item.endMinute)) / 60) * 60;
-  return <section className="preference-time-planner" aria-label="Teaching time priorities">
-    <h3>Teaching times</h3>
-    <div className="preference-hour-axis" aria-hidden="true">
-      {[start, (start + end) / 2, end].map(minute => <span key={minute}>{minutesToTime(minute)}</span>)}
-    </div>
-    {[[preferred, "Preferred times", "prefer"], [avoided, "Times to avoid", "avoid"]].map(([items, label, kind]) =>
-      <div className="preference-time-row" key={kind}>
-        <span className="preference-time-label">{label}</span>
-        {items.length ? <ol role="list" aria-label={label + ", highest priority first"}>{items.map((window, index) =>
-          <li key={formatWindow(window)}>
-            <span className={`preference-time-track is-${kind}`} aria-hidden="true"><i style={{
-              left: `${100 * (window.startMinute - start) / (end - start)}%`,
-              width: `${100 * (window.endMinute - window.startMinute) / (end - start)}%`,
-            }} /></span>
-            <span className="preference-window-label">{formatWindow(window)} <small>Priority {window.priority ?? index + 1}</small></span>
-          </li>)}</ol> : <small className="preference-missing">None submitted</small>}
-      </div>)}
+function PreferenceColumn({ kind, title, dayLabel, days = [], timeLabel, times = [] }) {
+  return <section className={`preference-column is-${kind}`} aria-label={title}>
+    <h3>{title}</h3>
+    {days.length ? <ol className="preference-days" aria-label={dayLabel + ", highest priority first"} role="list">
+      {days.map(({day, priority}, index) => <li key={day}>
+        {kind === "off" && <DayOffCup />}
+        <div><strong>{day}</strong><small>Priority {priority ?? index + 1}</small></div>
+      </li>)}
+    </ol> : <p className="preference-missing">{kind === "off" ? "No days off requested." : "No weekdays specified."}</p>}
+    {timeLabel && <div className="preference-windows">
+      <h4>{timeLabel}</h4>
+      {times.length ? <ol role="list" aria-label={timeLabel + ", highest priority first"}>{times.map((window, index) =>
+        <li key={formatWindow(window)}>
+          <svg className="preference-clock" viewBox="0 0 28 28" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" aria-hidden="true">
+            <path d="M25 14c.2 6.1-4.7 11.1-10.8 11.3C8.1 25.5 3.1 20.4 3 14.5 2.9 8.4 7.7 3 13.9 2.9 20 2.7 25 7.7 25 14Z"/>
+            <path d="M14 14V8.5" transform={`rotate(${window.startMinute * .5} 14 14)`}/>
+            <path d="M14 14V6" transform={`rotate(${window.startMinute * 6} 14 14)`}/>
+          </svg>
+          <div><strong>{formatWindow(window)}</strong><small>Priority {window.priority ?? index + 1}</small></div>
+        </li>)}</ol> : <p className="preference-missing">No times specified.</p>}
+    </div>}
   </section>;
 }

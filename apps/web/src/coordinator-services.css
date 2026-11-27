@@ -282,12 +282,16 @@
 .schedule-register { --column-2: "Type"; --column-3: "Programme"; --column-4: "Schedule status"; }
 .schedule-register .schedule-student-type { text-transform: capitalize; }
 .service-surface[data-portal-role="coordinator"] .schedule-register .roster-actions {
-  display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; width:min(100%,272px); margin-inline:auto;
+  --roster-action-gap:8px;
+  flex-wrap:nowrap;
+  justify-content:flex-end;
+  gap:var(--roster-action-gap);
+  width:min(100%,272px);
+  margin-inline-start:auto;
 }
-.schedule-register .roster-edit-action { grid-column:1; }
-.schedule-register .roster-view-action { grid-column:2; }
 .service-surface[data-portal-role="coordinator"] .schedule-register .roster-actions > button {
-  grid-row:1;
+  flex:0 0 calc((100% - var(--roster-action-gap)) / 2);
+  min-width:0;
   min-height:38px;
   padding:6px 4px;
   border-color:color-mix(in srgb,var(--muted) 50%,var(--line));

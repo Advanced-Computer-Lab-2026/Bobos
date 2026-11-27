@@ -607,9 +607,8 @@ test("Coordinator can read ranked preferences, change term and review a removal 
   await page.getByLabel("Academic term").selectOption(String(term._id));
   await expect(page.locator(".preference-reading")).toContainText("Please keep the morning lab.");
   const rankedDays = page.getByRole("list", {name:"Preferred days, highest priority first"});
-  await expect(rankedDays.getByRole("listitem")).toHaveText(["Priority 1Monday", "Priority 4Thursday"]);
-  await expect(rankedDays.getByTitle("Thursday · Priority 4")).toHaveCSS("grid-column-start", "6");
-  const teachingTimes = page.getByRole("region", {name:"Teaching time priorities"});
+  await expect(rankedDays.getByRole("listitem")).toHaveText(["MondayPriority 1", "ThursdayPriority 4"]);
+  const teachingTimes = page.getByRole("list", {name:"Preferred times, highest priority first"});
   await expect(teachingTimes).toContainText("06:30–07:45");
   await expect(teachingTimes.getByRole("listitem")).toContainText("Priority 3");
   await page.getByLabel("Academic term").selectOption(String(alternate._id));

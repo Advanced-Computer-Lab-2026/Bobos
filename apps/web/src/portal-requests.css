@@ -1,4 +1,4 @@
-/* Staff read the submitted week in Portal calendar order. */
+/* The staff brief groups ranked teaching days and times by intent. */
 .staff-preferences { container: staff-preferences / inline-size; }
 .staff-preferences .preference-context {
   display: flex;
@@ -30,67 +30,39 @@
 .staff-preferences .preference-reading-heading h2 { margin: 0; font-size: 20px; font-weight: 500; }
 .preference-reading-heading { display: flex; align-items: baseline; flex-wrap: wrap; gap: 5px 20px; }
 .preference-reading-heading p, .preference-missing { margin: 0; font-size: 13px; line-height: 1.5; color: var(--muted); }
-.preference-planners, .preference-details {
-  display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: clamp(24px, 4cqi, 60px);
-  align-items: start; margin-top: 24px;
+.preference-planners {
+  display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px 24px; margin-top: 24px;
 }
-.preference-details { margin-top: 32px; }
+.preference-column {
+  display: grid; grid-template-rows: subgrid; grid-row: span 3; align-content: start;
+  --choice-stock: var(--console-sage, #bcd1ca);
+}
+.preference-column.is-avoid { --choice-stock: var(--console-coral, #f09978); }
 .staff-preferences :is(.preference-planners, .preference-details) h3,
-.staff-preferences .preference-empty h3 { margin: 0 0 12px; color: var(--ink); font-size: 17px; font-weight: 500; }
-.preference-week-heading { display: flex; align-items: baseline; gap: 12px; }
-.preference-week-heading small { color: var(--muted); font-size: 12px; }
-.preference-week-sheet {
-  --label-width: clamp(80px, 10cqi, 115px);
-  --week-paper: #ebe5d6;
-  --week-ink: #38382f;
-  --week-muted: #58594e;
-  --week-seam: #cfcab9;
-  position: relative;
-  padding: 20px 15px 12px;
-  color: var(--week-ink);
-  border-radius: 3px 5px 5px 3px;
-  background: var(--week-paper);
-  box-shadow: 0 2px 0 var(--week-seam);
+.staff-preferences .preference-empty h3 { margin: 0; color: var(--ink); font-size: 17px; font-weight: 500; }
+.preference-days, .preference-windows ol, .preferred-group-reading { margin: 0; padding: 0; list-style: none; }
+.preference-days {
+  display: flex; align-items: start; flex-wrap: wrap; align-content: start; gap: 7px;
 }
-[data-theme="dark"] .preference-week-sheet {
-  --week-paper: #363831; --week-ink: #efeee4; --week-muted: #cacbc0; --week-seam: #4c4d42;
+.preference-days li {
+  display: flex; align-items: center; padding: 9px 12px; border-radius: 6px;
+  color: #282a27; background: var(--choice-stock); min-width: 87px;
 }
-.preference-week-sheet::before, .preference-week-sheet::after {
-  position: absolute; top: -4px; width: 5px; height: 12px;
-  border: 1px solid var(--week-muted); border-radius: 50% 50% 45% 50%;
-  content: ""; transform: rotate(-9deg); background: var(--week-paper);
-}
-.preference-week-sheet::before { left: 20%; }
-.preference-week-sheet::after { right: 20%; }
-.preference-day-head, .preference-day-row ol { display: grid; grid-template-columns: repeat(7,minmax(0,1fr)); align-items: center; text-align: center; }
-.preference-day-head { margin-left: var(--label-width); padding-bottom: 9px; color: var(--week-muted); font: 15px/1.3 Tiempos,Georgia,serif; }
-.preference-day-row { display: grid; grid-template-columns: var(--label-width) minmax(0,1fr); align-items: center; min-height: 40px; }
-.preference-day-row + .preference-day-row { border-top: 1px solid var(--week-seam); }
-.preference-day-label { font-size: 13px; }
-.preference-day-row ol, .preference-time-row ol, .preferred-group-reading { padding: 0; margin: 0; list-style: none; }
-.preference-day-row .preference-missing { color: var(--week-muted); }
-.preference-day-mark {
-  display: grid; place-items: center; justify-self: center; width: 30px; height: 26px;
-  color: #25372d; background: #b9cfb9; border-radius: 47% 52% 49% 42% / 55% 45% 54% 44%;
-  font: 17px/1 Tiempos,Georgia,serif; font-variant-numeric: tabular-nums;
-}
-.preference-day-mark.is-avoid { color: #493429; background: #deb69d; border-radius: 4px 5px 3px 5px; }
-.preference-day-mark.is-off { color: #293c4b; background: #b0c8d9; border-radius: 48% 49% 5px 5px; }
-.preference-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-.preference-time-planner { padding-top: 0; }
-.preference-hour-axis { display: flex; justify-content: space-between; margin: 0 0 12px; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
-.preference-time-row + .preference-time-row { margin-top: 13px; }
-.preference-time-label { display: block; margin-bottom: 6px; font-size: 13px; color: var(--muted); }
-.preference-time-row ol { display: grid; gap: 6px; }
-.preference-time-track { position: relative; display: block; height: 10px; background: color-mix(in srgb, var(--ink) 12%, var(--paper)); border-radius: 2px; }
-.preference-time-track i { position: absolute; inset-block: 0; min-width: 2px; background: #9dbba2; border-radius: 2px; }
-.preference-time-track.is-avoid i { background: #cd9c81; }
-.preference-window-label { display: flex; align-items: baseline; gap: 9px; margin-top: 4px; font-size: 14px; font-variant-numeric: tabular-nums; }
-.preference-window-label small, .preference-course-description small, .preference-meeting { color: var(--muted); font-size: 12px; }
+.preference-days strong { display: block; font: 400 18px/1.15 Tiempos, Georgia, serif; }
+.preference-days small, .preference-windows small { display: block; margin-top: 5px; font-size: 12px; line-height: 1.3; }
+.is-off .preference-days li { gap: 10px; background: transparent; color: var(--ink); padding-inline: 0; }
+.is-off .preference-days small { color: var(--muted); }
+.preference-day-off-cup { width: 44px; height: 40px; color: var(--muted); flex: none; }
+.staff-preferences .preference-windows h4 { margin: 5px 0 9px; font-size: 13px; font-weight: 400; color: var(--muted); }
+.preference-windows ol { display: flex; flex-wrap: wrap; gap: 7px; }
+.preference-windows li { display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: var(--raised); border-radius: 6px; }
+.preference-clock { width: 25px; height: 25px; color: var(--ink); flex: none; }
+.preference-windows strong { font-size: 15px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.preference-windows small, .preference-course-description small, .preference-meeting { color: var(--muted); font-size: 12px; }
+.preference-details { display: grid; grid-template-columns: minmax(0,1.1fr) minmax(0,1fr); gap: 24px; margin-top: 30px; }
+.staff-preferences .preference-details h3 { margin-bottom: 12px; }
 .preferred-group-reading { display: grid; gap: 16px; }
-.preferred-group-reading > li { display: flex; align-items: flex-start; gap: 14px; }
-.preferred-group-reading .offering-course-emblem { width: 52px; height: 60px; border-radius: 3px 7px 4px 3px; }
-.preferred-group-reading .offering-course-emblem :is(img,svg) { width: 40px; height: 40px; }
+.preferred-group-reading > li { display: flex; align-items: center; gap: 12px; }
 .preference-course-description { display: flex; flex-wrap: wrap; align-items: baseline; gap: 3px 9px; min-width: 0; }
 .preference-course-description small, .preference-meeting { flex-basis: 100%; }
 .preference-course-description strong { color: var(--ink); font-weight: 500; font-size: 17px; }
@@ -101,17 +73,22 @@
 .preference-empty p, .preference-read-progress { margin: 5px 0 0; color: var(--muted); }
 .preference-read-error { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .preference-read-error .feedback, .preference-identify .feedback { margin-block-end: 0; }
-@container staff-preferences (max-width: 760px) {
-  .preference-planners { grid-template-columns: minmax(0,1fr); }
-  .preference-details { grid-template-columns: repeat(2,minmax(0,1fr)); }
-  .preference-time-planner { max-width: 540px; width: 100%; }
+@container staff-preferences (max-width: 720px) {
+  .preference-planners { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px 18px; }
+  .preference-column.is-off { grid-column: 1/-1; grid-row: auto; margin-top: 8px; display: block; }
+  .preference-column.is-off .preference-days { margin-top: 5px; }
 }
-@container staff-preferences (max-width: 560px) {
+@container staff-preferences (max-width: 510px) {
+  .preference-planners { display: flex; flex-direction: column; gap: 21px; }
+  .preference-column { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); grid-template-rows: auto auto; gap: 8px 14px; }
+  .preference-column h3 { grid-column: 1/-1; }
+  .preference-column.is-off { margin: 0; }
+  .preference-column .preference-windows { grid-column: 2; }
+  .preference-days li { padding: 8px 10px; }
+  .staff-preferences .preference-windows h4 { margin: 0 0 5px; }
+  .preference-windows li { gap: 6px; padding: 8px; }
+  .preference-clock { width: 20px; height: 20px; }
   .preference-details { grid-template-columns: minmax(0, 1fr); }
-  .preference-week-sheet { --label-width: 78px; padding-inline: 9px; }
-  .preference-day-label { font-size: 12px; }
-  .preference-day-head { font-size: 13px; }
-  .preference-day-mark { width: 25px; height: 23px; font-size: 15px; }
   .staff-preferences .preference-context :is(button, input, select) { min-height: 44px; }
 }
 @container staff-preferences (max-width: 460px) {
