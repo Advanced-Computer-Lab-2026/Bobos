@@ -46,12 +46,21 @@ function localPortalDemo() {
     configureServer(server) {
       const preset = process.env.BOBOS_PORTAL_DEMO;
       if (preset !== "standard" && preset !== "extra-hours") return;
+      const accounts = preset === "extra-hours" ? extraHoursDemo : standardDemo;
+      const localRequest = req => req.method === "GET"
+        && ["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(req.socket.remoteAddress)
+        && /^(?:localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/i.test(req.headers.host || "");
+      server.middlewares.use((req, res, next) => {
+        if (!localRequest(req) || req.url?.split("?", 1)[0] !== `/${portalPage}`) return next();
+        const html = readFileSync(join(server.config.publicDir, portalPage), "utf8")
+          .replace('<html lang="en">', `<html lang="en" data-local-demo-roles="${Object.keys(accounts).join(" ")}">`);
+        res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" }).end(html);
+      });
       server.middlewares.use("/__bobos_local_demo", (req, res) => {
-        if (req.method !== "GET" || !["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(req.socket.remoteAddress)) {
+        if (!localRequest(req)) {
           res.writeHead(404).end();
           return;
         }
-        const accounts = preset === "extra-hours" ? extraHoursDemo : standardDemo;
         const role = new URL(req.url, "http://localhost").searchParams.get("role");
         if (role !== null && !Object.hasOwn(accounts, role)) {
           res.writeHead(404).end();

@@ -1,6 +1,7 @@
 'use strict';
 // Portal Studio with authenticated calendar and student service integrations.
 const workspaceSessionKey = 'bobos.token';
+const workspaceNavigationKey = 'portal-navigation-session';
 function normalizePortalLocation() {
   const url = new URL(location.href);
   normalizePortalRoute(url.searchParams);
@@ -22,6 +23,7 @@ const pages = {
   login:'Sign in', forgot:'Forgot password', reset:'Reset password'
 };
 const roleNames = {coordinator:'Coordinator', administrator:'Administrator', advisor:'Advisor', advisingStudent:'Advising student', normalStudent:'Normal student'};
+const localDemoRoles = (document.documentElement.dataset.localDemoRoles || '').split(' ').filter(role => Object.hasOwn(roleNames,role));
 const authPages = new Set(['login','forgot','reset']);
 function normalizePortalRoute(query) {
   const accountRole = localStorage.getItem(workspaceSessionKey) && localStorage.getItem('portal-account-role');
@@ -42,7 +44,6 @@ let liveProfile;
 let liveInbox;
 let coordinatorSchedules;
 let liveAdvisor;
-const previewEmail = 'demo@portal.test';
 const signedIn = () => Boolean(localStorage.getItem(workspaceSessionKey));
 const pageKey = key => Object.hasOwn(pages,key) ? key : 'overview';
 const returnPage = key => {
@@ -66,16 +67,17 @@ async function accountRequest(path, token, method = 'GET') {
 function loadAccountData(refresh) {
   const token = localStorage.getItem(workspaceSessionKey);
   if (!token || authPages.has(page)) { liveProfile = liveInbox = liveAdvisor = termDirectory = coordinatorSchedules = undefined; return; }
-  if ((page === 'overview' || usesStaffPresentation()) && termDirectory?.token !== token) {
+  if (termDirectory?.token !== token) {
     const state = termDirectory = {token};
     accountRequest('academic-terms', token).then(data => {
       if (termDirectory !== state) return;
       state.data = data;
-      if (page === 'overview') render();
-      else updateSidebarTerm();
+      updateSidebarTerm();
+      if (studentDashboard()) updateStudentHomeTerm();
+      else if (page === 'overview') render();
     }).catch(() => { if (termDirectory === state) { state.error = true; updateSidebarTerm(); } });
   }
-  if (['coordinator','advisor'].includes(role) && page === 'overview' && (refresh || coordinatorSchedules?.token !== token)) {
+  if (usesStaffPresentation() && page === 'overview' && (refresh || coordinatorSchedules?.token !== token)) {
     const state = coordinatorSchedules = {token};
     accountRequest('schedules/students', token).then(data => { state.data = data; })
       .catch(error => {
@@ -83,6 +85,8 @@ function loadAccountData(refresh) {
         else state.error = error.message;
       }).finally(() => {
         if (coordinatorSchedules !== state || page !== 'overview') return;
+        const summary = app.querySelector('[data-schedule-summary]');
+        if (summary) summary.innerHTML = staffScheduleSummary();
         const region = document.querySelector('[data-schedule-folders]');
         if (region) {
           region.innerHTML = scheduleReviewFiles();
@@ -112,8 +116,7 @@ function loadAccountData(refresh) {
     accountRequest('notifications', token).then(data => { state.data = data.notifications; })
       .catch(error => { state.error = error.message; }).finally(() => {
         if (liveInbox !== state) return;
-        if (['notifications','overview'].includes(page)) render();
-        else updateNotificationBadge();
+        updateNotificationsView();
       });
   }
 }
@@ -338,7 +341,7 @@ function deskCalendar() {
   return `<section class="desk-calendar teaching-pad${studentDashboard()?' student-overview-calendar':''}" aria-label="Academic calendar"
     data-calendar-style="bellows" data-concertina="true" data-face-on data-sketch="false" data-season-month="${month}"
     style="--season-sheet:${seasonalPaper[month][0]};--season-back:${seasonalPaper[month][1]}">
-    <header class="calendar-heading"><h2 id="academic-calendar">Academic calendar</h2>${studentDashboard()?link('calendar-sync',icon('calendar')+'Calendar sync','btn calendar-sync-link'):''}</header>
+    <header class="calendar-heading"><h2 id="academic-calendar">Academic calendar</h2>${studentDashboard()?link('calendar-sync',icon('calendar')+'Sync with Google Calendar','btn calendar-sync-link'):''}</header>
     <div class="binder-body"><div class="calendar-feature">${binderRow('feet')}</div>
       <div class="folio-stack">${binderRow('wires')}<div class="folio-paper">${calendarPage()}</div></div>
     </div>
@@ -377,20 +380,26 @@ function studentWeek() {
   const courses = studentCourses();
   return Object.entries(liveStudent.data?.schedule?.week || {}).map(([day,meetings]) => [day, meetings.map(m => [m.startTime, displayStudentCode(m.courseCode), escapeHtml(`${m.type[0].toUpperCase()+m.type.slice(1)} · ${m.room}`), colors[Math.max(0,courses.findIndex(c => c[0]===displayStudentCode(m.courseCode))) % colors.length], m.endTime])]);
 }
-function loadStudentSchedule() {
+function loadStudentSchedule(refresh = false) {
   if (!student() || authPages.has(page)) return;
   const token = localStorage.getItem(workspaceSessionKey);
   if (!token) { liveStudent = {token:null, loading:false, error:'Sign in to view your schedule.', data:null}; return; }
-  if (token === liveStudent.token) return;
-  liveStudent = {token, loading:true, error:'', data:null};
+  if (token === liveStudent.token && (!refresh || liveStudent.loading)) return;
+  const state = liveStudent = {token, loading:true, error:'', data:token === liveStudent.token ? liveStudent.data : null};
   fetch('../api/schedules/me', {headers:{Authorization:'Bearer '+token}}).then(async response => {
     const data = await response.json();
     if (!response.ok) throw new Error(response.status === 401 ? 'Your session has expired. Sign in again to view your schedule.' : data.message || 'Could not load your schedule.');
-    if (liveStudent.token !== token) return;
-    liveStudent.data = data;
+    if (liveStudent !== state) return;
+    state.data = data;
     selectedCourse = resolveCourse(new URLSearchParams(location.search).get('course'));
-  }).catch(error => { if(liveStudent.token===token) liveStudent.error=error.message; }).finally(() => {
-    if(liveStudent.token===token) {liveStudent.loading=false; if(student()) render();}
+  }).catch(error => {
+    state.data = null;
+    state.error = error.message;
+  }).finally(() => {
+    state.loading = false;
+    if (liveStudent !== state || localStorage.getItem(workspaceSessionKey) !== token) return;
+    if (studentDashboard()) updateStudentHomeSchedule();
+    else if (student() && ['overview','my-schedule','my-courses','course-detail','my-advisor'].includes(page)) render();
   });
 }
 const resolveCourse = code => studentCourses().find(c=>c[0]===code);
@@ -453,7 +462,7 @@ function sidebar(){
       const isOpen = groupIndex === 0 || items.includes(currentScreen);
       return `<details class="navgroup" ${isOpen?'open':''}><summary>${icon(sectionIcons[groupIndex])}<span>${name}</span>${icon('down')}</summary>${contents}</details>`;
     }).join('')}</nav>
-    <div class="sidebar-foot"><span class="term-dot"></span><span>${usesStaffPresentation() ? `<span data-sidebar-term>${escapeHtml(sidebarTerm())}</span>` : escapeHtml(displayTerm(currentAcademicTerm()))}<span class="side-sub">German University in Cairo</span></span></div>
+    ${semesterFooter()}
   </aside>`;
 }
 
@@ -541,9 +550,35 @@ function scheduleReviewFiles() {
   }).join('')}</div>`;
 }
 
+function staffScheduleSummary() {
+  const state = coordinatorSchedules;
+  if (!state?.data) {
+    if (role !== 'administrator') return '';
+    if (state?.error) return `<div class="review-placeholder" role="alert"><p>${escapeHtml(state.error)}</p>${button('Try again','retry-schedule-review','btn')}</div>`;
+    if (state?.noTerm) return '<p class="review-placeholder">No active semester. Open Student schedules to look up a previous term.</p>';
+    return '<p class="review-placeholder" role="status">Loading schedule coverage…</p>';
+  }
+  const active = state.data.students.filter(student => student.isActive);
+  if (role === 'coordinator') {
+    const advising = active.filter(student => student.studentType === 'advising');
+    const statuses = [[null,'Draft needed'],['draft','In draft'],['readyForStudentReview','Ready for student review'],['processed','Processed']];
+    return `<p class="staff-schedule-caption">Active advising students</p><dl class="schedule-status-strip">${statuses.map(([status,label]) =>
+      `<div><dt>${label}</dt><dd>${advising.filter(student => student.scheduleStatus === status).length}</dd></div>`).join('')}</dl>`;
+  }
+  return `<ul class="schedule-coverage">${[['normal','Normal students'], ['advising','Advising students']].map(([type,label]) => {
+    const students = active.filter(student => student.studentType === type);
+    const scheduled = students.filter(student => student.scheduleStatus === 'processed').length;
+    return `<li><div><strong>${label}</strong><span>${students.length ? `${scheduled} of ${students.length} processed` : 'No active students'}</span></div>
+      ${students.length ? `<progress aria-label="${label} with processed schedules" value="${scheduled}" max="${students.length}"></progress>` : ''}</li>`;
+  }).join('')}</ul>`;
+}
+
 function sidebarTerm() {
   if (!termDirectory?.data) return termDirectory?.error ? 'Semester unavailable' : 'Loading semester…';
   return displayTerm(currentAcademicTerm()) || 'No active semester';
+}
+function semesterFooter() {
+  return `<div class="sidebar-foot">${icon('calendar')}<div><small>Current semester</small><strong data-sidebar-term>${escapeHtml(sidebarTerm())}</strong></div></div>`;
 }
 function updateSidebarTerm() {
   document.querySelectorAll('[data-sidebar-term]').forEach(label => { label.textContent = sidebarTerm(); });
@@ -554,8 +589,13 @@ function overview(){
   if (role === 'advisor') return advisorOverview();
   const queueDestination = role==='coordinator' ? 'pending-work' : 'courses';
   const queueLabel = role==='coordinator' ? 'All work' : 'Course catalogue';
+  const scheduleSummary = `<div class="staff-schedule-summary" data-schedule-summary aria-live="polite">${staffScheduleSummary()}</div>`;
   const reviewFiles = role !== 'administrator' ? `<div data-schedule-folders aria-live="polite">${scheduleReviewFiles()}</div>` :
-    `<div class="draft-index">${link('student-schedules', desktopFolder + `<strong>Student schedules</strong><small>${role === 'administrator' ? 'View schedules and advising overviews' : 'Open schedules and drafts'}</small>`, 'draft-file')}</div>`;
+    `<div class="draft-index">${[
+      ['student-schedules','Student schedules','Schedules and advising overviews'],
+      ['group-assignments','Group assignments','Student placements and group coverage'],
+      ['schedule-activity','Schedule activity','Processing and reopening history'],
+    ].map(([route, title, description]) => link(route, desktopFolder + `<strong>${title}</strong><small>${description}</small>`, 'draft-file')).join('')}</div>`;
   const removalsTask = ['course-removal','rose',null,'Course removals','Course removal requests','Credit load and scheduling decisions','mandatory-removals','Review'];
   const tasks = role==='coordinator' ? [
     removalsTask,
@@ -564,6 +604,7 @@ function overview(){
   ] : [
     ['group-assignment','iris',null,'Course offerings','Course offerings','Review offerings and class groups','offerings','View offerings'],
     ['advisor-assignment','mint',null,'Academic terms','Academic terms','Review registration dates and deadlines','terms','Manage terms'],
+    ['course-removal','rose',null,'Course removals','Course removals','Find removal requests and review their decisions','mandatory-removals','View removals'],
   ];
   return `<div class="dashboard-edition" data-edition="teaching">${workspaceGrid({
     columns: '1.5fr 1fr',
@@ -571,7 +612,7 @@ function overview(){
   }, {
     intro: head(studyGreeting(), termContext(`${roleNames[role]} workspace`)),
     queue: workspaceSection('Work queue', queueDestination, queueLabel, workQueue(tasks)),
-    review: workspaceSection('Schedule review', 'student-schedules', 'All schedules', reviewFiles),
+    review: workspaceSection(role === 'administrator' ? 'Schedule coverage' : 'Schedule review', 'student-schedules', 'All schedules', scheduleSummary + reviewFiles),
     calendar: deskCalendar(),
   })}</div>`;
 }
@@ -594,11 +635,38 @@ function advisorOverview() {
   })}</div>`;
 }
 
+let renderedHomeWeek;
+function studentHomeContext() {
+  return termContext(escapeHtml(liveStudent.data?.student?.major || 'Student workspace'));
+}
 function studentOverview() {
-  const timetable = `<div class="timetable-heading"><h2>Teaching week</h2></div>${weekly()}`;
+  renderedHomeWeek = weekly();
+  const timetable = `<div class="timetable-heading"><h2>Teaching week</h2></div>${renderedHomeWeek}`;
   const view = { columns: '1fr 1fr', rows: ['week week', 'review activity'] };
-  return `<div class="student-dashboard">${head(studyGreeting(), termContext(escapeHtml(liveStudent.data?.student.major || 'Student workspace')))}
+  return `<div class="student-dashboard">${head(studyGreeting(), studentHomeContext())}
     ${workspaceGrid(view, { week: timetable, review: studentFeed(), activity: deskCalendar() })}</div>`;
+}
+function updateStudentHomeSchedule() {
+  const home = app.querySelector('.student-dashboard');
+  if (!home) return;
+  const nextWeek = weekly();
+  const heading = home.querySelector('.timetable-heading');
+  if (nextWeek !== renderedHomeWeek) {
+    heading.nextElementSibling.querySelectorAll('[data-arriving]').forEach(finishArrival);
+    heading.nextElementSibling.outerHTML = renderedHomeWeek = nextWeek;
+    heading.nextElementSibling.dispatchEvent(new Event('student-week-loaded', {bubbles:true}));
+  }
+  home.querySelector('.page-head p').innerHTML = studentHomeContext();
+  home.querySelector('.student-upcoming').outerHTML = studentUpcoming();
+}
+function updateStudentHomeTerm() {
+  const home = app.querySelector('.student-dashboard');
+  if (!home) return;
+  home.querySelector('.page-head p').innerHTML = studentHomeContext();
+  const calendar = home.querySelector('.student-overview-calendar');
+  const paper = calendar.querySelector('.folio-paper:not(.binder-waiting-sheet) .folio-inner');
+  if (paper) paper.outerHTML = calendarPage();
+  calendar.querySelector('.folio-agenda').innerHTML = calendarAgenda();
 }
 
 function profile(){
@@ -698,19 +766,31 @@ function upcomingClasses(now = new Date()){
   return meetings.slice(0,2);
 }
 
-function studentFeed(){
+function studentUpcoming(){
   const meetings = upcomingClasses();
-  return `<div class="student-feed" id="student-feed" data-feed-layout="1">
-    <section class="student-upcoming" aria-labelledby="student-upcoming-heading">
+  return `<section class="student-upcoming" aria-labelledby="student-upcoming-heading">
       <div class="section-head"><h2 id="student-upcoming-heading">Coming up</h2></div>
       <ul class="student-upcoming-list" role="list">${meetings.map(({time,code,detail,date,day})=>`
         <li>${courseEmblem(code)}
           <div class="student-class-copy"><h3>${resolveCourse(code)?.[1] || escapeHtml(code)}</h3><p>${detail}</p></div>
           <time datetime="${date.toLocaleDateString('sv-SE')}T${time}"><span>${day}</span><strong>${time}</strong></time>
         </li>`).join('')}</ul>
-    </section>
-    ${studentNotificationPanel()}
-  </div>`;
+    </section>`;
+}
+function studentFeed(){
+  return `<div class="student-feed" id="student-feed" data-feed-layout="1">${studentUpcoming()}${studentNotificationPanel()}</div>`;
+}
+function updateNotificationsView() {
+  if (studentDashboard()) {
+    const feed = app.querySelector('.student-feed');
+    feed.querySelector('.home-notifications').outerHTML = studentNotificationPanel();
+    const panel = feed.querySelector('.home-notifications');
+    window.addStaffArt?.('overview',panel);
+    drawInputEdges(panel);
+    observeNotificationPlate(panel.querySelector('.notification-plate'));
+    updateNotificationBadge();
+  } else if (['notifications','overview'].includes(page)) render();
+  else updateNotificationBadge();
 }
 
 function notificationViews(unreadCount) {
@@ -733,7 +813,11 @@ function notifications(){
   const token = localStorage.getItem(workspaceSessionKey);
   const state = token && liveInbox?.token === token ? liveInbox : null;
   const inboxStatus = token && !state?.data
-    ? state?.error ? `<p role="alert">${escapeHtml(state.error)}</p>` : '<p role="status">Loading notifications…</p>'
+    ? state?.error ? `<div class="empty notification-load-error">
+        ${notificationScenes('coffee',false)}
+        <div role="alert"><h2>Notifications couldn’t load</h2><p>Try again to check your inbox.</p></div>
+        ${button('Try again','retry-notifications','btn')}
+      </div>` : '<p role="status">Loading notifications…</p>'
     : '';
   return head('Notifications', '',
     (unread.length ? button('Mark all as read','read-all','btn primary') : ''), '')+strip+
@@ -752,12 +836,12 @@ async function markPortalNotifications(ids, control) {
       .map(({value}) => [value.notification._id, value.notification]));
     state.data = state.data.map(entry => updated.has(entry._id) ? { ...entry, ...updated.get(entry._id) } : entry);
     if (results.some(result => result.status === 'rejected')) {
-      render();
+      updateNotificationsView();
       toast('Some notifications could not be marked as read.', 'error');
       return;
     }
   }
-  render();
+  updateNotificationsView();
   document.querySelector('[aria-selected=true][aria-controls="notice-results"]')?.focus();
   toast(ids.length === 1 ? 'Notification marked as read.' : 'All notifications marked as read.');
 }
@@ -925,12 +1009,16 @@ function advisor(){
   const token = localStorage.getItem(workspaceSessionKey);
   const state = token && liveAdvisor?.token === token ? liveAdvisor : null;
   const person = state?.data;
+  const unassigned = person === null;
   const status = !token ? '<p>Sign in to see your assigned advisor.</p>'
     : state?.error ? '<p role="alert">Could not load your advisor. Refresh the page to try again.</p>'
-    : person === null ? '<p role="status">You don’t have an assigned advisor yet.</p>'
     : '<p role="status">Loading your advisor…</p>';
-  const deadline = liveStudent.token === token && liveStudent.data?.term.advisingDeadline;
-  const deadlineLabel = deadline ? formatCalendarDay(campusDay(new Date(deadline)), {day:'numeric', month:'long', year:'numeric'}) : '';
+  const deadline = liveStudent.token === token && liveStudent.data?.term?.advisingDeadline;
+  const deadlineDay = deadline ? campusDay(new Date(deadline)) : '';
+  const preferenceAction = `<div class="advisor-preference-action">
+    ${deadlineDay ? `<p class="advisor-deadline">Preferences due <time datetime="${deadlineDay}">${formatCalendarDay(deadlineDay, {day:'numeric', month:'long', year:'numeric'})}</time></p>` : ''}
+    ${link('preferences','Set course preferences'+icon('chevron'),'btn advisor-preferences-link')}
+  </div>`;
   return heading + `
     <div class="advising-layout">
       <section class="advisor-details" aria-label="Advisor assignment">
@@ -938,11 +1026,16 @@ function advisor(){
           <dl class="details"><div><dt>University email</dt><dd><a href="mailto:${escapeHtml(person.email)}">${escapeHtml(person.email)}</a></dd></div></dl>
           <section class="advisor-checklist"><h2>Before you meet</h2>
           ${['Review remaining credits','Choose preferred course groups','Write down questions'].map(item => `<label class="checkrow"><input type="checkbox">${item}</label>`).join('')}
-          </section>` : status}
+          </section>` : unassigned ? `<div class="advisor-empty">
+          ${queueSketch('advisor-assignment')}
+          <div class="advisor-empty-copy" role="status"><h2>You don’t have an assigned advisor yet.</h2>
+          <p>While you wait, share the days, times and class groups that work for you.</p></div>
+          ${preferenceAction}
+        </div>` : status}
       </section>
       <aside><section class="advisor-callout"><h2>Your advising schedule</h2><p>Review your proposed timetable and course selections.</p>
         ${link('my-schedule','View schedule','btn primary')}</section>
-        <p class="advisor-deadline">${deadlineLabel ? `<strong>Preferences due ${deadlineLabel}</strong><br>` : ''}${link('preferences','Set course preferences','btn row-control')}</p>
+        ${unassigned ? '' : preferenceAction}
       </aside>
     </div>`;
 }
@@ -980,7 +1073,7 @@ function mountLiveCalendar(panel) {
     returnAfterSignIn = 'calendar-sync';
     navigate('login');
   }
-  const localStudentDemo = ['localhost','127.0.0.1'].includes(location.hostname) && ['normalStudent','advisingStudent'].includes(role);
+  const localStudentDemo = localDemoRoles.includes(role) && ['normalStudent','advisingStudent'].includes(role);
   const connectPath = 'connect?' + new URLSearchParams({ portalOrigin: location.origin });
   async function request(path, method = 'GET', retry = true) {
     const response = await fetch('../api/calendar/' + path, { method, headers: { Authorization: 'Bearer ' + token } });
@@ -1078,6 +1171,14 @@ function mountLiveCalendar(panel) {
 }
 function calendarSync() {
   if (!student()) return head('Calendar sync') + '<p>Sign in with a student account to access Calendar sync.</p>';
+  const periods = [['09:00','10:30'], ['10:45','12:15'], ['13:00','14:30']];
+  const exampleWeek = [
+    ['Sunday', [[0,'CSEN501','Database I'], [2,'CSEN503','Networks Lab']]],
+    ['Monday', [[1,'CSEN703','Algorithms']]],
+    ['Tuesday', [[0,'CSEN401','Programming Lab'], [1,'CSEN601','Computer Architecture']]],
+    ['Wednesday', [[1,'CSEN603','Software Engineering'], [2,'CSEN501','Database Tutorial']]],
+    ['Thursday', [[0,'CSEN503','Computer Networks'], [2,'CSEN602','Systems Lab']]],
+  ];
   return `<section class="calendar-sync-account" data-live-calendar aria-label="Google Calendar sync">
     <div class="calendar-sync-entry">
       <img class="calendar-sync-logo" src="images/google-calendar.png" width="500" height="500" alt="Google Calendar">
@@ -1090,31 +1191,20 @@ function calendarSync() {
       <p role="status"></p>
     </div>
     <figure class="calendar-sync-preview" aria-labelledby="calendar-sync-preview-title">
-      <figcaption><strong id="calendar-sync-preview-title">Example week</strong><span>Cairo time</span></figcaption>
-      <div class="calendar-sync-preview-scroll" role="region" aria-label="Sample timetable, Sunday to Thursday" tabindex="0">
-        <div class="calendar-sync-week">
-          <div class="calendar-sync-day"><h2>Sun</h2>
-            <div class="calendar-sync-event"><strong>Database I</strong><span>09:00–10:30</span></div>
-            <div class="calendar-sync-event event-lab" data-period="late"><strong>Networks Lab</strong><span>13:00–14:30</span></div>
-          </div>
-          <div class="calendar-sync-day"><h2>Mon</h2>
-            <div class="calendar-sync-event event-tutorial" data-period="mid"><strong>Algorithms</strong><span>10:45–12:15</span></div>
-          </div>
-          <div class="calendar-sync-day"><h2>Tue</h2>
-            <div class="calendar-sync-event event-lab"><strong>Programming Lab</strong><span>09:00–10:30</span></div>
-            <div class="calendar-sync-event" data-period="mid"><strong>Computer Architecture</strong><span>10:45–12:15</span></div>
-          </div>
-          <div class="calendar-sync-day"><h2>Wed</h2>
-            <div class="calendar-sync-event" data-period="mid"><strong>Software Engineering</strong><span>10:45–12:15</span></div>
-            <div class="calendar-sync-event event-tutorial" data-period="late"><strong>Database Tutorial</strong><span>13:00–14:30</span></div>
-          </div>
-          <div class="calendar-sync-day"><h2>Thu</h2>
-            <div class="calendar-sync-event"><strong>Computer Networks</strong><span>09:00–10:30</span></div>
-            <div class="calendar-sync-event event-lab" data-period="late"><strong>Systems Lab</strong><span>13:00–14:30</span></div>
-          </div>
-        </div>
+      <figcaption><h2 id="calendar-sync-preview-title">Example week</h2><span>Cairo time</span></figcaption>
+      <div class="calendar-sync-week">
+        ${exampleWeek.map(([day, meetings]) => `<section class="calendar-sync-day">
+          <h3>${day}</h3>
+          <ul class="calendar-sync-day-events" role="list">
+            ${meetings.map(([period, code, title]) => {
+              const [start, end] = periods[period];
+              return `<li class="calendar-sync-event" data-course-tone="${globalThis.BobosCourseIcons?.[code]?.tone || 'ivory'}" style="--period: ${period + 1}">
+                ${courseDrawing(code)}<time datetime="${start}">${start}–${end}</time><strong>${title}</strong>
+              </li>`;
+            }).join('')}
+          </ul>
+        </section>`).join('')}
       </div>
-      <p class="calendar-sync-scroll-hint">Scroll to see the full week</p>
     </figure>
   </section>`;
 }
@@ -1128,8 +1218,8 @@ function auth(){
         <h1>${title}</h1>
         ${page==='login' ? (returnAfterSignIn !== 'overview' ? `<p>Sign in as ${roleNames[role]} to open ${navigationLabel(returnAfterSignIn)}.</p>` : '') : `<p>${page==='forgot'?'We’ll send a reset code to your university email.':'Enter the six-digit code from your email.'}</p>`}
         <form id="auth-form">
-          ${page==='login' ? `<label>University email<input name="email" type="email" autocomplete="username" required value="${previewEmail}"></label>
-            <label>Password<input name="password" type="password" autocomplete="current-password" required value="portal-demo"></label>
+          ${page==='login' ? `<label>University email<input name="email" type="email" autocomplete="username" required></label>
+            <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
             <div class="signin-actions"><button type="submit" class="signin-continue">Continue <span aria-hidden="true">→</span></button>${link('forgot','Forgot password?','auth-recovery')}</div>` : `
             <label>University email<input name="email" type="email" autocomplete="username" placeholder="name@guc.edu.eg" required></label>
             ${page==='reset'?'<label>Reset code<input name="otp" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required></label><label>New password<input name="password" type="password" autocomplete="new-password" minlength="8" required></label><label>Confirm new password<input name="confirmPassword" type="password" autocomplete="new-password" minlength="8" required></label>':''}
@@ -1138,10 +1228,10 @@ function auth(){
             ${page==='reset'?link('forgot','Request another code','auth-recovery'):''}
             ${link('login','Back to sign in','auth-recovery')}`}
         </form>
-        ${page==='login' ? `<fieldset class="preview-role-picker">
+        ${page==='login' && localDemoRoles.length ? `<fieldset class="preview-role-picker">
           <legend>Quick demo sign-in</legend>
-          <div class="preview-role-options">${Object.entries(roleNames).map(([id,label])=>
-            button(label,'preview-sign-in','preview-role-button',`data-preview-role="${id}"`)).join('')}</div>
+          <div class="preview-role-options">${localDemoRoles.map(id=>
+            button(roleNames[id],'preview-sign-in','preview-role-button',`data-preview-role="${id}"`)).join('')}</div>
         </fieldset>` : ''}
       </section>
     </div>
@@ -1160,6 +1250,15 @@ function portalService(screen, section = '') {
   const query = new URLSearchParams({screen, section, role});
   if (page === 'my-submitted-plans') query.set('view', 'submitted');
   return `<div data-portal-service="${escapeHtml(query)}"><p role="status">Loading…</p></div>`;
+}
+
+function roleUnavailable() {
+  return `<section class="portal-role-unavailable" aria-labelledby="role-unavailable-title">
+    <img src="images/extra-hours-folder.svg" width="132" height="100" alt="">
+    <h1 id="role-unavailable-title">This page is unavailable for your role.</h1>
+    <p>${escapeHtml(navigationLabel(page))} is outside the ${escapeHtml(roleNames[role])} workspace.</p>
+    ${link('overview','Back to home','btn row-control')}
+  </section>`;
 }
 
 function academicServices() {
@@ -1225,6 +1324,7 @@ function accountControls(){
 
 let arrivalObserver;
 let overviewOpened = false;
+let stagedStudentWeekToken;
 const revealedOverviewItems = new Set();
 const motionPreference=matchMedia('(prefers-reduced-motion: reduce)');
 
@@ -1271,17 +1371,10 @@ function playOverviewPose(el,kind,index,order){
     origin=ordinal%2?'85% 95%':'15% 95%';
     anchors=[P(0,x,y,sign*9,0),P(.05,x,y,sign*9,1),P(.16,x*.78,y,sign*4),P(.23,x*.78,y,sign*4),P(.31,x*.78,y*.48,-sign*6),P(.38,x*.78,y*.48,-sign*6),P(.5,x*.28,y*.48,sign*8),P(.56,x*.28,y*.48,sign*8),P(.65,x*.28,-17,-sign*5),P(.72,x*.28,-17,-sign*5),P(.81,-sign*12,-17,sign*3),P(.87,-sign*12,4,-sign*2),P(.94,sign*4,4,sign),finalPose()];
   }else if(kind==='chrome'){
-   // A book opens, then four groups of index tabs tug free of the binding.
-   // The shell, layout and navigation hit targets never change position.
+   // Keep sidebar link targets stationary while their labels are exposed.
    if(el.classList.contains('brand')){
     duration=650;delay=15;origin='12% 52%';
     anchors=[P(0,-25,-5,-5,0,.97),P(.12,-25,-5,-5,.45,.97),P(.29,-13,1,2,.9),P(.45,-13,1,2,1),P(.60,4,-1,-1.5),P(.74,4,-1,-1.5),P(.85,-2,0,.5),finalPose()];
-   }else if(el.classList.contains('study-nav-group')){
-    const i=Math.max(0,index-1);
-    duration=710+(i%2)*55;delay=105+i*115;origin='8% 35%';
-    anchors=[P(0,-26+(i%2)*5,6,-2.8,0),P(.10,-26+(i%2)*5,6,-2.8,0),
-     P(.19,-18,0,-1.7,.75),P(.31,-18,0,-1.7,1),P(.49,-5,-2,1.3),
-     P(.61,-5,-2,1.3),P(.74,3,1,-.65),P(.85,3,1,-.65),P(.93,-1,0,.3),finalPose()];
    }else if(el.classList.contains('sidebar-foot')){
     duration=640;delay=605;origin='15% 60%';
     anchors=[P(0,-10,6,-1,0),P(.2,-10,6,-1,0),P(.44,2,-1,.6,.83),P(.62,2,-1,.6,1),P(.85,-1,0,-.25),finalPose()];
@@ -1359,11 +1452,13 @@ function stageOverview(main){
   overviewOpened=true;
   const shell=main.closest('.shell');
   const units=new Map();
+  const studentHome=studentDashboard();
+  const weekUnits={day:'.week-day>h2',course:'.week-class',empty:'.week-day-off'};
   const groups={
-    chrome:'.brand,.study-nav-group,.sidebar-foot,.topbar',
+    chrome:'.brand,.sidebar-foot,.topbar',
     greeting:'.page-head h1',meta:'.page-head p',decoration:'.greeting-sun',
     heading:'.section-head,.timetable-heading',queue:'.queue-entry',upcoming:'.desk-calendar',
-    day:'.week-day>h2',course:'.week-class',empty:'.week-day-off',
+    ...(studentHome ? {} : weekUnits),
     note:'.module-review .review-person,.module-activity :is(.event,.activity-impression)',
     folder:'.module-review .draft-file'
   };
@@ -1371,10 +1466,10 @@ function stageOverview(main){
     shell.querySelectorAll(selector).forEach((el,index)=>units.set(el,{kind,index}));
   }
   function reveal(el,order,scroll){
-    const {kind,index}=units.get(el);
+    const {kind,index,studentWeek}=units.get(el);
     el.removeAttribute('data-arriving');
     const key=kind==='folder' ? el.href : role+'-'+kind+'-'+index;
-    if(revealedOverviewItems.has(key) || el.matches(':focus-within')) return;
+    if((!studentWeek && revealedOverviewItems.has(key)) || el.matches(':focus-within')) return;
     if(kind==='folder'){
       el.style.setProperty('--folder-duration',`${590+index*24}ms`);
       el.dataset.paperReveal='folder';
@@ -1385,9 +1480,9 @@ function stageOverview(main){
       },{once:true});
       return;
     }
-    revealedOverviewItems.add(key);
+    if(!studentWeek) revealedOverviewItems.add(key);
     if(kind==='empty'){
-      if(opening || scroll){
+      if(studentWeek || opening || scroll){
         el.classList.add('coffee-wait');
         // Let the last visible class card give the saucer its entrance cue.
         const arrivals=Array.from(main.querySelectorAll('.week-class')).flatMap(card=>card.getAnimations())
@@ -1403,7 +1498,7 @@ function stageOverview(main){
       return;
     }
     if(!scroll){
-      if(opening) playOverviewPose(el,kind,index,order);
+      if(studentWeek || opening) playOverviewPose(el,kind,index,order);
       return;
     }
     // The pencil-settle drawing from the scroll study, at one fifth amplitude.
@@ -1421,14 +1516,31 @@ function stageOverview(main){
     });
   });
   let order=0;
-  function stageUnit(el,{kind,index}){
+  function stageUnit(el,{kind,index,studentWeek}){
     const key=kind==='folder' ? el.href : role+'-'+kind+'-'+index;
-    if(revealedOverviewItems.has(key)) return;
+    if(!studentWeek && revealedOverviewItems.has(key)) return;
     const rect=el.getBoundingClientRect();
     if(kind==='chrome'||(rect.top<innerHeight && rect.bottom>0)) reveal(el,order++,false);
     else {el.setAttribute('data-arriving','');arrivalObserver.observe(el);}
   }
   units.forEach((unit,el)=>stageUnit(el,unit));
+  function stageStudentWeek(week){
+    if(motionPreference.matches || !week?.firstElementChild || stagedStudentWeekToken===liveStudent.token) return;
+    stagedStudentWeekToken=liveStudent.token;
+    for(const [kind,selector] of Object.entries(weekUnits)){
+      week.querySelectorAll(selector).forEach((el,index)=>{
+        const unit={kind,index,studentWeek:true};
+        units.set(el,unit);
+        stageUnit(el,unit);
+      });
+    }
+  }
+  if(studentHome){
+    stageStudentWeek(main.querySelector('.module-week .week-columns'));
+    main.addEventListener('student-week-loaded',event=>{
+      if(event.target.matches('.week-columns')) stageStudentWeek(event.target);
+    });
+  }
   main.addEventListener('schedule-folders-loaded',event=>{
     if(motionPreference.matches) return;
     event.target.querySelectorAll('.draft-file').forEach((el,index)=>{
@@ -1438,8 +1550,8 @@ function stageOverview(main){
     });
   });
   if(opening) shell.querySelectorAll('.study-nav-group').forEach((group,i)=>{
-    group.querySelectorAll('a').forEach((link,j)=>{
-      link.animate([
+    group.querySelectorAll('a > span').forEach((label,j)=>{
+      label.animate([
         {offset:0,opacity:0,clipPath:'inset(0 100% 0 0)'},
         {offset:.18,opacity:.5,clipPath:'inset(0 50% 0 0)'},
         {offset:.38,opacity:.85,clipPath:'inset(0 15% 0 0)'},
@@ -1448,14 +1560,17 @@ function stageOverview(main){
     });
   });
   shell.addEventListener('focusin',event=>{
+    if(!event.target.matches(':focus-visible')) return;
+    const label = event.target.querySelector('.navlink > span');
+    if(label) finishArrival(label);
     for(let el=event.target;el && el!==shell;el=el.parentElement) finishArrival(el);
   });
 }
 motionPreference.addEventListener('change',()=>{
   if(!motionPreference.matches) return;
-  if(pendingExposure) pendingExposure.finish();
   arrivalObserver?.disconnect();
   document.querySelectorAll('[data-arriving],[data-paper-reveal]').forEach(finishArrival);
+  document.querySelectorAll('.coffee-wait').forEach(el=>el.classList.remove('coffee-wait'));
   document.getAnimations().filter(animation=>animation.id==='overview-arrival').forEach(animation=>animation.cancel());
 });
 
@@ -1489,7 +1604,8 @@ function render(focus=false){
   document.body.dataset.portalRole = authPages.has(page) ? '' : role;
   document.title = `Portal · ${pageLabel}`;
   document.body.classList.toggle('auth-screen',authPages.has(page));
-  const body=authPages.has(page)?auth():`<div class="shell">${sidebar()}<div class="workspace"><header class="topbar">${link('overview',portalWordmark(),'mobile-nav wordmark')}<span class="term">${workspaces[lab.layout].name==='Claude Study'?'<small class="study-crumb">Academic workspace &nbsp; / &nbsp;</small>':''}${pageLabel}<span>${escapeHtml(displayTerm(currentAcademicTerm()))}</span></span><div class="topactions">${button(icon('menu')+'<span class="sr-only">Menu</span>','mobile-menu','mobile-menu')}${themeControl()}${accountControls()}</div></header><main class="content" data-screen="${page}" id="content" tabindex="-1">${renderers[page]()}</main></div></div>`;
+  const back = page === 'overview' ? '' : button(icon('chevron')+'Back', 'page-back', 'portal-page-back');
+  const body=authPages.has(page)?auth():`<div class="shell">${sidebar()}<div class="workspace"><header class="topbar">${link('overview',portalWordmark(),'mobile-nav wordmark')}<span class="term">${workspaces[lab.layout].name==='Claude Study'?'<small class="study-crumb">Academic workspace &nbsp; / &nbsp;</small>':''}${pageLabel}<span>${escapeHtml(displayTerm(currentAcademicTerm()))}</span></span><div class="topactions">${button(icon('menu')+'<span class="sr-only">Menu</span>','mobile-menu','mobile-menu')}${themeControl()}${accountControls()}</div></header><main class="content" data-screen="${page}" id="content" tabindex="-1">${back}${roleCanOpen(role, page) ? renderers[page]() : roleUnavailable()}</main></div></div>`;
   arrivalObserver?.disconnect();
   disposePortalService?.();
   disposePortalService = undefined;
@@ -1523,19 +1639,49 @@ function render(focus=false){
   }
   if(focus)document.querySelector('#content')?.focus({preventScroll:true});
 }
-function navigate(target, url, state = {}) {
+function portalNavigationSession() {
+  let session = localStorage.getItem(workspaceNavigationKey);
+  if (!session) {
+    session = String(Date.now());
+    localStorage.setItem(workspaceNavigationKey, session);
+  }
+  return session;
+}
+function portalNavigationPath(session) {
+  const navigation = history.state?.portalNavigation;
+  return navigation?.session === session && navigation.role === role ? navigation.path : [];
+}
+function goToPreviousPage() {
+  const path = portalNavigationPath(portalNavigationSession());
+  const previous = path.at(-1);
+  if (previous && roleCanOpen(role, previous.page)) {
+    navigate(previous.page, previous.url, previous.context, {path: path.slice(0,-1), scrollTop: previous.scrollTop});
+  } else navigate('overview', undefined, {}, {path: []});
+}
+function navigate(target, url, state = {}, back) {
   if (dialog.open) dialog.close();
-  page = pageKey(target);
-  tab = '';
-  const destination = new URL(url || href(page), location.href);
+  const destination = new URL(url || href(pageKey(target)), location.href);
   if (authPages.has(target)) BobosPortalRoutes.normalize(destination.searchParams);
   else normalizePortalRoute(destination.searchParams);
-  page = pageKey(destination.searchParams.get('page'));
-  if (Object.hasOwn(roleNames, destination.searchParams.get('role'))) role = destination.searchParams.get('role');
+  const next = pageKey(destination.searchParams.get('page'));
+  const requestedRole = destination.searchParams.get('role');
+  const nextRole = Object.hasOwn(roleNames, requestedRole) ? requestedRole : role;
+  if (signedIn() && !authPages.has(next) && nextRole === role) {
+    const session = portalNavigationSession();
+    const path = back?.path ?? (next === 'overview' ? [] : portalNavigationPath(session));
+    const {portalScreen, portalContext} = history.state || {};
+    const isNewDestination = destination.href !== location.href || portalContext !== state.portalContext;
+    const remember = !back && next !== 'overview' && roleCanOpen(role, page) && isNewDestination;
+    const previous = { page, url: location.search + location.hash, context: {portalScreen, portalContext}, scrollTop: window.scrollY };
+    state = {...state, portalNavigation: {session, role, path: remember ? [...path.slice(-24), previous] : path}};
+  }
+  page = next;
+  role = nextRole;
+  tab = '';
   selectedCourse = resolveCourse(destination.searchParams.get('course'));
   history.pushState(state, '', destination);
   render(true);
-  window.scrollTo(0, 0);
+  window.scrollTo(0, back?.scrollTop || 0);
 }
 document.addEventListener('portal:open-service', ({detail: {screen, context}}) => {
   const target = BobosPortalRoutes.screenPage(screen, role);
@@ -1571,18 +1717,15 @@ async function signInWorkspace(credentials, expectedRole){
   if (expectedRole && data.user.role !== expectedRole) throw new Error('The demo account has a different role.');
   localStorage.setItem(workspaceSessionKey,data.token);
   localStorage.setItem('portal-account-role', data.user.role);
+  localStorage.setItem(workspaceNavigationKey, String(Date.now()));
   sessionStorage.setItem(workspaceAccountNameKey, data.user.fullName || roleNames[data.user.role]);
   return data.user.role;
 }
 
 async function signInDemoWorkspace(demoRole){
+  if (!localDemoRoles.includes(demoRole)) return false;
   const response = await fetch(`../__bobos_local_demo?role=${encodeURIComponent(demoRole)}`);
-  if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) {
-    const accounts = { normalStudent:'karim.normal@student.guc.edu.eg', advisingStudent:'layla.advising@student.guc.edu.eg', coordinator:'nadia.coordinator@guc.edu.eg', advisor:'sherif.advisor@guc.edu.eg', administrator:'admin@guc.edu.eg' };
-    if (!['localhost','127.0.0.1'].includes(location.hostname) || !accounts[demoRole]) return false;
-    await signInWorkspace({email:accounts[demoRole], password:'Password123!'},demoRole);
-    return true;
-  }
+  if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) return false;
   await signInWorkspace(await response.json(),demoRole);
   return true;
 }
@@ -1632,11 +1775,13 @@ function action(name,el){
     case 'preview-sign-in':
       void choosePreviewRole(el);
       break;
+    case 'page-back': goToPreviousPage(); break;
     case 'sign-out':
       document.querySelector('portal-action-feedback').clear();
       {
         const token = localStorage.getItem(workspaceSessionKey);
         localStorage.removeItem(workspaceSessionKey);
+        localStorage.removeItem(workspaceNavigationKey);
         localStorage.removeItem('portal-account-role');
         sessionStorage.removeItem(workspaceAccountNameKey);
         if (token) {
@@ -1657,10 +1802,10 @@ function action(name,el){
       const menu = sections.map(([name,items])=>`<section>${name ? `<h3>${name}</h3>` : ''}<ul>${items.map(id=>
         `<li><a href="${href(id)}" data-page="${id}"${id===page?' aria-current="page"':''}>${navigationLabel(id)}</a></li>`
       ).join('')}</ul></section>`).join('');
-      const semester = usesStaffPresentation() ? `<p class="menu-semester">Current semester · <span data-sidebar-term>${escapeHtml(sidebarTerm())}</span></p>` : '';
-      modal('Menu',`<nav class="workspace-menu" aria-label="Main navigation">${semester}${menu}</nav>`,null,'navigation');
+      modal('Menu',`<nav class="workspace-menu" aria-label="Main navigation">${menu}${semesterFooter()}</nav>`,null,'navigation');
       break;
     }
+    case 'retry-notifications': loadAccountData(true); el.disabled = true; el.textContent = 'Trying again…'; break;
     case 'read-all':void markPortalNotifications(notificationEntries().filter(item => !item.isRead).map(item => item._id), el);break;
     case 'read-one':void markPortalNotifications([el.dataset.notification], el);break;
     case 'close-dialog':closeDialog();break;
@@ -1809,10 +1954,7 @@ document.addEventListener('submit',async event=>{
       const submit = event.submitter;
       if (submit) submit.disabled = true;
       try {
-        if (email === previewEmail && password === 'portal-demo') {
-          if (!(await signInDemoWorkspace(role))) throw new Error('Sign in with your university account.');
-        }
-        else role = await signInWorkspace({email,password});
+        role = await signInWorkspace({email,password});
         startPreview(returnAfterSignIn);
       } catch (error) {
         toast(error.message);
@@ -1891,8 +2033,7 @@ if (page === 'calendar-sync' && ['connected', 'error'].includes(params.get('cale
 }
 function refreshStudentSchedule() {
   if (student() && ['overview','my-schedule','my-courses','course-detail'].includes(page) && !document.hidden && !liveStudent.loading) {
-    liveStudent.token = null;
-    loadStudentSchedule();
+    loadStudentSchedule(true);
   }
 }
 window.addEventListener('focus', refreshStudentSchedule);

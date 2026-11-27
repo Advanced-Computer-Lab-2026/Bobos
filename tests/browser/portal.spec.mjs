@@ -118,6 +118,9 @@ test("Sidebar keeps lower navigation links in place across page changes and hist
 
 test("Req 1–5: reset through email, view your profile and inbox, and sign out", async ({ page }) => {
   await page.goto(baseURL);
+  await expect(page.getByRole("group", { name: "Quick demo sign-in" })).toHaveCount(0);
+  await expect(page.getByLabel("University email")).toBeEmpty();
+  await expect(page.getByLabel("Password", { exact: true })).toBeEmpty();
   await page.getByRole("link", { name: /forgot password/i }).click();
   await page.getByLabel("University email").fill(email);
   await page.getByRole("button", { name: /send reset code/i }).click();

@@ -73,15 +73,31 @@ body.portal-studio[data-workspace=claude-study] .dashboard-edition[data-edition=
   }
 }
 body:is([data-portal-role=coordinator],[data-portal-role=advisor],[data-portal-role=administrator]) {
-  .sidebar nav { flex: 1; min-height: 0; overflow-y: auto; }
-  .sidebar-foot { flex: none; padding-top: 14px; }
   #notice-results .empty .notification-plate { width: min(220px, 80%); height: auto; margin: 0 auto 16px; }
-  .menu-semester { margin: 0 9px 16px; color: var(--muted); font-size: 13px; }
   :is(a,button,summary,input,textarea,select,[tabindex="0"]):focus-visible {
     outline: 2px solid var(--ink); outline-offset: -2px;
   }
   #content:focus { outline: none; }
 }
+
+.staff-schedule-summary { container: schedule-summary / inline-size; }
+.staff-schedule-caption { margin: 0 0 9px; color: var(--muted); font-size: 13px; }
+.schedule-status-strip {
+  display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 1px;
+  margin: 0 0 14px; padding: 1px; border-radius: 10px; overflow: hidden; background: var(--line);
+}
+.schedule-status-strip > div { display: grid; align-content: start; gap: 5px; padding: 11px 12px; background: var(--canvas); }
+.schedule-status-strip dt { color: var(--muted); font-size: 12px; line-height: 1.4; }
+.schedule-status-strip dd { order: -1; margin: 0; font: 500 23px/1.2 Styrene,system-ui,sans-serif; font-variant-numeric: tabular-nums; }
+@container schedule-summary (max-width: 465px) {
+  .schedule-status-strip { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+.schedule-coverage { display: grid; gap: 12px; margin: 0 0 18px; padding: 0; list-style: none; }
+.schedule-coverage li { display: grid; gap: 6px; padding: 10px 14px 12px; border: 1px solid var(--line); border-radius: 9px; }
+.schedule-coverage li > div { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 12px; }
+.schedule-coverage strong { font-size: 14px; font-weight: 500; }
+.schedule-coverage span { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+.schedule-coverage progress { display: block; width: 100%; height: 6px; border: 0; overflow: hidden; border-radius: 8px; accent-color: #8aab99; }
 
 @keyframes coordinator-folder-hinge {
   0% { transform: none; }
