@@ -121,34 +121,47 @@
 .student-dashboard .module-review,.student-dashboard[data-feed-only] {container-type:inline-size}
 .student-feed {display:grid;gap:clamp(32px,4vw,48px)}
 .student-feed .section-head {justify-content:space-between;flex-wrap:wrap;gap:8px 12px;margin-bottom:12px}
-.portal-studio[data-workspace=claude-study] .student-dashboard .student-inbox .section-head {
-  justify-content:space-between;
+.student-feed .student-inbox {
+  --inbox-header:#e5decd;
+  --inbox-header-ink:#302d28;
+  --inbox-paper:color-mix(in srgb,var(--inbox-header) 8%,var(--paper));
+  --inbox-active:color-mix(in srgb,var(--inbox-header) 16%,var(--paper));
+  --inbox-rule:color-mix(in srgb,var(--inbox-header) 22%,var(--line));
+  --inbox-padding:clamp(12px,4cqi,17px);
+  min-width:0;margin:0;padding:0;overflow:clip;
+  border:1px solid var(--inbox-rule);border-radius:12px;background:var(--inbox-paper);
 }
+.portal-studio[data-workspace=claude-study] .student-dashboard .student-inbox .section-head {
+  justify-content:space-between;align-items:center;gap:2px 12px;margin:0;
+  min-height:50px;padding:5px var(--inbox-padding);
+  background:var(--inbox-header);color:var(--inbox-header-ink);
+}
+.student-inbox-title {display:flex;align-items:center;gap:8px;min-width:0}
+.student-inbox-title > .icon {width:17px;height:17px;flex:none}
 .portal-studio[data-workspace=claude-study] .student-dashboard .student-inbox .section-head > .quiet-link {
-  padding-inline:0;background:transparent;color:var(--muted);min-height:32px;
+  padding-inline:0;background:transparent;color:inherit;min-height:36px;
   text-decoration:underline;text-underline-offset:.2em;
 }
 .student-feed :is(ul,li,p,h3) {margin:0;padding:0}
 .student-feed ul {display:grid;gap:9px;list-style:none}
-.student-feed li,.student-inbox-empty {
+.student-feed li {
   display:grid;
   grid-template-columns:auto minmax(0,1fr);
   align-items:start;
   gap:12px;
   min-width:0;
 }
-[data-workspace=claude-study] .student-feed .student-course-emblem,
-.student-feed .student-notice-icon {
+[data-workspace=claude-study] .student-feed .student-course-emblem {
   display:grid;place-items:center;flex:none;width:33px;height:33px;border-radius:8px;
 }
 [data-workspace=claude-study] .student-feed .course-drawing {width:23px;height:20px}
-.student-notice-icon {background:var(--paper);color:var(--muted)}
-.student-notice-icon[data-kind=schedule] {background:color-mix(in srgb,var(--signal-sky) 17%,var(--paper));color:var(--signal-sky)}
-.student-notice-icon[data-kind=term] {background:color-mix(in srgb,var(--signal-gold) 17%,var(--paper));color:var(--signal-gold)}
-.student-feed h3,.student-inbox-empty strong {font:600 14px/1.4 Styrene,system-ui,sans-serif}
+.student-feed h3 {font:600 14px/1.4 Styrene,system-ui,sans-serif}
 .student-feed :is(p,small,time) {font-size:13px;line-height:1.45;color:var(--muted)}
 .student-feed small {display:block;margin-top:6px}
-.student-feed .student-inbox-count {margin-inline-start:5px;color:var(--muted);font-size:12px;white-space:nowrap}
+.student-feed .student-inbox-count {
+  display:inline-block;margin-inline-start:5px;padding:3px 6px;border-radius:4px;
+  background:#efe2c8;color:var(--inbox-header-ink);font-size:10px;font-weight:600;line-height:1.2;letter-spacing:0;white-space:nowrap;
+}
 .student-feed .student-upcoming-list li {
   grid-template-columns:auto minmax(0,1fr) auto;
   align-items:center;
@@ -157,12 +170,22 @@
 .student-class-copy {min-width:0}
 .student-upcoming-list time {display:grid;justify-items:end;white-space:nowrap;font-variant-numeric:tabular-nums}
 .student-upcoming-list time strong {color:var(--ink);font-size:14px}
-.student-feed .student-inbox-list li {
-  grid-template-columns:minmax(0,1fr);padding:6px 0;
+.student-feed .student-inbox-list {gap:0}
+.student-feed .student-inbox-list li {display:block}
+.student-feed .student-inbox-list li + li {border-block-start:1px solid var(--inbox-rule)}
+.student-inbox-list summary {
+  display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;
+  min-height:44px;padding:8px var(--inbox-padding);list-style:none;cursor:pointer;overflow-wrap:anywhere;
+  color:var(--ink);font:500 14px/1.35 Styrene,system-ui,sans-serif;
 }
-.student-feed .student-inbox-list small {margin:0;text-align:right}
-.student-inbox-empty {padding:8px 0}
-.student-notice-copy p,.student-inbox-empty p {margin-top:3px}
+.student-inbox-list summary::-webkit-details-marker {display:none}
+.student-inbox-list summary:hover,.student-inbox-list details[open] {background:var(--inbox-active)}
+.student-inbox-list summary:focus-visible {outline:2px solid currentColor;outline-offset:-2px}
+.student-inbox-list summary .icon {width:14px;height:14px;color:var(--muted)}
+.student-inbox-list details[open] summary .icon {transform:rotate(90deg)}
+.student-notice-detail {padding:0 var(--inbox-padding) 12px;overflow-wrap:anywhere}
+.student-feed .student-notice-detail small {font-size:11px}
+.student-feed .student-inbox-empty {padding:12px var(--inbox-padding)}
 
 .student-dashboard .student-overview-calendar {
   width:min(100%,400px);margin:0 auto;padding:0;
@@ -170,12 +193,15 @@
 .portal-studio[data-workspace=claude-study] .student-dashboard :is(.section-head,.timetable-heading,.calendar-heading) h2 {
   margin:0;font:600 clamp(20px,2vw,25px)/1.2 Styrene,system-ui,sans-serif;letter-spacing:-.035em;
 }
+.portal-studio[data-workspace=claude-study] .student-dashboard .student-inbox .section-head h2 {
+  color:inherit;font-size:15px;letter-spacing:-.02em;
+}
 .portal-studio[data-workspace=claude-study] .student-dashboard .timetable-heading h2 {
   font-size:clamp(24px,2.6vw,32px);
 }
 .student-dashboard .timetable-heading {margin-bottom:22px}
 .portal-studio[data-workspace=claude-study] .student-dashboard .student-inbox .section-head > .quiet-link::after {content:none}
-.portal-studio[data-workspace=claude-study] .student-dashboard .student-inbox .section-head > .quiet-link:is(:hover,:focus-visible) {color:var(--ink)}
+.portal-studio[data-workspace=claude-study] .student-dashboard .student-inbox .section-head > .quiet-link:is(:hover,:focus-visible) {color:inherit;text-decoration-thickness:2px}
 .student-overview-calendar .calendar-sync-link {
   min-height:44px;padding-inline:12px;gap:8px;font-size:14px;
   background:transparent;color:var(--ink);border:1px solid var(--control);
@@ -195,8 +221,6 @@
 .student-overview-calendar .folio-agenda li strong {font-weight:500}
 
 @container (max-width:330px) {
-  .student-feed .student-inbox-list li {grid-template-columns:minmax(0,1fr)}
-  .student-feed .student-inbox-list small {text-align:left}
   .student-feed .student-upcoming-list li {gap:5px 10px;grid-template-columns:auto minmax(0,1fr)}
   .student-upcoming-list time {grid-column:2;display:flex;gap:7px;align-items:baseline}
 }
@@ -244,7 +268,6 @@
 .student-feed[data-feed-layout="6"] .student-upcoming-list .student-course-emblem {grid-column:2;grid-row:span 2}
 .student-feed[data-feed-layout="6"] .student-upcoming-list time {grid-column:1;grid-row:1;display:flex;gap:7px}
 .student-feed[data-feed-layout="6"] .student-inbox-list li {grid-template-columns:minmax(0,1fr) auto}
-.student-feed[data-feed-layout="6"] .student-inbox-list .student-notice-icon {grid-column:2;grid-row:1}
 
 .student-feed[data-feed-layout="7"] :is(.student-upcoming-list,.student-inbox-list) {gap:3px}
 .student-feed[data-feed-layout="7"] .student-inbox-list li {background:none;padding:7px 0}
@@ -280,9 +303,6 @@
   display:block;width:100%;height:auto;max-height:210px;
   margin:0 auto 12px;overflow:hidden;
 }
-.student-inbox .notification-plate + .student-inbox-list {gap:10px}
-.student-inbox .notification-plate + .student-inbox-list li {background:transparent;padding:4px 0}
-.student-inbox .notification-plate + .student-inbox-empty {background:transparent;padding:8px 0}
 .notification-study-pair {display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);align-items:start;gap:clamp(20px,4vw,52px)}
 @media (max-width:680px) {.notification-study-pair {grid-template-columns:minmax(0,1fr)}}
 @media (prefers-reduced-motion:no-preference) {

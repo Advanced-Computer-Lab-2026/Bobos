@@ -11,7 +11,7 @@ function normalizePortalLocation() {
 }
 const params = normalizePortalLocation();
 const pages = {
-  'academic-services':'Academic services', 'graduation-plans':'Graduation plans', 'my-submitted-plans':'My submitted plans', overview:'Overview', notifications:'Notifications', profile:'My profile',
+  'academic-services':'Academic services', 'graduation-plans':'Graduation plans', 'my-submitted-plans':'My submitted plans', overview:'Home', notifications:'Notifications', profile:'My profile',
   directory:'Student directory', 'extra-hours':'Extra-hours requests', advising:'Advising students',
   'pending-work':'Pending work', 'schedule-activity':'Schedule activity', 'slot-changes':'Slot change requests',
   'financial-records':'Financial records', 'mandatory-removals':'Course removals',
@@ -98,11 +98,13 @@ function loadAccountData(refresh) {
         if (liveAdvisor === state && page === 'my-advisor' && localStorage.getItem(workspaceSessionKey) === token) render();
       });
   }
-  if (liveInbox?.token !== token || (refresh && page === 'notifications')) {
-    const state = liveInbox = {token};
+  if (liveInbox?.token !== token || refresh) {
+    const state = liveInbox = {token, data: liveInbox?.token === token ? liveInbox.data : undefined};
     accountRequest('notifications', token).then(data => { state.data = data.notifications; })
       .catch(error => { state.error = error.message; }).finally(() => {
-        if (liveInbox === state && ['notifications','overview'].includes(page)) render();
+        if (liveInbox !== state) return;
+        if (['notifications','overview'].includes(page)) render();
+        else updateNotificationBadge();
       });
   }
 }
@@ -395,13 +397,14 @@ function groups(){
   const managesAcademics = role === 'coordinator' || role === 'administrator';
   const advises = role === 'coordinator' || role === 'advisor';
   if (student()) return [
-    ['Home', ['overview']],
+    ['', ['overview']],
     ['Classes', ['my-schedule','my-courses', ...(role === 'normalStudent' ? ['schedule-swap'] : ['preferences'])]],
     ['Support', [...(role === 'advisingStudent' ? ['my-advisor','slot-changes'] : []),'calendar-sync', ...(role === 'advisingStudent' ? ['records','extra-hours','graduation-plans'] : [])]]
   ];
   return [
-    ['Home', ['overview', ...(role === 'coordinator' ? ['pending-work'] : [])]],
+    ['', ['overview']],
     ['Student services', [
+      ...(role === 'coordinator' ? ['pending-work'] : []),
       ...(managesAcademics ? ['directory','financial-records'] : []),
       ...(advises ? ['advising','extra-hours','graduation-plans'] : []),
       ...(role === 'advisor' ? ['my-submitted-plans'] : [])
@@ -423,8 +426,9 @@ function sidebar(){
     <nav aria-label="Main navigation">${groups().map(([name,items],groupIndex)=>{
       const contents = `<ul>${items.map(id => {
         const current = page === id || parent[page] === id;
-        return `<li><a class="navlink${current ? ' active' : ''}" href="${href(id)}" data-page="${id}" ${current ? 'aria-current="page"' : ''}>${study && groupIndex===0 ? icon(id==='overview'?'home':'inbox') : ''}<span>${navigationLabel(id)}</span></a></li>`;
+        return `<li><a class="navlink${current ? ' active' : ''}" href="${href(id)}" data-page="${id}" ${current ? 'aria-current="page"' : ''}>${id==='overview' ? icon('home') : ''}<span>${navigationLabel(id)}</span></a></li>`;
       }).join('')}</ul>`;
+      if (!name) return `<div class="nav-home">${contents}</div>`;
       if (study) {
         const key = `portal-study-nav:${role}:${name}`;
         return `<details class="study-nav-group" data-nav-key="${key}" ${localStorage.getItem(key)==='closed'?'':'open'}><summary>${name}${icon('down')}</summary>${contents}</details>`;
@@ -600,18 +604,30 @@ function notificationEntries(){
   return token && liveInbox?.token === token ? liveInbox.data || [] : [];
 }
 
+function notificationTime(item) {
+  const time = new Date(item.createdAt).toLocaleString('en-GB', {dateStyle:'medium', timeStyle:'short', timeZone:'Africa/Cairo'});
+  return `<time datetime="${escapeHtml(item.createdAt)}">${escapeHtml(time)}</time>`;
+}
+
 function studentNotificationPanel(){
   const unread = notificationEntries().filter(item => !item.isRead);
+  const expanded = app.querySelector('.student-inbox-list details[open]')?.dataset.notification;
+  const inboxStatus = liveInbox?.error ? 'Couldn’t load notifications.'
+    : liveInbox?.data ? 'No unread notifications.' : 'Loading notifications…';
   return `<section class="student-inbox" aria-labelledby="student-inbox-heading">
     <div class="section-head">
-      <h2 id="student-inbox-heading">Notifications${unread.length ? ` <span class="student-inbox-count">${unread.length} unread</span>` : ''}</h2>
+      <div class="student-inbox-title">${icon('inbox')}
+        <h2 id="student-inbox-heading">Notifications${unread.length ? ` <span class="student-inbox-count">${unread.length} unread</span>` : ''}</h2>
+      </div>
       ${link('notifications','Open inbox','quiet-link')}
     </div>
-    ${notificationScenes(null,unread.length>0)}
     ${unread.length
-      ? `<ul class="student-inbox-list" role="list">${unread.slice(0,3).map(item=>`
-        <li><h3>${escapeHtml(item.title)}</h3></li>`).join('')}</ul>`
-      : `<div class="student-inbox-empty"><span class="student-notice-icon">${icon('check')}</span><div><strong>You're all caught up</strong><p>No unread notifications.</p></div></div>`}
+      ? `<ul class="student-inbox-list" role="list">${unread.slice(0,3).map(item => `
+        <li><details name="home-notifications" data-notification="${escapeHtml(item._id)}"${item._id===expanded ? ' open' : ''}>
+          <summary><span>${escapeHtml(item.title)}</span>${icon('chevron')}</summary>
+          <div class="student-notice-detail"><p>${escapeHtml(item.message)}</p><small>${notificationTime(item)}</small></div>
+        </details></li>`).join('')}</ul>`
+      : `<p class="student-inbox-empty" role="status">${inboxStatus}</p>`}
   </section>`;
 }
 
@@ -677,12 +693,11 @@ function notifications(){
       const queueAction = { graduationPlanSubmitted:'review', exitExamRequested:'review',
         mandatoryCourseRemovalRequested:'review', financialReversalRequested:'process' }[item.type];
       const stockMessage = subject && queueAction && item.message === `Student ${subject.studentId} has a request for you to ${queueAction}.`;
-      const time = new Date(item.createdAt).toLocaleString('en-GB', {dateStyle:'medium', timeStyle:'short', timeZone:'Africa/Cairo'});
       const emailStatus = item.channels?.includes('email') && item.deliveryStatus;
       return `<article class="inbox-item ${item.isRead ? '' : 'unread'}">
         ${subject ? avatar(subject.fullName) : `<span class="notice-symbol" data-kind="${escapeHtml(item.type)}" aria-hidden="true"></span>`}
         <div class="inbox-text">${subject ? `<span class="notice-person">${escapeHtml(subject.fullName)}${subject.studentId ? ` <small>${escapeHtml(subject.studentId)}</small>` : ''}</span>` : ''}
-          <h3>${escapeHtml(item.title)}</h3>${stockMessage ? '' : `<p>${escapeHtml(item.message)}</p>`}<time datetime="${escapeHtml(item.createdAt)}">${escapeHtml(time)}</time></div>
+          <h3>${escapeHtml(item.title)}</h3>${stockMessage ? '' : `<p>${escapeHtml(item.message)}</p>`}${notificationTime(item)}</div>
         <div class="notification-meta">
           ${emailStatus ? `<small>Email: ${escapeHtml(emailStatus)}</small>` : ''}
           ${item.isRead ? '<small>Read</small>' : button('Mark as read','read-one','btn desk-action', `data-notification="${escapeHtml(item._id)}"`)}
@@ -700,7 +715,10 @@ async function markPortalNotifications(ids, control) {
     const updated = new Map(results.filter(result => result.status === 'fulfilled')
       .map(({value}) => [value.notification._id, value.notification]));
     state.data = state.data.map(entry => updated.has(entry._id) ? { ...entry, ...updated.get(entry._id) } : entry);
-    if (page !== 'notifications') return;
+    if (page !== 'notifications') {
+      updateNotificationBadge();
+      return;
+    }
     if (results.some(result => result.status === 'rejected')) {
       render();
       toast('Some notifications could not be marked as read.', 'error');
@@ -1041,7 +1059,7 @@ function graduationPlans() {
   if (!allowedRoles.includes(role)) {
     return head(navigationLabel(page)) + '<p>This page is unavailable for your role.</p>';
   }
-  return portalService('graduation-plans');
+  return (role === 'advisingStudent' ? head('My graduation', 'See your accepted graduation plans and exit-exam decisions.') : '') + portalService('graduation-plans');
 }
 
 const renderers = {
@@ -1062,6 +1080,22 @@ function themeControl(){
   return button('<span class="' + (!lab.dark ? 'theme-light' : '') + '">' + icon('sun') + '</span><span class="' + (lab.dark ? 'theme-light' : '') + '">' + icon('moon') + '</span>',
     'toggle-theme', 'theme-toggle', 'aria-label="Switch to ' + (lab.dark ? 'light' : 'dark') + ' mode"');
 }
+function notificationBadge() {
+  const token = localStorage.getItem(workspaceSessionKey);
+  const count = token && liveInbox?.token === token ? (liveInbox.data || []).filter(item => !item.isRead).length : 0;
+  const label = count ? `Notifications, ${count} unread` : 'Notifications';
+  const markup = count ? `<span class="notification-count" aria-hidden="true">${count}</span>` : '';
+  return {label, markup};
+}
+function updateNotificationBadge() {
+  const bell = app.querySelector('[data-notification-bell]');
+  if (!bell) return;
+  const {label, markup} = notificationBadge();
+  bell.setAttribute('aria-label', label);
+  bell.title = label;
+  bell.querySelector('.notification-count')?.remove();
+  if (markup) bell.insertAdjacentHTML('beforeend', markup);
+}
 function accountControls(){
   const name = localStorage.getItem(workspaceSessionKey)
     ? sessionStorage.getItem(workspaceAccountNameKey) || roleNames[role]
@@ -1071,7 +1105,8 @@ function accountControls(){
     <path class="bell-clapper" d="M12 22q2 2 4-.2"/>
     <path class="bell-echo" pathLength="1" d="M4.4 7.8Q2.5 10 2.7 12.4M23.6 7.3q2.1 2.3 2 4.4"/>
   </svg>`;
-  return `<a class="icon-button" href="${href('notifications')}" data-page="notifications" aria-label="Notifications" title="Notifications">${bell}${notificationEntries().some(item=>!item.isRead) ? '<span class="notification-dot"></span>' : ''}</a>
+  const {label, markup} = notificationBadge();
+  return `<a class="icon-button" href="${href('notifications')}" data-page="notifications" data-notification-bell aria-label="${label}" title="${label}">${bell}${markup}</a>
     <button type="button" class="account-button" popovertarget="account-menu" aria-label="Account menu for ${escapeHtml(name)}">${avatar(name)}<span>${escapeHtml(name)}</span>${icon('down')}</button>
     <div id="account-menu" popover><div class="account-caption">${roleNames[role]}</div>${link('profile','My profile')}${button('Sign out','sign-out','sign-out')}</div>`;
 }
@@ -1494,7 +1529,7 @@ function action(name,el){
     case 'retry-schedule-review': coordinatorSchedules = undefined; render(); break;
     case 'mobile-menu': {
       const sections = [...groups(), ['Account', ['profile']]];
-      const menu = sections.map(([name,items])=>`<section><h3>${name}</h3><ul>${items.map(id=>
+      const menu = sections.map(([name,items])=>`<section>${name ? `<h3>${name}</h3>` : ''}<ul>${items.map(id=>
         `<li><a href="${href(id)}" data-page="${id}"${id===page?' aria-current="page"':''}>${navigationLabel(id)}</a></li>`
       ).join('')}</ul></section>`).join('');
       const semester = role === 'coordinator' ? `<p class="menu-semester">Current semester · <span data-sidebar-term>${escapeHtml(sidebarTerm())}</span></p>` : '';

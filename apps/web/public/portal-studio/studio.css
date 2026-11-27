@@ -45,6 +45,26 @@ html[data-theme=dark] .portal-studio {--primary-ink:#192236}
   height:calc(100svh - 47px);top:0;padding:22px 13px;
   border-right:1px solid var(--line);
 }
+.portal-studio :is(.sidebar, .sidebar nav) {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+.portal-studio :is(.sidebar, .sidebar nav):is(:hover, :focus-within) {
+  scrollbar-color: color-mix(in srgb, var(--muted) 60%, var(--sidebar)) transparent;
+}
+@media (forced-colors: active) {
+  .portal-studio :is(.sidebar, .sidebar nav) { scrollbar-color: auto; }
+}
+.nav-home {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding-block: 2px 6px;
+  background: var(--sidebar);
+}
+.nav-home ul { margin: 0; padding: 0; list-style: none; }
+.portal-studio .nav-home .navlink { justify-content: flex-start; gap: 9px; padding-inline: 10px; color: var(--ink); }
+.nav-home .navlink .icon { width: 15px; height: 15px; }
 .portal-studio .brand{margin:0 9px 23px}
 .portal-studio .brand .wordmark{font:700 27px/1 'Tiempos Headline',Georgia,serif;letter-spacing:-.045em}
 .portal-studio .brand>span{font-size:12px;margin-top:8px}
@@ -935,11 +955,12 @@ html[data-theme=light] [data-workspace=claude-study] .work-module :is(.section-h
 .module-activity [data-portrait="3"]{--portrait-accent:#a28bf9}
 .module-activity [data-portrait="10"]{--portrait-accent:#4cc99d}
 @media(min-width:811px){
-  .portal-studio[data-workspace=claude-study]:not(.auth-screen){height:100dvh;display:grid;grid-template-rows:auto minmax(0,1fr)}
-  [data-workspace=claude-study] #app{min-height:0}
-  .portal-studio[data-workspace=claude-study] .shell{height:100%;min-height:0}
-  .portal-studio[data-workspace=claude-study] .sidebar{position:static;height:auto;max-height:none;min-height:0;overflow:auto;overscroll-behavior:contain}
-  .portal-studio[data-workspace=claude-study] .workspace{overflow:auto;min-height:0}
+  .portal-studio[data-workspace=claude-study] .shell { min-height:100dvh; }
+  .portal-studio[data-workspace=claude-study] .sidebar {
+    position:sticky;align-self:start;top:0;height:100dvh;max-height:none;min-height:0;
+    overflow:auto;overscroll-behavior:contain;
+  }
+  .portal-studio[data-workspace=claude-study] .workspace { overflow-x:clip; }
 }
 
 .study-book{width:34px;height:34px;flex:none;stroke-linejoin:round;stroke-linecap:round}

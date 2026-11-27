@@ -3,12 +3,16 @@ import { useEffect, useState } from "react";
 import { api, explainApiError } from "../api.js";
 import { StudentIdentity } from "./CoordinatorRecords.jsx";
 import FilterDisclosure from "./FilterDisclosure.jsx";
+import OfferingCourseIcon from "./OfferingCourseIcon.jsx";
 import { GraduationEmpty, WorkspaceHeader } from "./WorkspaceUI.jsx";
 
 const root = "/api/graduation";
 const emptyFilters = { search: "", status: "", advisor: "", from: "", to: "" };
 const labels = { pending: "Pending", approved: "Approved", rejected: "Rejected", submitted: "Awaiting review", accepted: "Accepted" };
 const dateLabel = (value) => value ? new Date(value).toLocaleString() : "—";
+const studentDate = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "Africa/Cairo" });
+const orderedTerms = (plan) => [...plan.termPlans].sort((a, b) => (a.term?.termStart ?? "").localeCompare(b.term?.termStart ?? ""));
+const creditLabel = (hours) => `${hours} ${hours === 1 ? "credit" : "credits"}`;
 
 function Status({ status }) {
   const tone = ["approved", "accepted"].includes(status) ? "good" : status === "rejected" ? "danger" : "warning";
@@ -19,7 +23,7 @@ function PlanCourses({ plan }) {
   return <>
     {plan.termPlans.length > 0 && <div className="table-scroll"><table>
       <thead><tr><th>Term</th><th>Courses</th><th>Credit hours</th></tr></thead>
-      <tbody>{[...plan.termPlans].sort((a, b) => (a.term?.termStart ?? "").localeCompare(b.term?.termStart ?? ""))
+      <tbody>{orderedTerms(plan)
         .map(({ term, courses }, index) => <tr key={term?._id ?? index}>
           <td>{term ? termLabel(term) : "Archived term"}</td>
           <td>{courses.map((course) => `${course.code} · ${course.name}`).join(", ") || "—"}</td>
@@ -232,7 +236,32 @@ export default function GraduationReview({ token, role }) {
   </div>;
 }
 
-export function StudentGraduation({ token }) {
+function GraduationResponse({ note }) {
+  return note && <div className="graduation-response">
+    <p className="graduation-meta">Coordinator response</p>
+    <p>{note}</p>
+  </div>;
+}
+
+function StudentPlanTerms({ plan }) {
+  return orderedTerms(plan).map(({ term, courses }, index) => (
+    <div className="graduation-term" key={term?._id ?? index}>
+      <div className="graduation-term-heading">
+        <h4>{term ? termLabel(term) : "Archived term"}</h4>
+        <span>{creditLabel(courses.reduce((sum, course) => sum + course.creditHours, 0))} total</span>
+      </div>
+      {courses.length ? <ul className="graduation-course-list" role="list">
+        {courses.map((course) => <li key={course._id ?? course.code}>
+          <OfferingCourseIcon code={course.code} />
+          <div><strong>{course.name}</strong><span className="graduation-meta">{course.code}</span></div>
+          <span className="graduation-course-credits">{creditLabel(course.creditHours)}</span>
+        </li>)}
+      </ul> : <p className="graduation-meta">No courses listed for this term.</p>}
+    </div>
+  ));
+}
+
+export function StudentGraduation({ token, embedded = false }) {
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
   const [refresh, setRefresh] = useState(0);
@@ -243,31 +272,58 @@ export function StudentGraduation({ token }) {
     });
     return () => controller.abort();
   }, [token, refresh]);
-  return <div className="page-stack">
-    <div className="page-title-row">
-      <h1>My graduation</h1>
-      <button className="outline-button" onClick={() => { setResult(null); setError(""); setRefresh((value) => value + 1); }}>Refresh</button>
-    </div>
+  const refreshButton = <button type="button" className="outline-button" disabled={!result && !error} onClick={() => {
+    setResult(null);
+    setError("");
+    setRefresh((value) => value + 1);
+  }}>Refresh</button>;
+  return <div className="page-stack student-graduation">
+    {!embedded && <WorkspaceHeader title="My graduation" description="See your accepted graduation plans and exit-exam decisions." />}
     {error && <div className="feedback error" role="alert">{error}</div>}
-    {!result && !error && <p role="status">Loading…</p>}
-    {result && <>
-      <section className="panel">
-        <h2>Accepted graduation plans</h2>
-        {!result.plans.length && <p>No graduation plan has been accepted yet.</p>}
-        {result.plans.map((plan) => <article key={plan._id}>
-          <h3>Accepted {dateLabel(plan.decidedAt)}</h3>
-          <PlanCourses plan={plan} />
-        </article>)}
-      </section>
-      <section className="panel">
-        <h2>Exit-exam requests</h2>
-        {!result.exams.length && <p>No exit exam has been requested for you.</p>}
-        {result.exams.map((exam) => <article key={exam._id}>
-          <h3>{exam.course ? `${exam.course.code} · ${exam.course.name}` : "Archived course"}</h3>
-          <p><Status status={exam.status} /> · Requested {dateLabel(exam.createdAt)}</p>
-          {exam.responseNote && <p><strong>Coordinator response</strong> {exam.responseNote}</p>}
-        </article>)}
-      </section>
-    </>}
+    <section className="panel" aria-labelledby="accepted-plans-heading">
+      <div className="graduation-section-heading">
+        <h2 id="accepted-plans-heading">Accepted graduation plans</h2>
+        {refreshButton}
+      </div>
+      {!result && !error && <p role="status">Loading graduation records…</p>}
+      {result && (result.plans.length ? result.plans.map((plan) => (
+        <article className="graduation-record" key={plan._id}>
+          <header className="graduation-record-heading">
+            <div>
+              <h3>Graduation plan</h3>
+              {plan.decidedAt && <p className="graduation-meta">Accepted on <time dateTime={plan.decidedAt}>{studentDate.format(new Date(plan.decidedAt))}</time></p>}
+            </div>
+            <Status status="accepted" />
+          </header>
+          <StudentPlanTerms plan={plan} />
+          {plan.exitExamRequest && <div className="graduation-exam-course">
+            {plan.exitExamRequest.course && <OfferingCourseIcon code={plan.exitExamRequest.course.code} />}
+            <p className="graduation-meta">Approved exit exam · {plan.exitExamRequest.course?.code ?? "Archived course"}</p>
+          </div>}
+          <GraduationResponse note={plan.responseNote} />
+        </article>
+      )) : <p className="graduation-record-empty">No graduation plan has been accepted yet.</p>)}
+    </section>
+    {result && <section className="panel" aria-labelledby="exit-exams-heading">
+      <div className="graduation-section-heading"><h2 id="exit-exams-heading">Exit-exam requests</h2></div>
+      {result.exams.length ? result.exams.map((exam) => (
+        <article className="graduation-record" key={exam._id}>
+          <header className="graduation-record-heading">
+            <div className="graduation-exam-course">
+              {exam.course && <OfferingCourseIcon code={exam.course.code} />}
+              <div>
+                <h3>{exam.course?.name ?? "Archived course"}</h3>
+                {(exam.course?.code || exam.createdAt) && <p className="graduation-meta">
+                  {exam.course?.code}{exam.course?.code && exam.createdAt && " · "}
+                  {exam.createdAt && <>Requested on <time dateTime={exam.createdAt}>{studentDate.format(new Date(exam.createdAt))}</time></>}
+                </p>}
+              </div>
+            </div>
+            <Status status={exam.status} />
+          </header>
+          <GraduationResponse note={exam.responseNote} />
+        </article>
+      )) : <p className="graduation-record-empty">No exit exam has been requested for you.</p>}
+    </section>}
   </div>;
 }

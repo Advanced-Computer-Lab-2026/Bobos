@@ -38,6 +38,65 @@
   box-shadow: none;
 }
 .academic-services-embedded .panel + .panel { padding-top: 24px; border-top: 1px solid var(--line); }
+.student-graduation .panel { display: grid; gap: 14px; }
+.graduation-section-heading,
+.graduation-record-heading,
+.graduation-term-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 16px;
+}
+.student-graduation :is(h2, h3, h4, p) { margin: 0; }
+.student-graduation .graduation-record {
+  min-width: 0;
+  display: grid;
+  gap: 16px;
+  padding: clamp(14px, 2.3vw, 24px);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.graduation-record-heading { align-items: flex-start; }
+.graduation-record-heading > div { flex: 1 1 150px; min-width: 0; }
+.graduation-record h3 { font: 600 17px/1.4 Styrene, system-ui, sans-serif; overflow-wrap: anywhere; }
+.graduation-record-heading p { margin-top: 4px; }
+.graduation-meta, .graduation-record-empty { color: var(--muted); }
+.graduation-meta { font-size: 12px; }
+.graduation-record-empty { padding-block: 7px; }
+.graduation-term { min-width: 0; }
+.graduation-term-heading {
+  padding-block: 10px;
+  border-block: 1px solid var(--line);
+}
+.graduation-term-heading h4, .graduation-term-heading span { font-size: 13px; font-weight: 550; }
+.graduation-term-heading span, .graduation-course-credits { color: var(--muted); font-variant-numeric: tabular-nums; }
+.graduation-term > .graduation-meta { padding-block-start: 10px; }
+.graduation-course-list { margin: 0; padding: 0; list-style: none; }
+.graduation-course-list li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding-block: 9px;
+}
+.graduation-course-list li + li { border-top: 1px solid var(--line); }
+.graduation-course-list :is(strong, .graduation-meta) { display: block; overflow-wrap: anywhere; }
+.graduation-course-list strong { font-weight: 550; }
+.graduation-course-credits { font-size: 12px; white-space: nowrap; }
+.graduation-exam-course { display: flex; align-items: center; gap: 10px; }
+.graduation-exam-course > div { min-width: 0; }
+:is(.graduation-course-list, .graduation-exam-course) .offering-course-emblem { width: 34px; height: 34px; }
+:is(.graduation-course-list, .graduation-exam-course) .offering-course-emblem :is(img, svg) { width: 25px; height: 25px; }
+.graduation-response {
+  display: grid;
+  gap: 4px;
+  padding-block: 10px 0;
+  border-top: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+.graduation-response > .graduation-meta { font-weight: 550; }
 .academic-services-embedded :is(.results-heading, .panel-heading) { margin-bottom: 18px; }
 .academic-services-embedded :is(h2, .panel h2) {
   color: var(--ink);

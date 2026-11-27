@@ -53,7 +53,8 @@ export function mount(host) {
   surface.dataset.service = serviceParams.get("screen") || "";
   const polishedServices = ["advising", "preferences", "graduation-plans", "graduation-review", "my-submitted-plans", "slot-changes", "offerings"];
   surface.classList.toggle("portal-advising-services", polishedServices.includes(serviceParams.get("screen")));
-  if (serviceParams.get("section") === "academic-services" || serviceParams.get("screen") === "graduation-plans") {
+  if (serviceParams.get("section") === "academic-services"
+    || (surface.dataset.service === "graduation-plans" && surface.dataset.portalRole !== "advisingStudent")) {
     const artHost = document.createElement("div");
     artHost.innerHTML = '<div class="page-head"><div></div></div>';
     const artScreen = { directory: "profile", "financial-records": "pending-work", advising: "group-assignments", preferences: "template-detail", "graduation-plans": "templates", "slot-changes": "student-schedules" }[serviceParams.get("screen")] || serviceParams.get("screen");
