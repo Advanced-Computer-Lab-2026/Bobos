@@ -55,7 +55,12 @@ body.portal-studio[data-portal-role=coordinator][data-workspace=claude-study] .d
     .draft-file:is(:hover,:focus-visible) .folder-cover { animation-name: coordinator-folder-hinge,folder-contour; }
     .draft-file:is(:hover,:focus-visible) .folder-sheet { animation-name: coordinator-sheet-lift; }
   }
-  .binder-body { --binder-plane: none; margin-inline: 2%; }
+  /* Keep the coordinator binder face-on throughout the original page turn. */
+  .teaching-pad[data-concertina=true][data-face-on] .binder-body {
+    --binder-plane: none;
+    margin: 24px 5% 28px 3%;
+    transform: var(--binder-plane);
+  }
   .review-placeholder {
     display: flex; align-items: center; gap: 14px; margin: 8px 0; color: var(--muted);
   }

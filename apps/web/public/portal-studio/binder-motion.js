@@ -76,51 +76,15 @@ function angleAt(p,q,u){
  let w=clamp((q-.3)/.7,0,1);w=w*w*(3-2*w);
  return rad(a+(b-a)*f+(p.twist*u*u+p.cup*Math.sin(Math.PI*u)**2)*w);
 }
-function makeSheet(p,faceOn=false){
- const v=[];
- // Advance the crease from the free edge toward the punched margin. The
- // right corner turns first, and the back rolls over the printed face.
- const travel=clamp(p.t+.0006*Math.max(0,p.cup)*(1-p.t)**4,0,1);
- const lift=Math.sin(Math.PI*travel);
- // The lower corner curls while the holes stay seated. Travel around the
- // rings starts only when the crease reaches the binding.
- const atRing=clamp((travel-.72)/.28,0,1);
- const bindingTravel=faceOn ? atRing*atRing*(3-2*atRing) : p.t;
- const anchor=ringPoint(bindingTravel),g=rad(boundAngle(bindingTravel));
+function makeSheet(p){
+ const v=[],anchor=ringPoint(p.t),g=rad(boundAngle(p.t));
  for(let i=0;i<=NX;i++){
   const u=i/NX,x=(u-.5)*W;let y=anchor[1],z=anchor[2],old=0;
-  const radius=4+23*lift;
-  const crease=L*(1-travel)-L*.18*lift*u*u;
   for(let j=0;j<NS;j++){
    const s=S[j];let yy,zz;
    if(s<=0){yy=anchor[1]+s*Math.cos(g);zz=anchor[2]+s*Math.sin(g);}
-   else if(faceOn){
-    const flatLength=Math.max(0,crease);
-    const distance=Math.max(0,s-flatLength);
-    const angle=Math.min(Math.PI,distance/radius);
-    const reverse=Math.max(0,distance-radius*Math.PI);
-    let run=Math.min(s,flatLength)+radius*Math.sin(angle)-reverse;
-    // Once the free edge passes the rings, the turned paper settles behind
-    // the pad. A small curved lip stays visible until the last pose.
-    const lip=1+lift*R*(.5+u*.8);
-    if(run<0) run=lip*Math.expm1(run/lip);
-    yy=anchor[1]+run;
-    // Flatten the returning curl near the wire so it tucks under the loops.
-    const clearance=clamp((run+HOLE)/(2*HOLE),0,1);
-    zz=anchor[2]+radius*(1-Math.cos(angle))*clearance;
-   }else{
-    const a=angleAt(p,((s+old)/2)/L,u),ds=s-old;
-    y+=ds*Math.cos(a);z+=ds*Math.sin(a);yy=y;zz=z;old=s;
-   }
-   let xx=x;
-   if(faceOn){
-    // Register the moving leaf to the front-facing page while its holes
-    // follow the same wires used to draw the stationary binder.
-    const dz=zz-anchor[2];
-    xx-=dz*Math.tan(YAW);
-    yy+=dz*Math.tan(PITCH)/Math.cos(YAW);
-   }
-   v.push([xx,yy,zz,u,(s+HOLE)/H]);
+   else{const a=angleAt(p,((s+old)/2)/L,u),ds=s-old;y+=ds*Math.cos(a);z+=ds*Math.sin(a);yy=y;zz=z;old=s;}
+   v.push([x,yy,zz,u,(s+HOLE)/H]);
   }
  }
  const perimeter=[];
@@ -383,18 +347,16 @@ function planar(sheet){
 }
 const flat=planar(makeSheet(poses['center-lift'][0]));
 const behind=planar(makeSheet(poses['center-lift'].at(-1)));
-const meshes=new WeakMap(),faceOnMeshes=new WeakMap();
-function sheetFor(pose,faceOn){
-  const cache=faceOn ? faceOnMeshes : meshes;
-  if(!cache.has(pose))cache.set(pose,makeSheet(pose,faceOn));
-  return cache.get(pose);
+const meshes=new WeakMap();
+function sheetFor(pose){
+  if(!meshes.has(pose))meshes.set(pose,makeSheet(pose));
+  return meshes.get(pose);
 }
 
 function mount(stack){
   if(!stack||scenes.has(stack))return;
   const pad=stack.closest('[data-concertina=true]');
   if(!pad)return;
-  const faceOn=pad.hasAttribute('data-face-on');
   const canvas=document.createElement('canvas');
   canvas.className='binder-scene';
   canvas.setAttribute('aria-hidden','true');
@@ -417,7 +379,7 @@ function mount(stack){
     raster.leaf(behind,resting.ink,0);
     raster.leaf(flat,resting.ink,0);
     for(const turn of [...turns].sort((a,b)=>b.month-a.month)){
-      if(!first&&turn.print.ink)raster.leaf(sheetFor(turn.frames[turn.index],faceOn),turn.print.ink,turn.index%3);
+      if(!first&&turn.print.ink)raster.leaf(sheetFor(turn.frames[turn.index]),turn.print.ink,turn.index%3);
     }
     raster.ctx.putImageData(raster.image,0,0);
     stack.classList.add('binder-ready');

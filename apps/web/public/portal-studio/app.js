@@ -309,7 +309,9 @@ function inkNumber(value){
   const digits=String(value);
   return `<svg class="ink-number" role="img" aria-label="${digits}" viewBox="0 0 ${digits.length*12} 18">${Array.from(digits,(n,i)=>`<path transform="translate(${i*12} 0)" d="${numeralStrokes[n]}"/>`).join('')}</svg>`;
 }
+let calendarRenderSerial = 0;
 function calendarPage() {
+  const renderSerial = ++calendarRenderSerial;
   const {today,month,deadlines} = calendarDates();
   const lastDay = new Date(month.getFullYear(),month.getMonth()+1,0).getDate();
   const monthName=month.toLocaleString('en-GB',{month:'long'});
@@ -321,8 +323,9 @@ function calendarPage() {
     const current = date.toDateString()===today.toDateString() ? ' aria-current="date"' : '';
     if (!dayEvents.length) return `<span class="folio-date"${current}><b>${inkNumber(day)}</b></span>`;
     const when=formatCalendarDay(dayEvents[0].iso,{weekday:'long',day:'numeric',month:'long'});
+    const noteId = `deadline-${renderSerial}-${day}`;
     const entries=dayEvents.map(event=>`<span class="deadline-entry"><strong>${event.label}</strong><small>${escapeHtml(event.term)}</small></span>`).join('');
-    return `<button type="button" class="folio-date marked" ${current} data-deadline aria-label="${when}, ${escapeHtml(dayEvents.map(event=>event.label+', '+event.term).join(', '))}" aria-pressed="false"><b>${inkNumber(day)}</b>${deadlineRing}<span popover="manual" class="deadline-note" aria-hidden="true"><span class="deadline-slip" data-milestone="${dayEvents[0].short}"><span class="deadline-tape"></span><time datetime="${dayEvents[0].iso}"><em>${day}<svg aria-hidden="true" viewBox="0 0 51 43"><path d="M35 5C21 1 6 8 5 22c-2 10 8 16 23 15 12-1 19-8 18-18C45 10 39 7 29 6"/></svg></em><span>${formatCalendarDay(dayEvents[0].iso,{weekday:'short'})}<br>${monthName}</span></time>${entries}</span></span></button>`;
+    return `<button type="button" class="folio-date marked" ${current} data-deadline aria-controls="${noteId}" aria-expanded="false" aria-label="${when}, ${escapeHtml(dayEvents.map(event=>event.label+', '+event.term).join(', '))}" aria-pressed="false"><b>${inkNumber(day)}</b>${deadlineRing}<span id="${noteId}" popover="manual" class="deadline-note" role="note" aria-label="Deadline details" aria-hidden="true"><span class="deadline-slip" data-milestone="${dayEvents[0].short}"><span class="deadline-tape"></span><time datetime="${dayEvents[0].iso}"><em>${day}<svg aria-hidden="true" viewBox="0 0 51 43"><path d="M35 5C21 1 6 8 5 22c-2 10 8 16 23 15 12-1 19-8 18-18C45 10 39 7 29 6"/></svg></em><span>${formatCalendarDay(dayEvents[0].iso,{weekday:'short'})}<br>${monthName}</span></time>${entries}</span></span></button>`;
 
   }).join('');
   return `<div class="folio-inner"><div class="folio-month"><strong><span class="sr-only">${monthName}</span>${inkMonth(monthName)}</strong><small>${month.getFullYear()}</small>${seasonDrawing(month.getMonth())}</div><div class="folio-days">${['Su','Mo','Tu','We','Th','Fr','Sa'].map(d=>`<small>${d}</small>`).join('')}${cells}</div></div>`;
@@ -334,11 +337,12 @@ function deskCalendar() {
     style="--season-sheet:${seasonalPaper[month][0]};--season-back:${seasonalPaper[month][1]}">
     <header class="calendar-heading"><h2 id="academic-calendar">Academic calendar</h2>${studentDashboard()?link('calendar-sync',icon('calendar')+'Calendar sync','btn calendar-sync-link'):''}</header>
     <div class="binder-body"><div class="calendar-feature">${binderRow('feet')}</div>
-      <div class="folio-stack">${binderRow('wires')}<div class="folio-paper" aria-live="polite">${calendarPage()}</div></div>
+      <div class="folio-stack">${binderRow('wires')}<div class="folio-paper">${calendarPage()}</div></div>
     </div>
     <div class="folio-nav">${studentDashboard()?'':`<button type="button" class="folio-today" data-calendar-nav="today" aria-label="Go to current month">Today · ${calendarDates().today.toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</button>`}
       <button type="button" data-calendar-nav="-1" aria-label="Previous month">Previous</button><button type="button" data-calendar-nav="1" aria-label="Next month">Next</button>
-    </div><div class="folio-agenda" aria-live="polite">${calendarAgenda()}</div>
+    </div><div class="folio-agenda">${calendarAgenda()}</div>
+    <p class="sr-only calendar-month-status" role="status" aria-live="polite" aria-atomic="true">${calendarDates().month.toLocaleDateString('en-GB',{month:'long',year:'numeric'})}</p>
   </section>`;
 }
 function workQueue(tasks) {
@@ -1552,8 +1556,12 @@ function closeDeadline(){
   clearTimeout(noteTimer);
   if(!activeDeadline)return;
   activeDeadline.closest('.folio-stack')?.querySelector('.deadline-shadow')?.remove();
-  activeDeadline.querySelector('.deadline-note')?.hidePopover();
+  const note = activeDeadline.querySelector('.deadline-note');
+  if (note?.matches(':popover-open')) note.hidePopover();
+  note?.setAttribute('aria-hidden','true');
   activeDeadline.setAttribute('aria-pressed','false');
+  activeDeadline.setAttribute('aria-expanded','false');
+  activeDeadline.removeAttribute('aria-describedby');
   activeDeadline=null;
 }
 function placeDeadline(){
@@ -1591,7 +1599,11 @@ function openDeadline(mark){
   shadow.className='deadline-shadow';
   shadow.setAttribute('aria-hidden','true');
   mark.closest('.folio-stack').append(shadow);
-  mark.querySelector('.deadline-note').showPopover();
+  const note = mark.querySelector('.deadline-note');
+  note.setAttribute('aria-hidden','false');
+  note.showPopover();
+  mark.setAttribute('aria-expanded','true');
+  mark.setAttribute('aria-describedby',note.id);
   placeDeadline();
 }
 window.addEventListener('scroll',placeDeadline,{capture:true,passive:true});
@@ -1631,23 +1643,28 @@ document.addEventListener('click',event=>{
   const control = event.target.closest('[data-calendar-nav]');
   if (!control) return;
   const previous = calendarMonth;
-  calendarMonth = control.dataset.calendarNav==='today' ? 0 : previous+Number(control.dataset.calendarNav);
-  if(previous===calendarMonth) return;
+  calendarMonth = control.dataset.calendarNav === 'today' ? 0 : previous + Number(control.dataset.calendarNav);
+  if (calendarMonth === previous) return;
   const calendar = control.closest('.desk-calendar');
   const paper = calendar.querySelector('.folio-paper:not(.binder-waiting-sheet)');
   const scene = binderMotion.scene(paper.parentElement);
-  tintCalendar(calendar,calendarDates().month.getMonth());
+  const { month } = calendarDates();
+  tintCalendar(calendar, month.getMonth());
   calendar.querySelector('.folio-agenda').innerHTML = calendarAgenda();
+  calendar.querySelector('.calendar-month-status').textContent = month.toLocaleDateString('en-GB', {month:'long',year:'numeric'});
   if (!scene) {
     paper.innerHTML = calendarPage();
     return;
   }
-  // Keep the outgoing drawing mounted so its ink animation retains its clock.
+  // Keep the navigation and the outgoing drawing's animation clock in place.
   const next = paper.cloneNode(false);
+  next.removeAttribute('inert');
+  next.removeAttribute('aria-hidden');
   next.innerHTML = calendarPage();
   paper.before(next);
-  scene.turn(next,previous,calendarMonth);
+  scene.turn(next, previous, calendarMonth);
 });
+
 function selectView(id) {
   if (tab === id) return;
   tab = id;
