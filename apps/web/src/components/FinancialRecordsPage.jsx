@@ -16,13 +16,10 @@ const STATUS_OPTIONS = [
   { value: "PENDING", label: "PENDING" },
   { value: "REFUNDED", label: "REFUNDED" },
   { value: "FAILED", label: "FAILED" },
+  { value: "CANCELLED", label: "CANCELLED" },
 ];
 
-const TERM_OPTIONS = [
-  { value: "", label: "All terms" },
-  { value: "W25", label: "W25" },
-  { value: "S26", label: "S26" },
-];
+const SETTLEMENT_LABELS = { wallet: "Wallet", gateway: "Gateway", deferred: "Next installment" };
 
 function formatDate(dateString) {
   if (!dateString) return "—";
@@ -71,6 +68,10 @@ export default function FinancialRecordsPage({ token, role, notify }) {
   const [type, setType] = useState("");
   const [status, setStatus] = useState("");
   const [term, setTerm] = useState("");
+  const [terms, setTerms] = useState([]);
+  const [settlementOption, setSettlementOption] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [page, setPage] = useState(1);
   const limit = 10;
 
@@ -90,8 +91,25 @@ export default function FinancialRecordsPage({ token, role, notify }) {
   const [refundReason, setRefundReason] = useState("");
   const [refundSubmitting, setRefundSubmitting] = useState(false);
   const [refundError, setRefundError] = useState("");
+  const cancellingCharge = refundTarget?.availableReversal === "cancelDeferredCharge";
 
   const [exporting, setExporting] = useState(false);
+
+  const filterQuery = new URLSearchParams(Object.entries({
+    type, status, term, settlementOption, startDate, endDate,
+  }).filter(([, value]) => value)).toString();
+  const hasFilters = Boolean(search || filterQuery);
+  const invalidDateRange = Boolean(startDate && endDate && startDate > endDate);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    api("/api/academic-terms/academicTerm", { token, signal: controller.signal })
+      .then(data => setTerms(Array.isArray(data) ? data : []))
+      .catch((error) => {
+        if (!controller.signal.aborted) notify?.("error", explainApiError(error, "Academic terms"));
+      });
+    return () => controller.abort();
+  }, [token, notify]);
 
   // Debounce search input
   const lastSearchRef = useRef("");
@@ -130,23 +148,30 @@ export default function FinancialRecordsPage({ token, role, notify }) {
     setType("");
     setStatus("");
     setTerm("");
+    setSettlementOption("");
+    setStartDate("");
+    setEndDate("");
     setPage(1);
   };
 
   // Fetch paginated financial records
   const loadRecords = useCallback(async (signal) => {
+    if (invalidDateRange) {
+      setError("The end date must be on or after the start date.");
+      setRecords([]);
+      setTotal(0);
+      setTotalPages(1);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError("");
 
-    const params = new URLSearchParams({
-      page: String(page),
-      limit: String(limit),
-    });
+    const params = new URLSearchParams(filterQuery);
+    params.set("page", String(page));
+    params.set("limit", String(limit));
 
     if (debouncedSearch) params.set("search", debouncedSearch);
-    if (type) params.set("type", type);
-    if (status) params.set("status", status);
-    if (term) params.set("term", term);
 
     try {
       const data = await api(`/api/finance/records?${params.toString()}`, { token, signal });
@@ -162,7 +187,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
         setLoading(false);
       }
     }
-  }, [debouncedSearch, type, status, term, page, token]);
+  }, [debouncedSearch, filterQuery, invalidDateRange, page, token]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -198,7 +223,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
     if (!refundTarget) return;
 
     if (!refundReason.trim()) {
-      setRefundError("Please provide a reason for the refund.");
+      setRefundError("Please provide a reason.");
       return;
     }
 
@@ -206,7 +231,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
     setRefundError("");
 
     try {
-      await api(`/api/finance/records/${refundTarget._id}/refund`, {
+      const result = await api(`/api/finance/records/${refundTarget._id}/refund`, {
         token,
         method: "POST",
         body: {
@@ -214,11 +239,11 @@ export default function FinancialRecordsPage({ token, role, notify }) {
         },
       });
 
-      notify?.("success", `Refund for ${formatCurrency(refundTarget.amount)} processed successfully.`);
+      notify?.("success", result.message);
       setRefundTarget(null);
       loadRecords();
     } catch (err) {
-      setRefundError(explainApiError(err, "Refund processing"));
+      setRefundError(explainApiError(err, cancellingCharge ? "Charge cancellation" : "Refund processing"));
     } finally {
       setRefundSubmitting(false);
     }
@@ -227,12 +252,9 @@ export default function FinancialRecordsPage({ token, role, notify }) {
   // Export filtered dataset to CSV
   const handleExportCSV = async () => {
     setExporting(true);
-    const params = new URLSearchParams();
-    const activeSearch = search.trim() || debouncedSearch;
+    const params = new URLSearchParams(filterQuery);
+    const activeSearch = search.trim();
     if (activeSearch) params.set("search", activeSearch);
-    if (type) params.set("type", type);
-    if (status) params.set("status", status);
-    if (term) params.set("term", term);
 
     try {
       const { data: blob } = await api(`/api/finance/export?${params.toString()}`, {
@@ -257,17 +279,6 @@ export default function FinancialRecordsPage({ token, role, notify }) {
     }
   };
 
-  const isEligibleForRefund = (r) => {
-    if (!r) return false;
-    const s = String(r.status || "").toUpperCase();
-    const kind = String(r.kind || "").toUpperCase();
-    const txType = String(r.type || "").toUpperCase();
-    if (["REFUND", "DEFERREDCHARGECANCELLATION"].includes(kind) || txType === "REFUND") {
-      return false;
-    }
-    return (s === "COMPLETED" || s === "SUCCEEDED") && !r.refundedAt;
-  };
-
   return (
     <div className="page-stack workspace-page finance-page">
       {/* Title & Top Export Action */}
@@ -282,7 +293,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
           className="outline-button"
           type="button"
           onClick={handleExportCSV}
-          disabled={exporting || loading}
+          disabled={exporting || loading || invalidDateRange}
           title="Download filtered records as CSV"
         >
           {exporting ? "Exporting CSV…" : "Export CSV"}
@@ -307,7 +318,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
               onChange={(e) => setSearch(e.target.value)}
               name="financial-search"
               autoComplete="off"
-              placeholder="Search by Student ID, Student Name, Receipt ID, or Reference..."
+              placeholder="Student ID, request ID or reference"
             />
           </label>
 
@@ -334,14 +345,33 @@ export default function FinancialRecordsPage({ token, role, notify }) {
           </label>
 
           <label className="field">
+            <span>Settlement option</span>
+            <select value={settlementOption} onChange={(e) => { setSettlementOption(e.target.value); setPage(1); }}>
+              <option value="">All options</option>
+              {Object.entries(SETTLEMENT_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            </select>
+          </label>
+
+          <label className="field">
             <span>Academic term</span>
             <select value={term} onChange={handleTermChange}>
-              {TERM_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
+              <option value="">All terms</option>
+              {terms.map((option) => (
+                <option key={option._id} value={option.code}>
+                  {option.code}
                 </option>
               ))}
             </select>
+          </label>
+
+          <label className="field">
+            <span>From date</span>
+            <input type="date" value={startDate} onChange={(e) => { setStartDate(e.target.value); setPage(1); }} />
+          </label>
+
+          <label className="field">
+            <span>To date</span>
+            <input type="date" value={endDate} onChange={(e) => { setEndDate(e.target.value); setPage(1); }} />
           </label>
         </div>
 
@@ -379,9 +409,9 @@ export default function FinancialRecordsPage({ token, role, notify }) {
             Loading financial records…
           </div>
         ) : records.length === 0 ? (
-          <WorkspaceEmpty title={search || type || status || term ? "No matching transactions" : "No transactions yet"}
-            description={error ? "Refresh the page to try loading financial records again." : search || type || status || term ? "Try another student ID or clear your filters to see all transactions." : "Payments, deferred charges and refunds will appear here when they are recorded."}
-            action={search || type || status || term ? <button className="outline-button" type="button" onClick={handleClearFilters}>Clear filters</button> : undefined} />
+          <WorkspaceEmpty title={hasFilters ? "No matching transactions" : "No transactions yet"}
+            description={hasFilters ? "Try another search or clear the filters." : "Payments, deferred charges and refunds will appear here when they are recorded."}
+            action={hasFilters ? <button className="outline-button" type="button" onClick={handleClearFilters}>Clear filters</button> : undefined} />
         ) : (
           <>
             <div className="table-scroll">
@@ -392,6 +422,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
                     <th>Student ID</th>
                     <th>Student Name</th>
                     <th>Type</th>
+                    <th>Request / Reference</th>
                     <th>Amount</th>
                     <th>Status</th>
                     <th>Actions</th>
@@ -407,6 +438,11 @@ export default function FinancialRecordsPage({ token, role, notify }) {
                       <td>{r.student?.name || r.student?.user?.fullName || "—"}</td>
                       <td>
                         <span className="role-pill">{r.type || r.kind || "—"}</span>
+                        {r.settlementOption && <div className="secondary-text">{SETTLEMENT_LABELS[r.settlementOption]}</div>}
+                      </td>
+                      <td>
+                        {r.deferredChargeReference || r.referenceNumber || "—"}
+                        {r.extraHoursRequest?._id && <div className="secondary-text">Request {r.extraHoursRequest._id.slice(-8)}</div>}
                       </td>
                       <td>
                         <strong className="badge-currency">
@@ -428,14 +464,13 @@ export default function FinancialRecordsPage({ token, role, notify }) {
                           >
                             View
                           </button>
-                          {isEligibleForRefund(r) && (
+                          {r.availableReversal && (
                             <button
                               type="button"
                               className="outline-button danger-button"
                               onClick={() => openRefundModal(r)}
-                              title="Process refund for this transaction"
                             >
-                              Refund
+                              {r.availableReversal === "cancelDeferredCharge" ? "Cancel charge" : "Refund"}
                             </button>
                           )}
                         </div>
@@ -644,7 +679,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
                 )}
 
                 <div className="form-actions" style={{ marginTop: "20px" }}>
-                  {isEligibleForRefund(viewRecord) && (
+                  {viewRecord.availableReversal && (
                     <button
                       type="button"
                       className="primary-button danger-button"
@@ -654,7 +689,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
                         openRefundModal(target);
                       }}
                     >
-                      Process Refund
+                      {viewRecord.availableReversal === "cancelDeferredCharge" ? "Cancel charge" : "Process refund"}
                     </button>
                   )}
                   <button
@@ -686,7 +721,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
                 <p className="eyebrow" style={{ color: "var(--red)" }}>
                   ADMINISTRATIVE REVERSAL
                 </p>
-                <h2 id="refund-modal-title">Confirm Transaction Refund</h2>
+                <h2 id="refund-modal-title">{cancellingCharge ? "Cancel deferred charge" : "Confirm refund"}</h2>
               </div>
               <button
                 className="icon-button"
@@ -699,8 +734,9 @@ export default function FinancialRecordsPage({ token, role, notify }) {
             </div>
 
             <p className="page-description">
-              You are about to issue a refund for this completed transaction. A balancing credit entry will be
-              added to the student’s wallet, and the original record will be marked as <strong>REFUNDED</strong>.
+              {cancellingCharge
+                ? "This removes the charge from the student’s next installment and revokes the related extra hours."
+                : "This returns the payment to the student’s wallet."}
             </p>
 
             <div
@@ -718,7 +754,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
                   value={`${refundTarget.student?.name || "Student"} (${refundTarget.student?.studentId || "—"})`}
                 />
                 <DetailItem
-                  label="Refund Amount"
+                  label={cancellingCharge ? "Amount to cancel" : "Refund amount"}
                   value={
                     <strong style={{ color: "var(--red)", fontSize: "12px" }}>
                       {formatCurrency(refundTarget.amount, refundTarget.currency)}
@@ -737,14 +773,13 @@ export default function FinancialRecordsPage({ token, role, notify }) {
             <form onSubmit={handleRefundSubmit}>
               <label className="field" style={{ marginTop: "12px" }}>
                 <span>
-                  Reason for Refund <strong style={{ color: "var(--red)" }}>*</strong>
+                  Reason <strong style={{ color: "var(--red)" }}>*</strong>
                 </span>
                 <textarea
                   required
                   rows={3}
                   value={refundReason}
                   onChange={(e) => setRefundReason(e.target.value)}
-                  placeholder="Specify the reason for issuing this refund (e.g. Schedule cancellation, course drop in add/drop period)..."
                   maxLength={500}
                 />
               </label>
@@ -763,7 +798,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
                   className="primary-button danger-button push-right"
                   disabled={refundSubmitting || !refundReason.trim()}
                 >
-                  {refundSubmitting ? "Processing Refund…" : "Confirm & Issue Refund"}
+                  {refundSubmitting ? "Processing…" : cancellingCharge ? "Confirm cancellation" : "Confirm refund"}
                 </button>
               </div>
             </form>

@@ -4,6 +4,7 @@ import {
   withdrawExtraHoursRequest,
   getExtraHoursRequestById,
   listExtraHoursRequests,
+  listExtraHoursRequestingAdvisors,
   decideExtraHoursRequest,
   listMyExtraHoursRequests,
   listAdvisorExtraHoursRequests,
@@ -22,6 +23,7 @@ const router = express.Router();
 router.use(requireAuth);
 
 router.get("/", requireRole("coordinator", "administrator"), listExtraHoursRequests);
+router.get("/requesting-advisors", requireRole("coordinator", "administrator"), listExtraHoursRequestingAdvisors);
 router.get("/mine", requireRole("advisingStudent"), listMyExtraHoursRequests);
 router.get("/advisor/mine", requireRole("advisor"), listAdvisorExtraHoursRequests);
 router.get("/mine/financial-history", requireRole("advisingStudent"), getExtraHoursFinancialHistory);

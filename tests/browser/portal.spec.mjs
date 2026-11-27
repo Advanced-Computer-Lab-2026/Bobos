@@ -1,4 +1,5 @@
 import { once } from "node:events";
+import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { test, expect } from "@playwright/test";
 import bcrypt from "bcryptjs";
@@ -7,10 +8,11 @@ import mongoose from "mongoose";
 import { MongoMemoryReplSet } from "mongodb-memory-server";
 import { SMTPServer } from "smtp-server";
 import api from "../../apps/api/src/app.js";
+import { FinancialTransaction } from "../../apps/api/src/models/finance.js";
 import { Notification } from "../../apps/api/src/models/communications.js";
 import { StudentProfile, User } from "../../apps/api/src/models/identity.js";
 
-let database, server, smtp, baseURL;
+let database, server, smtp, baseURL, regressionStudent;
 const messages = [];
 const email = "regression@student.guc.edu.eg";
 const password = "RegressionOnly123!";
@@ -24,7 +26,7 @@ test.beforeAll(async () => {
     { fullName: "Regression Student", role: "normalStudent", email, passwordHash },
     { fullName: "Regression Administrator", role: "administrator", email: "regression@guc.edu.eg", passwordHash },
   ]);
-  await StudentProfile.create({
+  regressionStudent = await StudentProfile.create({
     user: student._id, studentId: "28-90001", studentType: "normal", major: "CS",
     currentSemester: 5, gpa: 2, academicStanding: "goodAcademicStanding",
   });
@@ -144,4 +146,36 @@ test("Req 6–10: student directory finds the matching profile and changes the a
   await expect(details.getByRole("button", { name: "Activate account" })).toBeVisible();
   await details.getByRole("button", { name: "Activate account" }).click();
   await expect(details.getByRole("button", { name: "Deactivate account" })).toBeVisible();
+});
+
+test("Req 100 and 127: the Portal ledger and downloaded CSV use the same date and settlement filters", async ({ page }) => {
+  await FinancialTransaction.create([
+    { student: regressionStudent._id, settlementOption: "wallet", transactionReference: "AUDIT-MATCH", occurredAt: "2025-09-15T12:00:00Z" },
+    { student: regressionStudent._id, settlementOption: "gateway", transactionReference: "AUDIT-OTHER-METHOD", occurredAt: "2025-09-15T12:00:00Z" },
+    { student: regressionStudent._id, settlementOption: "wallet", transactionReference: "AUDIT-OTHER-DATE", occurredAt: "2025-09-16T12:00:00Z" },
+  ].map(record => ({ kind: "extra_hours", status: "succeeded", amount: 800, ...record })));
+
+  await page.goto(baseURL);
+  await signIn(page, "regression@guc.edu.eg", password);
+  await page.getByRole("link", { name: "Financial records", exact: true }).click();
+  const matching = page.getByRole("row", { name: /AUDIT-MATCH/ });
+  const otherMethod = page.getByRole("row", { name: /AUDIT-OTHER-METHOD/ });
+  const otherDate = page.getByRole("row", { name: /AUDIT-OTHER-DATE/ });
+  await expect(matching).toBeVisible();
+  await expect(otherMethod).toBeVisible();
+  await expect(otherDate).toBeVisible();
+  await page.getByRole("combobox", { name: /settlement option/i }).selectOption("wallet");
+  await page.getByLabel("From date").fill("2025-09-15");
+  await page.getByLabel("To date").fill("2025-09-15");
+
+  await expect(matching).toBeVisible();
+  await expect(otherMethod).toHaveCount(0);
+  await expect(otherDate).toHaveCount(0);
+  const downloading = page.waitForEvent("download");
+  await page.getByRole("button", { name: /export/i }).click();
+  const download = await downloading;
+  const csv = await readFile(await download.path(), "utf8");
+  expect(csv).toContain("AUDIT-MATCH");
+  expect(csv).not.toContain("AUDIT-OTHER-METHOD");
+  expect(csv).not.toContain("AUDIT-OTHER-DATE");
 });

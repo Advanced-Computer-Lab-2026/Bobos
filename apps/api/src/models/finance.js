@@ -103,6 +103,17 @@ financialTransactionSchema.index({ createdAt: -1 });
 
 export const FinancialTransaction = registerModel("FinancialTransaction", financialTransactionSchema);
 
+export const walletKinds = ["walletTopUp", "refund", "extraHoursWalletPayment"];
+
+export function walletDelta(transaction) {
+  const amount = Math.round(transaction.amount * 100);
+  const completed = ["succeeded", "COMPLETED", "completed"].includes(transaction.status);
+  if (transaction.kind === "extraHoursWalletPayment") {
+    return completed || ["REFUNDED", "refunded"].includes(transaction.status) ? -amount : 0;
+  }
+  return completed ? amount : 0;
+}
+
 // ## Sprint 2 schemas
 // FinancialReversalRequest: Req. 102.
 const financialReversalRequestSchema = withTimestamps({

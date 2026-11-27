@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test, { before, beforeEach, after } from "node:test";
 import mongoose from "mongoose";
-import { MongoMemoryServer } from "mongodb-memory-server";
+import { MongoMemoryReplSet } from "mongodb-memory-server";
 import app from "../app.js";
 import { AcademicTerm, Course, CourseOffering } from "../models/catalogue.js";
 import { User } from "../models/identity.js";
@@ -10,7 +10,7 @@ import { removeOfferingAcademicYear } from "../migrations/remove-offering-academ
 
 let database, server, base, user, term, course;
 before(async () => {
-  database = await MongoMemoryServer.create();
+  database = await MongoMemoryReplSet.create({ replSet: { count: 1 } });
   await mongoose.connect(database.getUri());
   await Promise.all([AcademicTerm.init(), Course.init(), CourseOffering.init(), User.init()]);
   server = app.listen(0, "127.0.0.1");

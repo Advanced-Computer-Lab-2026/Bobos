@@ -28,9 +28,22 @@ function detectDelimiter(text) {
 function parseCsv(text) {
   const delimiter = detectDelimiter(text);
   const rows = [];
+  const rowNumbers = [];
   let row = [];
   let field = "";
   let quoted = false;
+  let line = 1;
+  let rowStart = 1;
+
+  function finishRow() {
+    row.push(field);
+    if (row.some((value) => value.trim())) {
+      rows.push(row);
+      rowNumbers.push(rowStart);
+    }
+    row = [];
+    field = "";
+  }
 
   for (let index = 0; index < text.length; index += 1) {
     const char = text[index];
@@ -39,26 +52,25 @@ function parseCsv(text) {
         field += '"';
         index += 1;
       } else if (char === '"') quoted = false;
-      else field += char;
+      else {
+        field += char;
+        if (char === "\n" || (char === "\r" && text[index + 1] !== "\n")) line += 1;
+      }
     } else if (char === '"' && field.length === 0) quoted = true;
     else if (char === delimiter) {
       row.push(field);
       field = "";
     } else if (char === "\n" || char === "\r") {
       if (char === "\r" && text[index + 1] === "\n") index += 1;
-      row.push(field);
-      if (row.some((value) => value.trim())) rows.push(row);
-      row = [];
-      field = "";
+      finishRow();
+      line += 1;
+      rowStart = line;
     } else field += char;
   }
 
-  if (quoted) throw new Error("CSV contains an unterminated quoted field.");
-  if (field.length || row.length) {
-    row.push(field);
-    if (row.some((value) => value.trim())) rows.push(row);
-  }
-  return rows;
+  if (quoted) throw Object.assign(new Error("CSV contains an unterminated quoted field."), { row: rowStart });
+  if (field.length || row.length) finishRow();
+  return { rows, rowNumbers };
 }
 
 const normalizeHeader = (value) => String(value || "").replace(/^\uFEFF/, "").trim().toLowerCase().replace(/\s+/g, " ");
@@ -91,12 +103,13 @@ export async function importCoursesCsv(req, res) {
     return res.status(413).json({ success: false, message: "CSV files must be 2 MB or smaller." });
   }
 
-  let rows;
+  let parsed;
   try {
-    rows = parseCsv(csvText);
+    parsed = parseCsv(csvText);
   } catch (error) {
-    return res.status(400).json({ success: false, errors: [csvError(1, "CSV", error.message)] });
+    return res.status(400).json({ success: false, errors: [csvError(error.row || 1, "CSV", error.message)] });
   }
+  const { rows, rowNumbers } = parsed;
   if (rows.length < 2) {
     return res.status(400).json({ success: false, errors: [csvError(1, "CSV", "Include a header row and at least one course row.")] });
   }
@@ -160,14 +173,14 @@ export async function importCoursesCsv(req, res) {
     const headers = rows[0].map(normalizeHeader);
     for (const [field, aliases] of Object.entries(HEADER_ALIASES)) {
       const matches = headers.flatMap((header, index) => aliases.includes(header) ? [index] : []);
-      if (!matches.length) errors.push(csvError(1, field, `Missing required column: ${aliases[0]}.`));
-      else if (matches.length > 1) errors.push(csvError(1, field, `Column appears more than once: ${aliases[0]}.`));
+      if (!matches.length) errors.push(csvError(rowNumbers[0], field, `Missing required column: ${aliases[0]}.`));
+      else if (matches.length > 1) errors.push(csvError(rowNumbers[0], field, `Column appears more than once: ${aliases[0]}.`));
       else headerIndexes.set(field, matches[0]);
     }
     if (errors.length) return res.status(400).json({ success: false, errors });
 
     for (const [index, row] of rows.slice(1).entries()) {
-      const rowNumber = index + 2;
+      const rowNumber = rowNumbers[index + 1];
       if (row.length !== headers.length) {
         errors.push(csvError(rowNumber, "CSV", `Expected ${headers.length} columns but found ${row.length}.`));
         continue;
@@ -265,7 +278,7 @@ export async function importCoursesCsv(req, res) {
   });
 
   try {
-    await Course.bulkWrite(operations, { ordered: true });
+    await mongoose.connection.transaction(session => Course.bulkWrite(operations, { ordered: true, session }));
   } catch (error) {
     if (error.code === 11000) return res.status(409).json({ success: false, message: "A course code changed during import. Refresh the catalogue and try again." });
     throw error;

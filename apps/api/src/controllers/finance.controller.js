@@ -4,8 +4,10 @@ import { StudentProfile, User } from "../models/identity.js";
 import { AcademicTerm } from "../models/catalogue.js";
 import { ExtraHoursRequest } from "../models/requests.js";
 import { StudentSchedule } from "../models/academics.js";
+import { changeSlotCount, collectSlotRefs } from "./scheduling.controller.js";
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const recordOrder = { occurredAt: -1, _id: -1 };
 
 const statusMap = {
   completed: ["succeeded", "completed", "COMPLETED"],
@@ -184,9 +186,13 @@ async function buildFinancialQuery(req) {
       }
     }
 
+    if ((startDate && !dateRange.$gte) || (endDate && !dateRange.$lte)
+      || dateRange.$gte > dateRange.$lte) {
+      return { invalidDates: true };
+    }
     if (Object.keys(dateRange).length > 0) {
       andConditions.push({
-        $or: [{ occurredAt: dateRange }, { createdAt: dateRange }],
+        $or: [{ occurredAt: dateRange }, { occurredAt: null, createdAt: dateRange }],
       });
     }
   }
@@ -201,6 +207,35 @@ async function buildFinancialQuery(req) {
 /**
  * Format raw transaction object into standardized response shape
  */
+function availableReversal(transaction, linkedRequest, reversal) {
+  if (transaction.refundedAt || ["REFUNDED", "refunded"].includes(transaction.status)
+    || ["REFUND", "refund", "deferredChargeCancellation", "walletTopUp"].includes(transaction.kind)) return null;
+
+  const deferred = transaction.kind === "deferredCharge";
+  const action = deferred ? "cancelDeferredCharge" : "refundToWallet";
+  const completed = ["COMPLETED", "succeeded", "completed"].includes(transaction.status);
+  if (!linkedRequest) return !deferred && completed && !transaction.extraHoursRequest ? action : null;
+  if (String(linkedRequest.student) !== String(transaction.student?._id || transaction.student)) return null;
+
+  const approvedReversal = reversal?.reversalType === action
+    && String(reversal.student) === String(linkedRequest.student)
+    && String(reversal.extraHoursRequest) === String(linkedRequest._id);
+  if (linkedRequest.decisionStatus !== "withdrawn" && !approvedReversal) return null;
+  if (deferred) {
+    return linkedRequest.settlementStatus === "deferred"
+      && (completed || ["pending", "PENDING"].includes(transaction.status)) ? action : null;
+  }
+  return completed && linkedRequest.settlementStatus === "paid"
+    && ["extraHoursWalletPayment", "gatewayPayment"].includes(transaction.kind) ? action : null;
+}
+
+async function pendingReversals(records) {
+  const ids = records.filter(record => record.extraHoursRequest).map(record => record._id);
+  if (!ids.length) return new Map();
+  const requests = await FinancialReversalRequest.find({ originalTransaction: { $in: ids }, status: "pending" }).lean();
+  return new Map(requests.map(request => [String(request.originalTransaction), request]));
+}
+
 function formatTransactionRecord(record) {
   if (!record) return null;
   const doc = record.toObject ? record.toObject() : { ...record };
@@ -254,6 +289,9 @@ export async function getRecords(req, res) {
   try {
     const buildResult = await buildFinancialQuery(req);
 
+    if (buildResult.invalidDates) {
+      return res.status(400).json({ message: "Enter a valid financial record date range." });
+    }
     if (buildResult.forbidden) {
       return res.status(403).json({ message: "Insufficient permissions to view financial records." });
     }
@@ -269,7 +307,7 @@ export async function getRecords(req, res) {
 
     const total = await FinancialTransaction.countDocuments(query);
     const rawRecords = await FinancialTransaction.find(query)
-      .sort({ createdAt: -1, occurredAt: -1 })
+      .sort(recordOrder)
       .skip(skip)
       .limit(limit)
       .populate({
@@ -282,6 +320,12 @@ export async function getRecords(req, res) {
       .populate("relatedTransaction");
 
     const records = rawRecords.map(formatTransactionRecord);
+    if (req.user.role !== "advisingStudent") {
+      const reversals = await pendingReversals(rawRecords);
+      for (const record of records) {
+        record.availableReversal = availableReversal(record, record.extraHoursRequest, reversals.get(String(record._id)));
+      }
+    }
     const totalPages = total === 0 ? 0 : Math.ceil(total / limit);
 
     return res.status(200).json({
@@ -330,6 +374,10 @@ export async function getRecordById(req, res) {
     }
 
     const record = formatTransactionRecord(rawRecord);
+    if (req.user.role !== "advisingStudent") {
+      const reversals = await pendingReversals([rawRecord]);
+      record.availableReversal = availableReversal(record, record.extraHoursRequest, reversals.get(String(record._id)));
+    }
     return res.status(200).json(record);
   } catch (error) {
     return res.status(500).json({ message: "Failed to retrieve financial record details.", error: error.message });
@@ -373,30 +421,24 @@ export async function processRefund(req, res) {
       let reversalReq = null;
       if (transaction.extraHoursRequest) {
         linkedReq = await ExtraHoursRequest.findById(transaction.extraHoursRequest).session(session);
-        reversalReq = await FinancialReversalRequest.findOne({ originalTransaction: transaction._id }).session(session);
-        if (linkedReq && linkedReq.decisionStatus === "approved" && !reversalReq) {
-          return { status: 400, message: "Cannot refund an active extra-hours request that has not been cancelled or withdrawn." };
-        }
+        reversalReq = await FinancialReversalRequest.findOne({ originalTransaction: transaction._id, status: "pending" }).session(session);
       }
 
-      const isDeferred = transaction.kind === "deferredCharge" || transaction.settlementOption === "deferred";
-      const isCompleted = ["COMPLETED", "succeeded", "completed"].includes(transaction.status);
-      const isEligibleDeferred = isDeferred
-        && (Boolean(linkedReq) || Boolean(reversalReq))
-        && ["pending", "PENDING", "succeeded", "COMPLETED", "completed"].includes(transaction.status);
-
-      if (!isCompleted && !isEligibleDeferred) {
-        return { status: 400, message: "Only completed transactions are eligible for refund." };
+      const action = availableReversal(transaction, linkedReq, reversalReq);
+      if (!action) {
+        return { status: 400, message: "This transaction is not eligible for refund or cancellation." };
       }
 
+      const isDeferred = action === "cancelDeferredCharge";
       const refundReason = String(body.reason || body.refundReason || "Administrative refund").trim();
-      const refundAmount = Number(body.amount) || transaction.amount;
-      if (refundAmount <= 0 || refundAmount > transaction.amount) {
+      const refundAmount = body.amount === undefined ? transaction.amount : Number(body.amount);
+      if (!Number.isFinite(refundAmount) || refundAmount <= 0 || refundAmount > transaction.amount
+        || (linkedReq && refundAmount !== transaction.amount)) {
         return { status: 400, message: "Invalid refund amount." };
       }
 
       const now = new Date();
-      transaction.status = "REFUNDED";
+      transaction.status = isDeferred ? "cancelled" : "REFUNDED";
       transaction.refundedAt = now;
       transaction.refundedBy = req.user._id;
       transaction.refundReason = refundReason;
@@ -412,6 +454,9 @@ export async function processRefund(req, res) {
         currency: transaction.currency || "EGP",
         status: "succeeded",
         settlementOption: isDeferred ? "deferred" : "wallet",
+        term: transaction.term,
+        installment: transaction.installment,
+        deferredChargeReference: transaction.deferredChargeReference,
         transactionReference: refundRef,
         relatedTransaction: transaction._id,
         refundedAt: now,
@@ -420,11 +465,12 @@ export async function processRefund(req, res) {
         occurredAt: now,
       }], { session });
 
-      await FinancialReversalRequest.findOneAndUpdate(
-        { originalTransaction: transaction._id },
-        { status: "completed", decidedBy: req.user._id, decidedAt: now },
-        { session },
-      );
+      if (reversalReq) {
+        reversalReq.status = "completed";
+        reversalReq.decidedBy = req.user._id;
+        reversalReq.decidedAt = now;
+        await reversalReq.save({ session });
+      }
 
       if (linkedReq) {
         const nextSettlementStatus = isDeferred ? "cancelled" : "refunded";
@@ -434,7 +480,7 @@ export async function processRefund(req, res) {
             $set: { settlementStatus: nextSettlementStatus },
             $push: {
               history: {
-                action: "refunded",
+                action: isDeferred ? "cancelled" : "refunded",
                 actor: req.user._id,
                 note: refundReason.slice(0, 1000),
                 settlementOption: transaction.settlementOption,
@@ -447,13 +493,25 @@ export async function processRefund(req, res) {
           { session, runValidators: true },
         );
 
-        const revokedCourseIds = (linkedReq.courses || []).map((c) => c.course).filter(Boolean);
-        if (revokedCourseIds.length > 0) {
-          await StudentSchedule.updateMany(
-            { student: transaction.student, term: linkedReq.term, status: "draft" },
-            { $pull: { courses: { course: { $in: revokedCourseIds } } } },
-            { session },
-          );
+        const revokedCourseIds = new Set(linkedReq.courses.map(({ course }) => String(course)));
+        const schedules = await StudentSchedule.find({
+          student: transaction.student,
+          term: linkedReq.term,
+          status: { $in: ["draft", "readyForStudentReview"] },
+          "courses.course": { $in: [...revokedCourseIds] },
+        }).session(session);
+        for (const schedule of schedules) {
+          const removed = schedule.courses.filter(course => revokedCourseIds.has(String(course.course)) && !course.isMandatory);
+          if (!removed.length) continue;
+          if (schedule.seatsReserved) {
+            for (const slot of collectSlotRefs(removed).values()) {
+              await changeSlotCount({ ...slot, delta: -slot.count }, session);
+            }
+          }
+          schedule.courses = schedule.courses.filter(course => !removed.includes(course));
+          schedule.status = "draft";
+          schedule.version += 1;
+          await schedule.save({ session });
         }
       }
 
@@ -463,7 +521,7 @@ export async function processRefund(req, res) {
     if (outcome.status) return res.status(outcome.status).json({ message: outcome.message });
     return res.status(200).json({
       success: true,
-      message: "Refund processed successfully.",
+      message: outcome.refundRecord.kind === "deferredChargeCancellation" ? "Deferred charge cancelled." : "Refund processed successfully.",
       originalTransaction: formatTransactionRecord(outcome.transaction),
       refundRecord: formatTransactionRecord(outcome.refundRecord),
     });
@@ -483,6 +541,9 @@ export async function exportRecords(req, res) {
     }
 
     const buildResult = await buildFinancialQuery(req);
+    if (buildResult.invalidDates) {
+      return res.status(400).json({ message: "Enter a valid financial record date range." });
+    }
     if (buildResult.forbidden) {
       return res.status(403).json({ message: "Insufficient permissions to export financial records." });
     }
@@ -490,7 +551,7 @@ export async function exportRecords(req, res) {
     const query = buildResult.empty ? { _id: null } : buildResult.query;
 
     const rawRecords = await FinancialTransaction.find(query)
-      .sort({ createdAt: -1, occurredAt: -1 })
+      .sort(recordOrder)
       .populate({
         path: "student",
         select: "studentId faculty major currentSemester user",
