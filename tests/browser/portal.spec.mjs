@@ -120,16 +120,24 @@ test("Req 6–10: student directory finds the matching profile and changes the a
   await signIn(page, "regression@guc.edu.eg", password);
   await page.getByRole("link", { name: "Student directory" }).click();
   await expect(page.getByRole("heading", { name: "Student directory" })).toBeVisible();
-  await page.getByRole("button", { name: "Filters", exact: true }).click();
-  await page.getByLabel("Semester", { exact: true }).selectOption("5");
-  await page.getByRole("button", { name: "Apply filters" }).click();
+  const student = page.getByRole("button", { name: /28-90001.*Regression Student/i });
+  await expect(student).toBeVisible();
+  const filterSemester = async (semester) => {
+    await page.getByRole("button", { name: /^Filters\b/i }).click();
+    await page.getByRole("combobox", { name: /semester/i }).selectOption(semester);
+    await page.getByRole("button", { name: "Apply filters" }).click();
+  };
+  await filterSemester("4");
+  await expect(page.getByRole("heading", { name: "No students to show" })).toBeVisible();
+  await filterSemester("5");
+  await expect(student).toBeVisible();
   const search = page.getByLabel("Search students");
   await search.fill("does-not-exist");
   await search.press("Enter");
   await expect(page.getByRole("heading", { name: "No students to show" })).toBeVisible();
   await search.fill("28-90001");
   await search.press("Enter");
-  await page.getByRole("button", { name: /28-90001.*Regression Student/i }).click();
+  await student.click();
   const details = page.getByRole("dialog", { name: "Student details" });
   await expect(details).toContainText(email);
   await details.getByRole("button", { name: "Deactivate account" }).click();
