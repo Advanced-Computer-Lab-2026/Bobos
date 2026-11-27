@@ -305,7 +305,7 @@ export function SwapManagement({ token }) {
 
   return <div className="page-stack scheduling-page student-swap-page" aria-busy={loading}>
     <div className="page-title-row">
-      <div className="swap-page-intro"><img src="/portal-studio/images/schedule-exchange.svg" alt="" /><div><h1>Eligible swap groups</h1><p className="page-description">A different teaching week. The same registered courses.</p></div></div>
+      <div className="swap-page-intro"><img src="/portal-studio/images/schedule-exchange.svg" alt="" /><div><h1>Eligible swap groups</h1><p className="page-description">Keep your courses. Find a better teaching week.</p></div></div>
     </div>
     {error && !confirm && <Feedback tone="error">{error}</Feedback>}
     {notice && <Modal title={notice.title} className="swap-result-dialog" onClose={() => setNotice("")}>
@@ -323,7 +323,7 @@ export function SwapManagement({ token }) {
       : <Feedback tone="error">{loadErrors.schedule.message}</Feedback>)}
     {data && <>
       <section className="panel swap-context" aria-label="Your schedule and swap deadline">
-        <div className="swap-context-group"><span>Your current schedule</span><h2>You’re in <span className="swap-group-name">{swapGroup(data.currentGroup?.studyGroup)}</span></h2><p>Find a teaching week that works for you.</p></div>
+        <div className="swap-context-group"><span>Your current schedule</span><h2>You’re in <span className="swap-group-name">{swapGroup(data.currentGroup?.studyGroup)}</span></h2><p>Compare groups before requesting a swap.</p></div>
         <dl className="swap-context-facts"><div><dt>Major</dt><dd>{data.currentGroup?.major || "—"}</dd></div><div><dt>Semester</dt><dd>{data.currentGroup?.semester ?? "—"}</dd></div><div><dt>Credits</dt><dd>{data.currentGroup?.totalCreditHours ?? "—"}</dd></div></dl>
         <div className="swap-context-deadline"><span>Swap deadline</span>{deadline ? <><time dateTime={deadline}>{new Date(deadline).toLocaleDateString("en-GB", { timeZone: "Africa/Cairo", dateStyle: "medium" })}</time><small>{new Date(deadline).toLocaleTimeString("en-GB", { timeZone: "Africa/Cairo", timeStyle: "short" })} · Cairo time</small></> : <strong>Not set</strong>}</div>
       </section>

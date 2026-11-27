@@ -105,12 +105,11 @@ test("Req 1–5: reset through email, view your profile and inbox, and sign out"
   const navigation = page.getByRole("navigation", { name: "Main navigation" });
   await expect(navigation.getByRole("link", { name: "Home", exact: true })).toHaveAttribute("aria-current", "page");
   await expect(navigation.getByText("Overview", { exact: true })).toHaveCount(0);
-  await expect(page.locator(".student-inbox .notification-plate")).toHaveCount(0);
   const homeInbox = page.getByRole("region", { name: /Notifications/ });
-  const timetable = homeInbox.locator("details").filter({ hasText: "Regression timetable" });
-  await expect(homeInbox.locator("details")).toHaveCount(2);
-  await expect(timetable.getByText("Your schedule is available.")).toBeHidden();
-  await timetable.locator("summary").press("Enter");
+  const timetable = homeInbox.getByRole("article").filter({ hasText: "Regression timetable" });
+  await expect(homeInbox.getByRole("article")).toHaveCount(2);
+  await expect(homeInbox.locator("details, summary")).toHaveCount(0);
+  await expect(timetable.locator(".notice-symbol svg")).toBeVisible();
   await expect(timetable.getByText("Your schedule is available.")).toBeVisible();
   await expect(page.locator(".workspace")).toHaveCSS("overflow-y", "visible");
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
@@ -138,6 +137,7 @@ test("Req 1–5: reset through email, view your profile and inbox, and sign out"
   await expect(page.getByText("No unread notifications.")).toBeVisible();
   await navigation.getByRole("link", { name: "Home", exact: true }).click();
   await expect(page).toHaveTitle("Portal · Home");
+  await expect(page.locator(".notification-home-empty [data-scene=coffee]")).toBeVisible();
   await page.getByRole("button", { name: /account/i }).click();
   await page.getByRole("button", { name: "Sign out" }).click();
   await expect(page.getByRole("heading", { name: "Sign in", exact: true })).toBeVisible();
