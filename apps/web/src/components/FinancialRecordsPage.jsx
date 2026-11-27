@@ -91,7 +91,8 @@ export default function FinancialRecordsPage({ token, role, notify }) {
   const [refundReason, setRefundReason] = useState("");
   const [refundSubmitting, setRefundSubmitting] = useState(false);
   const [refundError, setRefundError] = useState("");
-  const cancellingCharge = refundTarget?.availableReversal === "cancelDeferredCharge";
+  const requestingReversal = Boolean(refundTarget?.requestableReversal);
+  const cancellingCharge = (refundTarget?.requestableReversal || refundTarget?.availableReversal) === "cancelDeferredCharge";
 
   const [exporting, setExporting] = useState(false);
 
@@ -213,7 +214,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
   // Open refund confirmation modal
   const openRefundModal = (record) => {
     setRefundTarget(record);
-    setRefundReason("");
+    setRefundReason(record.reversalReason || "");
     setRefundError("");
   };
 
@@ -231,7 +232,8 @@ export default function FinancialRecordsPage({ token, role, notify }) {
     setRefundError("");
 
     try {
-      const result = await api(`/api/finance/records/${refundTarget._id}/refund`, {
+      const action = requestingReversal ? "reversal-request" : "refund";
+      const result = await api(`/api/finance/records/${refundTarget._id}/${action}`, {
         token,
         method: "POST",
         body: {
@@ -243,7 +245,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
       setRefundTarget(null);
       loadRecords();
     } catch (err) {
-      setRefundError(explainApiError(err, cancellingCharge ? "Charge cancellation" : "Refund processing"));
+      setRefundError(explainApiError(err, requestingReversal ? "Reversal request" : cancellingCharge ? "Charge cancellation" : "Refund processing"));
     } finally {
       setRefundSubmitting(false);
     }
@@ -464,13 +466,13 @@ export default function FinancialRecordsPage({ token, role, notify }) {
                           >
                             View
                           </button>
-                          {r.availableReversal && (
+                          {(r.availableReversal || r.requestableReversal) && (
                             <button
                               type="button"
                               className="outline-button danger-button"
                               onClick={() => openRefundModal(r)}
                             >
-                              {r.availableReversal === "cancelDeferredCharge" ? "Cancel charge" : "Refund"}
+                              {r.availableReversal ? (r.availableReversal === "cancelDeferredCharge" ? "Cancel charge" : "Refund") : r.requestableReversal === "cancelDeferredCharge" ? "Request cancellation" : "Request refund"}
                             </button>
                           )}
                         </div>
@@ -598,6 +600,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
                         : viewRecord.linkedRequest || viewRecord.extraHoursRequest || "—"
                     }
                   />
+                  {viewRecord.installmentId && <DetailItem label="Installment reference" value={`INST-${viewRecord.installmentId}`} />}
                   <DetailItem
                     label="Created Date"
                     value={formatDate(viewRecord.createdAt || viewRecord.occurredAt)}
@@ -679,7 +682,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
                 )}
 
                 <div className="form-actions" style={{ marginTop: "20px" }}>
-                  {viewRecord.availableReversal && (
+                  {(viewRecord.availableReversal || viewRecord.requestableReversal) && (
                     <button
                       type="button"
                       className="primary-button danger-button"
@@ -689,7 +692,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
                         openRefundModal(target);
                       }}
                     >
-                      {viewRecord.availableReversal === "cancelDeferredCharge" ? "Cancel charge" : "Process refund"}
+                      {viewRecord.availableReversal ? (viewRecord.availableReversal === "cancelDeferredCharge" ? "Cancel charge" : "Process refund") : viewRecord.requestableReversal === "cancelDeferredCharge" ? "Request cancellation" : "Request refund"}
                     </button>
                   )}
                   <button
@@ -721,7 +724,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
                 <p className="eyebrow" style={{ color: "var(--red)" }}>
                   ADMINISTRATIVE REVERSAL
                 </p>
-                <h2 id="refund-modal-title">{cancellingCharge ? "Cancel deferred charge" : "Confirm refund"}</h2>
+                <h2 id="refund-modal-title">{requestingReversal ? (cancellingCharge ? "Request charge cancellation" : "Request refund") : cancellingCharge ? "Cancel deferred charge" : "Confirm refund"}</h2>
               </div>
               <button
                 className="icon-button"
@@ -734,7 +737,9 @@ export default function FinancialRecordsPage({ token, role, notify }) {
             </div>
 
             <p className="page-description">
-              {cancellingCharge
+              {requestingReversal
+                ? "This adds a reversal to the coordinator’s work queue for processing."
+                : cancellingCharge
                 ? "This removes the charge from the student’s next installment and revokes the related extra hours."
                 : "This returns the payment to the student’s wallet."}
             </p>
@@ -798,7 +803,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
                   className="primary-button danger-button push-right"
                   disabled={refundSubmitting || !refundReason.trim()}
                 >
-                  {refundSubmitting ? "Processing…" : cancellingCharge ? "Confirm cancellation" : "Confirm refund"}
+                  {refundSubmitting ? "Saving…" : requestingReversal ? "Submit request" : cancellingCharge ? "Confirm cancellation" : "Confirm refund"}
                 </button>
               </div>
             </form>

@@ -1,5 +1,15 @@
 import { Schema, ref, registerModel, withTimestamps } from "./shared.js";
 
+// The local next installment for a student's term. Outstanding charges are
+// the pending deferred transactions linked to this record.
+const universityInstallmentSchema = withTimestamps({
+  student: ref("StudentProfile", { required: true }),
+  term: ref("AcademicTerm", { required: true }),
+  label: { type: String, required: true, trim: true },
+});
+universityInstallmentSchema.index({ student: 1, term: 1 }, { unique: true });
+export const UniversityInstallment = registerModel("UniversityInstallment", universityInstallmentSchema);
+
 // ## Sprint 1 schemas
 // FinancialTransaction: Req. 89; also used in Sprint 2 (Req. 90-102, 127).
 const financialTransactionSchema = withTimestamps({
@@ -66,6 +76,7 @@ const financialTransactionSchema = withTimestamps({
   refundedBy: ref("User", { default: null }),
   refundReason: { type: String, trim: true },
   installment: { type: String, trim: true },
+  installmentId: ref("UniversityInstallment"),
   relatedTransaction: ref("FinancialTransaction", { default: null }),
   idempotencyKey: { type: String, trim: true, select: false },
   occurredAt: { type: Date, required: true, default: Date.now, index: true },
@@ -94,6 +105,7 @@ financialTransactionSchema.pre("validate", function () {
 
 financialTransactionSchema.index({ idempotencyKey: 1 }, { unique: true, partialFilterExpression: { idempotencyKey: { $type: "string" } } });
 financialTransactionSchema.index({ student: 1, occurredAt: -1 });
+financialTransactionSchema.index({ installmentId: 1 }, { sparse: true });
 financialTransactionSchema.index({ kind: 1, status: 1, occurredAt: -1 });
 financialTransactionSchema.index({ settlementOption: 1, status: 1, occurredAt: -1 });
 financialTransactionSchema.index({ student: 1, status: 1, type: 1, createdAt: -1 });
@@ -121,6 +133,7 @@ const financialReversalRequestSchema = withTimestamps({
   extraHoursRequest: ref("ExtraHoursRequest", { required: true }),
   originalTransaction: ref("FinancialTransaction", { required: true, unique: true }),
   requestedBy: ref("User", { required: true }),
+  reason: { type: String, trim: true, maxlength: 500 },
   reversalType: { type: String, required: true, enum: ["refundToWallet", "cancelDeferredCharge"] },
   status: { type: String, required: true, enum: ["pending", "completed"], default: "pending" },
   decidedBy: ref("User", { default: null }),

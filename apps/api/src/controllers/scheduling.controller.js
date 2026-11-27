@@ -1,9 +1,11 @@
+import { DAYS_OF_WEEK } from "../models/shared.js";
 import mongoose from "mongoose";
 import { AcademicTerm, Course, CourseOffering } from "../models/catalogue.js";
 import { StudentProfile, User } from "../models/identity.js";
 import { CourseAttempt, ScheduleTemplate, SchedulingPreference, StudentSchedule, StudentWorkflowState } from "../models/academics.js";
 import { ExtraHoursRequest, MandatoryCourseRemovalRequest, SlotChangeRequest, WholeScheduleSwapRequest } from "../models/requests.js";
 import { ScheduleActivity } from "../models/communications.js";
+import { loadStudentWorkflows } from "../services/student-workflow-status.js";
 import { notifyStudents } from "../services/student-notifications.js";
 import { calculateDraftCreditPolicy } from "../utils/credit-allowance.js";
 import { majorMatches } from "../utils/major.js";
@@ -13,7 +15,6 @@ import { buildRegisteredCourses } from "../../../../server/src/utils/registeredC
 import { buildCourseDetails, findCourseEntry } from "../../../../server/src/utils/courseDetails.js";
 import { buildPdfModel, renderSchedulePdf } from "../../../../server/src/utils/schedulePdf.js";
 
-const TEACHING_DAYS = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"];
 const STUDENT_ROLES = ["normalStudent", "advisingStudent"];
 const STAFF_ROLES = ["advisor", "coordinator", "administrator"];
 const NO_VISIBLE_SCHEDULE = "No schedule is available to view yet.";
@@ -88,7 +89,7 @@ export function slotView(slot, courseCode) {
   if (!Number.isInteger(slot.startMinute) || !Number.isInteger(slot.endMinute) || slot.endMinute <= slot.startMinute) {
     return { error: `A schedule slot for ${courseCode} has invalid meeting times.` };
   }
-  if (!TEACHING_DAYS.includes(slot.day)) return { error: `A schedule slot for ${courseCode} uses an unsupported teaching day.` };
+  if (!DAYS_OF_WEEK.includes(slot.day)) return { error: `A schedule slot for ${courseCode} uses an unsupported teaching day.` };
   return {
     slotId: slot._id,
     type: slot.componentType,
@@ -644,7 +645,7 @@ function groupDraftOffering(offering, preferenceGroups, reservedSlots) {
       assignedStudentCount: slot.assignedStudentCount || 0,
       remainingCapacity,
     });
-    if (!TEACHING_DAYS.includes(slot.day) || !Number.isInteger(slot.startMinute) || !Number.isInteger(slot.endMinute) || slot.endMinute <= slot.startMinute) group.valid = false;
+    if (!DAYS_OF_WEEK.includes(slot.day) || !Number.isInteger(slot.startMinute) || !Number.isInteger(slot.endMinute) || slot.endMinute <= slot.startMinute) group.valid = false;
     group.availableSeats = Math.min(group.availableSeats, remainingCapacity);
     byComponent.set(key, group);
   }
@@ -2103,13 +2104,14 @@ export async function getAdvisingOverview(req, res, next) {
     if (termResult.error) return res.status(termResult.error.status).json({ message: termResult.error.message });
     const { term } = termResult;
 
-    const [workflow, schedule, extraHoursRequests, bachelor] = await Promise.all([
-      StudentWorkflowState.findOne({ student: student._id, term: term._id }).lean(),
+    const [workflows, schedule, extraHoursRequests, bachelor] = await Promise.all([
+      loadStudentWorkflows([student], term._id),
       StudentSchedule.findOne({ student: student._id, term: term._id, scheduleType: "advising" }).select("status courses.creditHoursSnapshot updatedAt bachelorProject").lean(),
       ExtraHoursRequest.find({ student: student._id, term: term._id, decisionStatus: "approved", settlementStatus: { $in: ["paid", "deferred"] } })
         .populate("courses.course", "code creditHours").lean(),
       loadBachelorEligibility(student),
     ]);
+    const workflow = workflows.get(String(student._id));
     const policy = calculateDraftCreditPolicy(student, extraHoursRequests);
     const selectedHours = (schedule?.courses || []).reduce((total, course) => total + Number(course.creditHoursSnapshot || 0), 0);
 
@@ -2119,7 +2121,7 @@ export async function getAdvisingOverview(req, res, next) {
       student: studentView(student),
       advisingReason: student.advisingReason,
       academicStanding: student.academicStanding,
-      scheduleStatus: schedule?.status || workflow?.status || "notStarted",
+      scheduleStatus: workflow?.status || "notStarted",
       blockingStep: workflow?.blockingStep ?? null,
       creditHours: {
         semester: policy.semester,

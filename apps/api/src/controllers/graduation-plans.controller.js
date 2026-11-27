@@ -1,7 +1,8 @@
 import mongoose from "mongoose";
-import { AcademicTerm, Course } from "../models/catalogue.js";
+import { AcademicTerm, Course, CourseOffering } from "../models/catalogue.js";
 import { StudentProfile } from "../models/identity.js";
 import { ExitExamRequest, GraduationPlan } from "../models/requests.js";
+import { notifyCoordinatorsOfRequest } from "../services/coordinator-notifications.js";
 import { exitExamEligibility, loadGraduationContext, validateGraduationPlan } from "../services/graduation-planning.js";
 
 const isId = (value) => typeof value === "string" && mongoose.isObjectIdOrHexString(value);
@@ -144,11 +145,31 @@ export async function submitGraduationPlan(req, res) {
   if (issues.length || missing.length) {
     return res.status(422).json({ message: "Complete the graduation plan before submitting.", issues: [...issues, ...missing] });
   }
-  const submitted = await GraduationPlan.findOneAndUpdate(draftFilter(plan), {
-    $set: { status: "submitted", submittedAt: new Date() },
-    $inc: { __v: 1 },
-  }, { returnDocument: "after", runValidators: true });
-  if (!submitted) return draftConflict(res);
+  let submitted;
+  try {
+    submitted = await mongoose.connection.transaction(async (session) => {
+      // A concurrent unpublish or deletion must see this reference or lose its version check.
+      for (const { term, courses } of selections.termPlans) {
+        if (!courses.length) continue;
+        const result = await CourseOffering.updateMany({ term, course: { $in: courses }, isPublished: true },
+          { $inc: { __v: 1 } }, { session, timestamps: false });
+        if (result.matchedCount !== courses.length) {
+          throw Object.assign(new Error("An offering is no longer published. Review the draft assignments."), { status: 422 });
+        }
+      }
+      const updated = await GraduationPlan.findOneAndUpdate(draftFilter(plan), {
+        $set: { status: "submitted", submittedAt: new Date() },
+        $inc: { __v: 1 },
+      }, { session, returnDocument: "after", runValidators: true });
+      if (!updated) throw Object.assign(new Error("This draft has changed."), { status: 409 });
+      await notifyCoordinatorsOfRequest(GraduationPlan, updated, req.graduationStudent.studentId, session);
+      return updated;
+    });
+  } catch (error) {
+    if (error.status === 409) return draftConflict(res);
+    if (error.status === 422) return res.status(422).json({ message: error.message });
+    throw error;
+  }
   res.json(planView(submitted));
 }
 
@@ -167,7 +188,11 @@ export async function requestExitExam(req, res) {
   const duplicate = () => res.status(409).json({ message: "A pending or approved exit-exam request already exists for this course." });
   if (await ExitExamRequest.exists({ ...key, status: { $in: ["pending", "approved"] } })) return duplicate();
   try {
-    const request = await ExitExamRequest.create({ ...key, advisor: req.user._id, reason });
+    const request = await mongoose.connection.transaction(async (session) => {
+      const [created] = await ExitExamRequest.create([{ ...key, advisor: req.user._id, reason }], { session });
+      await notifyCoordinatorsOfRequest(ExitExamRequest, created, student.studentId, session);
+      return created;
+    });
     res.status(201).json({ _id: request._id, course: request.course, status: request.status });
   } catch (error) {
     if (error.code === 11000) return duplicate();

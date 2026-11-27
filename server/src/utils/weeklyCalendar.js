@@ -3,16 +3,14 @@
 // Pure function: no database access.
 import { DAYS, toMinutes } from './timetable.js';
 
-// Saturday-Thursday are teaching days (the slot model's DAYS); Friday is the
-// weekend and is always a day off.
-export const TEACHING_DAYS = DAYS;
-export const WEEK_DAYS = [...DAYS, 'Friday'];
+// Keep the usual six-column layout, and append Friday when an offering uses it.
+const WEEK_DAYS = [...DAYS, 'Friday'];
 
 const byStartTime = (a, b) =>
   toMinutes(a.startTime) - toMinutes(b.startTime) || toMinutes(a.endTime) - toMinutes(b.endTime);
 
 export function buildWeeklyCalendar(entries = []) {
-  const week = Object.fromEntries(TEACHING_DAYS.map((day) => [day, []]));
+  const week = Object.fromEntries(WEEK_DAYS.map((day) => [day, []]));
 
   const courses = entries.map((entry) => {
     const slots = (entry.slots || [])
@@ -43,13 +41,14 @@ export function buildWeeklyCalendar(entries = []) {
       courseCode: entry.courseCode,
       courseName: entry.courseName,
       creditHours: entry.creditHours || 0,
-      slots: slots.sort((a, b) => TEACHING_DAYS.indexOf(a.day) - TEACHING_DAYS.indexOf(b.day) || byStartTime(a, b))
+      slots: slots.sort((a, b) => WEEK_DAYS.indexOf(a.day) - WEEK_DAYS.indexOf(b.day) || byStartTime(a, b))
     };
   });
 
-  for (const day of TEACHING_DAYS) week[day].sort(byStartTime);
+  for (const day of WEEK_DAYS) week[day].sort(byStartTime);
 
-  const daysOff = WEEK_DAYS.filter((day) => day === 'Friday' || week[day].length === 0);
+  const daysOff = WEEK_DAYS.filter((day) => week[day].length === 0);
+  if (!week.Friday.length) delete week.Friday;
   const totalCreditHours = courses.reduce((sum, c) => sum + (c.creditHours || 0), 0);
 
   return { courses, week, daysOff, totalCreditHours };

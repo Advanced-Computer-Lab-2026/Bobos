@@ -14,6 +14,7 @@ import { getWallet } from "../models/academics.js";
 import { walletDelta, walletKinds } from "../models/finance.js";
 import { standardCreditAllowance } from "../utils/credit-allowance.js";
 import { notifyStudents } from "../services/student-notifications.js";
+import { getNextUniversityInstallment } from "../services/university-installments.js";
 import { createStripeCheckout, expireStripeCheckout, getStripeCheckout, stripeCheckoutConfigured } from "../services/stripe-checkout.js";
 
 const { Types } = mongoose;
@@ -568,12 +569,18 @@ export async function chooseExtraHoursSettlement(req, res) {
       }
       let transaction;
       if (option === "deferred") {
-        const installment = `${(await AcademicTerm.findById(request.term).session(session))?.academicYear || "Next"} next installment`;
-        const reference = `DEF-${request._id}`;
-        [transaction] = await FinancialTransaction.create([{ student: profile._id, extraHoursRequest: request._id, kind: "deferredCharge", amount: request.totalCost, status: "pending", settlementOption: "deferred", deferredChargeReference: reference, installment, idempotencyKey: `extra-hours:${request._id}:deferred` }], { session });
+        const installment = await getNextUniversityInstallment(profile._id, request.term, session);
+        if (!installment) throw Object.assign(new Error("The academic term for this installment is unavailable."), { status: 409 });
+        const [charge] = await FinancialTransaction.create([{
+          student: profile._id, extraHoursRequest: request._id,
+          kind: "deferredCharge", amount: request.totalCost, status: "pending", settlementOption: "deferred",
+          deferredChargeReference: `DEF-${request._id}`, installment: installment.label, installmentId: installment._id,
+          idempotencyKey: `extra-hours:${request._id}:deferred`,
+        }], { session });
+        transaction = charge;
         request.settlementOption = "deferred";
         request.settlementStatus = "deferred";
-        request.history.push({ action: "deferred", actor: req.user._id, note: `Deferred to ${installment}.`, settlementOption: "deferred", settlementStatus: "deferred", amount: request.totalCost });
+        request.history.push({ action: "deferred", actor: req.user._id, note: `Deferred to ${installment.label}.`, settlementOption: "deferred", settlementStatus: "deferred", amount: request.totalCost });
       } else if (option === "now") {
         if (method !== "wallet") throw Object.assign(new Error("Open Stripe Checkout for card payments."), { status: 400 });
         // Payments for different requests share one wallet.
@@ -595,7 +602,7 @@ export async function chooseExtraHoursSettlement(req, res) {
     });
     const request = await populatedRequest(id);
     const transaction = paymentId ? await FinancialTransaction.findById(paymentId).lean() : null;
-    return res.json({ request, transaction, confirmation: transaction?.kind === "deferredCharge" ? { type: "deferredPaymentConfirmation", installment: transaction.installment, amountDue: transaction.amount, confirmedAt: transaction.occurredAt, reference: transaction.deferredChargeReference } : transaction?.status === "succeeded" ? { type: "paidReceipt", method: transaction.settlementOption, amount: transaction.amount, transactionReference: transaction.transactionReference, paidAt: transaction.occurredAt } : null });
+    return res.json({ request, transaction, confirmation: transaction?.kind === "deferredCharge" ? { type: "deferredPaymentConfirmation", installment: transaction.installment, installmentId: transaction.installmentId, amountDue: transaction.amount, confirmedAt: transaction.occurredAt, reference: transaction.deferredChargeReference } : transaction?.status === "succeeded" ? { type: "paidReceipt", method: transaction.settlementOption, amount: transaction.amount, transactionReference: transaction.transactionReference, paidAt: transaction.occurredAt } : null });
   } catch (err) { return res.status(err.status || 500).json({ message: err.message || "Unable to settle extra-hours request." }); }
   finally { await session.endSession(); }
 }
@@ -627,7 +634,7 @@ export async function downloadExtraHoursConfirmation(req, res) {
     const transaction = await FinancialTransaction.findOne({ _id: transactionId, student: profile._id, extraHoursRequest: { $ne: null } }).populate("extraHoursRequest", "requestedHours totalCost currency").lean();
     if (!transaction) return res.status(404).json({ message: "Confirmation is not available for this financial record." });
     const deferred = transaction.kind === "deferredCharge";
-    if (deferred && transaction.status !== "pending") return res.status(404).json({ message: "Deferred-payment confirmation is available only for an outstanding deferred charge." });
+    if (deferred && !["pending", "PENDING"].includes(transaction.status)) return res.status(404).json({ message: "Deferred-payment confirmation is available only for an outstanding deferred charge." });
     if (!deferred && (!["extraHoursWalletPayment", "gatewayPayment"].includes(transaction.kind) || transaction.status !== "succeeded")) {
       return res.status(404).json({ message: "A paid receipt is available only after successful payment." });
     }
@@ -642,6 +649,7 @@ export async function downloadExtraHoursConfirmation(req, res) {
     if (deferred) {
       doc.text(`Settlement option: Add to university installment`);
       doc.text(`Installment: ${transaction.installment || "Next installment"}`);
+      if (transaction.installmentId) doc.text(`Installment reference: INST-${transaction.installmentId}`);
       doc.text(`Deferred charge reference: ${transaction.deferredChargeReference || "—"}`);
       doc.text(`Confirmation date: ${new Date(transaction.occurredAt).toLocaleString()}`);
       doc.moveDown().text("This document confirms a deferred charge. It is not a paid receipt.");

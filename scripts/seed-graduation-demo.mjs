@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import mongoose from "mongoose";
-import { AcademicTerm, Course, CourseAttempt, ExtraHoursRequest, StudentProfile, User } from "../apps/api/src/models/index.js";
+import { AcademicTerm, Course, CourseOffering, CourseAttempt, ExtraHoursRequest, StudentProfile, User } from "../apps/api/src/models/index.js";
 
 const uri = process.env.GRADUATION_DEMO_URI;
 const target = URL.parse(uri || "");
@@ -49,7 +49,7 @@ try {
   const past = await findOrInsert(AcademicTerm, { code: "A3PAST" }, {
     academicYear: `${year - 1}/${year}`, season: "spring", ...termDates(now - 120 * day),
   });
-  const [winter] = await Promise.all([["A3WIN", "winter", 30], ["A3SPR", "spring", 95], ["A3SUM", "summer", 160]]
+  const terms = await Promise.all([["A3WIN", "winter", 30], ["A3SPR", "spring", 95], ["A3SUM", "summer", 160]]
     .map(([code, season, startsIn]) => findOrInsert(AcademicTerm, { code }, {
       academicYear: `${year}/${year + 1}`, season, ...termDates(now + startsIn * day), isActive: season === "winter",
     })));
@@ -59,13 +59,13 @@ try {
   });
   const intro = await core("A3C101", "A3 Foundation", 14, ["winter", "spring"]);
   const advanced = await core("A3C201", "A3 Advanced Course", 6, ["winter", "spring"], { prerequisites: [intro._id] });
-  await core("A3C301", "A3 Project", 12, ["winter", "summer"]);
+  const project = await core("A3C301", "A3 Project", 12, ["winter", "summer"]);
   const exam = await core("A3X401", "A3 Makeup Only Course", 4, ["firstMakeup"], { facultyMajors: ["DMET"] });
   const creditMajor = "A3 Credit Scenario";
   const creditCourses = { facultyMajors: [creditMajor] };
-  await core("A3H101", "A3 Standard Course Load", 22, ["winter"], creditCourses);
+  const standardCourse = await core("A3H101", "A3 Standard Course Load", 22, ["winter"], creditCourses);
   const approvedCourse = await core("A3H201", "A3 Approved Extra Course", 3, ["winter", "spring"], creditCourses);
-  await core("A3H301", "A3 Other Extra Course", 3, ["winter", "spring"], creditCourses);
+  const otherExtra = await core("A3H301", "A3 Other Extra Course", 3, ["winter", "spring"], creditCourses);
   const electives = await Promise.all(Array.from({ length: 4 }, (_, index) => {
     const number = index + 1;
     return findOrInsert(Course, { code: `A3E10${number}` }, {
@@ -73,6 +73,18 @@ try {
       facultyMajors: ["CS", "DMET", creditMajor], offeringSeasons: ["winter", "spring"],
     });
   }));
+
+  const [winter] = terms;
+  for (const [index, course] of [intro, advanced, project, standardCourse, approvedCourse, otherExtra].entries()) {
+    for (const term of terms.filter(({ season }) => course.offeringSeasons.includes(season))) {
+      const startMinute = 480 + index * 75;
+      await findOrInsert(CourseOffering, { course: course._id, term: term._id }, {
+        isPublished: true, instructors: [{ fullName: "A3 Instructor" }],
+        eligibleGroups: course.facultyMajors.map(major => ({ major })),
+        slots: [{ componentType: "lecture", groupNumber: "1", day: "Monday", startMinute, endMinute: startMinute + 75, room: "A3 Demo Room", capacity: 20 }],
+      });
+    }
+  }
 
   const cases = [
     { name: "plan", label: "Plan", id: "83-01001", advisor },

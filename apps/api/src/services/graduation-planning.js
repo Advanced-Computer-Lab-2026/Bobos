@@ -59,8 +59,8 @@ export async function loadGraduationContext(student, now = new Date()) {
     hours: Math.max(0, requiredElectiveHours - completedElectives.reduce((sum, course) => sum + course.creditHours, 0)),
   };
   const [offerings, requests] = await Promise.all([
-    CourseOffering.find({ course: { $in: remaining.map((course) => course._id) }, term: { $in: termIds }, isPublished: true })
-      .select("course term").lean(),
+    CourseOffering.find({ course: { $in: remaining.map((course) => course._id) }, term: { $in: termIds } })
+      .select("course term isPublished").lean(),
     ExtraHoursRequest.find({ student: student._id, term: { $in: termIds }, decisionStatus: "approved", settlementStatus: { $in: ["paid", "deferred"] } })
       .populate("courses.course", "creditHours").lean(),
   ]);
@@ -71,7 +71,8 @@ export async function loadGraduationContext(student, now = new Date()) {
       kind: { $in: ["refund", "deferredChargeCancellation"] }, status: "succeeded" }),
   ]) : [[], []];
   const revoked = new Set([...reversals, ...reversalEntries].map(idOf));
-  const published = new Set(offerings.map((offering) => `${idOf(offering.course)}:${idOf(offering.term)}`));
+  const knownOfferings = new Set(offerings.map(offering => idOf(offering.course)));
+  const published = new Set(offerings.filter(offering => offering.isPublished).map((offering) => `${idOf(offering.course)}:${idOf(offering.term)}`));
   const courses = remaining.map((course) => ({
     _id: idOf(course),
     code: course.code,
@@ -81,10 +82,9 @@ export async function loadGraduationContext(student, now = new Date()) {
     required: course.courseType !== "elective" || failed.has(idOf(course)),
     prerequisites: (course.prerequisites ?? []).map(idOf),
     offeringSeasons: course.offeringSeasons ?? [],
-    offeringKnown: Boolean(course.offeringSeasons?.length) || terms.some((term) => published.has(`${idOf(course)}:${idOf(term)}`)),
-    termIds: terms.filter((term) => course.isActive && (course.offeringSeasons?.length
-      ? course.offeringSeasons.includes(term.season)
-      : published.has(`${idOf(course)}:${idOf(term)}`))).map(idOf),
+    offeringKnown: Boolean(course.offeringSeasons?.length) || knownOfferings.has(idOf(course)),
+    termIds: terms.filter((term) => course.isActive && published.has(`${idOf(course)}:${idOf(term)}`)
+      && (!course.offeringSeasons?.length || course.offeringSeasons.includes(term.season))).map(idOf),
     failed: failed.has(idOf(course)),
   }));
   return {

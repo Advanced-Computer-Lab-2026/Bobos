@@ -3,6 +3,7 @@ import {
   getRecords,
   getRecordById,
   processRefund,
+  requestFinancialReversal,
   exportRecords,
 } from "../controllers/finance.controller.js";
 import { requireAuth } from "../middleware/auth.middleware.js";
@@ -20,7 +21,8 @@ router.get("/records/export", requireRole("coordinator", "administrator"), expor
 router.get("/records", getRecords);
 router.get("/", getRecords);
 
-// 3. Refund processing
+// 3. Reversal request and processing
+router.post("/records/:id/reversal-request", requireRole("coordinator", "administrator"), requestFinancialReversal);
 router.post("/refund", requireRole("coordinator", "administrator"), processRefund);
 router.post("/records/:id/refund", requireRole("coordinator", "administrator"), processRefund);
 router.post("/:id/refund", requireRole("coordinator", "administrator"), processRefund);

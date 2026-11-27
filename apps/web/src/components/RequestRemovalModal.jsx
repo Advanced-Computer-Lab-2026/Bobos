@@ -25,6 +25,7 @@ export default function RequestRemovalModal({
   const [termId, setTermId] = useState(initialTermId || "");
   const [courseId, setCourseId] = useState("");
   const [reason, setReason] = useState("incorrectMandatoryDesignation");
+  const [makeupAttempt, setMakeupAttempt] = useState("");
   const [explanation, setExplanation] = useState("");
 
   const [loadingInitial, setLoadingInitial] = useState(true);
@@ -149,6 +150,7 @@ export default function RequestRemovalModal({
           courseId,
           termId,
           reason,
+          ...(reason === "makeupEligibility" && { makeupAttempt: Number(makeupAttempt) }),
           explanation: explanation.trim(),
         },
       });
@@ -299,6 +301,15 @@ export default function RequestRemovalModal({
                 ))}
               </select>
             </label>
+
+            {reason === "makeupEligibility" && <label className="field">
+              <span>Makeup attempt</span>
+              <select required value={makeupAttempt} onChange={(event) => setMakeupAttempt(event.target.value)} disabled={submitting}>
+                <option value="">Choose a makeup</option>
+                <option value="1">First makeup</option>
+                <option value="2">Second makeup</option>
+              </select>
+            </label>}
 
             <label className="field">
               <span>Detailed explanation *</span>

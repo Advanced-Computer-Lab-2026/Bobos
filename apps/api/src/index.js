@@ -1,10 +1,12 @@
 import mongoose from "mongoose";
 import app from "./app.js";
 import { StudentTermStanding } from "./models/academics.js";
+import { UniversityInstallment } from "./models/finance.js";
 import { Notification } from "./models/communications.js";
 import { WholeScheduleSwapRequest } from "./models/requests.js";
 import { probationWarningsEnabled, startProbationWarnings } from "./services/probation-warnings.js";
 import { startCalendarWorker } from "./services/calendar-worker.js";
+import { linkOutstandingDeferredCharges } from "./services/university-installments.js";
 import { startDeadlineReminders } from "./services/deadline-reminders.js";
 import { startExtraHoursCheckoutReconciliation } from "./controllers/extra-hours.controller.js";
 const port = Number(process.env.PORT || 3000);
@@ -19,9 +21,10 @@ try {
 }
 
 try {
-  await Promise.all([WholeScheduleSwapRequest.init(), Notification.init(), StudentTermStanding.init()]);
+  await Promise.all([WholeScheduleSwapRequest.init(), Notification.init(), StudentTermStanding.init(), UniversityInstallment.init()]);
+  await linkOutstandingDeferredCharges();
 } catch (error) {
-  console.error("Could not initialize application indexes:", error.message);
+  console.error("Could not initialize application storage:", error.message);
   process.exit(1);
 }
 

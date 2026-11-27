@@ -3,6 +3,7 @@ import { MandatoryCourseRemovalRequest } from "../models/requests.js";
 import { StudentProfile, User } from "../models/identity.js";
 import { Course, AcademicTerm } from "../models/catalogue.js";
 import { StudentSchedule, CourseAttempt } from "../models/academics.js";
+import { notifyCoordinatorsOfRequest } from "../services/coordinator-notifications.js";
 import { majorMatches } from "../utils/major.js";
 import { changeSlotCount, collectSlotRefs } from "./scheduling.controller.js";
 
@@ -15,6 +16,38 @@ const VALID_REASONS = [
 ];
 
 const idOf = (value) => (value == null ? null : String(value._id || value));
+
+async function makeupEligibility(studentId, courseId, requestedAttempt, session = null) {
+  const attempts = await CourseAttempt.find({ student: studentId })
+    .select("course result attendance term attemptNumber createdAt")
+    .populate("term", "season termStart").session(session).lean();
+  attempts.sort((left, right) =>
+    new Date(right.term?.termStart || right.createdAt) - new Date(left.term?.termStart || left.createdAt)
+    || right.attemptNumber - left.attemptNumber || new Date(right.createdAt) - new Date(left.createdAt)
+  );
+  const latestByCourse = new Map();
+  for (const attempt of attempts) {
+    const course = String(attempt.course);
+    if (!latestByCourse.has(course)) latestByCourse.set(course, attempt);
+  }
+  const failedCourse = latestByCourse.get(String(courseId));
+  const invalid = message => ({ error: `Removal request ineligible for the specified reason: makeup eligibility ${message}.` });
+  if (failedCourse?.result !== "failed" || failedCourse.attendance !== "attended") {
+    return invalid("requires an attended failed course attempt");
+  }
+
+  const lastSeason = failedCourse.term?.season;
+  const makeupAttempt = requestedAttempt ?? (lastSeason === "firstMakeup" ? 2 : 1);
+  if (lastSeason === "secondMakeup" || (makeupAttempt === 1 && lastSeason === "firstMakeup")) {
+    return invalid("cannot reuse a makeup opportunity that has already been attempted");
+  }
+  if (makeupAttempt === 2) {
+    if (lastSeason !== "firstMakeup") return invalid("for a second makeup requires a failed first makeup");
+    const failedCount = [...latestByCourse.values()].filter(attempt => attempt.result === "failed").length;
+    if (failedCount > 2) return invalid("for a second makeup is limited to students with one or two failed courses");
+  }
+  return { makeupAttempt };
+}
 
 async function validateRemovalReasonEligibility(student, course, term, reason) {
   if (reason === "completedHours") {
@@ -31,19 +64,6 @@ async function validateRemovalReasonEligibility(student, course, term, reason) {
 
     if (completedHours <= 157) {
       return "Removal request ineligible for the specified reason: student must have more than 157 completed credit hours.";
-    }
-    return null;
-  }
-
-  if (reason === "makeupEligibility") {
-    const attendedFailure = await CourseAttempt.exists({
-      student: student._id,
-      course: course._id,
-      attendance: "attended",
-      result: "failed",
-    });
-    if (!attendedFailure) {
-      return "Removal request ineligible for the specified reason: makeup eligibility requires an attended failed course attempt.";
     }
     return null;
   }
@@ -117,7 +137,7 @@ async function validateRemovalReasonEligibility(student, course, term, reason) {
 
 export async function createMandatoryRemovalRequest(req, res) {
   try {
-    const { studentProfileId, courseId, termId, reason, explanation } = req.body || {};
+    const { studentProfileId, courseId, termId, reason, explanation, makeupAttempt } = req.body || {};
 
     if (!studentProfileId || !mongoose.isValidObjectId(studentProfileId)) {
       return res.status(400).json({ message: "A valid studentProfileId is required." });
@@ -132,6 +152,9 @@ export async function createMandatoryRemovalRequest(req, res) {
       return res.status(400).json({
         message: `reason must be one of: ${VALID_REASONS.join(", ")}`,
       });
+    }
+    if (makeupAttempt != null && (reason !== "makeupEligibility" || ![1, 2].includes(makeupAttempt))) {
+      return res.status(400).json({ message: "Choose the first or second makeup." });
     }
     if (typeof explanation !== "string" || !explanation.trim()) {
       return res.status(400).json({ message: "An explanation is required." });
@@ -191,20 +214,26 @@ export async function createMandatoryRemovalRequest(req, res) {
     }
 
     const eligibilityError = await validateRemovalReasonEligibility(student, course, term, reason);
-    if (eligibilityError) {
-      return res.status(400).json({ message: eligibilityError });
-    }
+    if (eligibilityError) return res.status(400).json({ message: eligibilityError });
 
-    const created = await MandatoryCourseRemovalRequest.create({
-      student: student._id,
-      course: course._id,
-      advisor: req.user._id,
-      term: term._id,
-      reason,
-      explanation: explanation.trim(),
-      status: "pending",
+    const created = await mongoose.connection.transaction(async (session) => {
+      const makeup = reason === "makeupEligibility" ? await makeupEligibility(student._id, course._id, makeupAttempt, session) : {};
+      if (makeup.error) return makeup;
+      const [request] = await MandatoryCourseRemovalRequest.create([{
+        student: student._id,
+        course: course._id,
+        advisor: req.user._id,
+        term: term._id,
+        reason,
+        makeupAttempt: makeup.makeupAttempt,
+        explanation: explanation.trim(),
+        status: "pending",
+      }], { session });
+      await notifyCoordinatorsOfRequest(MandatoryCourseRemovalRequest, request, student.studentId, session);
+      return request;
     });
 
+    if (created.error) return res.status(400).json({ message: created.error });
     const populated = await MandatoryCourseRemovalRequest.findById(created._id)
       .populate({
         path: "student",
@@ -353,6 +382,10 @@ export async function decideMandatoryRemovalRequest(req, res) {
       if (!request) return { status: 404, message: "Mandatory course removal request not found." };
       if (request.status !== "pending") {
         return { status: 409, message: `This request has already been decided (${request.status}).` };
+      }
+      if (decision === "approved" && request.reason === "makeupEligibility") {
+        const makeup = await makeupEligibility(request.student, request.course, request.makeupAttempt, session);
+        if (makeup.error) return { status: 409, message: makeup.error };
       }
       request.status = decision;
       request.responseNote = responseNote.trim();

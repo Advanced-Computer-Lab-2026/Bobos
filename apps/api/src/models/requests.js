@@ -78,6 +78,7 @@ const mandatoryCourseRemovalRequestSchema = withTimestamps({
     required: true,
     enum: ["incorrectMandatoryDesignation", "makeupEligibility", "completedHours", "restrictedCoursePair", "other"],
   },
+  makeupAttempt: { type: Number, enum: [1, 2] },
   explanation: { type: String, required: true, trim: true, maxlength: 2000 },
   status: { type: String, required: true, enum: ["pending", "approved", "rejected"], default: "pending" },
   decidedBy: ref("User", { default: null }),

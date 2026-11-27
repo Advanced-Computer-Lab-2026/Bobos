@@ -26,8 +26,18 @@ function decisionEvent(record, relatedModel, type, title, decision) {
   };
 }
 
-// These workflows can be integrated independently. Their saved decisions and ledger entries
-// are enough to deliver the owner's alerts when the inbox loads.
+function graduationDecisionEvent(record) {
+  return decisionEvent(record, "GraduationPlan", "graduationPlanDecision",
+    "Graduation plan decision", record.status === "accepted"
+      ? "Your graduation plan was accepted." : "Your graduation plan was returned to your advisor for revision.");
+}
+
+export async function notifyStudentOfGraduationDecision(record, session) {
+  const student = await StudentProfile.findById(record.student).select("user").session(session).lean();
+  if (student) await saveInAppEvents(student.user, "student", [graduationDecisionEvent(record)], session);
+}
+
+// Keep synchronizing saved records for decisions made before immediate delivery was added.
 export async function syncAdvisingNotifications(userId) {
   const student = await StudentProfile.findOne({ user: userId, studentType: "advising" }).select("_id").lean();
   if (!student) return;
@@ -49,9 +59,7 @@ export async function syncAdvisingNotifications(userId) {
   const events = [
     ...slotChanges.map(record => decisionEvent(record, "SlotChangeRequest", "slotChangeDecision",
       "Slot-change decision", `Your slot-change request was ${record.status}.`)),
-    ...plans.map(record => decisionEvent(record, "GraduationPlan", "graduationPlanDecision",
-      "Graduation plan decision", record.status === "accepted"
-        ? "Your graduation plan was accepted." : "Your graduation plan was returned to your advisor for revision.")),
+    ...plans.map(graduationDecisionEvent),
     ...exams.map(record => decisionEvent(record, "ExitExamRequest", "exitExamDecision",
       "Exit-exam decision", `Your exit-exam request was ${record.status}.`)),
     ...reversals.map(record => {

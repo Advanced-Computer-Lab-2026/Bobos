@@ -657,11 +657,12 @@ export default function ExtraHoursPage({
                           item.deferredChargeReference ||
                           item.installment ||
                           "—"}
+                        {item.installmentId && <div className="secondary-text">Installment INST-{item.installmentId}</div>}
                       </td>
                       <td>{date(item.occurredAt)}</td>
                       <td>
                         {((item.kind === "deferredCharge" &&
-                          item.status === "pending") ||
+                          ["pending", "PENDING"].includes(item.status)) ||
                         (["extraHoursWalletPayment", "gatewayPayment"].includes(
                           item.kind,
                         ) &&
