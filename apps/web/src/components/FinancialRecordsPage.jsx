@@ -1,6 +1,9 @@
+import { termLabel } from "../term-label.js";
+import { WorkspaceEmpty } from "./WorkspaceUI.jsx";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, explainApiError } from "../api.js";
-import { WorkspaceEmpty } from "./WorkspaceUI.jsx";
+import { StudentIdentity, RegisterEmpty, RecordPages } from "./CoordinatorRecords.jsx";
+import FilterDisclosure from "./FilterDisclosure.jsx";
 
 const TYPE_OPTIONS = [
   { value: "", label: "All types" },
@@ -18,6 +21,12 @@ const STATUS_OPTIONS = [
   { value: "FAILED", label: "FAILED" },
   { value: "CANCELLED", label: "CANCELLED" },
 ];
+
+function ledgerLabel(value) {
+  const key = String(value || "—").toLowerCase();
+  const readable = (key === "succeeded" ? "completed" : key).replaceAll("_", " ");
+  return readable[0].toUpperCase() + readable.slice(1);
+}
 
 const SETTLEMENT_LABELS = { wallet: "Wallet", gateway: "Gateway", deferred: "Next installment" };
 
@@ -62,6 +71,8 @@ function DetailItem({ label, value }) {
 }
 
 export default function FinancialRecordsPage({ token, role, notify }) {
+  const coordinator = role === "coordinator";
+  const Empty = coordinator ? RegisterEmpty : WorkspaceEmpty;
   // Query & filter states
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -78,9 +89,11 @@ export default function FinancialRecordsPage({ token, role, notify }) {
   // Data states
   const [records, setRecords] = useState([]);
   const [total, setTotal] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const totalPages = Math.max(1, Math.ceil(total / limit));
 
   // Modal states
   const [viewRecord, setViewRecord] = useState(null);
@@ -161,7 +174,6 @@ export default function FinancialRecordsPage({ token, role, notify }) {
       setError("The end date must be on or after the start date.");
       setRecords([]);
       setTotal(0);
-      setTotalPages(1);
       setLoading(false);
       return;
     }
@@ -178,7 +190,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
       const data = await api(`/api/finance/records?${params.toString()}`, { token, signal });
       setRecords(data.records || []);
       setTotal(data.total || 0);
-      setTotalPages(data.totalPages || 1);
+      if (page > (data.totalPages || 1)) setPage(data.totalPages || 1);
     } catch (err) {
       if (err.name !== "AbortError") {
         setError(explainApiError(err, "Financial records"));
@@ -281,37 +293,8 @@ export default function FinancialRecordsPage({ token, role, notify }) {
     }
   };
 
-  return (
-    <div className="page-stack workspace-page finance-page">
-      {/* Title & Top Export Action */}
-      <div className="workspace-header">
-        <div>
-          <h1>Financial records</h1>
-          <p className="page-description">
-            Review student payments, deferred charges and refunds in one place.
-          </p>
-        </div>
-        <button
-          className="outline-button"
-          type="button"
-          onClick={handleExportCSV}
-          disabled={exporting || loading || invalidDateRange}
-          title="Download filtered records as CSV"
-        >
-          {exporting ? "Exporting CSV…" : "Export CSV"}
-        </button>
-      </div>
-
-      {/* Filters Toolbar */}
-      <section className="panel directory-filters">
-        <div className="panel-heading">
-          <div>
-            <h2>Find a transaction</h2>
-          </div>
-        </div>
-
-        <div className="filter-grid">
-          <label className="field span-two">
+  const recordTerm = viewRecord && terms.find(item => [viewRecord.term, viewRecord.term?._id, viewRecord.term?.code, viewRecord.extraHoursRequest?.term?.code].some(key => item._id === key || item.code === key));
+  const searchField = <label className={coordinator ? "field filter-search" : "field span-two"}>
             <span>Search records</span>
             <input
               type="search"
@@ -322,14 +305,14 @@ export default function FinancialRecordsPage({ token, role, notify }) {
               autoComplete="off"
               placeholder="Student ID, request ID or reference"
             />
-          </label>
-
-          <label className="field">
+          </label>;
+  const filterFields = <>
+<label className="field">
             <span>Transaction type</span>
             <select value={type} onChange={handleTypeChange}>
               {TYPE_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
-                  {opt.label}
+                  {coordinator && opt.value ? ledgerLabel(opt.value) : opt.label}
                 </option>
               ))}
             </select>
@@ -340,7 +323,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
             <select value={status} onChange={handleStatusChange}>
               {STATUS_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
-                  {opt.label}
+                  {coordinator && opt.value ? ledgerLabel(opt.value) : opt.label}
                 </option>
               ))}
             </select>
@@ -360,7 +343,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
               <option value="">All terms</option>
               {terms.map((option) => (
                 <option key={option._id} value={option.code}>
-                  {option.code}
+                  {coordinator ? termLabel(option) : option.code}
                 </option>
               ))}
             </select>
@@ -375,16 +358,40 @@ export default function FinancialRecordsPage({ token, role, notify }) {
             <span>To date</span>
             <input type="date" value={endDate} onChange={(e) => { setEndDate(e.target.value); setPage(1); }} />
           </label>
-        </div>
+  </>;
+  return (
+    <div className="page-stack workspace-page finance-page">
+      {/* Title & Top Export Action */}
+      <div className="workspace-header">
+        <div>
+          <h1>Financial records</h1>{!coordinator && <p className="page-description">Review student payments, deferred charges and refunds in one place.</p>}
 
-        <div className="filter-actions">
-          <button className="text-button" type="button" onClick={handleClearFilters}>
-            Clear filters
-          </button>
-          <button className="text-button push-right" type="button" onClick={() => loadRecords()}>
-            Refresh
-          </button>
         </div>
+        <button
+          className="outline-button"
+          type="button"
+          onClick={handleExportCSV}
+          disabled={exporting || loading || invalidDateRange}
+          title="Download filtered records as CSV"
+        >
+          {exporting ? "Exporting CSV…" : "Export CSV"}
+        </button>
+      </div>
+
+      {/* Filters Toolbar */}
+      <section className="panel directory-filters">
+        {coordinator ? <FilterDisclosure floating actions={<>
+          <button className="text-button" type="button" disabled={!hasFilters} onClick={handleClearFilters}>Clear</button>
+          <button className="text-button" type="button" onClick={() => loadRecords()}>Refresh</button>
+        </>} chips={[
+          [type, setType], [status, setStatus], [term, setTerm], [settlementOption, setSettlementOption],
+          [startDate && "From " + startDate, setStartDate], [endDate && "Through " + endDate, setEndDate],
+        ].filter(([label]) => label).map(([label, reset], index) => ({ key: index, label: label === term ? termLabel(terms.find(item => item.code === term)) : ledgerLabel(label), onRemove: () => { reset(""); setPage(1); } }))}
+          search={searchField}>
+          <div className="filter-grid">{filterFields}        </div>
+
+        </FilterDisclosure> : <><div className="panel-heading"><h2>Find a transaction</h2></div><div className="filter-grid">{searchField}{filterFields}</div>
+          <div className="filter-actions"><button type="button" className="text-button" onClick={handleClearFilters}>Clear filters</button><button type="button" className="text-button push-right" onClick={() => loadRecords()}>Refresh</button></div></>}
       </section>
 
       {/* Error Feedback */}
@@ -411,51 +418,35 @@ export default function FinancialRecordsPage({ token, role, notify }) {
             Loading financial records…
           </div>
         ) : records.length === 0 ? (
-          <WorkspaceEmpty title={hasFilters ? "No matching transactions" : "No transactions yet"}
+          <Empty art="payment-ledger.svg" title={hasFilters ? "No matching transactions" : "No transactions yet"}
             description={hasFilters ? "Try another search or clear the filters." : "Payments, deferred charges and refunds will appear here when they are recorded."}
             action={hasFilters ? <button className="outline-button" type="button" onClick={handleClearFilters}>Clear filters</button> : undefined} />
         ) : (
           <>
-            <div className="table-scroll">
+            <div className={coordinator ? "studio-ledger" : "table-scroll"}>
               <table>
                 <thead>
                   <tr>
-                    <th>Date</th>
-                    <th>Student ID</th>
-                    <th>Student Name</th>
-                    <th>Type</th>
-                    <th>Request / Reference</th>
-                    <th>Amount</th>
-                    <th>Status</th>
+                    {coordinator ? <><th>Student</th><th>Transaction</th><th>Amount</th></> : <><th>Date</th><th>Student ID</th><th>Student Name</th><th>Type</th><th>Request / Reference</th><th>Amount</th><th>Status</th></>}
                     <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {records.map((r) => (
-                    <tr key={r._id}>
-                      <td>{formatDate(r.occurredAt || r.createdAt)}</td>
-                      <td>
-                        <strong>{r.student?.studentId || "—"}</strong>
-                      </td>
-                      <td>{r.student?.name || r.student?.user?.fullName || "—"}</td>
-                      <td>
-                        <span className="role-pill">{r.type || r.kind || "—"}</span>
-                        {r.settlementOption && <div className="secondary-text">{SETTLEMENT_LABELS[r.settlementOption]}</div>}
-                      </td>
-                      <td>
-                        {r.deferredChargeReference || r.referenceNumber || "—"}
-                        {r.extraHoursRequest?._id && <div className="secondary-text">Request {r.extraHoursRequest._id.slice(-8)}</div>}
-                      </td>
-                      <td>
-                        <strong className="badge-currency">
-                          {formatCurrency(r.amount, r.currency)}
-                        </strong>
-                      </td>
-                      <td>
-                        <span className={`status-pill ${formatStatusClass(r.status)}`}>
-                          {String(r.status || "—").toUpperCase()}
-                        </span>
-                      </td>
+                    <tr key={r._id} aria-label={coordinator ? [r.student?.name, ledgerLabel(r.type || r.kind), formatCurrency(r.amount, r.currency), r.deferredChargeReference || r.referenceNumber].filter(Boolean).join(" · ") : undefined}>
+                      {coordinator ? <>
+                        <td className="ledger-student"><StudentIdentity name={r.student?.name || r.student?.user?.fullName} id={r.student?.studentId} /></td>
+                        <td className="ledger-transaction"><strong>{ledgerLabel(r.type || r.kind)}</strong>
+                          <small>{[SETTLEMENT_LABELS[r.settlementOption], (r.occurredAt || r.createdAt) && new Date(r.occurredAt || r.createdAt).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })].filter(Boolean).join(" · ")}</small></td>
+                        <td className="ledger-balance"><strong className="record-amount">{formatCurrency(r.amount, r.currency)}</strong>
+                          <span className={`status-pill ${formatStatusClass(r.status)}`}>{ledgerLabel(r.status)}</span></td>
+                      </> : <>
+                        <td>{formatDate(r.occurredAt || r.createdAt)}</td>
+                        <td><strong>{r.student?.studentId || "—"}</strong></td><td>{r.student?.name || r.student?.user?.fullName || "—"}</td>
+                        <td><span className="role-pill">{r.type || r.kind || "—"}</span>{r.settlementOption && <div className="secondary-text">{SETTLEMENT_LABELS[r.settlementOption]}</div>}</td>
+                        <td>{r.deferredChargeReference || r.referenceNumber || "—"}{r.extraHoursRequest?._id && <div className="secondary-text">Request {r.extraHoursRequest._id.slice(-8)}</div>}</td>
+                        <td><strong className="badge-currency">{formatCurrency(r.amount, r.currency)}</strong></td><td><span className={`status-pill ${formatStatusClass(r.status)}`}>{String(r.status || "—").toUpperCase()}</span></td>
+                      </>}
                       <td>
                         <div style={{ display: "inline-flex", gap: "6px" }}>
                           <button
@@ -483,7 +474,9 @@ export default function FinancialRecordsPage({ token, role, notify }) {
               </table>
             </div>
 
-            {/* Pagination Controls */}
+{coordinator ? <>
+            <RecordPages page={page} size={limit} total={total} busy={loading} onChange={setPage} label="Financial records" />
+</> : <>
             <div className="pagination-bar">
               <span>
                 Showing {Math.min((page - 1) * limit + 1, total)} to{" "}
@@ -511,6 +504,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
                 </button>
               </div>
             </div>
+</>}
           </>
         )}
       </section>
@@ -528,7 +522,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
             <div className="modal-heading">
               <div>
                 <p className="eyebrow">TRANSACTION BREAKDOWN</p>
-                <h2 id="financial-details-title">Record Details</h2>
+                <h2 id="financial-details-title">{coordinator ? "Transaction details" : "Record Details"}</h2>
               </div>
               <button
                 className="icon-button"
@@ -555,6 +549,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
                     label="Reference Number"
                     value={viewRecord.referenceNumber || viewRecord.transactionReference || "—"}
                   />
+                  {coordinator && viewRecord.deferredChargeReference && <DetailItem label="Deferred charge reference" value={viewRecord.deferredChargeReference} />}
                   <DetailItem label="Receipt ID" value={viewRecord.receiptId || "—"} />
                   <DetailItem
                     label="Student Name"
@@ -563,7 +558,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
                   <DetailItem label="Student ID" value={viewRecord.student?.studentId || "—"} />
                   <DetailItem label="Student Email" value={viewRecord.student?.email || viewRecord.student?.user?.email || "—"} />
                   <DetailItem label="Faculty / Major" value={`${viewRecord.student?.faculty || "—"} / ${viewRecord.student?.major || "—"}`} />
-                  <DetailItem label="Transaction Type" value={viewRecord.type || viewRecord.kind || "—"} />
+                  <DetailItem label="Transaction Type" value={coordinator ? ledgerLabel(viewRecord.type || viewRecord.kind) : viewRecord.type || viewRecord.kind || "—"} />
                   <DetailItem
                     label="Total Amount"
                     value={formatCurrency(viewRecord.amount, viewRecord.currency)}
@@ -572,7 +567,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
                     label="Status"
                     value={
                       <span className={`status-pill ${formatStatusClass(viewRecord.status)}`}>
-                        {String(viewRecord.status || "—").toUpperCase()}
+                        {coordinator ? ledgerLabel(viewRecord.status) : String(viewRecord.status || "—").toUpperCase()}
                       </span>
                     }
                   />
@@ -582,8 +577,9 @@ export default function FinancialRecordsPage({ token, role, notify }) {
                   />
                   <DetailItem
                     label="Academic Term"
-                    value={
-                      viewRecord.term?.code ||
+                    value={coordinator && recordTerm
+                      ? termLabel(recordTerm)
+                      : viewRecord.term?.code ||
                       viewRecord.extraHoursRequest?.term?.code ||
                       (typeof viewRecord.term === "string" ? viewRecord.term : "—")
                     }
@@ -747,7 +743,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
             <div
               style={{
                 background: "var(--raised)",
-                border: "1px solid #e7ece9",
+                border: "1px solid var(--line)",
                 borderRadius: "8px",
                 padding: "12px 14px",
                 margin: "14px 0",

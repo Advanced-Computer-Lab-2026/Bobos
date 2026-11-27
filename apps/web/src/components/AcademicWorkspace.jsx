@@ -17,6 +17,7 @@ export default function AcademicWorkspace({ token, role, section, notify }) {
 }
 
 function CoursesWorkspace({ token, role, notify }) {
+  const canManage = role === "administrator";
   const [courses, setCourses] = useState([]); const [loading, setLoading] = useState(true); const [error, setError] = useState("");
   const [query, setQuery] = useState(""); const [editing, setEditing] = useState(null); const [saving, setSaving] = useState(false);
   const [editError, setEditError] = useState("");
@@ -55,15 +56,22 @@ function CoursesWorkspace({ token, role, notify }) {
     finally { setDeleting(false); }
   };
   const [viewing, setViewing] = useState(null);
+  const initialCourse = useRef(new URLSearchParams(window.location.search).get("course"));
+  useEffect(() => {
+    if (!courses.length || !initialCourse.current) return;
+    const target = courses.find(course => course.code.replace(/\s/g, "").toUpperCase() === initialCourse.current.replace(/\s/g, "").toUpperCase() || course._id === initialCourse.current);
+    initialCourse.current = null;
+    if (target) setViewing(target);
+  }, [courses]);
   const openCourseEditor = (course) => { setEditError(""); setEditing(course); };
   const visible = courses.filter((course) => `${course.code} ${course.name} ${course.courseType} ${(course.facultyMajors || []).join(" ")}`.toLowerCase().includes(query.toLowerCase()));
   const saveCourse = async (event) => {
     event.preventDefault(); setSaving(true); setEditError("");
     const form = new FormData(event.currentTarget);
-    const prerequisites = [...event.currentTarget.elements.prerequisites.selectedOptions].map((option) => option.value);
+    const prerequisites = form.getAll("prerequisites");
     const payload = {
       code: form.get("code"), name: form.get("name"), creditHours: Number(form.get("creditHours")), courseType: form.get("courseType"),
-      facultyMajors: splitLines(form.get("facultyMajors")), offeringSeasons: [...event.currentTarget.elements.offeringSeasons.selectedOptions].map((option) => option.value),
+      facultyMajors: splitLines(form.get("facultyMajors")), offeringSeasons: form.getAll("offeringSeasons"),
       prerequisites, recommendedSemester: form.get("recommendedSemester") ? Number(form.get("recommendedSemester")) : undefined,
       lectureHours: form.get("lectureHours") ? Number(form.get("lectureHours")) : undefined,
       tutorialHours: form.get("tutorialHours") ? Number(form.get("tutorialHours")) : undefined,
@@ -76,14 +84,30 @@ function CoursesWorkspace({ token, role, notify }) {
     } catch (e) { setEditError(e.message); }
     finally { setSaving(false); }
   };
-  return <div className="page-stack"><PageTitle eyebrow="COURSE CATALOGUE" title="Course catalogue" description="Create, search, and maintain the university course catalogue." action={<button className="primary-button" type="button" onClick={() => openCourseEditor({})}>＋ Add course</button>} />
+  return <div className="page-stack course-register"><PageTitle title="Course catalogue" description="Course requirements, teaching hours and offering seasons." action={canManage && <button className="primary-button" type="button" onClick={() => openCourseEditor({})}>＋ Add course</button>} />
     {error && <div className="feedback error" role="alert">{error}</div>}
     {role === "administrator" && <section className="panel course-import-panel"><div className="results-heading"><div><p className="eyebrow">ADMINISTRATOR</p><h2>Import courses from CSV</h2></div></div><p className="helper-text">Upload the standard course template or a MET/DMET curriculum export. For curriculum exports, the importer reads semester and major sections, course codes, contact hours, and prerequisites. It infers English/German course semesters from their code level. Unnumbered elective placeholders are skipped. If any course row is invalid, nothing is imported.</p><form className="form-stack" onSubmit={importCsv}><label className="field"><span>CSV file</span><input type="file" accept=".csv,text/csv" onChange={(event) => { setCsvFile(event.target.files?.[0] || null); setImportErrors([]); }} required /></label><fieldset className="course-import-seasons"><legend>Default offering seasons for curriculum exports</legend><p className="helper-text">This curriculum CSV does not include offering seasons. These defaults apply only to that format; a standard template uses its Offering Season column.</p><div className="season-checkboxes">{seasons.map((season) => <label key={season}><input type="checkbox" checked={curriculumOfferingSeasons.includes(season)} onChange={(event) => setCurriculumOfferingSeasons((current) => event.target.checked ? [...current, season] : current.filter((item) => item !== season))} />{pretty(season)}</label>)}</div></fieldset><div className="inline-controls"><button className="primary-button" disabled={importing || !csvFile}>{importing ? "Validating and importing…" : "Validate and import"}</button><a className="text-button" download="course-import-template.csv" href={`data:text/csv;charset=utf-8,${encodeURIComponent("Course Code,Course Name,Credit Hours,Course Type,Faculty/Major,Recommended Semester,Offering Season,Prerequisites\n")}`}>Download CSV template</a></div></form>{importErrors.length > 0 && <div className="course-import-errors" role="alert"><h3>Fix these CSV errors</h3><div className="table-scroll"><table><thead><tr><th>Row</th><th>Column</th><th>Error</th></tr></thead><tbody>{importErrors.map((item, index) => <tr key={`${item.row}-${item.field}-${index}`}><td>{item.row}</td><td>{item.field}</td><td>{item.message}</td></tr>)}</tbody></table></div></div>}</section>}
-    <section className="panel"><div className="results-heading"><div><p className="eyebrow">CATALOGUE</p><h2>Courses</h2></div><span className="result-count">{courses.length} total</span></div><label className="search-control"><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search by course code, name, or major" /></label>{loading ? <Loading /> : visible.length ? <div className="table-scroll"><table><thead><tr><th>Course</th><th>Credits</th><th>Type</th><th>Majors</th><th>Semester</th><th>Status</th><th>Actions</th></tr></thead><tbody>{visible.map((course) => <tr key={course._id}><td><div className="catalogue-course-identity"><OfferingCourseIcon code={course.code} /><button type="button" className="text-button" style={{ textAlign: "left", padding: 0, textDecoration: "none" }} onClick={() => setViewing(course)}><strong>{course.code}</strong><span className="secondary-text" style={{ display: "block", textDecoration: "underline" }}>{course.name}</span></button></div></td><td>{course.creditHours}</td><td>{pretty(course.courseType)}</td><td>{(course.facultyMajors || []).join(", ") || "All"}</td><td>{course.recommendedSemester || "—"}</td><td><span className={`status-pill ${course.isActive ? "good" : "muted"}`}>{course.isActive ? "Active" : "Inactive"}</span></td><td><div className="table-actions"><button className="text-button" type="button" onClick={() => setViewing(course)}>View</button><button className="text-button" type="button" onClick={() => openCourseEditor(course)}>Edit</button><PaperTossButton label={`Delete course ${course.code}`} onClick={() => { setDeleteError(""); setConfirmingDelete(course); }}>Delete</PaperTossButton></div></td></tr>)}</tbody></table></div> : <EmptyState title="No courses found" text={query ? "Try another search." : "Add a course to start building the catalogue."} />}</section>
-    {viewing && <CourseDetailsModal course={viewing} allCourses={courses} onClose={() => setViewing(null)} onEdit={() => { const target = viewing; setViewing(null); openCourseEditor(target); }} />}
-    {editing && <Modal title={editing._id ? "Edit course" : "Add a course"} eyebrow="COURSE CATALOGUE" onClose={() => setEditing(null)}><form className="form-stack" onSubmit={saveCourse}><div className="form-grid"><Field label="Course code"><input name="code" required maxLength={24} defaultValue={editing.code || ""} placeholder="CSEN704" /></Field><Field label="Course name"><input name="name" required defaultValue={editing.name || ""} placeholder="Course title" /></Field><Field label="Credit hours"><input name="creditHours" required type="number" min="0" step="0.5" defaultValue={editing.creditHours ?? ""} /></Field><Field label="Course type"><select name="courseType" defaultValue={editing.courseType || "core"}><option value="core">Core</option><option value="elective">Elective</option><option value="huma">Humanities</option></select></Field><Field label="Recommended semester"><input name="recommendedSemester" type="number" min="1" max="10" defaultValue={editing.recommendedSemester ?? ""} /></Field><Field label="Lecture hours"><input name="lectureHours" type="number" min="0" step="0.5" defaultValue={editing.lectureHours ?? ""} /></Field><Field label="Tutorial hours"><input name="tutorialHours" type="number" min="0" step="0.5" defaultValue={editing.tutorialHours ?? ""} /></Field><Field label="Lab hours"><input name="labHours" type="number" min="0" step="0.5" defaultValue={editing.labHours ?? ""} /></Field><Field label="Majors (one per line)" className="span-two"><textarea name="facultyMajors" rows={3} defaultValue={(editing.facultyMajors || []).join("\n")} placeholder="CS\nDMET" /></Field><Field label="Offered in seasons"><select name="offeringSeasons" multiple defaultValue={editing.offeringSeasons || []}>{seasons.map((season) => <option key={season} value={season}>{pretty(season)}</option>)}</select><small>Use Ctrl or ⌘ to select more than one.</small></Field><Field label="Prerequisites"><select name="prerequisites" multiple defaultValue={(editing.prerequisites || []).map((entry) => entry._id || entry)}>{courses.filter((course) => course._id !== editing._id).map((course) => <option key={course._id} value={course._id}>{course.code} · {course.name}</option>)}</select></Field><label className="check-field"><input type="checkbox" name="isBachelorProject" defaultChecked={editing.isBachelorProject || false} /> Bachelor project</label><label className="check-field"><input type="checkbox" name="isActive" defaultChecked={editing.isActive !== false} /> Active in catalogue</label></div>{editError && <div className="feedback error" role="alert">{editError}</div>}<FormFooter onCancel={() => setEditing(null)} busy={saving} submitText={editing._id ? "Save changes" : "Create course"} /></form></Modal>}
+    <section className="catalogue-register" aria-label="Catalogue courses">
+      <div className="register-controls">
+        <label className="field"><span>Search courses</span><input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Course code, name or major" /></label>
+        <span className="register-count" role="status">{visible.length} {visible.length === 1 ? "course" : "courses"}</span>
+      </div>
+      {loading ? <Loading /> : visible.length ? <div className="table-scroll"><table>
+        <thead><tr><th>Course</th><th>Credits</th><th>Type</th><th>Majors</th><th>Semester</th><th>Status</th><th><span className="sr-only">Actions</span></th></tr></thead>
+        <tbody>{visible.map(course => <tr key={course._id}>
+          <td><button type="button" className="catalogue-name" onClick={() => setViewing(course)}><OfferingCourseIcon code={course.code} /><span><small>{course.code}</small><strong>{course.name}</strong></span></button></td>
+          <td>{course.creditHours}</td><td>{course.courseType === "huma" ? "Humanities" : pretty(course.courseType)}</td><td>{catalogueMajors(course).join(", ") || "All"}</td><td>{course.recommendedSemester || "—"}</td>
+          <td><span className={`status-pill ${course.isActive ? "good" : "muted"}`}>{course.isActive ? "Active" : "Inactive"}</span></td>
+          <td><div className="table-actions"><button className="outline-button" type="button" onClick={() => setViewing(course)}>View</button>
+            {canManage && <><button className="outline-button" type="button" onClick={() => openCourseEditor(course)}>Edit</button><PaperTossButton label={`Delete course ${course.code}`} onClick={() => { setDeleteError(""); setConfirmingDelete(course); }}>Delete</PaperTossButton></>}
+          </div></td>
+        </tr>)}</tbody>
+      </table></div> : <EmptyState title="No courses found" text={query ? "Try another course code, name or major." : "Courses will appear here when added to the catalogue."} />}
+    </section>
+    {viewing && <CourseDetailsModal course={viewing} allCourses={courses} onClose={() => setViewing(null)} onEdit={canManage ? () => { setViewing(null); openCourseEditor(viewing); } : undefined} />}
+    {editing && <CourseEditor course={editing} courses={courses} onSave={saveCourse} onClose={() => !saving && setEditing(null)} saving={saving} error={editError} />}
     {confirmingDelete && <Modal title="Delete this course?" eyebrow="REMOVE FROM CATALOGUE" onClose={() => !deleting && setConfirmingDelete(null)}>
-      <div className="confirmation-content"><span className="confirmation-icon" aria-hidden="true">!</span><div><p>Delete <strong>{confirmingDelete.code} · {confirmingDelete.name}</strong> from the course catalogue?</p><p className="helper-text">A course cannot be deleted while another course lists it as a prerequisite.</p></div></div>
+      <div className="confirmation-content"><OfferingCourseIcon code={confirmingDelete.code} /><div><p>Delete <strong>{confirmingDelete.code} · {confirmingDelete.name}</strong> from the course catalogue?</p><p className="helper-text">A course cannot be deleted while another course lists it as a prerequisite.</p></div></div>
       {deleteError && <div className="feedback error" role="alert">{deleteError}</div>}
       <div className="form-footer"><button type="button" className="outline-button" disabled={deleting} onClick={() => setConfirmingDelete(null)}>Cancel</button><PaperTossButton disabled={deleting} tossing={deleting} onClick={removeCourse}>{deleting ? "Deleting…" : "Delete course"}</PaperTossButton></div>
     </Modal>}
@@ -91,7 +115,43 @@ function CoursesWorkspace({ token, role, notify }) {
 }
 
 const blankTerm = { code: "", academicYear: "2026/2027", season: "spring", termStart: "", termEnd: "", teachingStart: "", teachingEnd: "", registrationStart: "", registrationEnd: "", advisingDeadline: "", wholeScheduleSwapDeadline: "", isActive: false };
-const termDateFields = ["termStart", "termEnd", "teachingStart", "teachingEnd", "registrationStart", "registrationEnd", "advisingDeadline", "wholeScheduleSwapDeadline"];
+const termDateGroups = {
+  "Term dates": ["termStart", "termEnd"],
+  "Teaching dates": ["teachingStart", "teachingEnd"],
+  Registration: ["registrationStart", "registrationEnd"],
+  "Advising deadline": ["advisingDeadline"],
+  "Whole-schedule swap deadline": ["wholeScheduleSwapDeadline"],
+};
+const termDateFields = Object.values(termDateGroups).flat();
+function TermCalendar({ term }) {
+  const milestones = termDateFields.filter(key => term[key]).map(key => ({date:new Date(term[key]), label:pretty(key)})).filter(item => Number.isFinite(item.date.getTime()));
+  const monthOf = date => date.getUTCFullYear() * 12 + date.getUTCMonth();
+  const months = milestones.map(item => monthOf(item.date));
+  const first = Math.min(...months), last = Math.max(...months);
+  const [month, setMonth] = useState(() => Math.min(last, Math.max(first, monthOf(new Date()))));
+  if (!months.length) return null;
+  const firstDay = new Date(Date.UTC(Math.floor(month / 12), month % 12, 1));
+  const monthName = firstDay.toLocaleDateString(undefined, {month:"long", year:"numeric", timeZone:"UTC"});
+  const days = new Date(Date.UTC(Math.floor(month / 12), month % 12 + 1, 0)).getUTCDate();
+  const offset = (firstDay.getUTCDay() + 1) % 7;
+  const events = milestones.filter(item => monthOf(item.date) === month);
+  return <section className="term-calendar" aria-label="Term calendar">
+    <div className="term-calendar-paper">
+      <div className="term-calendar-binding" aria-hidden="true"><i/><i/><i/></div>
+      <div className="term-calendar-month"><h3 aria-live="polite">{monthName}</h3><div>
+        <button type="button" disabled={month <= first} onClick={() => setMonth(value => value - 1)} aria-label="Previous calendar month">‹</button>
+        <button type="button" disabled={month >= last} onClick={() => setMonth(value => value + 1)} aria-label="Next calendar month">›</button>
+      </div></div>
+      <div className="term-calendar-grid">
+        {["Sa","Su","Mo","Tu","We","Th","Fr"].map(day => <small key={day}>{day}</small>)}
+        {Array.from({length:offset}, (_,i) => <span key={`space-${i}`} />)}
+        {Array.from({length:days}, (_,i) => { const day = i + 1; const labels = events.filter(item => item.date.getUTCDate() === day).map(item => item.label); return <span key={day} className={labels.length ? "term-date-mark" : undefined} title={labels.join(", ") || undefined}>{day}</span>; })}
+      </div>
+    </div>
+    {events.length > 0 && <p className="calendar-caption">{events.sort((a,b) => a.date-b.date).map(item => `${item.date.getUTCDate()} · ${item.label}`).join("  /  ")}</p>}
+  </section>;
+}
+
 function TermsWorkspace({ token, role, notify }) {
   const [form, setForm] = useState(blankTerm);
   const [termId, setTermId] = useState("");
@@ -107,7 +167,8 @@ function TermsWorkspace({ token, role, notify }) {
     try {
       const data = await api("/api/academic-terms/academicTerm", { token });
       setTerms(Array.isArray(data) ? data : []);
-    } catch {
+    } catch (e) {
+      setError(explainApiError(e, "Academic terms"));
       setTerms(readRecentTerms());
     } finally {
       setFetchingTerms(false);
@@ -205,6 +266,24 @@ function TermsWorkspace({ token, role, notify }) {
     if (warningEmailStatus === "pending") setMessage("Semester standing saved. The probation warning check is pending.");
   };
 
+  if (role !== "administrator") {
+    const selectedTerm = terms.find(term => (term._id || term.code) === termId) || terms.find(term => term.isActive) || terms[0];
+    return <div className="page-stack term-register">
+      <PageTitle title="Academic terms" description="Teaching dates, registration windows and scheduling deadlines." />
+      {error && <div className="feedback error" role="alert">{error}</div>}
+      {fetchingTerms ? <Loading /> : !selectedTerm ? <EmptyState title="No academic terms" text="Configured terms and their dates will appear here." /> : <>
+        <div className="term-read-layout">
+          <div className="term-overview"><label className="field term-selection"><span>Academic term</span><select value={selectedTerm._id || selectedTerm.code} onChange={event => setTermId(event.target.value)}>{terms.map(term => <option key={term._id || term.code} value={term._id || term.code}>{termLabel(term)}{term.isActive ? " · Active" : ""}</option>)}</select></label>
+            <TermCalendar key={selectedTerm._id || selectedTerm.code} term={selectedTerm}/>
+          </div>
+          <section className="term-milestones"><div className="register-list-heading"><h2>Dates and deadlines</h2>{selectedTerm.isActive && <span className="status-pill good">Active term</span>}</div>
+            <dl className="term-dates">{Object.entries(termDateGroups).map(([label, fields]) => <div key={label}><dt>{label}</dt><dd>{fields.map(field => selectedTerm[field] ? new Date(selectedTerm[field]).toLocaleDateString(undefined, {day:"numeric",month:"short",year:"numeric",timeZone:"UTC"}) : "Unspecified").join(" – ")}</dd></div>)}</dl>
+          </section>
+        </div>
+      </>}
+    </div>;
+  }
+
   return (
     <div className="page-stack">
       <PageTitle
@@ -223,10 +302,10 @@ function TermsWorkspace({ token, role, notify }) {
         <section className="panel">
           <div className="panel-heading">
             <div>
-              <p className="eyebrow">TERM DETAILS</p>
+
               <h2>{termId ? "Update term" : "Create a term"}</h2>
             </div>
-            <span className="panel-count">01</span>
+
           </div>
           <form className="form-stack" onSubmit={submit}>
             <div className="form-grid">
@@ -252,7 +331,9 @@ function TermsWorkspace({ token, role, notify }) {
                   onChange={(e) => update("isActive", e.target.checked)}
                 /> Active term
               </label>
-              {termDateFields.map((field) => (
+            </div>
+            {Object.entries(termDateGroups).slice(0,3).map(([group, fields]) => <fieldset className="term-date-pair" key={group}><legend>{group}</legend><div className="form-grid">
+              {fields.map((field) => (
                 <Field key={field} label={pretty(field)}>
                   <input
                     type="date"
@@ -274,7 +355,8 @@ function TermsWorkspace({ token, role, notify }) {
                   />
                 </Field>
               ))}
-            </div>
+            </div></fieldset>)}
+            <fieldset className="term-date-pair"><legend>Scheduling deadlines</legend><div className="form-grid">{termDateFields.slice(-2).map(field => <Field key={field} label={pretty(field)}><input type="date" required value={form[field]} onChange={event => update(field, event.target.value)} /></Field>)}</div></fieldset>
             <div className="form-footer">
               <button
                 className="text-button"
@@ -314,10 +396,10 @@ function TermsWorkspace({ token, role, notify }) {
                   onClick={() => useTerm(term)}
                   type="button"
                 >
-                  <span className="term-icon">◷</span>
+                  <span className="term-calendar-mark" aria-hidden="true">{term.termStart ? new Date(term.termStart).getUTCDate() : "–"}</span>
                   <span>
                     <strong>{termLabel(term)}</strong>
-                    <small>{pretty(term.season)}{term.isActive ? " · Active" : ""}</small>
+                    <small>{term.isActive ? "Active term" : "View dates"}</small>
                   </span>
 
                 </button>
@@ -540,30 +622,44 @@ function DuplicateOfferings({ token, target, targetOfferings, loading, onCopied,
 
 function TemplatesWorkspace({ token, notify }) {
   const [termOptions, setTermOptions] = useState([]);
-  useEffect(() => { api("/api/academic-terms/academicTerm", {token}).then(setTermOptions).catch(e => setError(e.message)); }, [token]);
   const blankForm = { major: "", semester: "", studyGroup: "", isPublished: false };
-  const [termId, setTermId] = useState(() => window.localStorage.getItem("bobos.lastTermId") || "");
+  const [termId, setTermId] = useState("");
+  const [editorOpen, setEditorOpen] = useState(false);
+  const loadVersion = useRef(0);
+  useEffect(() => {
+    const controller = new AbortController();
+    api("/api/academic-terms/academicTerm", {token, signal: controller.signal}).then(terms => {
+      setTermOptions(terms);
+      const recent = localStorage.getItem("bobos.lastTermId");
+      const term = terms.find(item => [item._id, item.code].includes(recent)) || terms.find(item => item.isActive) || terms[0];
+      setTermId(term?.code || "");
+    }).catch(e => { if (!controller.signal.aborted) setError(e.message); });
+    return () => controller.abort();
+  }, [token]);
   const [templates, setTemplates] = useState([]); const [offerings, setOfferings] = useState([]);
   const [loading, setLoading] = useState(false); const [error, setError] = useState("");
   const [form, setForm] = useState(blankForm); const [selectedOffers, setSelectedOffers] = useState([]);
   const [slotSelections, setSlotSelections] = useState({}); const [editingTemplate, setEditingTemplate] = useState(null); const [saving, setSaving] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(null); const [deleting, setDeleting] = useState(false); const [deleteError, setDeleteError] = useState("");
 
-  const load = async (event) => {
-    event?.preventDefault();
-    if (!termId.trim()) { setError("Select an academic term."); return; }
-    window.localStorage.setItem("bobos.lastTermId", termId.trim()); setLoading(true); setError("");
+  const load = useCallback(async () => {
+    if (!termId) return;
+    const version = ++loadVersion.current;
+    localStorage.setItem("bobos.lastTermId", termId);
+    setLoading(true); setError("");
     try {
       const [templateData, offeringData] = await Promise.all([
-        api(`/api/academics/schedule-templates?termId=${encodeURIComponent(termId.trim())}`, { token }),
-        api(`/api/catalogue/offerings?termId=${encodeURIComponent(termId.trim())}&publishedOnly=true`, { token }),
+        api(`/api/academics/schedule-templates?termId=${encodeURIComponent(termId)}`, {token}),
+        api(`/api/catalogue/offerings?termId=${encodeURIComponent(termId)}&publishedOnly=true`, {token}),
       ]);
+      if (version !== loadVersion.current) return;
       setTemplates(templateData.templates || []); setOfferings(offeringData.offerings || []);
-    } catch (e) { setError(explainApiError(e, "Schedule templates")); }
-    finally { setLoading(false); }
-  };
+    } catch (e) { if (version === loadVersion.current) setError(explainApiError(e, "Schedule templates")); }
+    finally { if (version === loadVersion.current) setLoading(false); }
+  }, [termId, token]);
+  useEffect(() => { load(); return () => { loadVersion.current++; }; }, [load]);
 
-  const clearEditor = () => { setEditingTemplate(null); setForm(blankForm); setSelectedOffers([]); setSlotSelections({}); };
+  const clearEditor = () => { setEditorOpen(false); setEditingTemplate(null); setForm(blankForm); setSelectedOffers([]); setSlotSelections({}); };
   const addOffering = (event) => {
     const id = event.target.value; event.target.value = "";
     if (!id || selectedOffers.includes(id)) return;
@@ -588,7 +684,7 @@ function TemplatesWorkspace({ token, notify }) {
       nextSelections[id] = choices;
       ids.push(id);
     }
-    setEditingTemplate(template);
+    setEditingTemplate(template); setEditorOpen(true);
     setForm({ major: template.major || "", semester: String(template.semester || ""), studyGroup: template.studyGroup || "", isPublished: Boolean(template.isPublished) });
     setSelectedOffers(ids); setSlotSelections(nextSelections); setError("");
   };
@@ -650,13 +746,12 @@ function TemplatesWorkspace({ token, notify }) {
   };
 
   const selected = selectedOffers.map((id) => offerings.find((item) => item._id === id)).filter(Boolean);
-  return <div className="page-stack">
-    <PageTitle eyebrow="SCHEDULE TEMPLATES" title="Schedule templates" description="Build standard course plans for a major, semester, and study group." />
-    <section className="panel term-picker"><form className="inline-controls" onSubmit={load}><label className="field"><span>Academic term</span><select required value={termId} onChange={event => setTermId(event.target.value)}><option value="">Choose a term</option>{termOptions.map(term => <option key={term._id} value={term.code}>{termLabel(term)}</option>)}</select></label><button className="outline-button" disabled={loading}>{loading ? "Loading…" : "Load templates and offerings"}</button></form><p className="helper-text">Templates use published offerings; choose one group for each available component.</p></section>
-    {error && <div className="feedback error" role="alert">{error}</div>}
-    <div className="content-grid template-grid">
-      <section className="panel">
-        <div className="panel-heading"><div><p className="eyebrow">{editingTemplate ? "EDIT STANDARD PLAN" : "NEW STANDARD PLAN"}</p><h2>{editingTemplate ? "Update schedule template" : "Create schedule template"}</h2></div><span className="panel-count">01</span></div>
+  return <div className="page-stack template-register">
+    <PageTitle title="Schedule templates" description="Published course groups for each major and semester." action={<button className="primary-button" type="button" disabled={loading || !termId} onClick={() => { clearEditor(); setError(""); setEditorOpen(true); }}>Create template</button>} />
+    <div className="register-controls"><Field label="Academic term"><select required value={termId} onChange={event => { if (event.target.value !== termId) { setTemplates([]); setOfferings([]); setLoading(true); setTermId(event.target.value); } }}><option value="" disabled>Choose a term</option>{termOptions.map(term => <option key={term._id} value={term.code}>{termLabel(term)}</option>)}</select></Field></div>
+    {error && !editorOpen && <div className="feedback error" role="alert">{error}</div>}
+    {editorOpen && <Modal title={editingTemplate ? "Update schedule template" : "Create schedule template"} onClose={() => !saving && clearEditor()} wide>
+        {error && <div className="feedback error" role="alert">{error}</div>}
         <form className="form-stack" onSubmit={saveTemplate}>
           <div className="form-grid">
             <Field label="Major"><input required value={form.major} onChange={(event) => { setForm({ ...form, major: event.target.value }); setError(""); }} placeholder="Computer Science" /></Field>
@@ -674,11 +769,17 @@ function TemplatesWorkspace({ token, notify }) {
               </select>
             </Field>)}</div>
           </div>)}</div>}
-          <div className="form-footer"><span className="helper-text">{selected.length ? "Choose exactly one group for each available component." : "Load a term and add at least one published course offering."}</span><div className="table-actions">{editingTemplate && <button className="outline-button" type="button" onClick={clearEditor} disabled={saving}>Cancel edit</button>}<button className="primary-button" disabled={saving || !termId.trim()}>{saving ? "Saving…" : editingTemplate ? "Save changes" : "Create template"}<span>→</span></button></div></div>
+          <div className="form-footer"><span className="helper-text">{selected.length ? "Choose exactly one group for each available component." : "Load a term and add at least one published course offering."}</span><div className="table-actions"><button className="outline-button" type="button" onClick={clearEditor} disabled={saving}>Cancel</button><button className="primary-button" disabled={saving || !termId.trim()}>{saving ? "Saving…" : editingTemplate ? "Save changes" : "Create template"}<span>→</span></button></div></div>
         </form>
-      </section>
-      <section className="panel"><div className="panel-heading"><div><p className="eyebrow">SAVED PLANS</p><h2>Current templates</h2></div><span className="panel-count">{templates.length.toString().padStart(2, "0")}</span></div>{loading ? <Loading /> : templates.length ? <div className="template-list">{templates.map((template) => <article className="template-card" key={template._id}><div className="template-card-title"><span className="template-icon">▧</span><div><strong>{template.major}</strong><small>Semester {template.semester} · Group {template.studyGroup}</small></div><span className={`status-pill ${template.isPublished ? "good" : "muted"}`}>{template.isPublished ? "Published" : "Draft"}</span></div><p>{template.courses?.length || 0} courses <span>·</span> {termLabel(template.term)}</p><div className="table-actions"><button className="text-button" type="button" onClick={() => editTemplate(template)}>Edit</button><button className="text-button" type="button" onClick={() => togglePublished(template)}>{template.isPublished ? "Unpublish template" : "Publish template"}</button><PaperTossButton label={`Delete template for ${template.major}, semester ${template.semester}, group ${template.studyGroup}`} onClick={() => { setConfirmingDelete(template); setDeleteError(""); }}>Delete</PaperTossButton></div></article>)}</div> : <EmptyState title="No templates loaded" text="Load a term to see its schedule templates, or create the first one." icon="▧" />}</section>
-    </div>
+    </Modal>}
+    <section aria-label="Current templates">
+      <div className="results-heading"><h2>Current templates</h2><span className="register-count">{templates.length} {templates.length === 1 ? "template" : "templates"}</span></div>
+      {loading ? <Loading /> : templates.length ? <div className="template-list">{templates.map(template => <article className="template-register-row" key={template._id}>
+        <div><strong>{template.major}</strong><small>Semester {template.semester} · Group {template.studyGroup}</small></div>
+        <span>{template.courses?.length || 0} courses</span><span className={`status-pill ${template.isPublished ? "good" : "muted"}`}>{template.isPublished ? "Published" : "Draft"}</span>
+        <div className="table-actions"><button className="outline-button" type="button" onClick={() => editTemplate(template)}>Edit</button><button className="outline-button" type="button" onClick={() => togglePublished(template)}>{template.isPublished ? "Unpublish template" : "Publish template"}</button><PaperTossButton label={`Delete template for ${template.major}, semester ${template.semester}, group ${template.studyGroup}`} onClick={() => { setConfirmingDelete(template); setDeleteError(""); }}>Delete</PaperTossButton></div>
+      </article>)}</div> : <div className="register-empty"><img src="/portal-studio/images/extra-hours-folder.svg" alt="" width="144" height="105"/><h3>No schedule templates</h3><p>Create a template using this term’s published course offerings.</p></div>}
+    </section>
     {confirmingDelete && <Modal title="Delete schedule template?" eyebrow="REMOVE STANDARD PLAN" onClose={() => !deleting && setConfirmingDelete(null)}>
       <div className="confirmation-content"><span className="confirmation-icon" aria-hidden="true">!</span><div><p>Delete the template for <strong>{confirmingDelete.major}</strong>, semester <strong>{confirmingDelete.semester}</strong>, group <strong>{confirmingDelete.studyGroup}</strong>?</p><p className="helper-text">Templates assigned to student schedules cannot be deleted. Reassign those students first.</p></div></div>
       {deleteError && <div className="feedback error" role="alert">{deleteError}</div>}
@@ -751,7 +852,22 @@ function SlotFields({ index, slot, onChange, onRemove, canRemove }) {
 
 function PageTitle({ eyebrow, title, description, action }) { return <div className="page-title-row"><div><p className="eyebrow">{eyebrow}</p><h1>{title}</h1><p className="page-description">{description}</p></div>{action}</div>; }
 function Field({ label, children, className = "" }) { return <label className={`field ${className}`}><span>{label}</span>{children || <input />}</label>; }
-function Modal({ title, eyebrow, onClose, children, wide = false }) { return <div className="modal-backdrop" onClick={onClose}><section className={`modal-card ${wide ? "wide-modal" : ""}`} role="dialog" aria-modal="true" aria-label={title} onClick={(event) => event.stopPropagation()}><div className="modal-heading"><div><p className="eyebrow">{eyebrow}</p><h2>{title}</h2></div><button className="icon-button" type="button" onClick={onClose} aria-label="Close">×</button></div>{children}</section></div>; }
+function Modal({ title, eyebrow, onClose, children, wide = false }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const dialog = ref.current;
+    dialog.showModal();
+    return () => dialog.close();
+  }, []);
+  return <dialog ref={ref} className="academic-dialog modal-backdrop" aria-label={title}
+    onCancel={event => { event.preventDefault(); onClose(); }}
+    onClick={event => { if (event.target === ref.current) onClose(); }}>
+    <section className={`modal-card ${wide ? "wide-modal" : ""}`}>
+      <div className="modal-heading"><div>{eyebrow && <p className="eyebrow">{eyebrow}</p>}<h2>{title}</h2></div><button className="icon-button" type="button" onClick={onClose} aria-label="Close">×</button></div>
+      {children}
+    </section>
+  </dialog>;
+}
 function FormFooter({ onCancel, busy, submitText }) { return <div className="form-footer"><button type="button" className="outline-button" onClick={onCancel} disabled={busy}>Cancel</button><button className="primary-button" disabled={busy}>{busy ? "Saving…" : submitText}<span>→</span></button></div>; }
 function Loading() { return <div className="loading-state"><span className="loader" />Loading…</div>; }
 function EmptyState({ title, text, icon = "▤" }) { return <div className="empty-state"><span>{icon}</span><h3>{title}</h3><p>{text}</p></div>; }
@@ -787,106 +903,56 @@ function termToForm(term) {
 }
 function readRecentTerms() { try { return JSON.parse(window.localStorage.getItem("bobos.recentTerms") || "[]"); } catch { return []; } }
 
-function CourseDetailsModal({ course, allCourses = [], onClose, onEdit }) {
-  if (!course) return null;
-  const prereqList = (course.prerequisites || []).map((p) => {
-    if (typeof p === "object" && p !== null && p.code) return p;
-    return allCourses.find((c) => c._id === p || c.code === p) || { code: String(p), name: "Course ID: " + p };
-  });
+function catalogueMajors(course) {
+  return (course.facultyMajors || []).flatMap(major => splitLines(String(major).replaceAll("\\n", "\n")));
+}
 
-  return (
-    <Modal title={`${course.code} · ${course.name}`} eyebrow="COURSE SPECIFICATION" onClose={onClose} wide>
-      <div className="offering-detail-head" style={{ marginBottom: "1.5rem" }}>
-        <div>
-          <span className="course-code-pill" style={{ fontSize: "1rem", padding: "0.25rem 0.75rem", marginBottom: "0.5rem", display: "inline-block" }}>
-            {course.code}
-          </span>
-          <h2 style={{ fontSize: "1.35rem", fontWeight: "700", marginTop: "0.25rem" }}>{course.name}</h2>
-          <p style={{ color: "var(--muted)" }}>
-            {course.creditHours} Credit Hours · {pretty(course.courseType)}
-            {course.isBachelorProject ? " · Bachelor Project" : ""}
-          </p>
-        </div>
-        <span className={`status-pill ${course.isActive ? "good" : "muted"}`}>
-          {course.isActive ? "Active in Catalogue" : "Inactive"}
-        </span>
-      </div>
+function CourseEditor({ course, courses, onSave, onClose, saving, error }) {
+  const [search, setSearch] = useState("");
+  const [requiredIds, setRequiredIds] = useState(() => (course.prerequisites || []).map(item => item._id || item));
+  const options = courses.filter(item => item._id !== course._id && `${item.code} ${item.name}`.toLowerCase().includes(search.trim().toLowerCase()));
+  return <Modal title={course._id ? "Edit course" : "Add a course"} onClose={onClose} wide>
+    <form className="form-stack catalogue-editor" onSubmit={onSave}>
+      <fieldset><legend>Course information</legend><div className="form-grid">
+        <Field label="Course code"><input name="code" required maxLength={24} defaultValue={course.code} placeholder="CSEN704" /></Field>
+        <Field label="Course name"><input name="name" required defaultValue={course.name} /></Field>
+        <Field label="Credit hours"><input name="creditHours" required type="number" min="0" step="0.5" defaultValue={course.creditHours} /></Field>
+        <Field label="Course type"><select name="courseType" defaultValue={course.courseType || "core"}><option value="core">Core</option><option value="elective">Elective</option><option value="huma">Humanities</option></select></Field>
+        <Field label="Recommended semester"><input name="recommendedSemester" type="number" min="1" max="10" defaultValue={course.recommendedSemester} /></Field>
+        <Field label="Majors (one per line)"><textarea name="facultyMajors" rows={2} defaultValue={catalogueMajors(course).join("\n")} placeholder="One major per line" /></Field>
+      </div></fieldset>
+      <fieldset><legend>Weekly teaching hours</legend><div className="teaching-hours">
+        {["lectureHours", "tutorialHours", "labHours"].map(key => <Field key={key} label={pretty(key)}><input type="number" name={key} min="0" step="0.5" defaultValue={course[key]} /></Field>)}
+      </div></fieldset>
+      <fieldset><legend>Offering seasons</legend><div className="course-checks">{seasons.map(season => <label key={season}><input type="checkbox" name="offeringSeasons" value={season} defaultChecked={course.offeringSeasons?.includes(season)} />{pretty(season)}</label>)}</div></fieldset>
+      <fieldset><legend>Prerequisites</legend>
+        <label className="field"><span>Find a prerequisite</span><input type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Course code or name" /></label>
+        {requiredIds.map(id => <input key={id} type="hidden" name="prerequisites" value={id} />)}
+        <span className="register-count" role="status">{requiredIds.length} selected</span>
+        <div className="prerequisite-options">{options.map(item => <label key={item._id}><input type="checkbox" checked={requiredIds.includes(item._id)} onChange={event => setRequiredIds(ids => event.target.checked ? [...ids, item._id] : ids.filter(id => id !== item._id))} /><span><small>{item.code}</small> {item.name}</span></label>)}{!options.length && <p>No matching courses.</p>}</div>
+      </fieldset>
+      <div className="course-checks"><label><input type="checkbox" name="isBachelorProject" defaultChecked={course.isBachelorProject} />Bachelor project</label><label><input type="checkbox" name="isActive" defaultChecked={course.isActive !== false} />Active in catalogue</label></div>
+      {error && <div className="feedback error" role="alert">{error}</div>}
+      <FormFooter onCancel={onClose} busy={saving} submitText={course._id ? "Save changes" : "Create course"} />
+    </form>
+  </Modal>;
+}
 
-      <div className="form-grid" style={{ gap: "1rem", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
-        <div className="panel" style={{ padding: "1rem", background: "var(--raised)" }}>
-          <p className="eyebrow" style={{ fontSize: "0.75rem" }}>CURRICULUM HOURS</p>
-          <p style={{ margin: "0.25rem 0", fontSize: "0.95rem" }}>
-            <strong>Lecture:</strong> {course.lectureHours ?? "—"} hrs/week
-          </p>
-          <p style={{ margin: "0.25rem 0", fontSize: "0.95rem" }}>
-            <strong>Tutorial:</strong> {course.tutorialHours ?? "—"} hrs/week
-          </p>
-          <p style={{ margin: "0.25rem 0", fontSize: "0.95rem" }}>
-            <strong>Lab:</strong> {course.labHours ?? "—"} hrs/week
-          </p>
-        </div>
-
-        <div className="panel" style={{ padding: "1rem", background: "var(--raised)" }}>
-          <p className="eyebrow" style={{ fontSize: "0.75rem" }}>SEMESTER & OFFERING</p>
-          <p style={{ margin: "0.25rem 0", fontSize: "0.95rem" }}>
-            <strong>Recommended Semester:</strong> {course.recommendedSemester ? `Semester ${course.recommendedSemester}` : "—"}
-          </p>
-          <p style={{ margin: "0.25rem 0", fontSize: "0.95rem" }}>
-            <strong>Offering Seasons:</strong> {(course.offeringSeasons || []).map(pretty).join(", ") || "All"}
-          </p>
-        </div>
-
-        <div className="panel span-two" style={{ padding: "1rem", background: "var(--raised)" }}>
-          <p className="eyebrow" style={{ fontSize: "0.75rem" }}>FACULTY / MAJORS (MET & DMET)</p>
-          <p style={{ margin: "0.25rem 0", fontSize: "0.95rem" }}>
-            {(course.facultyMajors || []).length > 0 ? (
-              (course.facultyMajors || []).map((major, i) => (
-                <span key={i} className="course-code-pill" style={{ marginRight: "0.5rem", marginBottom: "0.25rem", display: "inline-block" }}>
-                  {major}
-                </span>
-              ))
-            ) : (
-              <span className="secondary-text">Available to all faculties</span>
-            )}
-          </p>
-        </div>
-
-        <div className="panel span-two" style={{ padding: "1rem", background: "var(--raised)" }}>
-          <p className="eyebrow" style={{ fontSize: "0.75rem" }}>PREREQUISITES</p>
-          {prereqList.length > 0 ? (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", marginTop: "0.5rem" }}>
-              {prereqList.map((prereq, index) => (
-                <div
-                  key={index}
-                  style={{
-                    border: "1px solid var(--line)",
-                    background: "var(--surface, #fff)",
-                    padding: "0.5rem 0.75rem",
-                    borderRadius: "6px",
-                  }}
-                >
-                  <strong style={{ color: "var(--accent)" }}>{prereq.code}</strong>
-                  {prereq.name ? <span style={{ marginLeft: "0.4rem", color: "var(--muted)" }}>— {prereq.name}</span> : null}
-                  {prereq.creditHours ? <small style={{ display: "block", color: "var(--muted)" }}>{prereq.creditHours} credits</small> : null}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p style={{ margin: "0.25rem 0", color: "var(--muted)" }}>No prerequisites required (direct entry).</p>
-          )}
-        </div>
-      </div>
-
-      <div className="form-footer" style={{ marginTop: "1.5rem" }}>
-        <button type="button" className="outline-button" onClick={onClose}>
-          Close
-        </button>
-        {onEdit && (
-          <button type="button" className="primary-button" onClick={onEdit}>
-            Edit course <span>→</span>
-          </button>
-        )}
-      </div>
-    </Modal>
-  );
+function CourseDetailsModal({ course, allCourses, onClose, onEdit }) {
+  const prerequisites = (course.prerequisites || []).map(entry => entry?.code ? entry : allCourses.find(item => item._id === (entry?._id || entry)) || {code: String(entry?._id || entry)});
+  const facts = [
+    ["Credit hours", course.creditHours], ["Course type", course.courseType === "huma" ? "Humanities" : pretty(course.courseType)],
+    ["Recommended semester", course.recommendedSemester || "Unspecified"], ["Majors", catalogueMajors(course).join(", ") || "All majors"],
+    ["Offering seasons", (course.offeringSeasons || []).map(pretty).join(", ") || "All seasons"],
+    ...(course.isBachelorProject ? [["Project", "Bachelor project"]] : []),
+  ];
+  return <Modal title={course.name} eyebrow={course.code} onClose={onClose} wide>
+    <div className="course-sheet">
+      <div className="course-sheet-identity"><OfferingCourseIcon code={course.code}/><strong>{course.code}</strong><span className={`status-pill ${course.isActive ? "good" : "muted"}`}>{course.isActive ? "Active" : "Inactive"}</span></div>
+      <div className="course-sheet-columns"><section><h3>Course information</h3><dl>{facts.map(([label,value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl></section>
+      <section><h3>Weekly teaching hours</h3><dl>{["lecture", "tutorial", "lab"].map(type => <div key={type}><dt>{pretty(type)}</dt><dd>{course[`${type}Hours`] ?? "—"}</dd></div>)}</dl></section></div>
+      <section><h3>Prerequisites</h3>{prerequisites.length ? <ul className="prerequisite-list">{prerequisites.map(item => <li key={item.code}><OfferingCourseIcon code={item.code}/><span><small>{item.code}</small><strong>{item.name || item.code}</strong></span></li>)}</ul> : <p>No prerequisites required.</p>}</section>
+      <div className="form-footer"><button type="button" className="outline-button" onClick={onClose}>Close</button>{onEdit && <button type="button" className="primary-button" onClick={onEdit}>Edit course</button>}</div>
+    </div>
+  </Modal>;
 }

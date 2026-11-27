@@ -220,15 +220,18 @@ export async function getPendingWork(req, res) {
     termId && normalStudentIds.length ? WholeScheduleSwapRequest.find({ term: termId, student: { $in: normalStudentIds }, $or: [{ status: "completed" }, { status: "open", expiresAt: { $gt: new Date() } }] })
       .select("student status expiresAt updatedAt").lean().then((rows) => rows.map((row) => ({ ...row, type: "wholeScheduleSwap" }))) : [],
     termId ? SlotChangeRequest.find({ term: termId, student: { $in: ids }, status: "pending" })
-      .select("student status updatedAt").lean().then((rows) => rows.map((row) => ({ ...row, type: "slotChange" }))) : [],
+      .select("student status updatedAt course componentType").populate("course", "code name").lean()
+      .then((rows) => rows.map((row) => ({ ...row, type: "slotChange" }))) : [],
     termId ? MandatoryCourseRemovalRequest.find({ term: termId, student: { $in: ids }, status: "pending" })
-      .select("student status updatedAt").lean().then((rows) => rows.map((row) => ({ ...row, type: "mandatoryCourseRemoval" }))) : [],
+      .select("student status updatedAt course").populate("course", "code name").lean()
+      .then((rows) => rows.map((row) => ({ ...row, type: "mandatoryCourseRemoval" }))) : [],
     termId ? ExtraHoursRequest.find({ term: termId, student: { $in: ids } })
-      .select("_id student decisionStatus settlementStatus updatedAt").lean() : [],
+      .select("_id student decisionStatus settlementStatus updatedAt courses.course requestedHours").populate("courses.course", "code name").lean() : [],
     GraduationPlan.find({ student: { $in: ids }, status: "submitted" })
       .select("student status submittedAt updatedAt").lean().then((rows) => rows.map((row) => ({ ...row, updatedAt: row.updatedAt || row.submittedAt, type: "graduationPlan" }))),
     ExitExamRequest.find({ student: { $in: ids }, status: "pending" })
-      .select("student status updatedAt").lean().then((rows) => rows.map((row) => ({ ...row, type: "exitExam" }))),
+      .select("student status updatedAt course").populate("course", "code name").lean()
+      .then((rows) => rows.map((row) => ({ ...row, type: "exitExam" }))),
   ]) : [[], [], [], [], [], []];
   const [swapRequests, slotChanges, removalRequests, extraHours, graduationPlans, exitExams] = currentTermRequests;
   const actionableExtraHours = extraHours.filter((request) => request.decisionStatus === "pending" ||
@@ -246,7 +249,12 @@ export async function getPendingWork(req, res) {
     const status = request.type === "extraHours"
       ? `${request.decisionStatus}${request.settlementStatus && request.settlementStatus !== "none" ? `:${request.settlementStatus}` : ""}`
       : request.status;
-    list.push({ id: String(request._id), type: request.type, status, updatedAt: request.updatedAt || null });
+    const courses = request.courses?.map((line) => line.course) || [request.course];
+    list.push({
+      id: String(request._id), type: request.type, status, updatedAt: request.updatedAt || null,
+      courses: courses.filter(Boolean).map(({ code, name }) => ({ code, name })),
+      componentType: request.componentType, requestedHours: request.requestedHours,
+    });
     requestsByStudent.set(id, list);
   }
   const approvalBlockers = {

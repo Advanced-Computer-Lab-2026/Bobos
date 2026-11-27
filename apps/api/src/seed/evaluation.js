@@ -1,3 +1,4 @@
+import { evaluationStudents, evaluationAdvisors } from "./portal-names.js";
 import bcrypt from 'bcryptjs';
 import mongoose from 'mongoose';
 import { readFile } from 'node:fs/promises';
@@ -145,7 +146,7 @@ async function seedAccounts(currentTerm, passwordHash) {
   for (let index = 1; index <= 5; index += 1) {
     const email = `evaluation.advisor${index}@guc.edu.eg`;
     advisors.push(await upsertUser(email, {
-      fullName: `Evaluation Advisor ${index}`, passwordHash, role: 'advisor', isActive: true, isAdvisorInSystem: true,
+      fullName: evaluationAdvisors[index - 1], passwordHash, role: 'advisor', isActive: true, isAdvisorInSystem: true,
     }));
   }
 
@@ -154,7 +155,7 @@ async function seedAccounts(currentTerm, passwordHash) {
   for (let index = 1; index <= 10; index += 1) {
     const email = `evaluation.student${index}@student.guc.edu.eg`;
     const user = await upsertUser(email, {
-      fullName: `Evaluation Advising Student ${index}`, passwordHash, role: 'advisingStudent', isActive: true,
+      fullName: evaluationStudents[index - 1], passwordHash, role: 'advisingStudent', isActive: true,
     });
     const onProbation = index === 2 || index === 5 || index === 8 || index === 10;
     const advisor = advisors[(index - 1) % advisors.length];

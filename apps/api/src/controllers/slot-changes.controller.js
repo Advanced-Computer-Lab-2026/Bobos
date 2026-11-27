@@ -45,7 +45,7 @@ function studentScope(req) {
 
 function queryView(query) {
   return query.populate("course", "code name")
-    .populate("term", "code")
+    .populate("term", "code season academicYear")
     .populate({ path: "student", select: "studentId user assignedAdvisor",
       populate: [{ path: "user", select: "fullName" }, { path: "assignedAdvisor", select: "fullName" }],
     })

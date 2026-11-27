@@ -1,3 +1,4 @@
+import { standardStudents, standardAdvisors } from "./src/seed/portal-names.js";
 import mongoose from 'mongoose';
 import {
   User,
@@ -83,7 +84,7 @@ async function seed() {
     const advisors = [];
     for (let i = 1; i <= 5; i++) {
       const adv = await User.create({
-        fullName: `Advisor ${i} Name`,
+        fullName: standardAdvisors[i - 1],
         email: `advisor${i}@guc.edu.eg`,
         passwordHash: 'dummy_hash',
         role: 'advisor',
@@ -100,7 +101,7 @@ async function seed() {
     for (let i = 1; i <= 10; i++) {
       // Create User
       const studentUser = await User.create({
-        fullName: `Advising Student ${i}`,
+        fullName: standardStudents[i - 1],
         email: `student${i}@student.guc.edu.eg`,
         passwordHash: 'dummy_hash',
         role: 'advisingStudent',

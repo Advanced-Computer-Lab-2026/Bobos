@@ -10,10 +10,12 @@ import serviceStyles from "./extra-hours-study.css?inline";
 import paperStyles from "./components/paper-toss-button.css?inline";
 import academicStyles from "./portal-academic.css?inline";
 import pickerStyles from "../public/portal-studio/select-picker.css?inline";
+import coordinatorStyles from "./coordinator-services.css?inline";
+import coordinatorControls from "./coordinator-controls.css?inline";
 import statusStyles from "./portal-status.css?inline";
 import tabsStyles from "../public/portal-studio/view-tabs.css?inline";
 
-const styles = [tabsStyles, baseStyles, workspaceStyles, formStyles, serviceStyles, paperStyles, academicStyles, pickerStyles, statusStyles].join("\n")
+const styles = [tabsStyles, baseStyles, workspaceStyles, formStyles, serviceStyles, paperStyles, academicStyles, pickerStyles, statusStyles, coordinatorStyles, coordinatorControls].join("\n")
   .replaceAll(":root", ".service-surface");
 
 export function mount(host) {
@@ -46,6 +48,7 @@ export function mount(host) {
   surface.dataset.embedded = "true";
   // Reuse Portal's existing heading illustrations inside the service shadow root.
   const serviceParams = new URLSearchParams(host.dataset.portalService);
+  surface.dataset.portalRole = serviceParams.get("role") || "";
   surface.dataset.service = serviceParams.get("screen") || "";
   const polishedServices = ["advising", "preferences", "graduation-plans", "graduation-review", "my-submitted-plans", "slot-changes", "offerings"];
   surface.classList.toggle("portal-advising-services", polishedServices.includes(serviceParams.get("screen")));
@@ -59,6 +62,9 @@ export function mount(host) {
       drawing.setAttribute("xmlns", "http://www.w3.org/2000/svg");
       surface.style.setProperty("--portal-heading-art", `url("data:image/svg+xml,${encodeURIComponent(drawing.outerHTML)}")`);
       surface.dataset.headingArt = "true";
+      if (serviceParams.get("screen") === "mandatory-removals") {
+        surface.style.setProperty("--portal-heading-art", 'url("/portal-studio/images/course-removal-slip.svg")');
+      }
       if (serviceParams.get("screen") === "student-schedules") {
         surface.style.setProperty("--portal-heading-art", 'url("/portal-studio/images/student-schedules-calendar.png")');
       }
@@ -77,7 +83,7 @@ export function mount(host) {
   observer.observe(document.documentElement, { attributeFilter: ["data-theme"] });
   host.replaceChildren();
   shadow.append(style, surface);
-  const disposeInk = window.mountPortalControlInk?.(shadow);
+  const disposeInk = surface.dataset.portalRole === "coordinator" ? undefined : window.mountPortalControlInk?.(shadow);
   const root = createRoot(surface);
   root.render(<App service={host.dataset.portalService} />);
   return () => {

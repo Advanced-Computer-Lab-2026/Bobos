@@ -1,6 +1,8 @@
 import { termLabel } from "../term-label.js";
 import { useEffect, useState } from "react";
 import { api, explainApiError } from "../api.js";
+import { StudentIdentity } from "./CoordinatorRecords.jsx";
+import FilterDisclosure from "./FilterDisclosure.jsx";
 import { GraduationEmpty, WorkspaceHeader } from "./WorkspaceUI.jsx";
 
 const root = "/api/graduation";
@@ -56,7 +58,7 @@ function DecisionForm({ kind, disabled, decide }) {
 
 export default function GraduationReview({ token, role }) {
   const coordinator = role === "coordinator";
-  const [kind, setKind] = useState("plans");
+  const [kind, setKind] = useState(() => coordinator && new URLSearchParams(window.location.search).get("queue") === "exams" ? "exit-exams" : "plans");
   const [inputs, setInputs] = useState(emptyFilters);
   const [filters, setFilters] = useState(emptyFilters);
   const [page, setPage] = useState(1);
@@ -95,6 +97,10 @@ export default function GraduationReview({ token, role }) {
     return () => controller.abort();
   }, [token, kind, filters, page, refresh]);
 
+  useEffect(() => {
+    if (coordinator && selected) document.querySelector("[data-portal-service]")?.shadowRoot?.getElementById("review-decision")?.focus();
+  }, [selected]);
+
   function changeView(nextKind) {
     setSelected(null);
     setNotice("");
@@ -129,15 +135,15 @@ export default function GraduationReview({ token, role }) {
     }
   }
 
+  function reload() {
+    setSelected(null);
+    setIssues([]);
+    setRefresh((value) => value + 1);
+  }
   const plans = kind === "plans";
   const rows = (plans ? result?.plans : result?.requests) ?? [];
   return <div className="page-stack workspace-page graduation-review-page">
-    <WorkspaceHeader title={coordinator ? "Graduation review" : "My submitted plans"} description={coordinator ? "Review graduation plans and exit-exam requests submitted by advisors." : "Track the graduation plans you have submitted for coordinator review."}
-      action={<button className="outline-button" disabled={loading || busy} onClick={() => {
-        setSelected(null);
-        setIssues([]);
-        setRefresh((value) => value + 1);
-      }}>Refresh</button>} />
+    <WorkspaceHeader description={coordinator ? undefined : "Track the graduation plans you have submitted for coordinator review."} title={coordinator ? "Graduation review" : "My submitted plans"} action={!(coordinator && plans) && <button className="outline-button" disabled={loading || busy} onClick={reload}>Refresh</button>} />
     {coordinator && <div className="tabs" role="group" aria-label="Review queue">
       <button aria-pressed={plans}
         disabled={busy} onClick={() => changeView("plans")}>Graduation plans</button>
@@ -145,11 +151,15 @@ export default function GraduationReview({ token, role }) {
         disabled={busy} onClick={() => changeView("exit-exams")}>Exit-exam requests</button>
     </div>}
     {coordinator && plans && <form className="panel form-stack" onSubmit={(event) => { event.preventDefault(); applyFilters(inputs); }}>
-      <div className="filter-grid review-filters">
-        <label className="field review-search"><span>Student or advisor</span>
+      <FilterDisclosure floating search={<label className="field filter-search"><span>Student or advisor</span>
           <input type="search" name="graduation-search" autoComplete="off" placeholder="Student ID, advisor name or email…" maxLength={200} value={inputs.search}
-            onChange={(event) => setInputs({ ...inputs, search: event.target.value })} />
-        </label>
+            onChange={(event) => { const search = event.target.value; setInputs({ ...inputs, search }); applyFilters({ ...filters, search }); }} />
+        </label>} actions={<><button type="button" className="text-button" disabled={busy || !Object.values(inputs).some(Boolean) && !Object.values(filters).some(Boolean)} onClick={() => { setInputs(emptyFilters); applyFilters(emptyFilters); }}>Clear</button>
+          <button type="button" className="text-button" disabled={loading || busy} onClick={reload}>Refresh</button></>}
+        chips={Object.entries(filters).filter(([key,value]) => key !== "search" && value).map(([key,value]) => ({
+          key, label: key === "advisor" ? result?.advisors?.find(advisor => advisor._id === value)?.fullName || "Advisor" : key === "status" ? labels[value] : (key === "from" ? "From " : "Through ") + value,
+          onRemove: () => { setInputs({ ...inputs, [key]: "" }); applyFilters({ ...filters, [key]: "" }); },
+        }))}>{({ close }) => <><div className="filter-grid">
         <label className="field"><span>Status</span>
           <select value={inputs.status} onChange={(event) => setInputs({ ...inputs, status: event.target.value })}>
             <option value="">All submitted statuses</option>
@@ -171,27 +181,23 @@ export default function GraduationReview({ token, role }) {
             onChange={(event) => setInputs({ ...inputs, to: event.target.value })} />
         </label>
       </div>
-      <div className="filter-actions">
-        <button type="button" className="outline-button" disabled={busy} onClick={() => { setInputs(emptyFilters); applyFilters(emptyFilters); }}>
-          Clear filters
-        </button>
-        <button className="primary-button" disabled={busy}>Apply filters</button>
-      </div>
+      <div className="filter-panel-actions"><button className="primary-button" disabled={busy} onClick={() => setTimeout(close, 0)}>Apply filters</button></div>
+      </>}</FilterDisclosure>
     </form>}
     {notice && <div className="feedback success" role="status">{notice}</div>}
     {error && <div className="feedback error" role="alert">{error}{issues.length > 0 &&
       <ul>{issues.map((issue, index) => <li key={index}>{issue}</li>)}</ul>}</div>}
     <section aria-busy={loading}>
       {loading ? <p role="status">Loading…</p> : !rows.length ? !error && <GraduationEmpty heading="h2" submitted={plans}
-        title={plans ? "No submitted plans" : "No exit-exam requests"}
-        description={plans
+        title={plans && Object.values(filters).some(Boolean) ? "No matching plans" : plans ? "No submitted plans" : "No exit-exam requests"}
+        description={plans && Object.values(filters).some(Boolean) ? "Try another student, advisor or submission date." : plans
           ? coordinator ? "Plans will appear here when advisors submit them." : "Plans you send for coordinator review will appear here."
           : "Requests will appear here when advisors submit them."} /> :
         <div className="table-scroll"><table>
           <thead><tr><th>Student</th>{coordinator && <th>Advisor</th>}{!plans && <th>Course</th>}
             <th>Status</th><th>Submitted</th><th>Action</th></tr></thead>
           <tbody>{rows.map((row) => <tr key={row._id}>
-            <td>{row.student?.user?.fullName ?? "Student"}<span className="secondary-text">{row.student?.studentId}</span></td>
+            <td>{coordinator ? <StudentIdentity name={row.student?.user?.fullName} id={row.student?.studentId} /> : <>{row.student?.user?.fullName ?? "Student"}<span className="secondary-text">{row.student?.studentId}</span></>}</td>
             {coordinator && <td>{row.advisor?.fullName ?? "Former advisor"}</td>}
             {!plans && <td>{row.course?.code ?? "Archived course"}</td>}
             <td><Status status={row.status} /></td>
@@ -209,7 +215,7 @@ export default function GraduationReview({ token, role }) {
           onClick={() => { setSelected(null); setPage(page + 1); }}>Next</button>
       </div>}
     </section>
-    {selected && <section className="panel">
+    {selected && <section className="panel review-decision" id="review-decision" tabIndex={-1}>
       <div className="results-heading">
         <h2>{plans ? "Graduation plan" : "Exit-exam request"} · {selected.student?.studentId}</h2>
         <button className="outline-button" disabled={busy} onClick={() => setSelected(null)}>Close</button>

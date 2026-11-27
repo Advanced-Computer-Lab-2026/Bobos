@@ -124,7 +124,7 @@ window.mountPortalControlInk = function (shadow) {
 
   function updateFocusRing() {
     const focused = document.activeElement;
-    const next = focused?.matches(':focus-visible:not(#content, #workspace-content, .menu-close, .workspace-menu a)') &&
+    const next = document.body.dataset.portalRole !== 'coordinator' && focused?.matches(':focus-visible:not(#content, #workspace-content, .menu-close, .workspace-menu a)') &&
       !focused.closest('.ink-field,.filter-tab:has(> .ink-contour)') &&
       !focused.matches('.portal-studio[data-workspace] :is(main,dialog) .btn:has(> .ink-contour)')
       ? focused : null;

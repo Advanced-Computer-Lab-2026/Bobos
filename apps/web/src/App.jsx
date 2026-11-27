@@ -63,6 +63,7 @@ export default function App({ service }) {
   const [profileLoading, setProfileLoading] = useState(Boolean(token));
   const [activeScreen, setActiveScreen] = useState(null);
   const [embeddedProfileError, setEmbeddedProfileError] = useState("");
+  const [profileAttempt, setProfileAttempt] = useState(0);
   const routeState = window.history.state;
   const screenContext = routeState?.portalScreen === requestedScreen ? routeState.portalContext : null;
   useEffect(() => {
@@ -71,32 +72,36 @@ export default function App({ service }) {
       setProfileLoading(false);
       return;
     }
-    let alive = true;
+    const controller = new AbortController();
+    let retryTimer;
     setProfileLoading(true);
-    api("/api/identity/profile", { token })
-      .then((data) => {
-        if (!alive) return;
+    setEmbeddedProfileError("");
+    async function loadProfile(retried = false) {
+      try {
+        const data = await api("/api/identity/profile", { token, signal: controller.signal });
+        if (controller.signal.aborted) return;
         setProfile(data.profile);
-        if (navGroups(data.profile.role).some(group => group.items.some(item => item.id === requestedScreen))) {
-          setActiveScreen(requestedScreen);
-        }
-      })
-      .catch((error) => {
-        if (!alive) return;
-        if (embeddedPage && error.status !== 401) {
-          setEmbeddedProfileError("Your workspace couldn’t load. Try refreshing the page.");
+        const permitted = navGroups(data.profile.role).some(group => group.items.some(item => item.id === requestedScreen));
+        setActiveScreen(permitted ? requestedScreen : null);
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        if (!retried && [0, 502, 503, 504].includes(error.status)) {
+          retryTimer = setTimeout(() => loadProfile(true), 350);
           return;
         }
-        if (window.localStorage.getItem("bobos.token") === token) {
-          window.localStorage.removeItem("bobos.token");
+        if (error.status === 401) {
+          if (window.localStorage.getItem("bobos.token") === token) window.localStorage.removeItem("bobos.token");
+          setToken(null);
+          setProfile(null);
+        } else {
+          setEmbeddedProfileError(error.status === 403 ? "Your account cannot open this workspace." : "Your profile could not be loaded.");
         }
-        setToken(null);
-        setProfile(null);
-        if (error.status !== 401) notify("error", error.message);
-      })
-      .finally(() => alive && setProfileLoading(false));
-    return () => { alive = false; };
-  }, [token, embeddedPage, requestedScreen]);
+      }
+      if (!controller.signal.aborted) setProfileLoading(false);
+    }
+    loadProfile();
+    return () => { controller.abort(); clearTimeout(retryTimer); };
+  }, [token, requestedScreen, profileAttempt]);
 
   const openScreen = (screen, context = null) => {
     document.dispatchEvent(new CustomEvent("portal:open-service", { detail: { screen, context } }));
@@ -105,7 +110,7 @@ export default function App({ service }) {
   if (profileLoading && embeddedExtraHours) return <div className="extra-hours-loading" aria-busy="true"><span className="sr-only">Loading extra-hours requests…</span></div>;
   if (profileLoading) return <div className="app-loading"><span className="loader" />Loading your workspace…</div>;
   if (embeddedPage && embeddedProfileError) {
-    return <div className="feedback error" role="alert">{embeddedProfileError}</div>;
+    return <div className="feedback error" role="alert">{embeddedProfileError} <button type="button" className="outline-button" onClick={() => setProfileAttempt(attempt => attempt + 1)}>Try again</button></div>;
   }
   if (!token || !profile) {
     const signIn = new URL("/portal-studio/index.html", window.location.href);
