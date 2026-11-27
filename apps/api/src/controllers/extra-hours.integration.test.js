@@ -10,6 +10,7 @@ import {
   AcademicTerm,
   Course,
   CourseAttempt,
+  CourseOffering,
   ExtraHoursRequest,
   FinancialTransaction,
   Notification,
@@ -125,11 +126,12 @@ before(async () => {
   // Course 2: 2 credit hours
   // Course 3: 4 credit hours
   const [c1, c2, c3] = await Course.create([
-    { code: "CSEN501", name: "Databases I", creditHours: 3, courseType: "core", facultyMajors: ["CS"], recommendedSemester: 5, offeringSeasons: ["winter"] },
+    { code: "CSEN501", name: "Databases I", creditHours: 3, courseType: "core", facultyMajors: ["CS"], recommendedSemester: 5, offeringSeasons: ["winter", "spring", "summer"] },
     { code: "CSEN502", name: "Networks", creditHours: 2, courseType: "core", facultyMajors: ["CS"], recommendedSemester: 5, offeringSeasons: ["winter"] },
     { code: "CSEN503", name: "Advanced Algorithms", creditHours: 4, courseType: "core", facultyMajors: ["CS"], recommendedSemester: 5, offeringSeasons: ["winter"] },
   ]);
   courses = [c1, c2, c3];
+  await publishCourse(c1, term);
 
   // Mark Course 1 as attempted/failed previously by regular student so it's a "repeated" course
   await CourseAttempt.create({
@@ -142,6 +144,15 @@ before(async () => {
     grade: "F",
   });
 });
+
+function publishCourse(course, term) {
+  return CourseOffering.create({
+    course: course._id, term: term._id, isPublished: true,
+    instructors: [{ fullName: "Test instructor" }], eligibleGroups: [{ major: "CS" }],
+    slots: [{ componentType: "lecture", groupNumber: "1", day: "Monday",
+      startMinute: 480, endMinute: 540, room: "Test room", capacity: 20 }],
+  });
+}
 
 after(async () => {
   if (server) await new Promise((resolve) => server.close(resolve));
@@ -267,21 +278,38 @@ test("Req 83: Non-graduating student cannot request more than 3 extra hours", as
 test("Req 83: Graduating student can request more than 3 extra hours up to 34 total", async () => {
   await ExtraHoursRequest.deleteMany({});
 
-  // Semester 5 standard is 30. Adding 4 credits = 34 total.
-  // Allowed when graduatingWithinOneYear = true.
+  const day = 86400000;
+  const start = Date.now() + 30 * day;
+  const upcoming = await AcademicTerm.create({
+    code: "REQ83-W", season: "winter", academicYear: "2030/2031", termStart: start, termEnd: start + 70 * day,
+    teachingStart: start, teachingEnd: start + 65 * day, registrationStart: start - 10 * day, registrationEnd: start,
+    advisingDeadline: start - day, wholeScheduleSwapDeadline: start - day,
+  });
+  await CourseOffering.insertMany(courses.map((course, index) => ({
+    course: course._id, term: upcoming._id, isPublished: true,
+    instructors: [{ fullName: "Test instructor" }], eligibleGroups: [{ major: "CS" }],
+    slots: [{ componentType: "lecture", groupNumber: "1", day: "Monday",
+      startMinute: 480 + 60 * index, endMinute: 540 + 60 * index, room: "Test room", capacity: 20 }],
+  })));
+  const electives = await Course.create(Array.from({ length: 4 }, (_, i) => ({
+    code: `EL83-${i}`, name: `Completed elective ${i}`, courseType: "elective", creditHours: 4, facultyMajors: ["CS"],
+  })));
+  await CourseAttempt.insertMany(electives.map((course) => ({
+    student: profiles.regular._id, course: course._id, term: term._id, result: "passed", attendance: "attended", grade: "A",
+  })));
   const res = await apiCall("/extra-hours", {
-    method: "POST",
-    userRole: "advisor",
-    body: {
-      studentId: String(profiles.regular._id),
-      courseIds: [String(courses[2]._id)], // 4 credits
-      graduatingWithinOneYear: true,
-    },
+    method: "POST", userRole: "advisor",
+    body: { studentId: String(profiles.regular._id), termId: String(upcoming._id), courseIds: [String(courses[2]._id)] },
   });
 
-  assert.equal(res.status, 201);
+  assert.equal(res.status, 201, res.body.message);
   assert.equal(res.body.requestedHours, 4);
   assert.equal(res.body.eligibilitySnapshot.hoursAfterRequest, 34);
+  assert.equal(res.body.eligibilitySnapshot.graduatingWithinOneYear, true);
+  const approved = await apiCall(`/extra-hours/${res.body._id}/decision`, {
+    method: "POST", userRole: "coordinator", body: { decision: "approved", responseNote: "Verified curriculum fit." },
+  });
+  assert.equal(approved.status, 200, approved.body.message);
 });
 
 test("Req 83: Probation students cannot receive extra credit hours", async () => {
@@ -354,6 +382,7 @@ test("Req 117 delivers extra-hours decisions, payment outcomes, deferred charges
   const [walletTerm, deferredTerm] = await Promise.all([
     alternateTerm("EH-WALLET", "spring"), alternateTerm("EH-DEFERRED", "summer"),
   ]);
+  await Promise.all([publishCourse(courses[0], walletTerm), publishCourse(courses[0], deferredTerm)]);
   const submit = async (termId) => {
     const response = await apiCall("/extra-hours", {
       method: "POST",

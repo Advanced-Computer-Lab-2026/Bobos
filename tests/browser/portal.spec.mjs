@@ -665,6 +665,12 @@ test("Req 31, 33, 81–82: student meeting details and read-only Administrator a
   await page.keyboard.press("Escape");
   await expect(scheduleDialog).toHaveCount(0);
   await expect(view).toBeFocused();
+
+  await moreActions.click();
+  await row.getByRole("button", { name: "Advising overview" }).click();
+  const overview = page.getByRole("region", { name: "Advising overview", exact: true });
+  await expect(overview.getByRole("heading", { name: "Credit allowance" })).toBeVisible();
+  await expect(overview.getByRole("heading", { name: "Bachelor project" })).toBeVisible();
 });
 
 test("Req 50, 52: browse beyond the first 20 students and filter by real payment status", async ({ page }) => {
@@ -847,6 +853,11 @@ test("Req 92, 94, 102, 120: confirm, download and cancel an installment charge t
     email: studentEmail, fullName: "Reversal Student", studentId: "46-00102", passwordHash, assignedAdvisor: advisor._id,
   });
   const course = await Course.create({ code: "CSEN902", name: "Reversal Audit Course", creditHours: 3, courseType: "core" });
+  await CourseOffering.create({
+    course: course._id, term: term._id, isPublished: true,
+    instructors: [{ fullName: "Reversal Test Instructor" }], eligibleGroups: [{ major: student.major }],
+    slots: [{ componentType: "lecture", groupNumber: "1", day: "Monday", startMinute: 480, endMinute: 540, room: "Audit", capacity: 20 }],
+  });
   const request = await ExtraHoursRequest.create({
     student: student._id, advisor: advisor._id, term: term._id,
     courses: [{ course: course._id, hours: 3, isRepeated: false, pricePerHour: 800, subtotal: 2400 }],
