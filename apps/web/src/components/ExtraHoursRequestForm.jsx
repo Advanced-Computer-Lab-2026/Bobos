@@ -35,14 +35,13 @@ export default function ExtraHoursRequestForm({ token, advisorId, onClose, onSub
   async function submit(event) {
     event.preventDefault();
     if (saving || !selected.length) return;
-    const { studentId, termId, graduating } = Object.fromEntries(new FormData(event.currentTarget));
+    const { studentId, termId } = Object.fromEntries(new FormData(event.currentTarget));
     setSaving(true);
     setError("");
     try {
       await api("/api/extra-hours", {
         token, method: "POST", body: {
           studentId, termId, courseIds: selected,
-          ...(graduating && { graduatingWithinOneYear: graduating === "yes" }),
         },
       });
       onSubmitted();
@@ -74,11 +73,6 @@ export default function ExtraHoursRequestForm({ token, advisorId, onClose, onSub
             <select name="termId" required defaultValue={data.terms.find((term) => term.isActive)?._id || ""} disabled={saving}>
               <option value="">Select a term</option>
               {data.terms.map((term) => <option key={term._id} value={term._id}>{termLabel(term)}{term.isActive ? " (active)" : ""}</option>)}
-            </select>
-          </label>
-          <label className="field"><span>Graduating within one year</span>
-            <select name="graduating" defaultValue="" disabled={saving}>
-              <option value="">Use current semester</option><option value="yes">Yes</option><option value="no">No</option>
             </select>
           </label>
         </div>

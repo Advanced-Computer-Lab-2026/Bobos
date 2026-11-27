@@ -99,6 +99,7 @@ export default function ExtraHoursPage({
         token, method: "POST", body: { cancel, attemptId },
       });
       if (status === "succeeded") notify("success", "Payment complete. Your receipt is in Payments and deferred charges.");
+      if (status === "refunded") notify("warning", "Your card payment was credited to your wallet.");
       if (status === "failed") notify("error", "The card payment failed. You can try again.");
       if (status === "cancelled") notify("warning", "Checkout cancelled. You can choose a payment option again.");
       if (status === "pending") notify("info", "Stripe checkout is still open.");
@@ -178,7 +179,10 @@ export default function ExtraHoursPage({
       if (method === "gateway") {
         const result = await api(`/api/extra-hours/${row._id}/checkout`, { token, method: "POST", body: {} });
         if (result.checkoutUrl) window.location.assign(result.checkoutUrl);
-        else if (result.status === "succeeded") await load();
+        else if (result.status === "refunded") {
+          notify("warning", "Your card payment was credited to your wallet.");
+          await load();
+        } else if (result.status === "succeeded") await load();
         return;
       }
       const result = await api(`/api/extra-hours/${row._id}/settlement`, {
@@ -670,7 +674,7 @@ function RequestDetails({ row, staff = false, summary, children }) {
         <div className="extra-load-total"><dt>Hours after request</dt><dd>{eligibility?.hoursAfterRequest ?? "—"}</dd></div>
       </>}
       <div><dt>Standard allowance</dt><dd>{eligibility?.standardAllowance == null ? "—" : `${eligibility.standardAllowance} hours`}</dd></div>
-      <div><dt>Graduating within one year</dt><dd>{eligibility?.graduatingWithinOneYear == null ? "—" : eligibility.graduatingWithinOneYear ? "Yes" : "No"}</dd></div>
+      <div><dt>One-year credit exception</dt><dd>{eligibility?.graduatingWithinOneYear == null ? "—" : eligibility.graduatingWithinOneYear ? "Applied" : "Not needed"}</dd></div>
     </dl>
     {eligibility?.isProbation && <p className="feedback error">Ineligible due to academic probation</p>}
   </section>;
