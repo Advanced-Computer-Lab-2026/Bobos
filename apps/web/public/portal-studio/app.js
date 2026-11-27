@@ -42,7 +42,7 @@ let liveProfile;
 let liveInbox;
 let coordinatorSchedules;
 let liveAdvisor;
-const previewEmail = 'demo@portal.test';
+const localDemoSignInAvailable = ['localhost','127.0.0.1'].includes(location.hostname);
 const signedIn = () => Boolean(localStorage.getItem(workspaceSessionKey));
 const pageKey = key => Object.hasOwn(pages,key) ? key : 'overview';
 const returnPage = key => {
@@ -1128,8 +1128,8 @@ function auth(){
         <h1>${title}</h1>
         ${page==='login' ? (returnAfterSignIn !== 'overview' ? `<p>Sign in as ${roleNames[role]} to open ${navigationLabel(returnAfterSignIn)}.</p>` : '') : `<p>${page==='forgot'?'We’ll send a reset code to your university email.':'Enter the six-digit code from your email.'}</p>`}
         <form id="auth-form">
-          ${page==='login' ? `<label>University email<input name="email" type="email" autocomplete="username" required value="${previewEmail}"></label>
-            <label>Password<input name="password" type="password" autocomplete="current-password" required value="portal-demo"></label>
+          ${page==='login' ? `<label>University email<input name="email" type="email" autocomplete="username" placeholder="name@guc.edu.eg" required></label>
+            <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
             <div class="signin-actions"><button type="submit" class="signin-continue">Continue <span aria-hidden="true">→</span></button>${link('forgot','Forgot password?','auth-recovery')}</div>` : `
             <label>University email<input name="email" type="email" autocomplete="username" placeholder="name@guc.edu.eg" required></label>
             ${page==='reset'?'<label>Reset code<input name="otp" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required></label><label>New password<input name="password" type="password" autocomplete="new-password" minlength="8" required></label><label>Confirm new password<input name="confirmPassword" type="password" autocomplete="new-password" minlength="8" required></label>':''}
@@ -1138,7 +1138,7 @@ function auth(){
             ${page==='reset'?link('forgot','Request another code','auth-recovery'):''}
             ${link('login','Back to sign in','auth-recovery')}`}
         </form>
-        ${page==='login' ? `<fieldset class="preview-role-picker">
+        ${page==='login' && localDemoSignInAvailable ? `<fieldset class="preview-role-picker">
           <legend>Quick demo sign-in</legend>
           <div class="preview-role-options">${Object.entries(roleNames).map(([id,label])=>
             button(label,'preview-sign-in','preview-role-button',`data-preview-role="${id}"`)).join('')}</div>
@@ -1809,10 +1809,7 @@ document.addEventListener('submit',async event=>{
       const submit = event.submitter;
       if (submit) submit.disabled = true;
       try {
-        if (email === previewEmail && password === 'portal-demo') {
-          if (!(await signInDemoWorkspace(role))) throw new Error('Sign in with your university account.');
-        }
-        else role = await signInWorkspace({email,password});
+        role = await signInWorkspace({email,password});
         startPreview(returnAfterSignIn);
       } catch (error) {
         toast(error.message);
