@@ -7,7 +7,7 @@ npm run seed:evaluation --workspace @bobos/api
 npm run seed:b1 --workspace @bobos/api
 ```
 
-The evaluation seed is needed only when the local database has no active term/curriculum. B1 uses the active term and preserves other accounts and data. It refuses production and remote databases. On this machine it is already loaded into the `bobos` database on local MongoDB port 27020.
+Set `MONGODB_URI` explicitly to your disposable local assessment MongoDB database before running either command. The evaluation seed is needed only when that database has no active term or curriculum. B1 uses the active term and preserves other accounts and data. It refuses production and remote MongoDB hosts.
 
 B1 adds fixtures once and retains their later changes, so rerunning does not reset decisions or passwords, duplicate events, or erase test work. A second immediate run was checked: zero inserted documents. Keep the same active term when using this fixture set.
 
@@ -42,7 +42,7 @@ Every account initially uses `Password123!`.
 | 92-00002 | b1.normal2 | Open whole-schedule swap |
 | 92-00003 | b1.normal3 | Completed whole-schedule swap |
 
-These are direct database fixtures for B1 reporting/history/calendar testing, not evidence that the B2/B3 decision workflows were executed. The dedicated `B1LAB501` offering contains both groups of all three component types. Its reserved seat counts are reconciled against schedules; other offerings are untouched.
+These are direct database fixtures for B1 reporting, history and calendar testing. The seed uses the existing `CSEN704` Advanced Computer Lab course and reconciles its reserved seat counts against schedules.
 
 ## Manual checks
 
