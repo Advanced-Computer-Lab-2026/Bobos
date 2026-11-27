@@ -1,5 +1,16 @@
 // Central subject icon registry. Board order: 1–6, left-to-right per row. 1=A, 2=B.
 globalThis.BobosCourseIcons = Object.freeze({
+  "CSEN905": { "symbol": "machine-learning", "tone": "blue" },
+  "CSEN906": { "symbol": "cloud-computing", "tone": "sage" },
+  "CSEN907": { "symbol": "information-retrieval", "tone": "ivory" },
+  "CSEN908": { "symbol": "cryptography", "tone": "coral" },
+  "CSEN909": { "symbol": "parallel-computing", "tone": "blue" },
+  "DMET905": { "symbol": "game-development", "tone": "sage" },
+  "DMET906": { "symbol": "virtual-reality", "tone": "blue" },
+  "DMET907": { "symbol": "human-computer-interaction", "tone": "coral" },
+  "DMET908": { "symbol": "modelling-rendering", "tone": "ivory" },
+  "DMET909": { "symbol": "interactive-media", "tone": "sage" },
+
   "CSEN102": {
     "symbol": "intro-computing",
     "tone": "blue",
@@ -135,36 +146,36 @@ globalThis.BobosCourseIcons = Object.freeze({
     "override": "shared book; Greek beta in German concept corrected"
   },
   "DE101": {
-    "symbol": "languages-book",
+    "symbol": "german-language",
     "tone": "blue",
     "board": 2,
     "position": 18,
     "choice": "A",
-    "override": "shared book; Greek beta in German concept corrected"
+    "override": "German book with vector umlaut lettering"
   },
   "DE202": {
-    "symbol": "languages-book",
+    "symbol": "german-language",
     "tone": "blue",
     "board": 2,
     "position": 18,
     "choice": "A",
-    "override": "shared book; Greek beta in German concept corrected"
+    "override": "German book with vector umlaut lettering"
   },
   "DE303": {
-    "symbol": "languages-book",
+    "symbol": "german-language",
     "tone": "blue",
     "board": 2,
     "position": 18,
     "choice": "A",
-    "override": "shared book; Greek beta in German concept corrected"
+    "override": "German book with vector umlaut lettering"
   },
   "DE404": {
-    "symbol": "languages-book",
+    "symbol": "german-language",
     "tone": "blue",
     "board": 2,
     "position": 18,
     "choice": "A",
-    "override": "shared book; Greek beta in German concept corrected"
+    "override": "German book with vector umlaut lettering"
   },
   "CSEN202": {
     "symbol": "intro-computing",
