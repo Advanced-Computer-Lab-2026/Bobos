@@ -371,13 +371,15 @@ export const getAcademicHistory = async (req, res) => {
     }
 };
 
+const isTranscriptYear = (year) => typeof year === "string" && year === year.trim() && /^\d{4}(?:[/-]\d{4})?$/.test(year);
+
 //Req 55: View transcript for a selected academic year
 export const getTranscript = async (req, res) => {
     try{
         const { studentId } = req.params;
         const {year} = req.query;
 
-        if(typeof year !== 'string' || !/^\d{4}(\/\d{4})?$/.test(year)){
+        if(!isTranscriptYear(year)){
             return res.status(400).json({ error: "Academic year query parameter is required (e.g., ?year=2026)" });
         }
 
@@ -400,7 +402,7 @@ export const downloadTranscriptPDF = async (req, res) => {
         const {studentId} = req.params;
         const {year} = req.query;
 
-        if(typeof year !== 'string' || !/^\d{4}(\/\d{4})?$/.test(year)){
+        if(!isTranscriptYear(year)){
             return res.status(400).json({ error: "Academic year query parameter is required." });
         }
 
@@ -414,7 +416,7 @@ export const downloadTranscriptPDF = async (req, res) => {
         const doc = new PDFDocument({margin: 50});
 
        res.setHeader('Content-Type', 'application/pdf');
-       res.setHeader('Content-Disposition', `attachment; filename="transcript_${universityStudentId}_${year.replace('/', '-')}.pdf"`);
+       res.setHeader('Content-Disposition', `attachment; filename="transcript_${universityStudentId}_${transcript.year.replace('/', '-')}.pdf"`);
 
          doc.pipe(res);// Pipe the PDF to the response
 
@@ -422,7 +424,7 @@ export const downloadTranscriptPDF = async (req, res) => {
         doc.fontSize(20).text('University Academic Transcript', { align: 'center' });
         doc.moveDown();
         doc.fontSize(12).text(`Student ID: ${universityStudentId}`);
-        doc.text(`Academic Year: ${year}`);
+        doc.text(`Academic Year: ${transcript.year}`);
         doc.text(`Generated On: ${new Date().toLocaleDateString('en-GB', { timeZone: 'Africa/Cairo' })}`);
         doc.moveDown(2);
 
@@ -444,7 +446,7 @@ export const downloadTranscriptPDF = async (req, res) => {
                     doc.fontSize(10);
                     if (doc.y + doc.heightOfString(row) > doc.page.height - doc.page.margins.bottom) {
                         doc.addPage();
-                        doc.fontSize(12).text(`Student ID: ${universityStudentId} | Academic Year: ${year}`);
+                        doc.fontSize(12).text(`Student ID: ${universityStudentId} | Academic Year: ${transcript.year}`);
                         doc.moveDown();
                         doc.fontSize(14).text(`${formattedTerm} Term (continued)`, { underline: true });
                         doc.moveDown(0.5);

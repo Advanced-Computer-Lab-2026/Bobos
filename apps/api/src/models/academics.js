@@ -236,12 +236,15 @@ export const getAcademicHistory = async (studentId) => {
 };
 
 
+const normalizeTranscriptYear = (year) => year.replace('-', '/');
+
 //Added for Req 55: View transcript for a selected academic year
 export const getTranscriptByYear = async (studentId, year) => {
+  const academicYear = normalizeTranscriptYear(year);
   const attempts = await CourseAttempt.find({ student: studentId })
     .populate({
       path: 'term',
-      match: { academicYear: year }
+      match: { academicYear: { $in: [academicYear, academicYear.replace('/', '-')] } }
     })
     .populate('course')
     .exec();
@@ -251,7 +254,7 @@ export const getTranscriptByYear = async (studentId, year) => {
 
   const transcript = {
     studentId,
-    year,
+    year: academicYear,
     terms: {
       winter: [],
       spring: [],
@@ -309,7 +312,7 @@ export const getAttendedAcademicYears = async (studentId) => {
   const AcademicTerm = mongoose.model('AcademicTerm');
   const termIds = await CourseAttempt.distinct('term', { student: studentId });
   const terms = await AcademicTerm.find({ _id: { $in: termIds } }).sort({ termStart: -1 }).select('academicYear').lean();
-  return [...new Set(terms.map(term => term.academicYear))];
+  return [...new Set(terms.map(term => normalizeTranscriptYear(term.academicYear)))];
 };
 
 //Added for Req 89: View wallet
