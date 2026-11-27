@@ -218,12 +218,14 @@ function PreferenceSubmission({ preferences, offerings, updatedAt }) {
     <header className="preference-reading-heading"><h2>Scheduling priorities</h2>
       {updatedAt && <p>Last updated <time dateTime={updatedAt}>{updatedAtFormat.format(new Date(updatedAt))} Cairo</time></p>}
     </header>
-    <div className="preference-planners">
-      <PreferenceColumn kind="prefer" title="Preferred" dayLabel="Preferred days" days={preferredDays} timeLabel="Preferred times" times={preferredTimes} />
-      <PreferenceColumn kind="avoid" title="To avoid" dayLabel="Days to avoid" days={avoidedDays} timeLabel="Times to avoid" times={avoidedTimes} />
-      <PreferenceColumn kind="off" title="Requested days off" dayLabel="Desired days off" days={desiredDaysOff} />
-    </div>
-    <div className="preference-details">
+    <table className="preference-priorities" aria-label="Scheduling priorities">
+      <thead><tr><th scope="col">Preference</th><th scope="col">Weekdays</th><th scope="col">Teaching times</th></tr></thead>
+      <tbody>
+        <PriorityRow title="Preferred" kind="good" dayLabel="Preferred days" days={preferredDays} timeLabel="Preferred times" times={preferredTimes} />
+        <PriorityRow title="To avoid" kind="danger" dayLabel="Days to avoid" days={avoidedDays} timeLabel="Times to avoid" times={avoidedTimes} />
+        <PriorityRow title="Days off" dayLabel="Desired days off" days={desiredDaysOff} />
+      </tbody>
+    </table>
     <section className="preference-group-register">
       <h3>Preferred course groups</h3>
       {preferredGroups?.length ? <ol className="preferred-group-reading" aria-label="Preferred course groups, highest priority first" role="list">
@@ -233,11 +235,13 @@ function PreferenceSubmission({ preferences, offerings, updatedAt }) {
           const identity = course?.code ? course : offering?.course;
           return <li key={`${course?._id || course}-${componentType}-${groupNumber}-${index}`}>
             <OfferingCourseIcon code={identity?.code} />
-            <div className="preference-course-description">
-              <small>{[identity?.code, `Priority ${priority ?? index + 1}`].filter(Boolean).join(" · ")}</small>
+            <div className="registered-course-title">
               <strong>{identity?.name || identity?.code || "Course"}</strong>
-              <span className="preference-group-type">{componentType} {groupNumber}</span>
-              {option ? option.sessions.map((session, position) => <span className="preference-meeting" key={session._id || position}>{preferenceMeetingLabel(session)}</span>) : <span className="preference-meeting">{offerings ? "Group is no longer published" : "Meeting details are unavailable"}</span>}
+              <small>{[identity?.code, `Priority ${priority ?? index + 1}`].filter(Boolean).join(" · ")}</small>
+            </div>
+            <div className="preference-group-detail">
+              <strong className="preference-group-type">{componentType} {groupNumber}</strong>
+              {option ? option.sessions.map((session, position) => <small key={session._id || position}>{preferenceMeetingLabel(session)}</small>) : <small>{offerings ? "Group is no longer published" : "Meeting details are unavailable"}</small>}
             </div>
           </li>;
         })}
@@ -247,7 +251,6 @@ function PreferenceSubmission({ preferences, offerings, updatedAt }) {
       <h3>Student note</h3>
       {note ? <blockquote>{note}</blockquote> : <p className="preference-missing">No note submitted.</p>}
     </aside>
-    </div>
   </div>;
 }
 
@@ -263,26 +266,21 @@ function DayOffCup() {
   </svg>;
 }
 
-function PreferenceColumn({ kind, title, dayLabel, days = [], timeLabel, times = [] }) {
-  return <section className={`preference-column is-${kind}`} aria-label={title}>
-    <h3>{title}</h3>
-    {days.length ? <ol className="preference-days" aria-label={dayLabel + ", highest priority first"} role="list">
-      {days.map(({day, priority}, index) => <li key={day}>
-        {kind === "off" && <DayOffCup />}
-        <div><strong>{day}</strong><small>Priority {priority ?? index + 1}</small></div>
-      </li>)}
-    </ol> : <p className="preference-missing">{kind === "off" ? "No days off requested." : "No weekdays specified."}</p>}
-    {timeLabel && <div className="preference-windows">
-      <h4>{timeLabel}</h4>
-      {times.length ? <ol role="list" aria-label={timeLabel + ", highest priority first"}>{times.map((window, index) =>
-        <li key={formatWindow(window)}>
-          <svg className="preference-clock" viewBox="0 0 28 28" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" aria-hidden="true">
-            <path d="M25 14c.2 6.1-4.7 11.1-10.8 11.3C8.1 25.5 3.1 20.4 3 14.5 2.9 8.4 7.7 3 13.9 2.9 20 2.7 25 7.7 25 14Z"/>
-            <path d="M14 14V8.5" transform={`rotate(${window.startMinute * .5} 14 14)`}/>
-            <path d="M14 14V6" transform={`rotate(${window.startMinute * 6} 14 14)`}/>
-          </svg>
-          <div><strong>{formatWindow(window)}</strong><small>Priority {window.priority ?? index + 1}</small></div>
-        </li>)}</ol> : <p className="preference-missing">No times specified.</p>}
-    </div>}
-  </section>;
+function PriorityRow({ title, kind, dayLabel, days = [], timeLabel, times = [] }) {
+  return <tr>
+    <th scope="row">{kind ? <span className={`status-pill ${kind}`}>{title}</span>
+      : <span className="preference-off-label"><DayOffCup />{title}</span>}</th>
+    <td><RankedChoices label={dayLabel} items={days} format={item => item.day} /></td>
+    <td>{timeLabel ? <RankedChoices label={timeLabel} items={times} format={formatWindow} /> : <span className="preference-inapplicable" aria-label="Not applicable">—</span>}</td>
+  </tr>;
+}
+
+function RankedChoices({ label, items, format }) {
+  if (!items.length) return <span className="preference-missing">None specified</span>;
+  return <ol className="preference-choices" role="list" aria-label={label + ", highest priority first"}>
+    {items.map((item, index) => <li key={format(item)}>
+      <span>{format(item)}</span>
+      <small title={`Priority ${item.priority ?? index + 1}`}><span className="preference-sr">Priority </span><span aria-hidden="true">#</span>{item.priority ?? index + 1}</small>
+    </li>)}
+  </ol>;
 }
