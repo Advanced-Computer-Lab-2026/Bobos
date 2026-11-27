@@ -71,8 +71,9 @@ export function calculateDraftCreditPolicy(student, requests = []) {
   let approvedExtraHours = 0;
   if (baseAllowance != null && !probation) {
     const requestedHours = [...authorizedCourses.values()].reduce((sum, hours) => sum + hours, 0);
-    const allGraduateEligible = activeRequests.length > 0 && activeRequests.every((request) => request.eligibilitySnapshot.graduatingWithinOneYear);
-    const policyMaximum = allGraduateEligible ? MAXIMUM_TOTAL_HOURS - standardAllowance : 3;
+    // Only requests that needed a higher cumulative limit carry a verified exception.
+    const hasGraduateException = activeRequests.some((request) => request.eligibilitySnapshot.graduatingWithinOneYear);
+    const policyMaximum = hasGraduateException ? MAXIMUM_TOTAL_HOURS - standardAllowance : 3;
     approvedExtraHours = Math.min(requestedHours, policyMaximum, MAXIMUM_TOTAL_HOURS - standardAllowance);
   }
 

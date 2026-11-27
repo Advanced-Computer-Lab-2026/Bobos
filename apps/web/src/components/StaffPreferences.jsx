@@ -2,7 +2,7 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { api, explainApiError } from "../api.js";
 import { minutesToTime, preferenceGroupOptions, preferenceMeetingLabel } from "../preference-groups.js";
 import { termLabel } from "../term-label.js";
-import { RegisterRow, StudentIdentity, StudentRegister } from "./CoordinatorRecords.jsx";
+import { StudentIdentity } from "./CoordinatorRecords.jsx";
 import OfferingCourseIcon from "./OfferingCourseIcon.jsx";
 
 const updatedAtFormat = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short", timeZone: "Africa/Cairo" });
@@ -16,6 +16,7 @@ export default function StaffPreferences({ token, profile, profileId, studentTar
   const [selectedStudent, setSelectedStudent] = useState(studentTarget || (profileId ? { _id: profileId } : null));
   const [search, setSearch] = useState(studentTarget?.studentId || "");
   const [matches, setMatches] = useState([]);
+  const [resultVersion, setResultVersion] = useState(0);
   const [linkedStudentPending, setLinkedStudentPending] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     return !studentTarget && !profileId && Boolean(params.get("student")?.trim() && params.get("term"));
@@ -34,7 +35,6 @@ export default function StaffPreferences({ token, profile, profileId, studentTar
   const [readError, setReadError] = useState("");
   const bookmark = useRef(new URLSearchParams(window.location.search));
   const studentSearch = useRef(null);
-  const pointerSubmit = useRef(false);
   const termSelect = useRef(null);
   const lookupRequest = useRef(null);
   const preferenceRequest = useRef(null);
@@ -130,6 +130,8 @@ export default function StaffPreferences({ token, profile, profileId, studentTar
         setLookupError("The linked advising student is unavailable.");
       } else if (data.length) {
         setMatches(data);
+        setResultVersion(version => version + 1);
+        setSearched(true);
       } else if (!query) {
         setLookupError(advisor ? "No active advising students are assigned to you." : "No advising students are available.");
       } else {
@@ -187,11 +189,8 @@ export default function StaffPreferences({ token, profile, profileId, studentTar
 
   function submitLookup(event) {
     event.preventDefault();
-    const animate = pointerSubmit.current;
-    pointerSubmit.current = false;
     if (searching) return;
-    setAnimateSearch(animate);
-    setSearched(true);
+    setAnimateSearch(true);
     findStudent(search.trim(), { term: termId });
   }
 
@@ -203,9 +202,8 @@ export default function StaffPreferences({ token, profile, profileId, studentTar
     setLookupError("");
   }
 
-  function selectMatch(student, animate) {
+  function selectMatch(student) {
     clearRecord();
-    setAnimateSearch(animate);
     setSelectedStudent(student);
     setSearch(student.studentId);
     setMatches([]);
@@ -224,7 +222,7 @@ export default function StaffPreferences({ token, profile, profileId, studentTar
   </button>;
   return <div className="page-stack schedule-preferences-page staff-preferences"
     data-student-lookup={searchStage ? (searched ? "active" : "entry") : undefined}
-    data-search-motion={animateSearch || undefined}>
+    data-search-motion={animateSearch || undefined} data-searching={searching || undefined}>
     <div className={searchStage ? "preference-search-masthead" : "page-title-row"}><div>
       {searchStage && <div className="preference-search-art"><SearchMagnifier /></div>}
       <h1>Student preferences</h1>
@@ -238,8 +236,7 @@ export default function StaffPreferences({ token, profile, profileId, studentTar
         </div> : linkedStudentPending ? <p className="preference-read-progress" role="status">Opening linked student…</p> : <>
           <form className="preference-student-lookup" onSubmit={submitLookup}>
             <label className="field"><span>Find advising student</span><input ref={studentSearch} type="search" autoComplete="off" value={search} onChange={editLookup} placeholder="Student ID, name, or email" /></label>
-            <button className="primary-button" type="submit" aria-disabled={searching || undefined}
-              onClick={event => { pointerSubmit.current = event.detail > 0; }}>{searching ? "Searching…" : "Find student"}</button>
+            <button className="primary-button" type="submit" aria-disabled={searching || undefined}>{searching ? "Searching…" : "Find student"}</button>
           </form>
           {lookupError && <p className="feedback error" role="alert">{lookupError}</p>}
         </>}
@@ -253,14 +250,16 @@ export default function StaffPreferences({ token, profile, profileId, studentTar
       </div>
     </section>
     {searchStage && <span className="preference-sr" role="status">{searching ? "Searching for advising students…" : matches.length ? `${resultsHeading}. ${resultCount}.` : ""}</span>}
-    {matches.length > 0 && <section className="preference-lookup-results">
+    {matches.length > 0 && <section key={resultVersion} className="preference-lookup-results">
       <header className="preference-reading-heading"><h2>{resultsHeading}</h2><p>{resultCount}</p></header>
-      <StudentRegister className="preference-student-results" label={resultsHeading} columns={["Student", "Action"]}>
-        {matches.map((student) => <RegisterRow key={studentProfileId(student)}>
-          <StudentIdentity name={studentName(student)} id={student.studentId} email={studentEmail(student)} />
-          <button className="outline-button" type="button" onClick={event => selectMatch(student, event.detail > 0)} aria-label={`View preferences for ${studentName(student)}`}>View preferences</button>
-        </RegisterRow>)}
-      </StudentRegister>
+      <ul className="preference-student-results" role="list" aria-label={resultsHeading}>
+        {matches.map((student, index) => <li key={studentProfileId(student)} style={{ "--arrival-delay": `${Math.min(index, 7) * 23}ms` }}>
+          <button type="button" className="preference-student-result" onClick={() => selectMatch(student)} aria-label={`View preferences for ${studentName(student)}`}>
+            <StudentIdentity name={studentName(student)} id={student.studentId} email={studentEmail(student)} />
+            <span className="preference-result-action" aria-hidden="true">View preferences</span>
+          </button>
+        </li>)}
+      </ul>
     </section>}
     <section className="preference-reading" aria-label="Submitted preferences">
       {(readError || waitingForRecord || (waitingForSelection && selectedId)) && <div className="preference-read-error">

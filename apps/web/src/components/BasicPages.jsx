@@ -111,7 +111,7 @@ export function StudentRecordsPage({ token, profile, profileId: targetProfileId,
       </div>}
       {(error || (tab === "transcript" && yearsError)) && <div className="feedback error" role="alert">{error || yearsError}</div>}
       {loading || (tab === "transcript" && yearsLoading) ? <Loading /> : data ? <RecordData data={data} tab={tab} /> : tab === "transcript" && !error && !yearsError &&
-        <RecordsEmpty title="No transcript yet" description="Yearly transcripts appear after an academic year has course attempts." art="academic-records/blank-transcript.svg" spacious />}
+        <RecordsEmpty title="No transcript yet" description="Once a course attempt is recorded, its academic year will appear here." art="academic-records/blank-transcript.svg" spacious />}
     </section>
   </div>;
 }
@@ -144,6 +144,7 @@ function StudentPreferencesPage({ token, profile, profileId: passedProfileId, no
   const [error, setError] = useState("");
   const [selectionError, setSelectionError] = useState("");
   const conflictNoticeRef = useRef(null);
+  const noteId = useId();
   const groupConflict = findPreferenceConflict(groups, offerings);
   const conflictMessage = selectionError || preferenceConflictMessage(groupConflict);
   const effectiveId = passedProfileId || profile.studentProfileId || profile.studentProfile?._id || "";
@@ -265,26 +266,59 @@ function StudentPreferencesPage({ token, profile, profileId: passedProfileId, no
     return `${offering?.course?.code || "Course"} · ${group.componentType} ${group.groupNumber}`;
   });
 
-  return <div className="page-stack schedule-preferences-page"><PageTitle eyebrow="SCHEDULING PREFERENCES" title="Schedule preferences" description="Share your preferred days, times and class groups. All preferences are optional and remain subject to academic and scheduling rules." />
-    <section className="panel preference-toolbar">
-      <label className="field"><span>Academic term</span><select value={termId} onChange={(event) => { setTermId(event.target.value); resetLoadedPreferences(); }} disabled={termsLoading || terms.length === 0}><option value="">{termsLoading ? "Loading terms…" : "Select a term"}</option>{terms.map((term) => <option key={term._id} value={term._id}>{humanize(term.season)} {term.academicYear}{term.isActive ? " (Active)" : ""}</option>)}</select></label>
+  return <div className="page-stack schedule-preferences-page"><PageTitle eyebrow="SCHEDULING PREFERENCES" title="Schedule preferences" description="Tell your advising team what works for you. Your choices are optional and depend on course availability and scheduling rules." />
+    <div className="preference-toolbar">
+      <label className="field"><span>Academic term</span><select data-no-control-ink value={termId} onChange={(event) => { setTermId(event.target.value); resetLoadedPreferences(); }} disabled={termsLoading || terms.length === 0}><option value="">{termsLoading ? "Loading terms…" : "Select a term"}</option>{terms.map((term) => <option key={term._id} value={term._id}>{humanize(term.season)} {term.academicYear}{term.isActive ? " (Active)" : ""}</option>)}</select></label>
       <button type="button" className="outline-button" onClick={() => load(termId, effectiveId)} disabled={loading || termsLoading}>{loading ? "Loading…" : termsLoading ? "Loading terms…" : "Load saved preferences"}</button>
-    </section>
+    </div>
     {error && <div className="feedback error" role="alert">{error}</div>}
-    {preferencesLoaded && <div className={`feedback ${hasSubmittedPreferences ? "info" : "warning"}`} role="status">{hasSubmittedPreferences ? `Latest submission${formatDateTime(lastUpdatedAt) ? ` · last updated ${formatDateTime(lastUpdatedAt)}` : ""}.` : "No preferences were submitted for this term. The student can still receive a schedule."}</div>}
+    {preferencesLoaded && <div className={`feedback ${hasSubmittedPreferences ? "info" : "warning"}`} role="status">{hasSubmittedPreferences ? `Latest submission${formatDateTime(lastUpdatedAt) ? ` · last updated ${formatDateTime(lastUpdatedAt)}` : ""}.` : "You haven’t submitted preferences for this term yet."}</div>}
     <form onSubmit={(event) => event.preventDefault()} onChangeCapture={() => setSaveNotice("")} onClickCapture={(event) => { if (event.target.closest("button")) setSaveNotice(""); }} onKeyDown={(event) => { if (event.key === "Enter" && event.target.tagName === "INPUT") event.preventDefault(); }} className="preference-grid">
-      <section className="panel preference-days"><PreferenceSectionHeading kind="days" title="Days that work for you" description="Preferred days, days to avoid and time off" /><p className="helper-text">Choose days from the dropdown, then use the arrows to rank them. #1 is highest.</p><RankedTextPreference label="Preferred days" value={preferredDays} onChange={setPreferredDays} placeholder="Monday, Wednesday" /><RankedTextPreference label="Days to avoid" value={avoidedDays} onChange={setAvoidedDays} placeholder="Friday" /><RankedTextPreference label="Desired days off" value={daysOff} onChange={setDaysOff} placeholder="Thursday" /></section>
-      <section className="panel preference-times"><PreferenceSectionHeading kind="times" title="Your preferred times" description="Time ranges to prefer or avoid" /><p className="helper-text">Choose from the five teaching slots, then rank your choices. #1 is highest.</p><RankedTextPreference label="Preferred times" choices={PREFERENCE_TIME_SLOTS} value={preferredTimes} onChange={setPreferredTimes} placeholder="09:00-12:00, 13:00-15:00" /><RankedTextPreference label="Times to avoid" choices={PREFERENCE_TIME_SLOTS} value={avoidedTimes} onChange={setAvoidedTimes} placeholder="08:00-09:00" /></section>
-      <section className="panel preference-groups"><PreferenceSectionHeading kind="groups" title="Preferred class groups" description="Choose meeting groups, then rank your choices" /><p className="helper-text">Select groups and rank your choices. Groups from different courses cannot overlap.</p>{groups.length > 0 && <div className="selected-group-priorities"><h3>Selected group priorities</h3><p className="helper-text">#1 is your highest preference. Use the arrows to change the order.</p><PriorityList items={groupPriorityLabels} onMove={(index, direction) => setGroups((current) => moveRankedItem(current, index, direction))} /></div>}{conflictMessage && <div ref={conflictNoticeRef} className="feedback error preference-conflict-feedback" role="alert" aria-live="assertive">{conflictMessage}</div>}{groupLoadMessage && <p className="preference-group-feedback" role="status">{groupLoadMessage}</p>}{offerings.length === 0 ? <><p className="helper-text">{preferencesLoaded ? (currentCourseIds.length ? "No published groups for your courses." : "Groups appear once courses are assigned.") : "Check for available class groups."}</p><button className="outline-button preference-refresh-groups" type="button" onClick={refreshGroupChoices} disabled={loading || refreshingGroups || !termId || !effectiveId} aria-busy={refreshingGroups}>{refreshingGroups && <span className="preference-button-spinner" aria-hidden="true" />}{refreshingGroups ? "Checking…" : "Refresh groups"}</button></> : offerings.map((offering) => <div className="preference-offering" key={offering._id}><div className="preference-course-identity"><OfferingCourseIcon code={offering.course?.code} /><div><small>{offering.course?.code}</small><strong>{offering.course?.name}</strong></div></div><div className="group-chip-list">{preferenceGroupOptions(offering).map((option) => { const courseId = String(offering.course?._id || offering.course); const groupIndex = groups.findIndex((group) => String(group.course?._id || group.course) === courseId && group.componentType === option.componentType && group.groupNumber === option.groupNumber); const checked = groupIndex !== -1; return <button type="button" aria-pressed={checked} className={`group-chip ${checked ? "selected" : ""}`} key={`${option.componentType}-${option.groupNumber}`} onClick={() => toggleGroup(offering, option)}><strong>{option.componentType} {option.groupNumber}{checked && ` · #${groupIndex + 1}`}</strong><small>{option.sessions.map(preferenceMeetingLabel).join(" / ")}</small></button>; })}</div></div>)}</section>
-      <section className="panel preference-note"><PreferenceSectionHeading kind="note" title="Anything else?" description="Optional note for your advising staff" /><label className="field"><span>Note for advising staff</span><textarea value={note} maxLength={1000} onChange={(event) => setNote(event.target.value)} rows={3} placeholder="Optional note (up to 1000 characters)" /></label></section>
+      <p className="preference-priority-intro">Use the arrows to reorder your choices. #1 is your highest priority.</p>
+      <section className="panel preference-days">
+        <PreferenceSectionHeading art="preference-week.svg" title="Days that work for you" description="Days to prefer, avoid or keep free." />
+        <RankedTextPreference label="Preferred days" value={preferredDays} onChange={setPreferredDays} />
+        <RankedTextPreference label="Days to avoid" value={avoidedDays} onChange={setAvoidedDays} />
+        <RankedTextPreference label="Desired days off" value={daysOff} onChange={setDaysOff} />
+      </section>
+      <section className="panel preference-times">
+        <PreferenceSectionHeading art="preference-teaching-times.svg" title="Teaching times" description="Choose from the five teaching slots." />
+        <RankedTextPreference label="Preferred times" choices={PREFERENCE_TIME_SLOTS} value={preferredTimes} onChange={setPreferredTimes} />
+        <RankedTextPreference label="Times to avoid" choices={PREFERENCE_TIME_SLOTS} value={avoidedTimes} onChange={setAvoidedTimes} />
+      </section>
+      <section className="preference-groups">
+        <div className="preference-groups-header">
+          <PreferenceSectionHeading art="extra-hours-folder.svg" title="Preferred class groups" description="Groups from different courses cannot overlap." />
+          {offerings.length === 0 && <button className="outline-button preference-refresh-groups" type="button" onClick={refreshGroupChoices} disabled={loading || refreshingGroups || !termId || !effectiveId} aria-busy={refreshingGroups}>
+            {refreshingGroups && <span className="preference-button-spinner" aria-hidden="true" />}{refreshingGroups ? "Checking…" : "Refresh groups"}
+          </button>}
+        </div>
+        {groups.length > 0 && <div className="selected-group-priorities"><h3>Selected group priorities</h3><PriorityList items={groupPriorityLabels} onMove={(index, direction) => setGroups((current) => moveRankedItem(current, index, direction))} /></div>}
+        {conflictMessage && <div ref={conflictNoticeRef} className="feedback error preference-conflict-feedback" role="alert" aria-live="assertive">{conflictMessage}</div>}
+        {groupLoadMessage && <p className="preference-group-feedback" role="status">{groupLoadMessage}</p>}
+        {offerings.length === 0 ? <p className="preference-groups-empty">{preferencesLoaded ? (currentCourseIds.length ? "No published groups for your courses." : "Groups appear once courses are assigned.") : termId ? "Check for available class groups." : "Select a term to check for class groups."}</p> : offerings.map((offering) => <div className="preference-offering" key={offering._id}>
+          <div className="preference-course-identity"><OfferingCourseIcon code={offering.course?.code} /><div><small>{offering.course?.code}</small><strong>{offering.course?.name}</strong></div></div>
+          <div className="group-chip-list">{preferenceGroupOptions(offering).map((option) => {
+            const courseId = String(offering.course?._id || offering.course);
+            const groupIndex = groups.findIndex((group) => String(group.course?._id || group.course) === courseId && group.componentType === option.componentType && group.groupNumber === option.groupNumber);
+            const checked = groupIndex !== -1;
+            return <button type="button" aria-pressed={checked} className={`group-chip ${checked ? "selected" : ""}`} key={`${option.componentType}-${option.groupNumber}`} onClick={() => toggleGroup(offering, option)}>
+              <strong>{option.componentType} {option.groupNumber}{checked && ` · #${groupIndex + 1}`}</strong><small>{option.sessions.map(preferenceMeetingLabel).join(" / ")}</small>
+            </button>;
+          })}</div>
+        </div>)}
+      </section>
+      <section className="preference-note">
+        <PreferenceSectionHeading art="exit-exam-form.svg" title={<label htmlFor={noteId}>Note for advising staff</label>} description={<span id={`${noteId}-limit`}>Optional · up to 1,000 characters</span>} />
+        <div className="field"><textarea id={noteId} aria-describedby={`${noteId}-limit`} data-no-control-ink value={note} maxLength={1000} onChange={(event) => setNote(event.target.value)} rows={3} placeholder="Add a note…" /></div>
+      </section>
       <div className="form-footer"><span className={`helper-text ${saveNotice ? "preference-save-confirmation" : ""}`} role="status">{saveNotice || "Changes are saved only when you press Save preferences."}</span><button className="primary-button" type="button" onClick={save} disabled={saving || Boolean(groupConflict)}>{saving ? "Saving…" : "Save preferences"}<span>→</span></button></div>
     </form>
   </div>;
 }
 
-function PreferenceSectionHeading({ kind, title, description }) {
-  const paths = { days: <><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M8 3v5m8-5v5M4 11h16M8 15h2m4 0h2m-8 3h2"/></>, times: <><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></>, groups: <><rect x="3" y="4" width="7" height="7" rx="1"/><rect x="14" y="4" width="7" height="7" rx="1"/><rect x="3" y="15" width="7" height="6" rx="1"/><path d="M14 18h7m-3-3v6"/></>, note: <><path d="M5 3h11l3 3v15H5zM9 9h6m-6 4h6m-6 4h4"/></> };
-  return <div className="preference-section-heading"><span className={`preference-section-icon is-${kind}`} aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">{paths[kind]}</svg></span><div><h2>{title}</h2><p>{description}</p></div></div>;
+function PreferenceSectionHeading({ art, title, description }) {
+  return <header className="preference-section-heading"><img src={`/portal-studio/images/${art}`} width="88" height="62" alt="" /><div><h2>{title}</h2><p>{description}</p></div></header>;
 }
 
 function PageTitle({ eyebrow, title, description, action }) {
@@ -293,33 +327,55 @@ function PageTitle({ eyebrow, title, description, action }) {
 
 function Loading() { return <div className="loading-state"><span className="loader" />Loading…</div>; }
 
+const walletTransactionLabels = {
+  walletTopUp: "Wallet top-up",
+  extraHoursWalletPayment: "Extra-hours payment",
+  refund: "Refund",
+};
+const walletMoney = new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+function WalletRecords({ data }) {
+  const transactions = data.transactions ?? [];
+  const currency = data.currency || "EGP";
+  const transactionReferences = new Map(transactions.map(transaction => [String(transaction._id), transaction.transactionReference || transaction.referenceNumber || transaction.receiptId]));
+  return <div className="records-wallet">
+    <section className="records-wallet-balance" aria-labelledby="wallet-balance-title">
+      <h2 id="wallet-balance-title">Available wallet balance</h2>
+      <p>{walletMoney.format(data.balance ?? 0)} <small>{currency}</small></p>
+    </section>
+    <section className="records-wallet-history" aria-labelledby="wallet-history-title">
+      <h2 id="wallet-history-title">Transactions</h2>
+      {transactions.length ? <ul className="records-wallet-list" role="list">
+        {transactions.map(transaction => {
+          const debit = transaction.direction ? transaction.direction === "debit" : transaction.kind === "extraHoursWalletPayment";
+          const date = transaction.occurredAt || transaction.createdAt;
+          const relatedPayment = transaction.relatedTransaction;
+          const relatedId = relatedPayment?._id || relatedPayment;
+          const references = [
+            ["Transaction", transactionReferences.get(String(transaction._id))],
+            ["Request", transaction.extraHoursRequest?._id || transaction.extraHoursRequest],
+            ["Related payment", relatedPayment?.transactionReference || transactionReferences.get(String(relatedId)) || relatedId, relatedId],
+          ].filter(([, value]) => value);
+          return <li className="records-wallet-entry" key={transaction._id}>
+            <h3>{walletTransactionLabels[transaction.kind] || humanize(transaction.kind)}</h3>
+            <div className="records-wallet-amount">
+              <strong className={debit ? "is-debit" : "is-credit"}>{debit ? "−" : "+"}{walletMoney.format(transaction.amount ?? 0)} <small>{currency}</small></strong>
+              <span>Balance after <strong>{walletMoney.format(transaction.resultingBalance ?? 0)}</strong> {currency}</span>
+            </div>
+            <time className="records-wallet-date" dateTime={date}>{formatDate(date)}</time>
+            <span className={`status-pill records-wallet-status ${transaction.status === "succeeded" ? "good" : "muted"}`}>{humanize(transaction.status)}</span>
+            {references.length > 0 && <dl className="records-wallet-references">{references.map(([label, value, id]) =>
+              <div key={label}><dt>{label}</dt><dd title={id && id !== value ? id : undefined}>{value}</dd></div>
+            )}</dl>}
+          </li>;
+        })}
+      </ul> : <RecordsEmpty title="No wallet transactions yet" description="Top-ups, wallet payments and refunds will appear here." art="payment-ledger.svg" spacious />}
+    </section>
+  </div>;
+}
+
 function RecordData({ data, tab }) {
-  if (tab === "wallet") {
-    const txns = data.transactions || [];
-    const referenceLabel = (value) => {
-      const id = String(value?._id || value || "");
-      return id.length > 12 ? `${id.slice(0, 8)}…${id.slice(-4)}` : id;
-    };
-    const amountLabel = (amount) => Number(amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    const transactionDirection = (txn) => txn.direction || (txn.kind === "extraHoursWalletPayment" ? "debit" : "credit");
-    return <><div className="wallet-balance"><div><p>Available balance</p><strong>{Number(data.balance || 0).toLocaleString()} <small>{data.currency || "EGP"}</small></strong></div><span>EGP</span></div><h2 className="section-heading">Transactions</h2>{txns.length ? <div className="table-scroll"><table><thead><tr><th>Transaction</th><th>Amount</th><th>Status</th><th>Date</th><th>Related request or payment</th><th>Balance after</th></tr></thead><tbody>{txns.map((txn) => {
-      const direction = transactionDirection(txn);
-      const relatedId = txn.relatedTransaction ? referenceLabel(txn.relatedTransaction) : "";
-      const paymentRef = relatedId || txn.transactionReference || "";
-      return <tr key={txn._id}>
-        <td><span className={`wallet-direction ${direction}`}>{direction === "debit" ? "Debit" : "Credit"}</span><span className="secondary-text">{humanize(txn.kind)}</span></td>
-        <td className={`wallet-amount ${direction}`}>{direction === "debit" ? "−" : "+"}{amountLabel(txn.amount)} {data.currency || "EGP"}</td>
-        <td><span className={`status-pill ${txn.status === "succeeded" ? "good" : "muted"}`}>{humanize(txn.status)}</span></td>
-        <td>{formatDate(txn.occurredAt || txn.createdAt)}</td>
-        <td className="wallet-related-records">
-          {txn.extraHoursRequest && <span title={String(txn.extraHoursRequest?._id || txn.extraHoursRequest)}>Request · {referenceLabel(txn.extraHoursRequest)}</span>}
-          {paymentRef && <span title={String(txn.relatedTransaction?._id || txn.relatedTransaction || txn.transactionReference)}>Payment · {paymentRef}</span>}
-          {!txn.extraHoursRequest && !paymentRef && <span>—</span>}
-        </td>
-        <td>{amountLabel(txn.resultingBalance)} {data.currency || "EGP"}</td>
-      </tr>;
-    })}</tbody></table></div> : <p className="records-empty">Wallet transactions will appear here when you add or use funds.</p>}</>;
-  }
+  if (tab === "wallet") return <WalletRecords data={data} />;
   if (tab === "failed") {
     const records = Array.isArray(data) ? data : [];
     return records.length ? <CourseRecordGroup title="Failed or unattended courses" previewLength={records.length} items={records.map(item => ({
@@ -386,7 +442,7 @@ function AcademicHistory({ data }) {
 
 function RecordsEmpty({ title, description, art = "academic-transcript.svg", spacious = false }) {
   return <div className={spacious ? "records-blank records-blank-tab" : "records-blank"}>
-    <img src={`/portal-studio/images/${art}`} alt="" width={spacious ? 148 : 52} height={spacious ? 124 : 46} />
+    <img className="records-empty-art" src={`/portal-studio/images/${art}`} alt="" loading="eager" width={spacious ? 148 : 52} height={spacious ? 124 : 46} />
     <div><strong>{title}</strong>{description && <p>{description}</p>}</div>
   </div>;
 }
@@ -438,7 +494,7 @@ function RankedTextPreference({ label, value, onChange, choices = PREFERENCE_DAY
   const move = (index, direction) => onChange(moveRankedItem(items, index, direction).join(", "));
   const remove = index => onChange(items.filter((_, position) => position !== index).join(", "));
   return <div className="ranked-preference-field">
-    <label className="field"><span>{label}</span><select aria-label={`Add ${label.toLowerCase()}`} value="" disabled={!available.length} onChange={event => { if (event.target.value) onChange([...items, event.target.value].join(", ")); }}>
+    <label className="field"><span>{label}</span><select data-no-control-ink aria-label={`Add ${label.toLowerCase()}`} value="" disabled={!available.length} onChange={event => { if (event.target.value) onChange([...items, event.target.value].join(", ")); }}>
       <option value="">{available.length ? choices === PREFERENCE_TIME_SLOTS ? "Choose a time slot…" : "Choose a day…" : "All options selected"}</option>
       {available.map(choice => <option key={choice} value={choice}>{choice.replace("-", "–")}</option>)}
     </select></label>

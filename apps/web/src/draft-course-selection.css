@@ -9,6 +9,11 @@
     margin: 0; font: 550 19px/1.3 Styrene, system-ui, sans-serif; letter-spacing: -.025em;
   }
   & .draft-mandatory-heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 20px; }
+  & #draft-mandatory.mandatory-clear {
+    display: grid; justify-content: start; justify-items: start; gap: 6px;
+    width: fit-content; padding: 12px 16px; border-radius: 8px; background: var(--raised);
+  }
+  & #draft-mandatory.mandatory-clear h2 { font-size: 15px; }
   & .draft-mandatory-heading > span:not(.status-pill), & .draft-course-meta,
   & .draft-group-seats { color: var(--muted); font-size: 13px; }
   & #draft-mandatory .mandatory-list { margin: 10px 0; padding: 0; list-style: none; }
@@ -23,7 +28,14 @@
   & #draft-eligible .roster-search { width: min(240px, 100%); margin: 0; }
   & .draft-other-courses:empty { display: none; }
   & #draft-eligible .draft-unavailable:not(:first-child) { margin-top: 22px; }
-  & .draft-unavailable-heading { display: flex; align-items: baseline; gap: 10px; }
+  & #draft-eligible .draft-unavailable-toggle {
+    display: flex; align-items: center; gap: 10px; justify-content: start; min-height: 45px;
+    width: 100%; padding: 8px 14px; text-align: start; font-size: 14px;
+  }
+  & .draft-unavailable-toggle .result-count { background: var(--raised); border-radius: 6px; padding: 1px 7px; min-width: 23px; text-align: center; }
+  & .draft-unavailable-toggle svg { margin-inline-start: auto; color: var(--muted); }
+  & .draft-unavailable-toggle[aria-expanded="true"] svg { transform: rotate(180deg); }
+  & .excluded-course-list[hidden] { display: none; }
   & #draft-eligible .excluded-course-list { margin-top: 10px; }
   & .draft-eligible-register .draft-course-identity strong { display: block; font-size: 15px; font-weight: 550; line-height: 1.4; }
   & #draft-eligible .draft-eligible-register :is(.paper-toss-button, .outline-button) {
@@ -38,21 +50,22 @@
   & #draft-courses .draft-course-toolbar { align-items: baseline; gap: 8px 20px; margin: 6px 0 0; }
   & #draft-courses .draft-course-toolbar h2 { font-size: 21px; }
   & #draft-courses .draft-allowance {
-    display: grid; grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr); align-items: center; gap: 16px 40px;
-    padding: 14px 0 0; border: 0; border-top: 1px solid var(--line); border-radius: 0; background: transparent; color: var(--ink);
+    display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); align-items: center; gap: 16px 40px;
+    padding: clamp(16px, 3vw, 25px); border: 1px solid var(--line); border-radius: 11px; background: color-mix(in srgb, var(--success-ink) 5%, var(--paper)); color: var(--ink);
   }
   & #draft-courses .draft-allowance-main { display: grid; gap: 8px; min-width: 0; }
-  & .draft-allowance-readout { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; }
+  & .draft-allowance-readout { display: grid; justify-items: start; gap: 2px; }
   & .draft-allowance-readout h3 { margin: 0; font: 550 14px/1.4 Styrene, system-ui, sans-serif; }
-  & .draft-allowance-readout > span { color: var(--muted); font-size: 13px; white-space: nowrap; }
-  & #draft-courses .draft-allowance-readout strong { color: var(--ink); font-size: 21px; font-variant-numeric: tabular-nums; }
+  & .draft-allowance-readout > span { color: var(--muted); font-size: clamp(19px, 2.6vw, 25px); white-space: nowrap; }
+  & .draft-allowance-selected { font-size: 13px; margin-inline-start: 5px; }
+  & #draft-courses .draft-allowance-readout strong { color: var(--ink); font-size: clamp(31px, 4vw, 42px); letter-spacing: -.045em; font-variant-numeric: tabular-nums; }
   & .draft-allowance-meter { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; color: var(--muted); font-size: 12px; }
-  & #draft-courses .draft-allowance-track { height: 4px; margin: 0; background: var(--line); }
+  & #draft-courses .draft-allowance-track { height: 6px; margin: 0; background: var(--line); }
   & #draft-courses .draft-allowance-track > span { background: var(--success-ink); }
   & #draft-courses .draft-allowance .draft-credit-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 12px; padding: 0; }
   & #draft-courses .draft-credit-grid > div { display: grid; gap: 3px; }
   & #draft-courses .draft-credit-grid dt { color: var(--muted); }
-  & #draft-courses .draft-credit-grid dd { color: var(--ink); font-size: 15px; font-variant-numeric: tabular-nums; }
+  & #draft-courses .draft-credit-grid dd { color: var(--ink); font-size: 19px; font-variant-numeric: tabular-nums; }
   & #draft-courses .draft-allowance.is-over-limit :is(.draft-allowance-readout strong, .draft-allowance-meter > span) { color: var(--danger-ink, var(--ink)); }
   & #draft-courses .draft-allowance.is-over-limit .draft-allowance-track > span { background: var(--danger-ink, var(--ink)); }
   & #draft-courses .draft-course-list { gap: 0; margin: 0; padding: 0; min-width: 0; border: 0; border-top: 1px solid var(--line); }
@@ -64,21 +77,23 @@
   }
   & #draft-courses .draft-course-identity, & #draft-eligible .draft-course-identity { display: flex; align-items: center; gap: 11px; }
   & #draft-courses .draft-course-identity strong { font-size: 16px; font-weight: 550; line-height: 1.35; overflow-wrap: anywhere; }
-  & #draft-courses .draft-course-action { width: 100px; min-height: 36px; border: 1px solid var(--line); }
+  & #draft-courses .draft-course-action { width: 100px; min-height: 36px; padding-inline: 8px; white-space: nowrap; border: 1px solid var(--line); }
   & #draft-courses .draft-component-grid {
-    grid-template-columns: minmax(0, 1fr); gap: 22px; border: 0;
+    grid-template-columns: minmax(0, 1fr); gap: 15px; border: 0;
     padding: 0; margin: 18px 0 2px clamp(0px, 3vw, 50px); background: transparent;
   }
-  & #draft-courses .draft-group-control { min-inline-size: 0; max-inline-size: 680px; padding: 0; margin: 0; border: 0; background: transparent; }
+  & #draft-courses .draft-group-control { min-inline-size: 0; max-inline-size: 760px; padding: 0; margin: 0; border: 0; background: transparent; }
   & .draft-group-control legend { padding: 0; margin-bottom: 7px; font: 550 14px/1.45 Styrene, system-ui, sans-serif; }
   & .draft-group-option {
     display: grid; align-items: center; grid-template-columns: minmax(82px, .65fr) minmax(0, 1.8fr) minmax(90px, .85fr);
     grid-template-areas: "group meetings seats";
-    gap: 8px 14px; min-height: 52px; padding: 8px 10px; color: var(--ink);
-    border-block-start: 1px solid var(--line); border-inline-start: 2px solid transparent;
+    gap: 8px 14px; min-height: 56px; padding: 10px 13px; color: var(--ink);
+    border: 1px solid var(--line); border-radius: 8px;
   }
   & label.draft-group-option { grid-template-columns: auto minmax(82px, .65fr) minmax(0, 1.8fr) minmax(90px, .85fr); grid-template-areas: "choose group meetings seats"; }
-  & .draft-group-option[data-selected] { border-inline-start-color: var(--success-ink); }
+  & .draft-group-option + .draft-group-option { margin-top: 6px; }
+  & .draft-group-option[data-selected] { border-color: color-mix(in srgb, var(--success-ink) 37%, var(--line)); background: color-mix(in srgb, var(--success-ink) 6%, var(--paper)); }
+  & .draft-group-option:has(input:focus-visible) { outline: 2px solid var(--ink); outline-offset: 2px; }
   & .draft-group-option:has(input:enabled) { cursor: pointer; }
   & .draft-group-option:has(input:enabled):hover { background: var(--raised); }
   & .draft-group-option input { grid-area: choose; width: 16px; height: 16px; margin: 0; accent-color: var(--ink); }
@@ -95,12 +110,15 @@
   & #draft-courses .draft-group-summary:empty { display: none; }
   & .draft-group-summary button { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; font-size: inherit; }
   & .draft-review-panel { padding: 4px 0 0; }
-  & #draft-validation { margin: 0; border: 0; padding: 0; border-radius: 0; background: transparent; }
+  & #draft-validation { margin: 0; border: 1px solid var(--line); padding: clamp(14px, 2.6vw, 24px); border-radius: 11px; background: var(--paper); }
   & #draft-courses .draft-completion-actions { padding: 16px 0 0; margin-top: 16px; gap: 12px 20px; }
   & #draft-review-hint { flex: 1 1 210px; margin: 0; font-size: 14px; line-height: 1.5; color: var(--muted); }
   & #draft-validation .draft-validation-state { padding: 0; margin: 8px 0 0; border: 0; background: transparent; }
   & #draft-validation .draft-validation-totals { background: transparent; border: 0; padding-inline: 0; }
-  & #draft-validation .draft-validation-list li { border: 0; border-top: 1px solid var(--line); border-radius: 0; padding-inline: 0; background: transparent; }
+  & #draft-validation .draft-validation-list > li { border: 0; border-radius: 8px; padding: 12px 14px; background: var(--raised); align-items: start; }
+  & #draft-validation .draft-issue-messages { padding-inline-start: 17px; margin: 5px 0 0; }
+  & #draft-validation .draft-issue-messages > li { display: list-item; padding: 0; border: 0; background: transparent; font-size: 14px; line-height: 1.6; }
+  & #draft-validation .draft-validation-list p { font-size: 14px; }
 }
 @media (max-width: 650px) {
   .advising-draft-page {
@@ -122,4 +140,33 @@
     content: var(--column-3); display: block; margin-bottom: 2px; color: var(--muted);
     font: 400 12px/1.4 Styrene, system-ui, sans-serif;
   }
+}
+
+.advising-draft-page {
+  & #draft-eligible .draft-unavailable-toggle:focus-visible, & .mandatory-table-toggle:focus-visible { outline: 2px solid var(--ink); outline-offset: -3px; }
+  & #draft-eligible .draft-unavailable-toggle { background: var(--paper); }
+  & #draft-eligible .draft-unavailable-toggle:hover { background: var(--raised); }
+  & #draft-mandatory.mandatory-panel { padding: 14px 17px; border: 1px solid var(--line); border-radius: 11px; }
+  & .mandatory-table-toggle { display: flex; gap: 8px; align-items: center; padding: 5px 7px; border: 0; border-radius: 6px; font: inherit; background: transparent; color: var(--ink); cursor: pointer; }
+  & .mandatory-table-toggle:hover { background: var(--raised); }
+  & .mandatory-table-toggle > span { color: var(--muted); font-size: 13px; }
+  & .mandatory-table-toggle[aria-expanded="true"] svg { transform: rotate(180deg); }
+  & .mandatory-course-table:not([hidden]) { overflow: auto; margin-block-start: 8px; }
+  & .mandatory-course-table table { width: 100%; }
+  & .mandatory-course-table :is(th,td) { padding: 8px 9px; text-align: start; border-top: 1px solid var(--line); }
+  & .mandatory-course-table th { color: var(--muted); font-size: 13px; }
+  & .mandatory-course-select { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; }
+  & .mandatory-course-select input { accent-color: var(--ink); }
+  & .mandatory-course-unavailable { color: var(--muted); font-size: 13px; }
+  & #draft-validation .draft-validation-totals { padding-block: 5px; }
+  & #draft-validation .draft-validation-list > li { align-items: center; padding: 13px 0; border-top: 1px solid var(--line); border-radius: 0; background: transparent; }
+  & .draft-issue-main { display: flex; align-items: start; gap: 11px; }
+  & .draft-issue-main h3 { font-size: 16px; }
+  & .draft-issue-main small { color: var(--muted); }
+  & .draft-issue-main .offering-course-emblem { width: 38px; height: 38px; }
+  & .draft-issue-mark { display: grid; place-items: center; flex: 0 0 35px; height: 35px; border-radius: 7px; background: #e4c79c; color: #493622; font-weight: 650; }
+  & #draft-validation .draft-issue-components { display: flex; flex-wrap: wrap; gap: 5px 12px; padding: 0; margin: 7px 0 0; }
+  & #draft-validation .draft-issue-components li { display: inline-flex; align-items: center; gap: 5px; padding: 0; border: 0; background: transparent; color: var(--ink); font-size: 13px; }
+  & .draft-issue-components li span { width: 12px; height: 12px; border: 1px solid var(--muted); border-radius: 3px; }
+  & .draft-issue-actions a span { margin-inline-start: 5px; }
 }

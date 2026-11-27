@@ -10,15 +10,8 @@ A timetable change can affect more than a student's week. It can consume a seat,
 
 [![Functional regression on development](https://github.com/Advanced-Computer-Lab-2026/Bobos/actions/workflows/regression.yml/badge.svg?branch=development)](https://github.com/Advanced-Computer-Lab-2026/Bobos/actions/workflows/regression.yml?query=branch%3Adevelopment)
 
-GitHub Actions runs the functional and browser suites on pushes and pull requests targeting `development` or `main`. On the local Sprint 2 baseline `2997234`, the production build succeeded and all 21 browser tests passed. Of 358 functional checks, 357 passed. The Requirement 121 startup-reminder test hit its five-second startup deadline in that run and passed on an isolated rerun. The [GitHub Actions run for this commit](https://github.com/Advanced-Computer-Lab-2026/Bobos/actions/runs/46045616414) passed.
 
-| Known issue or limit | Effect |
-| --- | --- |
-| Requirement 121 startup test can time out | A slow API startup can fail the reminder test before it reaches the notification assertions. |
-| Checkout supports Stripe sandbox only | Card payments use test transactions in EGP. Checkout needs an `sk_test_` key and accepts one settlement method per request. |
-| SMTP and Google Calendar need separate configuration | Email password reset, probation emails and Calendar sync need provider credentials. Automated tests use local mail and controlled provider responses. Live provider availability needs a separate check. |
-| Optional advisor and administrator seeds require prepared fixtures | The advisor preview seed expects a published Scientific Methods offering and a future term. The administrator preview seed looks up student IDs that differ from those used by the standard sign-in fixtures. The installation steps use the base and timetable seeds. |
-| Assessment deployment needs its own accounts and data | Local seed fixtures are for development. The hosted portal needs provisioned university accounts and a smoke test of each role. See [production readiness](docs/production-readiness.md). |
+GitHub Actions builds Portal and runs the functional and browser suites on pushes and pull requests targeting `development` or `main`. The badge links to the latest results. See [deployment configuration](docs/production-readiness.md) for the services and accounts to provision before release.
 
 ## Code style
 
@@ -75,7 +68,7 @@ Select a single date or a range. Click the month heading to choose a different m
 | **React, JavaScript, HTML, and CSS** | Render the portal shell, role-based navigation, and academic workflow screens. Vite runs the development server and bundles the production frontend. |
 | **JWT and bcryptjs** | Authenticate API calls and hash passwords. |
 | **Nodemailer and SMTP** | Send password-reset codes and academic warning emails. |
-| **Stripe Checkout and Google Calendar API** | Provide sandbox card payments and Google OAuth calendar sync. |
+| **Stripe Checkout and Google Calendar API** | Provide hosted card checkout and Google OAuth calendar sync. |
 | **PDFKit and CSV** | Generate transcripts, timetables, receipts, confirmations, and tabular exports. |
 | **Node Test Runner, Playwright, and GitHub Actions** | Check policy functions, API behavior, and browser workflows in CI. |
 
@@ -91,7 +84,7 @@ The repo uses npm workspaces. `apps/web` contains the live frontend and `apps/ap
 | Normal-student scheduling | Build standard schedule templates, assign groups, check clashes and seat capacity, view or download timetables, view registered courses, and submit or withdraw eligible whole-schedule swaps. |
 | Advising schedules | Submit ranked scheduling preferences, view assigned advisor details, handle bachelor-project eligibility and mandatory retakes, select eligible courses and groups within the credit limit, and draft, review, process, or reopen schedules. |
 | Individual changes and removals | Request eligible tutorial or lab replacements and mandatory-course removals. Staff can filter submissions, review reasons, record decisions, and track schedule changes. |
-| Extra hours and payments | Check eligibility and rates, submit or withdraw pending requests, record coordinator decisions, settle through the wallet or Stripe sandbox, or defer to the next installment. Students can see attempts, retry checkout, and download receipts or deferral confirmations. Staff can review cancellations and refunds. |
+| Extra hours and payments | Check eligibility and rates, submit or withdraw pending requests, record coordinator decisions, settle through the wallet or Stripe Checkout, or defer to the next installment. Students can see attempts, retry checkout, and download receipts or deferral confirmations. Staff can review cancellations and refunds. |
 | Graduation | Draft and review term-by-term graduation plans, record decisions, and submit and review exit-exam requests. |
 | Financial administration | Search financial records, filter by settlement status and date, export matching rows, and handle cancellation or refund requests. |
 | Calendar and reminders | View deadlines, connect or disconnect Google Calendar, sync processed timetable changes, receive workflow notifications and deadline reminders, and trigger probation warnings from semester standings. |
@@ -153,13 +146,21 @@ export function filterSlotChanges(requests, filters, coordinator = false) {
 }
 ~~~
 
-### 5. Enable checkout with a sandbox key
 
-The Express service checks for a test-mode key before it calls Stripe. [Source](apps/api/src/services/stripe-checkout.js#L3)
+### 5. Validate preferred scheduling days
+
+The parser converts ordered weekdays into ranked preferences and catches duplicates. [Source](apps/web/src/preference-inputs.js#L3)
 
 ~~~js
-export function stripeCheckoutConfigured() {
-  return /^sk_test_\w+$/.test(process.env.STRIPE_SECRET_KEY || "");
+export function parseDays(value) {
+  const names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+  const days = value.split(",").map(item => item.trim()).filter(Boolean).map(day => {
+    const name = names.find(name => name.toLowerCase() === day.toLowerCase());
+    if (!name) throw new Error(`Unknown weekday: ${day}. Use a full name such as Monday.`);
+    return name;
+  });
+  if (new Set(days).size !== days.length) throw new Error("Remove duplicate weekday entries.");
+  return days.map((day, index) => ({ day, priority: index + 1 }));
 }
 ~~~
 
@@ -177,7 +178,7 @@ Install **Git, Node.js 22.12 or later with npm, MongoDB Community 8.x, and Mongo
    node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
    ~~~
 
-   Paste the generated value into `JWT_SECRET` in your local `.env`. Keep `MONGODB_URI=mongodb://127.0.0.1:27017/bobos?replicaSet=rs0` (the example default) for the steps below.
+   Paste the generated value into `JWT_SECRET` in your local `.env`. For a fresh local assessment, set `MONGODB_URI=mongodb://127.0.0.1:27017/bobos_evaluation?replicaSet=rs0` in the same file.
 
 2. Start a local MongoDB replica set. Keep this terminal running. If a MongoDB service already uses port 27017, use that replica set or stop the local service before running a second server on the same port.
 
@@ -186,39 +187,34 @@ Install **Git, Node.js 22.12 or later with npm, MongoDB Community 8.x, and Mongo
    mongod --replSet rs0 --dbpath .mongodb-data --bind_ip 127.0.0.1
    ~~~
 
-3. In a second terminal, initialize that replica set once, then start the portal and API from the Bobos folder.
+
+3. In a second terminal, initialize the replica set once. Run both data setup commands in the repository with the same local database.
 
    ~~~powershell
    mongosh --host 127.0.0.1 --eval "rs.initiate({_id:'rs0',members:[{_id:0,host:'127.0.0.1:27017'}]})"
+   npm run seed:evaluation --workspace @bobos/api
+   npm run seed:b1 --workspace @bobos/api
+   ~~~
+
+   The first command that loads data prints the sign-in credentials and creates the curriculum, terms, ten elective courses and the required advising and staff accounts. The second adds the normal-student cohort, processed schedules, pending requests, swaps and financial history. The scripts preserve existing collections. [Assessment accounts and workflows](docs/b1-seed.md)
+
+4. Start Portal and the API from the repository root.
+
+   ~~~powershell
    npm run dev
    ~~~
 
-   Open [the portal](http://localhost:5173/) and check [API health](http://localhost:3000/api/health). The health response should include `"database":"connected"`. The frontend proxies `/api` requests locally. Sign in with your university email and password.
+   Open [Portal](http://localhost:5173/) and confirm [API health](http://localhost:3000/api/health) reports `"database":"connected"`. Sign in with the university email and password for the role you need.
 
-4. On a **fresh local demo database**, open a third terminal in Bobos to load sample academic data and create the demo accounts. Keep `ALLOW_DEMO_SEED=true` in your local `.env` for this step.
+### Deployment configuration
 
-   ~~~powershell
-   $env:BOBOS_PORTAL_DEMO='standard'
-   npm run seed --workspace @bobos/api
-   Invoke-RestMethod -Method Post http://localhost:3000/api/identity/seed-demo | Out-Null
-   npm run seed:group4 --workspace @bobos/api
-   ~~~
-
-   The base seed clears user, student, course, term, and offering collections in the configured database. `seed:group4` replaces the active timetable of the two demo student accounts. Use the sample accounts and database for this recipe. See the [B1 fixture guide](docs/b1-seed.md) for more request-history scenarios and the [configuration template](.env.example) for SMTP, Stripe sandbox, and Google Calendar settings.
-
-   If you use Bash, set `export BOBOS_PORTAL_DEMO=standard` before the base seed and run `curl -X POST http://localhost:3000/api/identity/seed-demo` in place of `Invoke-RestMethod`.
-
-### Optional integrations
-
-| Integration | Local setup |
+| Integration | Configuration |
 | --- | --- |
-| Email | Set the SMTP values in `.env` to send OTP codes. To test probation warning emails in development, also set `PROBATION_WARNINGS_ENABLED=true`. See the [authentication guide](docs/authentication.md). |
-| Stripe | Set `STRIPE_SECRET_KEY` to a sandbox key and `WEB_ORIGIN` to the portal origin. Use a Stripe test card through **Pay by card**. |
-| Google Calendar | Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `GOOGLE_REDIRECT_URI`. Register `http://localhost:3000/api/calendar/oauth/callback` in Google Cloud for the default ports. Generate a separate 32-byte hex value for `CALENDAR_TOKEN_ENCRYPTION_KEY`. Sign in as a student and open **Calendar sync**. |
+| Email | Configure the SMTP sender and provider settings. See the [authentication guide](docs/authentication.md). |
+| Card payments | Set `STRIPE_SECRET_KEY` to the deployment’s provisioned credential and set `WEB_ORIGIN` to the Portal origin. |
+| Google Calendar | Configure `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI` and a separate 32-byte hex `CALENDAR_TOKEN_ENCRYPTION_KEY`. Register `http://localhost:3000/api/calendar/oauth/callback` for the default local ports. |
 
-For more advising data, run `npm run seed:evaluation --workspace @bobos/api` on a separate local demo database. If you need the dedicated extra-hours payment scenarios, set `EXTRA_HOURS_DEMO_URI` to `mongodb://127.0.0.1:27017/extra_hours_manual?replicaSet=rs0` and run `node scripts/seed-extra-hours-demo.mjs`. To view these accounts, point the local API's `MONGODB_URI` at that database and restart the API, then enter the fixture credentials on the sign-in screen.
-
-For a static frontend build, run `npm run build`. If frontend and API run on different hosts, set `VITE_API_BASE_URL` at build time to the API origin and `WEB_ORIGIN` on the server to the frontend origin. The API start command is `npm run start --workspace @bobos/api`.
+For a static frontend build, run `npm run build`. If the frontend and API run on different hosts, set `VITE_API_BASE_URL` at build time to the API origin and `WEB_ORIGIN` on the server to the frontend origin. Start the API with `npm run start --workspace @bobos/api`.
 
 ## API reference
 
@@ -254,29 +250,30 @@ npm run test:regression
 
 | Test | What it verifies | Evidence |
 | --- | --- | --- |
-| Login, password reset, profile, inbox, and logout | A student receives an email code, signs in with the updated password, reads their notifications, and signs out. | [Playwright, Req 1–5](tests/browser/portal.spec.mjs#L88) |
-| Student directory | Staff search for a matching student and update the student's account status. | [Playwright, Req 6–10](tests/browser/portal.spec.mjs#L176) |
-| Staff extra-hours review | Staff open the review dialog, record a decision, and withdraw a pending request when allowed. | [Playwright, Extra-hours staff review](tests/browser/portal.spec.mjs#L568) |
-| Deferred payment confirmation and cancellation | A student confirms the installment charge, downloads the confirmation PDF, and the charge goes through cancellation. | [Playwright, Req 92, 94, 102, and 120](tests/browser/portal.spec.mjs#L652) |
+| Login, password reset, profile, inbox, and logout | A student receives an email code, signs in with the updated password, reads their notifications, and signs out. | [Playwright, Req 1–5](tests/browser/portal.spec.mjs#L119) |
+| Student directory | Staff search for a matching student and update the student's account status. | [Playwright, Req 6–10](tests/browser/portal.spec.mjs#L216) |
+| Staff extra-hours review | Staff open the review dialog, record a decision, and withdraw a pending request when allowed. | [Playwright, Extra-hours staff review](tests/browser/portal.spec.mjs#L716) |
+| Deferred payment confirmation and cancellation | A student confirms the installment charge, downloads the confirmation PDF, and the charge goes through cancellation. | [Playwright, Req 92, 94, 102, and 120](tests/browser/portal.spec.mjs#L850) |
 | Credit activation after settlement | Only paid or deferred requests add their approved hours to the available credit allowance. | [Node unit test](apps/api/src/utils/credit-allowance.test.js#L66) |
-| Financial date range | Applying changes updates both date filters. Cancelling a subsequent edit preserves the applied range. | [Playwright, financial date filters](tests/browser/portal.spec.mjs#L208) |
+| Financial date range | Applying changes updates both date filters. Cancelling a subsequent edit preserves the applied range. | [Playwright, financial date filters](tests/browser/portal.spec.mjs#L307) |
 
 ## How to use
 
-Enter one of these seeded accounts on the local sign-in screen. They share the local-only password `Password123!`.
 
-| Role | Local demo email | Start here |
-| --- | --- | --- |
-| Normal student | `karim.normal@student.guc.edu.eg` | **Home** or **My schedule** |
-| Advising student | `layla.advising@student.guc.edu.eg` | **My advisor**, **Academic records**, or **My graduation** |
-| Advisor | `sherif.advisor@guc.edu.eg` | **Advising students** or **Extra-hours requests** |
-| Coordinator | `nadia.coordinator@guc.edu.eg` | **Extra-hours requests** or **Graduation review** |
-| Administrator | `admin@guc.edu.eg` | **Student directory** or **Financial records** |
+Sign in with your university email and password. Your role determines which workspaces and records you can access.
 
-1. Sign in as Karim and open **My schedule**. Select a class to view its room and group.
-2. Sign out from the profile menu. Sign in as Sherif and open **Advising students**. Search for Layla by name and open **Academic records** from her row.
-3. For a payment demo, load the dedicated extra-hours fixtures from **Optional integrations**. Sign in as the seeded coordinator, open **Extra-hours requests**, and review a pending request. Approve it with a response note.
-4. Switch to the advising student who owns that request. Open **Extra-hours requests**, choose an available payment option, and download the receipt or installment confirmation from financial history after settlement.
+| Role | Start here |
+| --- | --- |
+| Normal student | **Home**, **My schedule**, or **Registered courses** |
+| Advising student | **My advisor**, **Academic records**, or **My graduation** |
+| Advisor | **Advising students**, **Schedule preferences**, or **Extra-hours requests** |
+| Coordinator | **Pending work**, **Extra-hours requests**, or **Graduation review** |
+| Administrator | **Student directory**, **Course offerings**, or **Financial records** |
+
+1. Open **My schedule** as a student and select a class to view its room and group.
+2. Open **Advising students** as an advisor. Find an assigned student and open **Academic records**.
+3. Open **Extra-hours requests** as a coordinator to review a pending request. Record your decision and response note.
+4. The advising student can open the approved request, choose an available payment option, and download the receipt or installment confirmation from financial history.
 
 ## Contribute
 

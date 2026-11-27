@@ -310,200 +310,142 @@ body:has(.extra-hours-embedded) { background: transparent; }
   .extra-sheet-history li { grid-template-columns: minmax(0,1fr); }
 }
 
-.extra-request-dialog > .modal-card.wide-modal {
-  --review-inset: clamp(18px, 3.4vw, 42px);
+:is(.extra-request-dialog, .extra-compose-dialog) > .modal-card.wide-modal {
+  --review-inset: clamp(16px, 3.4vw, 38px);
   display: flex;
   flex-direction: column;
-  width: min(1280px, 100%);
-  max-height: calc(100dvh - 48px);
+  width: min(960px, 100%);
+  max-height: calc(100dvh - 34px);
   overflow: hidden;
   padding: 0;
 }
-.extra-request-dialog > .modal-card > .modal-heading {
+:is(.extra-request-dialog, .extra-compose-dialog) > .modal-card > .modal-heading {
   flex: none;
   align-items: center;
   margin: 0;
-  padding: 15px var(--review-inset);
-  border-bottom: 1px solid var(--line);
-  background: var(--paper);
+  padding: 15px var(--review-inset) 8px;
 }
-.extra-request-dialog .modal-heading h2 {
-  font: 550 24px/1.2 Styrene, system-ui, sans-serif;
-  letter-spacing: -.03em;
-}
-.extra-request-dialog .modal-heading .icon-button { flex: none; }
-.extra-review-body {
+:is(.extra-request-dialog, .extra-compose-dialog) .modal-heading h2 { font-size: 21px; }
+:is(.extra-request-dialog, .extra-compose-dialog) .modal-heading .icon-button { flex: none; }
+:is(.extra-review-body, .extra-compose-body) {
   min-height: 0;
   overflow: auto;
   overscroll-behavior: contain;
   container: extra-review / inline-size;
 }
-.extra-review-intro {
-  display: grid;
-  gap: 21px;
-  padding: 23px var(--review-inset) 20px;
-  border-bottom: 1px solid var(--line);
-}
+.extra-review-body { --review-gap: clamp(25px, 5.3cqi, 58px); }
 .extra-review-overview {
-  display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
-  align-items: start;
-  gap: clamp(14px, 4cqi, 45px);
-}
-.extra-review-student {
-  display: grid;
-  justify-items: start;
-  gap: 10px;
-  min-width: 0;
-}
-.extra-review-student .register-person { min-width: 0; gap: 13px; }
-.extra-review-student .register-person strong {
-  font-size: clamp(23px, 3.2cqi, 34px);
-  font-weight: 550;
-  line-height: 1.17;
-  letter-spacing: -.035em;
-  overflow-wrap: anywhere;
-}
-.extra-review-student .register-person small { margin-block-start: 4px; font-size: 14px; }
-.extra-review-student .register-person .portal-person-avatar {
-  flex-basis: 50px;
-  width: 50px;
-  height: 50px;
-  font-size: 16px;
-}
-.extra-review-state { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; min-width: 0; }
-.extra-review-state .status-pill { width: max-content; max-width: 100%; font-size: 14px; }
-.extra-review-state .status-pill::before { width: 21px; height: 21px; }
-.extra-review-state .extra-payment-state { font-size: 14px; line-height: 1.4; }
-.extra-review-total {
-  margin: 0;
-  padding-inline-start: clamp(14px, 2.5cqi, 28px);
-  border-inline-start: 1px solid var(--line);
-  overflow-wrap: anywhere;
-}
-.extra-review-total dt { color: var(--muted); font-size: 14px; }
-.extra-review-total dd {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
   flex-wrap: wrap;
-  align-items: baseline;
-  gap: 2px 9px;
-  margin: 4px 0 0;
-  color: var(--ink);
-  font-size: clamp(31px, 4.5cqi, 48px);
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-  line-height: 1.08;
-  letter-spacing: -.045em;
+  gap: 14px 20px;
 }
-.extra-review-total dd small { color: var(--muted); font-size: 14px; letter-spacing: 0; }
-.extra-review-meta {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(180px, 1.2fr);
-  gap: 10px 20px;
-  margin: 0;
-  line-height: 1.45;
+.extra-review-overview .register-person { min-width: 0; gap: 11px; }
+.extra-review-overview .register-person strong {
+  font-size: clamp(21px, 3cqi, 28px);
+  line-height: 1.17;
+  letter-spacing: -.03em;
   overflow-wrap: anywhere;
 }
-.extra-review-meta dt { color: var(--muted); font-size: 13px; }
-.extra-review-meta dd { margin: 3px 0 0; font-size: 15px; font-weight: 500; }
-.extra-review-meta time { font-variant-numeric: tabular-nums; }
-
+.extra-review-overview .portal-person-avatar { flex: 0 0 44px; width: 44px; height: 44px; }
+.extra-review-state { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 11px; }
+.extra-review-state :is(.status-pill, .extra-payment-state) { font-size: 14px; }
 .extra-request-dialog .extra-review-sheet {
   display: grid;
-  gap: 24px;
-  padding: 23px var(--review-inset) 26px;
+  gap: clamp(22px, 4cqi, 36px);
+  padding: 15px var(--review-inset) 26px;
   border: 0;
   container-type: normal;
 }
+.extra-review-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 36%);
+  grid-template-rows: max-content 1fr;
+  align-items: start;
+  gap: clamp(22px, 3.6cqi, 36px) var(--review-gap);
+}
+.extra-review-context {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
 .extra-request-dialog .extra-review-sheet h3 {
-  font: 550 clamp(19px, 2.3cqi, 23px)/1.25 Styrene, system-ui, sans-serif;
-  letter-spacing: -.025em;
+  font: 550 18px/1.25 Styrene, system-ui, sans-serif;
+  letter-spacing: -.02em;
 }
-.extra-request-dialog .extra-sheet-columns {
-  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
-  gap: 18px clamp(22px, 4.4cqi, 58px);
-}
-.extra-request-dialog .extra-sheet-courses h3,
-.extra-request-dialog .extra-sheet-load h3 { margin-block-end: 11px; }
-.extra-course-columns {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  padding-block: 4px 6px;
-  color: var(--muted);
-  border-bottom: 1px solid var(--line);
+.extra-review-courses-heading { display: grid; gap: 4px; }
+.extra-review-courses-heading p { color: var(--muted); font-size: 14px; }
+.extra-request-dialog :is(.extra-sheet-courses, .extra-sheet-load) { min-width: 0; }
+.extra-request-dialog .extra-sheet-courses ul { margin-block-start: 6px; }
+.extra-request-dialog .extra-sheet-courses li { gap: 5px 11px; }
+.extra-request-dialog .extra-sheet-courses li > div > strong { font-size: 16px; line-height: 1.3; }
+.extra-request-dialog .extra-sheet-courses li .offering-course-emblem { width: 38px; height: 38px; }
+.extra-request-dialog .extra-line-price { text-align: end; white-space: nowrap; font-size: 15px; font-weight: 550; }
+.extra-request-dialog .extra-line-price small { display: inline; }
+.extra-request-dialog .extra-sheet-total {
+  align-items: baseline;
+  border: 0;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--ink) 5%, var(--paper));
+  padding: 9px 13px;
+  margin-block-start: 8px;
   font-size: 14px;
-}
-.extra-request-dialog .extra-sheet-courses li {
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 7px 13px;
-  padding-block: 11px;
-}
-.extra-request-dialog .extra-sheet-courses li + li { border-top: 1px solid var(--line); }
-.extra-request-dialog .extra-sheet-courses li > div > strong { font-size: 17px; line-height: 1.35; }
-.extra-request-dialog .extra-sheet-courses li .offering-course-emblem { width: 42px; height: 42px; }
-.extra-request-dialog .extra-sheet-courses li .offering-course-emblem :is(img, svg) { width: 30px; height: 30px; }
-.extra-request-dialog .extra-sheet-courses li small { font-size: 14px; line-height: 1.45; }
-.extra-request-dialog .extra-line-price {
-  justify-self: end;
-  color: var(--ink);
-  font-size: 18px;
   font-weight: 550;
-  text-align: end;
-  white-space: nowrap;
 }
-.extra-request-dialog .extra-line-price small { display: inline; margin-inline-start: 2px; }
-
-.extra-request-dialog .extra-sheet-load {
-  padding-inline-start: clamp(16px, 2.5cqi, 32px);
-  border-inline-start: 1px solid var(--line);
-}
-.extra-request-dialog .extra-load-hours {
+.extra-request-dialog .extra-sheet-total strong { font-size: clamp(22px, 4cqi, 32px); font-weight: 600; letter-spacing: -.035em; white-space: nowrap; }
+.extra-request-dialog .extra-sheet-total small { font-size: 13px; letter-spacing: 0; }
+.extra-review-context .extra-sheet-load { padding: 0; background: transparent; }
+.extra-sheet-load .extra-load-comparison {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr)) minmax(0, 1.2fr);
-  gap: 10px;
-  margin: 0;
-  padding-block: 3px 13px;
-  border-bottom: 1px solid var(--line);
+  grid-template-columns: 1fr 1fr 1.2fr;
+  align-items: baseline;
+  gap: 7px;
+  margin-block: 10px 12px;
 }
-.extra-request-dialog .extra-load-hours > div { display: flex; flex-direction: column; align-items: start; gap: 5px; padding: 0; }
-.extra-request-dialog .extra-load-hours > .extra-load-result { padding-inline-start: 11px; border-inline-start: 1px solid var(--line); }
-.extra-request-dialog .extra-load-hours dt { font-size: 14px; line-height: 1.35; }
-.extra-request-dialog .extra-load-hours dd {
-  margin-top: auto;
-  font-size: clamp(23px, 2.9cqi, 33px);
-  line-height: 1.08;
-  letter-spacing: -.035em;
-}
-.extra-request-dialog .extra-load-result dd { color: var(--ink); font-weight: 600; }
-.extra-request-dialog .extra-load-facts { margin-top: 8px; }
-.extra-request-dialog .extra-load-facts :is(dt, dd) { font-size: 14px; }
-.extra-request-dialog .extra-sheet-load .feedback { margin-top: 9px; }
-
-.extra-request-dialog .extra-sheet-history {
+.extra-sheet-load .extra-load-comparison > div {
   display: grid;
-  gap: 9px;
-  margin: 0;
-  padding: 18px 0 0;
-  border-top: 1px solid var(--line);
+  align-content: center;
+  justify-items: start;
+  gap: 3px;
+  min-height: 68px;
+  padding: 7px 8px;
 }
-.extra-request-dialog .extra-sheet-history :is(ol, p) { margin-top: 0; }
+.extra-sheet-load .extra-load-comparison > .extra-load-after {
+  background: color-mix(in srgb, var(--ink) 6%, var(--paper));
+  border-radius: 8px;
+}
+.extra-load-comparison dd { font: 550 23px/1.12 Styrene, system-ui, sans-serif; font-variant-numeric: tabular-nums; letter-spacing: -.03em; }
+.extra-load-comparison .extra-load-after dd { font-size: 29px; }
+.extra-load-comparison dd small { letter-spacing: 0; font-size: 13px; }
+.extra-request-dialog .extra-review-facts { margin: 0; }
+.extra-review-context > section + section { padding-inline: 3px; }
+.extra-review-context .extra-review-meta { margin-top: 9px; display: grid; gap: 7px; }
+.extra-review-meta > div {
+  display: grid;
+  grid-template-columns: minmax(74px, .8fr) minmax(0, 1.2fr);
+  align-items: baseline;
+  gap: 5px 10px;
+}
+.extra-review-meta dd { font-size: 14px; text-align: end; }
+.extra-review-meta .extra-reference dd { font-size: 12px; }
+.extra-review-meta time { font: inherit; color: var(--ink); }
+.extra-request-dialog .extra-sheet-history { display: grid; gap: 7px; margin: 0; padding: 0; border: 0; }
+.extra-request-dialog .extra-sheet-history ol { margin: 0; }
 .extra-request-dialog .extra-sheet-history li {
-  grid-template-columns: max-content minmax(0, 1fr);
-  gap: 4px 20px;
-  padding-block: 7px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 4px 12px;
 }
-.extra-request-dialog .extra-sheet-history li + li { border-top: 1px solid var(--line); }
-.extra-request-dialog .extra-sheet-history :is(time, small) { font-size: 14px; }
-.extra-request-dialog .extra-sheet-history li strong { font-size: 16px; }
-.extra-request-dialog :is(.extra-sheet-history, .extra-sheet-response) p { font-size: 16px; }
-.extra-request-dialog .extra-sheet-response {
-  margin: 0;
-  border-inline-start: 2px solid var(--line);
-  padding-inline-start: 13px;
-}
-.extra-request-dialog .extra-sheet-response h3 { margin-bottom: 4px; }
-.extra-review-actions { display: grid; gap: 10px; padding-top: 17px; border-top: 1px solid var(--line); }
+.extra-request-dialog .extra-sheet-history time { text-align: end; }
+.extra-request-dialog .extra-sheet-history li strong { font-size: 14px; }
+.extra-request-dialog .extra-sheet-history .status-pill::before { width: 20px; height: 20px; }
+.extra-request-dialog .extra-sheet-history li :is(small,p) { margin-inline-start: 27px; }
+.extra-request-dialog .extra-sheet-response { margin: 0; }
+.extra-request-dialog .extra-sheet-response h3 { margin-block-end: 8px; }
+.extra-review-actions { display: grid; gap: 10px; }
 .extra-review-actions .field > span { font-size: 15px; }
 .extra-review-actions textarea { min-height: 72px; font-size: 16px; resize: vertical; }
 .extra-review-actions .form-actions { justify-content: end; margin: 0; }
@@ -511,39 +453,68 @@ body:has(.extra-hours-embedded) { background: transparent; }
   display: grid;
   flex: none;
   gap: 8px;
-  padding: 12px var(--review-inset);
-  border-top: 1px solid var(--line);
-  background: var(--paper);
+  padding: 9px var(--review-inset) 14px;
 }
 .extra-withdraw-footer .feedback { margin: 0; }
-.extra-withdraw-footer > .outline-button {
-  justify-self: end;
-  color: var(--danger-ink);
-  border-color: color-mix(in srgb, var(--danger-ink) 45%, var(--line));
-}
+.extra-withdraw-footer > .outline-button { justify-self: end; color: var(--danger-ink); }
 .extra-withdraw-footer > .outline-button:hover:not(:disabled) { color: var(--danger-ink); background: var(--danger-bg); }
 
-@container extra-review (max-width: 670px) {
-  .extra-request-dialog .extra-sheet-columns { grid-template-columns: minmax(0, 1fr); }
-  .extra-request-dialog .extra-sheet-load { border-inline-start: 0; padding-inline-start: 0; }
-  .extra-review-meta { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@container extra-review (max-width: 630px) {
+  .extra-review-grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; }
+  .extra-review-context { grid-column: auto; grid-row: auto; }
 }
-@container extra-review (max-width: 510px) {
-  .extra-review-overview { grid-template-columns: minmax(0, 1fr); }
-  .extra-review-total { grid-column: 1; grid-row: auto; padding-inline-start: 0; border-inline-start: 0; }
+@container extra-review (max-width: 365px) {
+  .extra-request-dialog .extra-sheet-courses li { grid-template-columns: auto minmax(0, 1fr); }
+  .extra-request-dialog .extra-sheet-courses li > .extra-line-price { grid-column: 2; text-align: start; }
+  .extra-request-dialog .extra-sheet-history li { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .extra-request-dialog .extra-sheet-history time { text-align: start; padding-inline-start: 27px; }
+  .extra-review-actions :is(.primary-button, .outline-button), .extra-withdraw-footer .outline-button { min-height: 44px; }
+}
 
-  .extra-request-dialog .extra-review-sheet { gap: 18px; }
-  .extra-request-dialog .extra-sheet-history li { grid-template-columns: minmax(0, 1fr); }
+.extra-compose-body { padding: 13px var(--review-inset) 22px; container: extra-compose / inline-size; }
+.extra-compose-form { display: grid; gap: 24px; }
+.extra-compose-fields, .extra-compose-selection { display: grid; align-items: start; gap: 14px; min-width: 0; }
+.extra-compose-fields { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.extra-compose-selection { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: clamp(20px, 5cqi, 55px); }
+.extra-compose-selection > section { min-width: 0; }
+.extra-compose-body .field > span { font-size: 14px; }
+.extra-compose-body .field :is(input, select) { min-width: 0; width: 100%; }
+.extra-compose-selection h3 { margin: 0 0 10px; font-size: 18px; font-weight: 550; }
+.extra-compose-body .extra-hours-course-picker {
+  max-height: clamp(180px, 31vh, 320px);
+  margin-block-start: 9px;
+  padding: 4px;
+  overscroll-behavior: contain;
 }
-@container extra-review (max-width: 345px) {
-  .extra-request-dialog .extra-sheet-courses li { grid-template-columns: auto minmax(0, 1fr); gap: 2px 8px; }
-  .extra-request-dialog .extra-sheet-courses li > .extra-line-price { grid-column: 2; justify-self: start; text-align: start; }
+.extra-compose-body .extra-hours-course-picker label {
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  min-height: 50px;
+  gap: 9px;
+  border-radius: 6px;
+  overflow-wrap: anywhere;
 }
-@media (max-width: 540px) {
-  .extra-request-dialog > .modal-card.wide-modal { max-height: calc(100dvh - 24px); }
-  .extra-request-dialog .modal-heading h2 { font-size: 20px; }
-  .extra-request-dialog .modal-heading .icon-button { min-height: 44px; min-width: 44px; }
-  .extra-review-intro { padding-block: 16px; gap: 15px; }
-  .extra-review-actions :is(.primary-button, .outline-button, .text-button),
-  .extra-withdraw-footer .outline-button { min-height: 44px; }
+.extra-compose-body .extra-hours-course-picker label:has(input:checked) {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--ink);
+}
+.extra-compose-body .extra-hours-course-picker label:has(input:enabled):hover { outline: 1px solid var(--line); outline-offset: -1px; }
+.extra-compose-body .extra-hours-course-picker :is(strong, small) { display: block; }
+.extra-compose-body .extra-hours-course-picker .offering-course-emblem { width: 30px; height: 30px; }
+.extra-compose-body .extra-hours-course-picker small, .extra-compose-summary small { color: var(--muted); }
+.extra-compose-body .extra-hours-course-picker .helper-text { padding: 5px 8px; }
+.extra-compose-summary > p { margin: 0 0 9px; font-size: 14px; }
+.extra-compose-summary > p strong { font-size: 26px; font-weight: 550; font-variant-numeric: tabular-nums; }
+.extra-compose-summary ul { margin: 0; padding: 0; list-style: none; }
+.extra-compose-summary li { display: flex; justify-content: space-between; gap: 10px; align-items: center; padding-block: 5px; }
+.extra-compose-summary li > span { min-width: 0; overflow-wrap: anywhere; }
+.extra-compose-summary small { display: block; }
+.extra-compose-summary .icon-button { flex: none; }
+.extra-compose-form .form-actions { margin: 0; justify-content: end; }
+@container extra-compose (max-width: 550px) {
+  .extra-compose-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .extra-compose-fields > :first-child { grid-column: 1 / -1; }
+  .extra-compose-selection { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+}
+@container extra-compose (max-width: 350px) {
+  .extra-compose-fields { grid-template-columns: minmax(0, 1fr); }
 }

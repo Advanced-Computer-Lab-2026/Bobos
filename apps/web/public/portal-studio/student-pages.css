@@ -74,8 +74,28 @@
   & [data-screen="my-advisor"] .advisor-callout h2,
   & .student-calendar h2{font:500 17px/1.3 Styrene,system-ui,sans-serif;letter-spacing:-.025em}
   & [data-screen="my-advisor"] .advisor-callout p {color:var(--muted);margin:6px 0 14px}
-  & [data-screen="my-advisor"] .advisor-deadline{margin-top:17px}
   & [data-screen="my-advisor"] .advisor-checklist{margin-top:25px}
+  & [data-screen="my-advisor"] .advisor-empty {
+    display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;column-gap:14px;
+    border:1px solid var(--line);border-radius:14px;background:var(--paper);padding:clamp(18px,2.4vw,32px);
+  }
+  & [data-screen="my-advisor"] .advisor-empty .queue-sketch {
+    display:block;grid-column:2;grid-row:1 / span 2;width:clamp(58px,8vw,108px);height:auto;
+  }
+  & [data-screen="my-advisor"] .advisor-empty h2 {
+    font:500 clamp(18px,2vw,24px)/1.3 Styrene,system-ui,sans-serif;letter-spacing:-.035em;
+  }
+  & [data-screen="my-advisor"] .advisor-empty-copy p {
+    margin-top:8px;font-size:14px;line-height:1.65;color:var(--muted);max-width:36ch;
+  }
+  & [data-screen="my-advisor"] .advisor-preference-action {
+    display:grid;grid-column:1 / -1;justify-items:start;gap:8px;margin-top:18px;
+  }
+  & [data-screen="my-advisor"] .advisor-deadline {margin:0;font-size:13px;line-height:1.5;color:var(--muted)}
+  & [data-screen="my-advisor"] .advisor-deadline time {color:var(--ink);font-weight:500}
+  & [data-screen="my-advisor"] .advisor-preferences-link {min-height:44px;border-color:var(--control);color:var(--ink);font-weight:500}
+  & [data-screen="my-advisor"] .advisor-preferences-link:not(:is(:hover,:focus-visible)) {background:var(--raised)}
+  & [data-screen="my-advisor"] .advisor-preferences-link .icon {width:15px;height:15px}
   & .student-calendar{display:grid;gap:30px;max-width:740px}
   & .calendar-provider {display:flex;align-items:center;gap:14px;flex-wrap:wrap}
   & .calendar-provider>.icon{width:29px;height:29px;color:var(--signal-sky)}
@@ -157,6 +177,7 @@
   font-size:clamp(24px,2.6vw,32px);
 }
 .student-dashboard .timetable-heading {margin-bottom:22px}
+.student-overview-calendar .calendar-heading {row-gap:9px}
 .student-overview-calendar .calendar-sync-link {
   min-height:44px;padding-inline:12px;gap:8px;font-size:14px;
   background:transparent;color:var(--ink);border:1px solid var(--control);
@@ -382,31 +403,52 @@
   width: 48px;
   height: auto;
 }
-.calendar-sync-preview { margin: 0; min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
+.calendar-sync-preview { container-type: inline-size; margin: 0; min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
 .calendar-sync-preview figcaption { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
-.calendar-sync-preview figcaption strong { font-size: 14px; font-weight: 500; }
+.calendar-sync-preview figcaption h2 { margin: 0; font: 550 14px/1.4 Styrene, system-ui, sans-serif; }
 .calendar-sync-preview figcaption span { font-size: 12px; color: var(--muted); }
-.calendar-sync-preview-scroll { overflow-x: auto; }
-.calendar-sync-preview-scroll:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
-.calendar-sync-week { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); min-inline-size: 550px; }
-.calendar-sync-day { --preview-heading-height: 40px; --preview-slot-height: 82px; display: grid; grid-template-rows: var(--preview-heading-height) repeat(3, var(--preview-slot-height)); align-items: start; min-width: 0; background: repeating-linear-gradient(to bottom, var(--line) 0 1px, transparent 1px var(--preview-slot-height)) 0 var(--preview-heading-height) / 100% 100% no-repeat; }
-.calendar-sync-day + .calendar-sync-day { border-inline-start: 1px solid var(--line); }
-.calendar-sync-day h2 { margin: 0; align-self: stretch; display: grid; place-items: center; background: var(--paper); color: var(--muted); font: 500 12px/1.2 Styrene, system-ui, sans-serif; }
-.calendar-sync-event { grid-row: 2; display: grid; gap: 4px; margin: 6px; padding: 7px 8px; border-radius: 5px; background: #dbe7fa; color: #263f61; font-size: 12px; line-height: 1.4; }
-.calendar-sync-event strong { font-weight: 600; overflow-wrap: anywhere; }
-.calendar-sync-event span { font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.calendar-sync-event[data-period="mid"] { grid-row: 3; }
-.calendar-sync-event[data-period="late"] { grid-row: 4; }
-.calendar-sync-event.event-tutorial { background: #f0e1c8; color: #604725; }
-.calendar-sync-event.event-lab { background: #dcebe1; color: #2e5141; }
-.calendar-sync-scroll-hint { display: none; }
+.calendar-sync-day { display: grid; grid-template-columns: 4.6rem minmax(0, 1fr); gap: 8px; min-width: 0; padding: 10px 12px; }
+.calendar-sync-day + .calendar-sync-day { border-block-start: 1px solid var(--line); }
+.calendar-sync-day h3 { margin: 0; padding-block-start: 12px; color: var(--muted); font: 550 12px/1.4 Styrene, system-ui, sans-serif; }
+.calendar-sync-day-events { display: grid; gap: 5px; min-width: 0; margin: 0; padding: 0; list-style: none; }
+.calendar-sync-event {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: center;
+  gap: 1px 8px;
+  min-width: 0;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--course-emblem, #e5decd) 55%, var(--paper));
+  color: #28302c;
+  line-height: 1.35;
+}
+[data-theme="dark"] .calendar-sync-event { background: color-mix(in srgb, var(--course-emblem, #e5decd) 86%, var(--paper)); }
+.calendar-sync-event .course-drawing { position: static; grid-row: span 2; width: 28px; height: 24px; max-width: none; margin: 0; opacity: 1; object-fit: contain; }
+.calendar-sync-event time { grid-column: 2; grid-row: 2; font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.calendar-sync-event strong { grid-column: 2; grid-row: 1; font-size: 12px; font-weight: 600; overflow-wrap: anywhere; }
+@container (min-width: 450px) and (max-width: 609px) {
+  .calendar-sync-day-events { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container (min-width: 610px) {
+  .calendar-sync-week { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .calendar-sync-day { --slot-height: 82px; display: block; padding: 0; }
+  .calendar-sync-day + .calendar-sync-day { border-block-start: 0; border-inline-start: 1px solid var(--line); }
+  .calendar-sync-day h3 { padding: 10px 6px; text-align: center; }
+  .calendar-sync-day-events {
+    grid-template-rows: repeat(3, var(--slot-height));
+    gap: 0;
+    background: repeating-linear-gradient(to bottom, var(--line) 0 1px, transparent 1px var(--slot-height));
+  }
+  .calendar-sync-event { grid-row: var(--period); align-content: start; gap: 3px 5px; margin: 5px; }
+  .calendar-sync-event .course-drawing { grid-row: 1; }
+  .calendar-sync-event time { grid-row: 1; }
+  .calendar-sync-event strong { grid-column: 1 / -1; grid-row: 2; }
+}
 .calendar-sync-account:not([data-connected]) .calendar-sync-account-heading,
 .calendar-sync-account[data-connected] :is(.calendar-sync-art,.calendar-sync-preview) { display: none; }
 @media (max-width: 900px) {
   [data-screen="calendar-sync"] .calendar-sync-account:not([data-connected]) { grid-template-columns: minmax(0, 1fr); gap: 24px; padding-block-start: 24px; max-inline-size: 720px; }
-}
-@media (max-width: 620px) {
-  .calendar-sync-scroll-hint { display: block; margin: 0; padding: 8px 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
 }
 .calendar-sync-account-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
 .calendar-sync-account-heading h1 { margin: 0; font: 600 26px/1.3 Styrene, system-ui, sans-serif; }
@@ -440,3 +482,21 @@
   padding-inline: 15px;
   font-size: 14px;
 }
+
+.notification-load-error { min-height: 285px; display: grid; align-content: center; justify-items: center; gap: 12px; }
+.notification-load-error h2 { margin: 0 0 5px; }
+.notification-load-error p { margin: 0; }
+
+.portal-role-unavailable {
+  min-height: min(620px, 68dvh);
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 13px;
+  padding: 28px 20px;
+  text-align: center;
+}
+.portal-role-unavailable img { object-fit: contain; }
+.portal-role-unavailable h1 { margin: 3px 0 0; font-size: clamp(22px, 3.4vw, 38px); letter-spacing: -.035em; }
+.portal-role-unavailable p { margin: 0; max-width: 43ch; color: var(--muted); }
+.portal-role-unavailable a { margin-block-start: 9px; }

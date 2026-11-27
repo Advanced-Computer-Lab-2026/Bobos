@@ -580,6 +580,29 @@ dialog .menu-close:hover {background:var(--raised);color:var(--ink)}
 .workspace-menu a:focus-visible,dialog .menu-close:focus-visible {outline:2px solid currentColor;outline-offset:-3px}
 @media(pointer:coarse) {.workspace-menu a {min-height:44px}}
 
+[data-workspace=claude-study] .sidebar nav {flex:1;min-height:0;overflow-y:auto}
+[data-workspace=claude-study] .sidebar-foot {
+  display:flex;align-items:center;flex:none;gap:10px;margin:12px 3px 0;
+  padding:10px 5px 0;border-top:1px solid var(--line);color:var(--ink);
+}
+[data-workspace=claude-study] .sidebar-foot > .icon {
+  width:28px;height:28px;padding:6px;flex:none;border-radius:6px;background:var(--raised);color:var(--muted);
+}
+[data-workspace=claude-study] .sidebar-foot :is(small,strong) {display:block;line-height:1.45}
+[data-workspace=claude-study] .sidebar-foot small {color:var(--muted);font-size:11px}
+[data-workspace=claude-study] .sidebar-foot strong {font-size:12px;font-weight:600}
+[data-workspace=claude-study] .workspace-menu .sidebar-foot {margin-inline:9px;padding-inline:0}
+
+.portal-page-back {
+  display:inline-flex;align-items:center;gap:5px;min-height:34px;margin:-6px 0 11px -5px;padding:4px 8px 4px 5px;
+  border:0;border-radius:6px;background:transparent;color:var(--muted);cursor:pointer;font-weight:500;
+}
+.portal-page-back .icon {width:16px;height:16px;transform:rotate(180deg)}
+.portal-page-back:is(:hover,:focus-visible) {background:var(--raised);color:var(--ink)}
+.portal-page-back:focus-visible {outline:2px solid var(--ink);outline-offset:-2px}
+@media (max-width:810px) {.portal-page-back {min-height:44px;margin-bottom:6px}}
+@media print {.portal-page-back {display:none}}
+
 /* API timetables can contain Saturday–Thursday; keep every day in one row. */
 .portal-studio .week-columns.live-student-week {
   display: grid;

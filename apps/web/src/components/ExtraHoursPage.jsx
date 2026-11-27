@@ -99,6 +99,7 @@ export default function ExtraHoursPage({
         token, method: "POST", body: { cancel, attemptId },
       });
       if (status === "succeeded") notify("success", "Payment complete. Your receipt is in Payments and deferred charges.");
+      if (status === "refunded") notify("warning", "Your card payment was credited to your wallet.");
       if (status === "failed") notify("error", "The card payment failed. You can try again.");
       if (status === "cancelled") notify("warning", "Checkout cancelled. You can choose a payment option again.");
       if (status === "pending") notify("info", "Stripe checkout is still open.");
@@ -178,7 +179,10 @@ export default function ExtraHoursPage({
       if (method === "gateway") {
         const result = await api(`/api/extra-hours/${row._id}/checkout`, { token, method: "POST", body: {} });
         if (result.checkoutUrl) window.location.assign(result.checkoutUrl);
-        else if (result.status === "succeeded") await load();
+        else if (result.status === "refunded") {
+          notify("warning", "Your card payment was credited to your wallet.");
+          await load();
+        } else if (result.status === "succeeded") await load();
         return;
       }
       const result = await api(`/api/extra-hours/${row._id}/settlement`, {
@@ -276,7 +280,7 @@ export default function ExtraHoursPage({
         />
       )}
       {walletSummary}
-      {staff && !composing && (
+      {staff && (
         <section className="extra-filters" aria-label="Filter requests">
           <FilterDisclosure floating search={<label className="field filter-search">
               <span>Student ID</span>
@@ -292,7 +296,7 @@ export default function ExtraHoursPage({
               />
             </label>} actions={<>
             <button type="button" className="outline-button extra-clear-button" disabled={!filtered} onClick={() => updateFilters(emptyFilters)}>Clear</button>
-            {advisor && <button type="button" className="primary-button"
+            {advisor && <button type="button" className="primary-button" aria-haspopup="dialog"
               onClick={() => setComposing(true)}>New request</button>}</>}
             chips={Object.entries(filters).filter(([key,value]) => key !== "studentId" && value).map(([key,value]) => ({
               key, label: pretty(key === "advisorId" ? advisors.find(a => a._id === value)?.fullName || "Advisor" : value),
@@ -501,27 +505,13 @@ export default function ExtraHoursPage({
       {staff && <RecordPages page={currentPage} size={size} total={visibleRows.length} onChange={setPage} label="Requests" />}
       {opened && <Modal title="Extra-hours request" className="extra-request-dialog" onClose={closeReview} wide>
         <div className="extra-review-body">
-          <div className="extra-review-intro">
-            <div className="extra-review-overview">
-              <div className="extra-review-student">
-                <StudentIdentity name={opened.student?.user?.fullName} id={opened.student?.studentId} />
-                <div className="extra-review-state">
-                  <RequestDecision row={opened} statusRef={reviewStatus} />
-                  {paymentStates[opened.settlementStatus] && <span className="extra-payment-state" data-tone={paymentStates[opened.settlementStatus].tone}>{paymentStates[opened.settlementStatus].label}</span>}
-                </div>
-              </div>
-              <dl className="extra-review-total">
-                <dt>Request total</dt><dd>{moneyAmount(opened.totalCost)} <small>EGP</small></dd>
-              </dl>
+          <RequestDetails row={opened} staff summary={<header className="extra-review-overview">
+            <StudentIdentity name={opened.student?.user?.fullName} id={opened.student?.studentId} />
+            <div className="extra-review-state">
+              <RequestDecision row={opened} statusRef={reviewStatus} />
+              {paymentStates[opened.settlementStatus] && <span className="extra-payment-state" data-tone={paymentStates[opened.settlementStatus].tone}>{paymentStates[opened.settlementStatus].label}</span>}
             </div>
-            <dl className="extra-review-meta">
-              <div><dt>Term</dt><dd>{termLabel(opened.term)}</dd></div>
-              <div><dt>Submitted</dt><dd><time dateTime={opened.createdAt}>{date(opened.createdAt)}</time></dd></div>
-              <div><dt>Requested by</dt><dd>{opened.advisor?.fullName || "—"}</dd></div>
-              <div className="extra-reference"><dt>Request reference</dt><dd>{opened._id}</dd></div>
-            </dl>
-          </div>
-          <RequestDetails row={opened} staff>
+          </header>}>
             {coordinator && opened.decisionStatus === "pending" && <div className="extra-review-actions">
               {reviewError && <div className="feedback error" role="alert">{reviewError}</div>}
               <label className="field">
@@ -641,63 +631,88 @@ function RequestSummary({ row, student = false }) {
   </div>;
 }
 
-function RequestDetails({ row, staff = false, children }) {
+const historyTones = { submitted: "ready", approved: "good", rejected: "danger", withdrawn: "muted" };
+
+function RequestDetails({ row, staff = false, summary, children }) {
   const events = row.history?.length ? row.history : [
     row.createdAt && { action: "submitted", occurredAt: row.createdAt },
     row.decidedAt && { action: row.decisionStatus, occurredAt: row.decidedAt },
   ].filter(Boolean);
   const eligibility = row.eligibilitySnapshot;
-  const hours = [
-    { label: "Current hours", value: eligibility?.hoursBeforeRequest },
-    { label: "Requested hours", value: row.requestedHours },
-    { label: "Hours after request", value: eligibility?.hoursAfterRequest },
-  ];
-  return <div className="extra-review-sheet">
-    <div className="extra-sheet-columns">
-      <section className="extra-sheet-courses">
-        <h3>Requested courses</h3>
-        {staff && <div className="extra-course-columns" aria-hidden="true"><span>Course</span><span>Subtotal</span></div>}
-        <ul role="list">{row.courses?.map(item => <li key={item.course?._id || item._id || item.course}>
-          <OfferingCourseIcon code={item.course?.code} />
-          <div>
-            <strong>{item.course?.name || item.course?.code || "Course"}</strong>
-            {staff ? <>
-              {(item.course?.code || item.isRepeated) && <small>{[item.course?.code, item.isRepeated && "Repeated course"].filter(Boolean).join(" · ")}</small>}
-              <small>{item.hours} {item.hours === 1 ? "hour" : "hours"} × {money(item.pricePerHour)}</small>
-            </> : <small>{[item.course?.code, `${item.hours} ${item.hours === 1 ? "hour" : "hours"} × ${money(item.pricePerHour)}`, item.isRepeated && "Repeated course"].filter(Boolean).join(" · ")}</small>}
-          </div>
-          {staff ? <span className="extra-line-price">{moneyAmount(item.subtotal)} <small>EGP</small></span> : <span>{money(item.subtotal)}</span>}
-        </li>)}</ul>
-        {!staff && <div className="extra-sheet-total"><span>Request total</span><strong>{money(row.totalCost)}</strong></div>}
-      </section>
-      <section className="extra-sheet-load">
-        <h3>Study load</h3>
-        {staff && <dl className="extra-load-hours">
-          {hours.map(({ label, value }, index) => <div key={label} className={index === 2 ? "extra-load-result" : undefined}>
-            <dt>{label}</dt><dd>{index === 1 && value > 0 ? "+" : ""}{value ?? "—"}</dd>
-          </div>)}
-        </dl>}
-        <dl className={staff ? "extra-load-facts" : undefined}>
-          {!staff && hours.map(({ label, value }, index) => <div key={label} className={index === 2 ? "extra-load-total" : undefined}>
-            <dt>{label}</dt><dd>{value ?? "—"}</dd>
-          </div>)}
-          <div><dt>Standard allowance</dt><dd>{eligibility?.standardAllowance == null ? "—" : `${eligibility.standardAllowance} hours`}</dd></div>
-          <div><dt>Graduating within one year</dt><dd>{eligibility?.graduatingWithinOneYear == null ? "—" : eligibility.graduatingWithinOneYear ? "Yes" : "No"}</dd></div>
-        </dl>
-        {eligibility?.isProbation && <p className="feedback error">Ineligible due to academic probation</p>}
-      </section>
+  const courses = <section className="extra-sheet-courses">
+    <div className={staff ? "extra-review-courses-heading" : undefined}>
+      <h3>Requested courses</h3>
+      {staff && row.requestedHours != null && <p>{row.requestedHours} credit {row.requestedHours === 1 ? "hour" : "hours"} requested</p>}
     </div>
-    <section className="extra-sheet-history">
-      <h3>Request history</h3>
-      {events.length ? <ol>{events.map((entry, index) => <li key={entry._id || index}>
-        <time dateTime={entry.occurredAt}>{date(entry.occurredAt)}</time>
-        <div>
-          <strong>{pretty(entry.action)}</strong>
-          {paymentStates[entry.settlementStatus] && <small>{paymentStates[entry.settlementStatus].label}</small>}
-          {entry.note && entry.note !== row.decisionNote && <p>{entry.note}</p>}
+    <ul role="list">{row.courses?.map(item => <li key={item.course?._id || item._id || item.course}>
+      <OfferingCourseIcon code={item.course?.code} />
+      <div>
+        <strong>{item.course?.name || item.course?.code || "Course"}</strong>
+        {staff ? <>
+          {(item.course?.code || item.isRepeated) && <small>{[item.course?.code, item.isRepeated && "Repeated course"].filter(Boolean).join(" · ")}</small>}
+          <small>{item.hours} {item.hours === 1 ? "hour" : "hours"} × {money(item.pricePerHour)}</small>
+        </> : <small>{[item.course?.code, `${item.hours} ${item.hours === 1 ? "hour" : "hours"} × ${money(item.pricePerHour)}`, item.isRepeated && "Repeated course"].filter(Boolean).join(" · ")}</small>}
+      </div>
+      {staff ? <span className="extra-line-price">{moneyAmount(item.subtotal)} <small>EGP</small></span> : <span>{money(item.subtotal)}</span>}
+    </li>)}</ul>
+    <div className="extra-sheet-total">
+      <span>Request total</span>
+      {staff ? <strong>{moneyAmount(row.totalCost)} <small>EGP</small></strong> : <strong>{money(row.totalCost)}</strong>}
+    </div>
+  </section>;
+  const studyLoad = <section className="extra-sheet-load">
+    <h3>Study load</h3>
+    {staff && <dl className="extra-load-comparison">
+      <div><dt>Current</dt><dd>{eligibility?.hoursBeforeRequest ?? "—"}{eligibility?.hoursBeforeRequest != null && <small> h</small>}</dd></div>
+      <div><dt>Requested</dt><dd>{row.requestedHours == null ? "—" : <>+{row.requestedHours}<small> h</small></>}</dd></div>
+      <div className="extra-load-after"><dt>After request</dt><dd>{eligibility?.hoursAfterRequest ?? "—"}{eligibility?.hoursAfterRequest != null && <small> h</small>}</dd></div>
+    </dl>}
+    <dl className={staff ? "extra-review-facts" : undefined}>
+      {!staff && <>
+        <div><dt>Current hours</dt><dd>{eligibility?.hoursBeforeRequest ?? "—"}</dd></div>
+        <div><dt>Requested hours</dt><dd>{row.requestedHours ?? "—"}</dd></div>
+        <div className="extra-load-total"><dt>Hours after request</dt><dd>{eligibility?.hoursAfterRequest ?? "—"}</dd></div>
+      </>}
+      <div><dt>Standard allowance</dt><dd>{eligibility?.standardAllowance == null ? "—" : `${eligibility.standardAllowance} hours`}</dd></div>
+      <div><dt>One-year credit exception</dt><dd>{eligibility?.graduatingWithinOneYear == null ? "—" : eligibility.graduatingWithinOneYear ? "Applied" : "Not needed"}</dd></div>
+    </dl>
+    {eligibility?.isProbation && <p className="feedback error">Ineligible due to academic probation</p>}
+  </section>;
+  const requestHistory = <section className="extra-sheet-history">
+    <h3>Request history</h3>
+    {events.length ? <ol>{events.map((entry, index) => {
+      const eventDetails = <div>
+        <strong className={staff ? `status-pill ${historyTones[entry.action] || "muted"}` : undefined}>{staff && entry.action === "submitted" ? "Request submitted" : pretty(entry.action)}</strong>
+        {paymentStates[entry.settlementStatus] && <small>{paymentStates[entry.settlementStatus].label}</small>}
+        {entry.note && entry.note !== row.decisionNote && <p>{entry.note}</p>}
+      </div>;
+      const time = <time dateTime={entry.occurredAt}>{date(entry.occurredAt)}</time>;
+      return <li key={entry._id || index}>{staff ? <>{eventDetails}{time}</> : <>{time}{eventDetails}</>}</li>;
+    })}</ol> : <p>No history recorded yet.</p>}
+  </section>;
+  return <div className="extra-review-sheet">
+    {staff ? <>
+      {summary}
+      <div className="extra-review-grid">
+        {courses}
+        <div className="extra-review-context">
+          {studyLoad}
+          <section aria-label="Request details">
+            <h3>Request details</h3>
+            <dl className="extra-review-meta">
+              <div><dt>Academic term</dt><dd>{termLabel(row.term)}</dd></div>
+              <div><dt>Requested by</dt><dd>{row.advisor?.fullName || "—"}</dd></div>
+              <div><dt>Submitted</dt><dd><time dateTime={row.createdAt}>{date(row.createdAt)}</time></dd></div>
+              <div className="extra-reference"><dt>Reference</dt><dd>{row._id}</dd></div>
+            </dl>
+          </section>
         </div>
-      </li>)}</ol> : <p>No history recorded yet.</p>}
-    </section>
+        {requestHistory}
+      </div>
+    </> : <>
+      <div className="extra-sheet-columns">{courses}{studyLoad}</div>
+      {requestHistory}
+    </>}
     {row.decisionNote && <section className="extra-sheet-response"><h3>Coordinator response</h3><p>{row.decisionNote}</p></section>}
     {children}
   </div>;

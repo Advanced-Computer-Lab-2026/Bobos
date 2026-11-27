@@ -8,9 +8,21 @@ import { StudentWorkflowState } from '../models/academics.js';
 import { parseCurriculumCsv } from '../scripts/importCourses.js';
 import { canonicalMajor } from '../utils/major.js';
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/bobos';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/bobos_evaluation';
 const DEVELOPMENT_PASSWORD = 'Password123!';
 const CURRICULUM_URL = new URL('../scripts/courses.csv', import.meta.url);
+const electiveCatalogue = [
+  ['CSEN905', 'Machine Learning'],
+  ['CSEN906', 'Cloud Computing'],
+  ['CSEN907', 'Information Retrieval'],
+  ['CSEN908', 'Cryptography'],
+  ['CSEN909', 'Parallel Computing'],
+  ['DMET905', 'Game Development'],
+  ['DMET906', 'Virtual Reality'],
+  ['DMET907', 'Human-Computer Interaction'],
+  ['DMET908', 'Modelling and Rendering'],
+  ['DMET909', 'Interactive Media'],
+];
 
 async function upsertUser(email, fields) {
   let user = await User.findOne({ email });
@@ -21,6 +33,7 @@ async function upsertUser(email, fields) {
 }
 
 function assertLocalDatabase(uri) {
+  if (process.env.NODE_ENV === 'production') throw new Error('Evaluation seeding is disabled in production.');
   if (process.env.EVALUATION_SEED_ALLOW_REMOTE === 'true') return;
   let hostname;
   try {
@@ -81,10 +94,7 @@ async function seedTerms() {
 async function seedCurriculum() {
   const csv = await readFile(CURRICULUM_URL, 'utf8');
   const { courses: curriculumCourses, mergedListings, skippedPlaceholders } = parseCurriculumCsv(csv);
-  const electives = []; // Only explicitly coded courses from the supplied curriculum.
-  const allCourses = [...curriculumCourses, ...electives];
-
-  for (const course of allCourses) {
+  for (const course of curriculumCourses) {
     const { prerequisites, ...fields } = course;
     await Course.findOneAndUpdate(
       { code: course.code },
@@ -93,7 +103,7 @@ async function seedCurriculum() {
     );
   }
 
-  const idsByCode = new Map((await Course.find({ code: { $in: allCourses.map(({ code }) => code) } }, { code: 1 }).lean())
+  const idsByCode = new Map((await Course.find({ code: { $in: curriculumCourses.map(({ code }) => code) } }, { code: 1 }).lean())
     .map(({ code, _id }) => [code, _id]));
   for (const course of curriculumCourses) {
     await Course.updateOne(
@@ -103,7 +113,16 @@ async function seedCurriculum() {
     );
   }
 
-  return { curriculumCount: curriculumCourses.length, electiveCount: electives.length, mergedListings, skippedPlaceholders };
+  // The Portal catalogue maps these named courses to its existing elective artwork.
+  for (const [code, name] of electiveCatalogue) {
+    await Course.updateOne({ code }, { $setOnInsert: {
+      code, name, creditHours: 4, courseType: 'elective', facultyMajors: ['CS', 'DMET'],
+      recommendedSemester: 9, lectureHours: 2, tutorialHours: 2, labHours: 0,
+      offeringSeasons: ['winter', 'spring'], isActive: true,
+    } }, { upsert: true, runValidators: true, setDefaultsOnInsert: true });
+  }
+
+  return { curriculumCount: curriculumCourses.length, electiveCount: electiveCatalogue.length, mergedListings, skippedPlaceholders };
 }
 
 function evaluationMajors(course) {

@@ -8,7 +8,7 @@ import { ScheduleActivity } from "../models/communications.js";
 import { loadStudentWorkflows } from "../services/student-workflow-status.js";
 import { notifyStudents } from "../services/student-notifications.js";
 import { calculateDraftCreditPolicy } from "../utils/credit-allowance.js";
-import { majorMatches } from "../utils/major.js";
+import { majorMatches, offeringEligibleForStudent } from "../utils/major.js";
 import { buildWeeklyCalendar } from "../../../../server/src/utils/weeklyCalendar.js";
 import { toMinutes, findFirstClash, describeSlot, slotsOverlap } from "../../../../server/src/utils/timetable.js";
 import { buildRegisteredCourses } from "../../../../server/src/utils/registeredCourses.js";
@@ -614,15 +614,6 @@ function canManageAdvisingStudent(viewer, student) {
     return { status: 403, message: "Advisors may manage drafts only for their assigned advising students." };
   }
   return null;
-}
-
-function offeringEligibleForStudent(offering, student) {
-  const course = offering.course;
-  const majorIsEligible = !course.facultyMajors?.length || course.facultyMajors.some((major) => majorMatches(major, student.major));
-  return majorIsEligible && (offering.eligibleGroups || []).some((group) =>
-    majorMatches(group.major, student.major) && (group.semester == null || Number(group.semester) === Number(student.currentSemester)) &&
-    (!group.studyGroup || !student.studyGroup || String(group.studyGroup) === String(student.studyGroup))
-  );
 }
 
 function groupDraftOffering(offering, preferenceGroups, reservedSlots) {

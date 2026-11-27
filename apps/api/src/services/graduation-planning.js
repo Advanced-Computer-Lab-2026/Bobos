@@ -1,7 +1,7 @@
 import { CourseAttempt } from "../models/academics.js";
 import { AcademicTerm, Course, CourseOffering } from "../models/catalogue.js";
 import { FinancialReversalRequest, FinancialTransaction } from "../models/finance.js";
-import { ExtraHoursRequest } from "../models/requests.js";
+import { ExitExamRequest, ExtraHoursRequest } from "../models/requests.js";
 import { calculateDraftCreditPolicy } from "../utils/credit-allowance.js";
 import { majorMatches } from "../utils/major.js";
 
@@ -13,21 +13,31 @@ const idOf = (value) => String(value._id ?? value);
 const requiredElectiveCount = 4;
 const requiredElectiveHours = 16;
 
-export async function loadGraduationContext(student, now = new Date()) {
+export async function loadGraduationContext(student, now = new Date(), { session, includeTerm } = {}) {
   const windowEnd = new Date(now);
   windowEnd.setUTCFullYear(windowEnd.getUTCFullYear() + 1);
   const windowEndTime = windowEnd.getTime();
-  const [catalogue, attempts, futureTerms] = await Promise.all([
+  const read = async (queries) => {
+    if (!session) return Promise.all(queries);
+    const results = [];
+    for (const query of queries) results.push(await query.session(session));
+    return results;
+  };
+  const upcoming = { termStart: { $gt: now } };
+  const termWindow = includeTerm
+    ? { $or: [upcoming, { _id: includeTerm, teachingEnd: { $gte: now } }] }
+    : upcoming;
+  const [catalogue, attempts, futureTerms] = await read([
     Course.find().select("code name courseType isActive facultyMajors creditHours prerequisites offeringSeasons recommendedSemester")
       .sort({ recommendedSemester: 1, code: 1 }).lean(),
     CourseAttempt.find({ student: student._id }).select("course result term attemptNumber createdAt")
       .populate("term", "termStart termEnd").lean(),
-    AcademicTerm.find({ season: { $in: planningSeasons }, termStart: { $gt: now }, termEnd: { $lte: windowEnd } })
+    AcademicTerm.find({ season: { $in: planningSeasons }, ...termWindow, termEnd: { $lte: windowEnd } })
       .select("code season academicYear termStart termEnd").sort({ termStart: 1, _id: 1 }).lean(),
   ]);
   const termsBySeason = new Map();
   for (const term of futureTerms) {
-    if (!termsBySeason.has(term.season)) termsBySeason.set(term.season, term);
+    if (!termsBySeason.has(term.season) || includeTerm && idOf(term) === idOf(includeTerm)) termsBySeason.set(term.season, term);
   }
   const terms = [...termsBySeason.values()];
   const termIds = terms.map((term) => term._id);
@@ -43,7 +53,7 @@ export async function loadGraduationContext(student, now = new Date()) {
     if (attempt.result !== "current") continue;
     const end = attempt.term?.termEnd?.getTime();
     // Count a current attempt only when it can still finish in the planning year.
-    if (end >= Date.now() && end <= windowEndTime) current.set(courseId, end);
+    if (end >= now.getTime() && end <= windowEndTime) current.set(courseId, end);
   }
   const failed = new Set(attempts.filter((attempt) => attempt.result === "failed").map((attempt) => idOf(attempt.course)));
   const remaining = catalogue.filter((course) => {
@@ -58,14 +68,14 @@ export async function loadGraduationContext(student, now = new Date()) {
     count: Math.max(0, requiredElectiveCount - completedElectives.length),
     hours: Math.max(0, requiredElectiveHours - completedElectives.reduce((sum, course) => sum + course.creditHours, 0)),
   };
-  const [offerings, requests] = await Promise.all([
+  const [offerings, requests] = await read([
     CourseOffering.find({ course: { $in: remaining.map((course) => course._id) }, term: { $in: termIds } })
       .select("course term isPublished").lean(),
     ExtraHoursRequest.find({ student: student._id, term: { $in: termIds }, decisionStatus: "approved", settlementStatus: { $in: ["paid", "deferred"] } })
       .populate("courses.course", "creditHours").lean(),
   ]);
   const requestIds = requests.map((request) => request._id);
-  const [reversals, reversalEntries] = requestIds.length ? await Promise.all([
+  const [reversals, reversalEntries] = requestIds.length ? await read([
     FinancialReversalRequest.distinct("extraHoursRequest", { student: student._id, extraHoursRequest: { $in: requestIds }, status: "completed" }),
     FinancialTransaction.distinct("extraHoursRequest", { student: student._id, extraHoursRequest: { $in: requestIds },
       kind: { $in: ["refund", "deferredChargeCancellation"] }, status: "succeeded" }),
@@ -230,6 +240,42 @@ function canFitCourses(context, courses) {
   return search(0);
 }
 
+function withoutExitExamCourse(context, course) {
+  return {
+    ...context,
+    electiveRequirement: course.elective ? {
+      count: Math.max(0, context.electiveRequirement.count - 1),
+      hours: Math.max(0, context.electiveRequirement.hours - course.creditHours),
+    } : context.electiveRequirement,
+    courses: context.courses.filter((item) => item._id !== course._id),
+  };
+}
+
+export async function canGraduateWithExtraHours(student, termId, lines, session) {
+  const context = await loadGraduationContext(student, new Date(), { session, includeTerm: termId });
+  const target = context.terms.find((term) => term._id === idOf(termId));
+  if (!target) return false;
+  const requested = new Map(lines.map((line) => [idOf(line.course), line.hours]));
+  const matching = context.courses.filter((course) => requested.has(course._id)
+    && course.termIds.includes(target._id));
+  if (matching.length !== requested.size) return false;
+  const authorized = new Map(target.creditPolicy.approvedExtraCourses.map((course) => [course.courseId, course.hours]));
+  for (const [courseId, hours] of requested) authorized.set(courseId, hours);
+  target.creditPolicy.approvedExtraCourses = [...authorized].map(([courseId, hours]) => ({ courseId, hours }));
+  target.creditPolicy.maximumCreditHours = Math.min(34, target.creditPolicy.baseAllowance
+    + target.creditPolicy.approvedExtraCourses.reduce((sum, course) => sum + course.hours, 0));
+  context.courses = context.courses.map((course) => requested.has(course._id)
+    ? { ...course, required: true, termIds: [target._id] }
+    : course);
+  if (canFitCourses(context, context.courses) === true) return true;
+  const failed = context.courses.filter((course) => course.failed);
+  if (failed.length !== 1 || requested.has(failed[0]._id)) return false;
+  const approved = await ExitExamRequest.exists({ student: student._id, course: failed[0]._id, status: "approved" }).session(session ?? null);
+  if (!approved) return false;
+  const replacement = withoutExitExamCourse(context, failed[0]);
+  return canFitCourses(replacement, replacement.courses) === true;
+}
+
 export function exitExamEligibility(context) {
   const failed = context.courses.filter((course) => course.failed);
   if (failed.length !== 1) return { message: "An exit exam requires exactly one remaining failed course." };
@@ -244,14 +290,8 @@ export function exitExamEligibility(context) {
   if (!course.termIds.length) return { course };
   const fit = canFitCourses(context, context.courses);
   if (fit === true) return { course, message: `${course.code} can be repeated within the planning window.` };
-  const replacementContext = {
-    ...context,
-    electiveRequirement: course.elective ? {
-      count: Math.max(0, context.electiveRequirement.count - 1),
-      hours: Math.max(0, context.electiveRequirement.hours - course.creditHours),
-    } : context.electiveRequirement,
-  };
-  const withoutFailed = canFitCourses(replacementContext, context.courses.filter((item) => item._id !== course._id));
+  const replacementContext = withoutExitExamCourse(context, course);
+  const withoutFailed = canFitCourses(replacementContext, replacementContext.courses);
   if (fit === null || withoutFailed !== true) {
     return { course, message: "Could not establish that the failed course alone prevents a feasible plan. Review course availability and prerequisites." };
   }

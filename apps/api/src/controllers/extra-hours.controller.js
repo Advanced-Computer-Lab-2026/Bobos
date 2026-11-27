@@ -6,6 +6,7 @@ import {
   AcademicTerm,
   Course,
   CourseAttempt,
+  CourseOffering,
   ExtraHoursRequest,
   Notification,
   FinancialTransaction,
@@ -13,13 +14,16 @@ import {
 import { getWallet } from "../models/academics.js";
 import { walletDelta, walletKinds } from "../models/finance.js";
 import { standardCreditAllowance } from "../utils/credit-allowance.js";
+import { offeringEligibleForStudent } from "../utils/major.js";
 import { notifyStudents } from "../services/student-notifications.js";
+import { canGraduateWithExtraHours } from "../services/graduation-planning.js";
 import { getNextUniversityInstallment } from "../services/university-installments.js";
 import { createStripeCheckout, expireStripeCheckout, getStripeCheckout, stripeCheckoutConfigured } from "../services/stripe-checkout.js";
 
 const { Types } = mongoose;
 const isProbationStudent = (student) => student.academicStanding === "probation"
   || student.advisingReason === "probation" || student.gpa >= 3.70;
+const lockStudent = (student, session) => StudentProfile.findByIdAndUpdate(student, { $inc: { __v: 1 } }, { session, timestamps: false });
 
 async function creditHoursBefore(student, term, standardAllowance, { session, exclude } = {}) {
   const requests = await ExtraHoursRequest.find({
@@ -28,6 +32,74 @@ async function creditHoursBefore(student, term, standardAllowance, { session, ex
     ...(exclude && { _id: { $ne: exclude } }),
   }).session(session ?? null).select("requestedHours").lean();
   return requests.reduce((total, request) => total + request.requestedHours, standardAllowance);
+}
+
+async function itemizeCourses(student, courseIds, term, session, status = 404) {
+  // Course changes and extra-hours writes must not commit against different catalogue versions.
+  await Course.updateMany({ _id: { $in: courseIds } }, { $inc: { __v: 1 } }, { session, timestamps: false });
+  const courses = await Course.find({ _id: { $in: courseIds }, isActive: true }).session(session).lean();
+  if (courses.length !== courseIds.length) {
+    throw Object.assign(new Error("One or more courses were not found or are inactive."), { status });
+  }
+  const unavailable = courses.find((course) => course.offeringSeasons?.length && !course.offeringSeasons.includes(term.season));
+  if (unavailable) throw Object.assign(new Error(`${unavailable.code} is not offered in the selected term's season.`), { status: status === 404 ? 400 : status });
+  if (status === 409) {
+    const offeringQuery = { course: { $in: courseIds }, term: term._id };
+    await CourseOffering.updateMany(offeringQuery, { $inc: { __v: 1 } }, { session, timestamps: false });
+    const offerings = await CourseOffering.find(offeringQuery).session(session).lean();
+    const byCourse = new Map(offerings.map((offering) => [String(offering.course), offering]));
+    for (const course of courses) {
+      const offering = byCourse.get(String(course._id));
+      if (!offering?.isPublished || !offeringEligibleForStudent(offering, student, course)) {
+        throw Object.assign(new Error(`${course.code} is unpublished or unavailable to this student in the selected term.`), { status });
+      }
+    }
+  }
+  const relatedCourseIds = [...courseIds, ...courses.flatMap((course) => course.prerequisites || [])];
+  const attempts = await CourseAttempt.find({ student: student._id, course: { $in: relatedCourseIds } }).select("course result").session(session).lean();
+  const repeatedCourses = new Set(attempts.map((attempt) => String(attempt.course)));
+  const passedCourses = new Set(attempts.filter((attempt) => attempt.result === "passed").map((attempt) => String(attempt.course)));
+  return courses.map((course) => {
+    if (status === 409 && (passedCourses.has(String(course._id)) || (course.prerequisites || []).some((id) => !passedCourses.has(String(id))))) {
+      throw Object.assign(new Error(`${course.code} has already been passed or has an unmet prerequisite.`), { status });
+    }
+    const isRepeated = repeatedCourses.has(String(course._id));
+    const pricePerHour = isRepeated ? 1000 : 800;
+    return { course: course._id, hours: course.creditHours, isRepeated, pricePerHour, subtotal: course.creditHours * pricePerHour };
+  });
+}
+
+async function validateCurrentApproval(request, student, session, approving = false) {
+  if (!student || student.studentType !== "advising" || isProbationStudent(student)) {
+    throw Object.assign(new Error("The student is no longer eligible for extra hours."), { status: 409 });
+  }
+  const allowance = standardCreditAllowance(student.currentSemester);
+  if (!allowance) throw Object.assign(new Error("The student's standard credit allowance is unavailable."), { status: 409 });
+  const term = await AcademicTerm.findById(request.term).session(session).lean();
+  if (!term) throw Object.assign(new Error("The academic term for this request is unavailable."), { status: 409 });
+  const lines = await itemizeCourses(student, request.courses.map((line) => line.course), term, session, 409);
+  const original = new Map(request.courses.map((line) => [String(line.course), line]));
+  const priceChanged = lines.some((line) => {
+    const previous = original.get(String(line.course));
+    return !previous || line.hours !== previous.hours || line.isRepeated !== previous.isRepeated
+      || line.pricePerHour !== previous.pricePerHour || line.subtotal !== previous.subtotal;
+  });
+  const hours = lines.reduce((sum, line) => sum + line.hours, 0);
+  const total = lines.reduce((sum, line) => sum + Math.round(line.subtotal * 100), 0);
+  if (priceChanged || Math.abs(hours - request.requestedHours) > 1e-9 || total !== Math.round(request.totalCost * 100)) {
+    throw Object.assign(new Error("Course credits or prices have changed. Ask the Advisor to submit an updated extra-hours request."), { status: 409 });
+  }
+  const before = await creditHoursBefore(student._id, request.term, allowance, { session, exclude: request._id });
+  const after = before + hours;
+  const graduating = after <= 34 && after > allowance + 3
+    && await canGraduateWithExtraHours(student, request.term, lines, session);
+  if (after > 34 || (after > allowance + 3 && !graduating)) {
+    throw Object.assign(new Error("The request exceeds the student's current credit limit. The one-year graduation exception requires a feasible plan."), { status: 409 });
+  }
+  if (!approving && request.eligibilitySnapshot.standardAllowance !== allowance) {
+    throw Object.assign(new Error("The student's credit allowance has changed. Ask the Advisor to submit an updated extra-hours request."), { status: 409 });
+  }
+  return { standardAllowance: allowance, hoursBeforeRequest: before, hoursAfterRequest: after, isProbation: false, graduatingWithinOneYear: graduating };
 }
 
 const populatedRequest = (id) => ExtraHoursRequest.findById(id)
@@ -73,7 +145,6 @@ export async function createExtraHoursRequest(req, res) {
       studentId,
       termId,
       courseIds,
-      graduatingWithinOneYear,
     } = req.body;
 
     if (!studentId) {
@@ -129,79 +200,44 @@ export async function createExtraHoursRequest(req, res) {
       });
     }
 
-    // Rule 1: Probation check
-    // On the GUC scale, GPA 3.70 or above is probation.
-    const isProbation = isProbationStudent(student);
-
-    if (isProbation) {
-      return res.status(400).json({
-        message: "Probation students cannot receive extra credit hours.",
-      });
-    }
-
-    // Rule 2: Standard credit allowance
-    const standardAllowance = standardCreditAllowance(student.currentSemester);
-    if (!standardAllowance) {
-      return res.status(400).json({
-        message: `Standard credit allowance is not configured for semester ${student.currentSemester}.`,
-      });
-    }
-
-    // Determine graduation status:
-    // If explicitly provided in the request body, use it; otherwise infer from semester >= 9.
-    const isGraduating = typeof graduatingWithinOneYear === "boolean"
-      ? graduatingWithinOneYear
-      : Boolean(student.currentSemester >= 9);
-
     // Rule 3: Validate requested courses and calculate repeated vs new rates
     const validCourseObjectIds = courseIds.filter((id) => Types.ObjectId.isValid(id));
     if (validCourseObjectIds.length !== courseIds.length) {
       return res.status(400).json({ message: "One or more course IDs are invalid." });
     }
 
-    const courses = await Course.find({ _id: { $in: validCourseObjectIds }, isActive: true });
-    if (courses.length !== courseIds.length) {
-      return res.status(404).json({ message: "One or more courses were not found or are inactive." });
-    }
-
-    // Check course attempt history for this student to determine repeated courses
-    const studentAttempts = await CourseAttempt.distinct("course", {
-      student: student._id,
-      course: { $in: validCourseObjectIds },
-    });
-    const repeatedCourseIds = new Set(studentAttempts.map(String));
-
-    const itemizedCourses = courses.map((course) => {
-      const isRepeated = repeatedCourseIds.has(String(course._id));
-      const pricePerHour = isRepeated ? 1000 : 800;
-      const hours = Number(course.creditHours);
-      const subtotal = hours * pricePerHour;
-      return {
-        course: course._id,
-        hours,
-        isRepeated,
-        pricePerHour,
-        subtotal,
-      };
-    });
-
-    const requestedHours = itemizedCourses.reduce((sum, item) => sum + item.hours, 0);
-    const totalCost = itemizedCourses.reduce((sum, item) => sum + item.subtotal, 0);
-
     const requestId = await mongoose.connection.transaction(async (session) => {
       // Submissions and approvals for the same student share this write lock.
-      const locked = await StudentProfile.updateOne({ _id: student._id }, { $inc: { __v: 1 } }, { session, timestamps: false });
-      if (!locked.matchedCount) throw Object.assign(new Error("Student profile not found."), { status: 404 });
+      const currentStudent = await lockStudent(student._id, session);
+      if (!currentStudent) throw Object.assign(new Error("Student profile not found."), { status: 404 });
+      if (currentStudent.studentType !== "advising") throw Object.assign(new Error("Extra hours can only be requested for advising students."), { status: 400 });
+      if (req.user.role === "advisor" && !currentStudent.assignedAdvisor?.equals(req.user._id)) {
+        throw Object.assign(new Error("You can only request extra hours for your assigned students."), { status: 403 });
+      }
+      if (isProbationStudent(currentStudent)) {
+        throw Object.assign(new Error("Probation students cannot receive extra credit hours."), { status: 400 });
+      }
+      const standardAllowance = standardCreditAllowance(currentStudent.currentSemester);
+      if (!standardAllowance) {
+        throw Object.assign(new Error(`Standard credit allowance is not configured for semester ${currentStudent.currentSemester}.`), { status: 400 });
+      }
       const pending = await ExtraHoursRequest.findOne(pendingRequestQuery).select("_id").session(session).lean();
       if (pending) {
         throw Object.assign(new Error(duplicateMessage), { status: 400, existingRequestId: pending._id });
       }
 
+      const currentTerm = await AcademicTerm.findById(term._id).session(session).lean();
+      if (!currentTerm) throw Object.assign(new Error("Academic term not found."), { status: 404 });
+      const itemizedCourses = await itemizeCourses(currentStudent, validCourseObjectIds, currentTerm, session);
+      const requestedHours = itemizedCourses.reduce((sum, item) => sum + item.hours, 0);
+      const totalCost = itemizedCourses.reduce((sum, item) => sum + item.subtotal, 0);
       const hoursBeforeRequest = await creditHoursBefore(student._id, term._id, standardAllowance, { session });
       const hoursAfterRequest = hoursBeforeRequest + requestedHours;
       if (hoursAfterRequest > 34) {
         throw Object.assign(new Error(`Total credit hours (${hoursAfterRequest}) cannot exceed the 34-hour university maximum.`), { status: 400 });
       }
+      const isGraduating = hoursAfterRequest > standardAllowance + 3
+        && await canGraduateWithExtraHours(currentStudent, term._id, itemizedCourses, session);
       if (!isGraduating && hoursAfterRequest > standardAllowance + 3) {
         throw Object.assign(new Error(`A student not graduating within one year may add at most 3 hours above standard allowance (${standardAllowance} standard + 3 max extra = ${standardAllowance + 3}). This request would bring the total to ${hoursAfterRequest} hours.`), { status: 400 });
       }
@@ -343,19 +379,8 @@ export async function decideExtraHoursRequest(req, res) {
       if (request.decisionStatus !== "pending") throw Object.assign(new Error("Only pending requests can be decided."), { status: 409 });
       if (decision === "approved") {
         // Updating the student serializes approvals that share a credit limit.
-        const student = await StudentProfile.findByIdAndUpdate(request.student, { $inc: { __v: 1 } }, { session });
-        if (!student || student.studentType !== "advising" || isProbationStudent(student)) {
-          throw Object.assign(new Error("The student is no longer eligible for extra hours."), { status: 409 });
-        }
-        const allowance = standardCreditAllowance(student.currentSemester);
-        if (!allowance) throw Object.assign(new Error("The student's standard credit allowance is unavailable."), { status: 409 });
-        const before = await creditHoursBefore(student._id, request.term, allowance, { session, exclude: request._id });
-        const after = before + request.requestedHours;
-        const limit = request.eligibilitySnapshot.graduatingWithinOneYear ? 34 : Math.min(34, allowance + 3);
-        if (after > limit) throw Object.assign(new Error(`Approval would exceed the student's ${limit}-hour limit.`), { status: 409 });
-        request.eligibilitySnapshot.standardAllowance = allowance;
-        request.eligibilitySnapshot.hoursBeforeRequest = before;
-        request.eligibilitySnapshot.hoursAfterRequest = after;
+        const student = await lockStudent(request.student, session);
+        request.eligibilitySnapshot = await validateCurrentApproval(request, student, session, true);
       }
       request.decisionStatus = decision;
       request.decisionNote = responseNote.trim();
@@ -396,6 +421,7 @@ export async function listAdvisorExtraHoursRequests(req, res) {
 
 /** Req. 91, 93: Pay or retry through hosted card checkout. */
 const pendingStripe = { kind: "gatewayPayment", status: "pending", "metadata.stripeCheckout": true };
+const checkoutStatus = (transaction) => transaction.status === "REFUNDED" ? "refunded" : transaction.status;
 
 function settlementRequest(request) {
   if (!request) throw Object.assign(new Error("Extra-hours request not found."), { status: 404 });
@@ -419,13 +445,44 @@ async function reconcileStripeCheckout(attempt, checkout, declinedBeforeClosing 
   try {
     return await session.withTransaction(async () => {
       const transaction = await FinancialTransaction.findById(attempt.id).session(session);
-      if (transaction.status !== "pending") return transaction.status;
+      if (transaction.status !== "pending") return checkoutStatus(transaction);
       const request = await ExtraHoursRequest.findById(transaction.extraHoursRequest).session(session);
       settlementRequest(request);
       transaction.status = status;
       transaction.occurredAt = new Date();
       if (paid) {
         transaction.transactionReference = checkout.payment_intent?.id || checkout.id;
+        try {
+          const student = await lockStudent(request.student, session);
+          request.eligibilitySnapshot = await validateCurrentApproval(request, student, session);
+        } catch (error) {
+          if (error.status !== 409) throw error;
+          // Stripe already captured the payment. Compensate in the wallet, using the same
+          // ledger semantics as a staff refund, and preserve the provider reference.
+          const refundReason = error.message;
+          transaction.status = "REFUNDED";
+          transaction.refundedAt = transaction.occurredAt;
+          transaction.refundReason = refundReason;
+          const [refund] = await FinancialTransaction.create([{
+            student: transaction.student, extraHoursRequest: request._id, relatedTransaction: transaction._id,
+            kind: "refund", type: "REFUND", status: "succeeded", settlementOption: "wallet",
+            amount: transaction.amount, currency: transaction.currency,
+            transactionReference: `REF-${transaction._id}`, refundedAt: transaction.refundedAt,
+            refundReason, idempotencyKey: `extra-hours:${transaction._id}:checkout-refund`,
+          }], { session });
+          request.settlementStatus = "refunded";
+          request.settlementOption = "gateway";
+          request.history.push({ action: "refunded", actor: attempt.metadata.actor, note: refundReason,
+            settlementOption: "gateway", settlementStatus: "refunded", amount: transaction.amount });
+          await transaction.save({ session });
+          await request.save({ session });
+          await notifyStudents({ _id: request.student, studentType: "advising" }, {
+            type: "refundIssued", title: "Extra-hours refund issued",
+            message: `${refund.amount} ${refund.currency} was refunded to your wallet.`,
+            relatedModel: "FinancialTransaction", relatedId: refund._id,
+          }, session);
+          return "refunded";
+        }
         request.settlementStatus = "paid";
         request.settlementOption = "gateway";
       }
@@ -452,6 +509,8 @@ async function reserveStripeCheckout(id, student, actor) {
       const request = await ExtraHoursRequest.findOne({ _id: id, student }).session(session);
       settlementRequest(request);
       const existing = await FinancialTransaction.findOne({ ...pendingStripe, extraHoursRequest: id }).session(session);
+      if (existing?.metadata.stripeSessionId) return existing;
+      await validateCurrentApproval(request, await lockStudent(student, session), session);
       if (existing) return existing;
       // Serialize checkout starts with wallet payments and installment deferrals.
       await ExtraHoursRequest.updateOne({ _id: id }, { $inc: { __v: 1 } }, { session });
@@ -476,8 +535,28 @@ export async function startExtraHoursCheckout(req, res) {
     if (attempt.metadata.stripeSessionId) {
       const existing = await getStripeCheckout(attempt.metadata.stripeSessionId);
       const status = await reconcileStripeCheckout(attempt, existing);
-      if (status === "pending") return res.json({ checkoutUrl: existing.url });
-      if (status === "succeeded") return res.json({ status });
+      if (status === "pending") {
+        // An existing provider session can remain open after a catalogue change.
+        try {
+          await mongoose.connection.transaction(async (session) => {
+            const request = await ExtraHoursRequest.findById(attempt.extraHoursRequest).session(session);
+            settlementRequest(request);
+            await validateCurrentApproval(request, await lockStudent(profile.id, session), session);
+          });
+        } catch (error) {
+          if (error.status !== 409) throw error;
+          try {
+            await expireStripeCheckout(existing.id);
+          } catch (expireError) {
+            if (expireError.stripeStatus !== 400) throw expireError;
+          }
+          const statusAfterExpiry = await reconcileStripeCheckout(attempt, await getStripeCheckout(existing.id));
+          if (statusAfterExpiry === "succeeded" || statusAfterExpiry === "refunded") return res.json({ status: statusAfterExpiry });
+          throw error;
+        }
+        return res.json({ checkoutUrl: existing.url });
+      }
+      if (status === "succeeded" || status === "refunded") return res.json({ status });
       attempt = await reserveStripeCheckout(req.params.id, profile.id, req.user._id);
     }
     let checkout;
@@ -516,7 +595,7 @@ export async function checkExtraHoursCheckout(req, res) {
       ...(attemptId && { _id: attemptId }),
     }).sort({ createdAt: -1, _id: -1 });
     if (!attempt) return res.status(404).json({ message: "No Stripe checkout found." });
-    if (attempt.status !== "pending" || !attempt.metadata.stripeSessionId) return res.json({ status: attempt.status });
+    if (attempt.status !== "pending" || !attempt.metadata.stripeSessionId) return res.json({ status: checkoutStatus(attempt) });
     let checkout = await getStripeCheckout(attempt.metadata.stripeSessionId);
     const declinedBeforeClosing = Boolean(checkout.payment_intent?.last_payment_error);
     if (req.body?.cancel === true && checkout.status === "open") {
@@ -570,6 +649,7 @@ export async function chooseExtraHoursSettlement(req, res) {
       if (await FinancialTransaction.exists({ ...pendingStripe, extraHoursRequest: id }).session(session)) {
         throw Object.assign(new Error("Finish or cancel the open Stripe checkout first."), { status: 409 });
       }
+      request.eligibilitySnapshot = await validateCurrentApproval(request, await lockStudent(profile._id, session), session);
       let transaction;
       if (option === "deferred") {
         const installment = await getNextUniversityInstallment(profile._id, request.term, session);
@@ -586,8 +666,6 @@ export async function chooseExtraHoursSettlement(req, res) {
         request.history.push({ action: "deferred", actor: req.user._id, note: `Deferred to ${installment.label}.`, settlementOption: "deferred", settlementStatus: "deferred", amount: request.totalCost });
       } else if (option === "now") {
         if (method !== "wallet") throw Object.assign(new Error("Open Stripe Checkout for card payments."), { status: 400 });
-        // Payments for different requests share one wallet.
-        await StudentProfile.updateOne({ _id: profile._id }, { $inc: { __v: 1 } }, { session });
         const entries = await FinancialTransaction.find({ student: profile._id, kind: { $in: walletKinds } }).session(session).select("kind amount status").lean();
         const balance = entries.reduce((sum, txn) => sum + walletDelta(txn), 0);
         if (balance < Math.round(request.totalCost * 100)) throw Object.assign(new Error("Your wallet balance is not sufficient for this payment."), { status: 409 });

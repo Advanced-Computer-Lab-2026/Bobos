@@ -24,3 +24,11 @@ export function majorLabel(value) {
 export function majorMatches(left, right) {
   return canonicalMajor(left) === canonicalMajor(right);
 }
+
+export function offeringEligibleForStudent(offering, student, course = offering.course) {
+  const majorIsEligible = !course.facultyMajors?.length || course.facultyMajors.some((major) => majorMatches(major, student.major));
+  return majorIsEligible && (offering.eligibleGroups || []).some((group) =>
+    majorMatches(group.major, student.major) && (group.semester == null || Number(group.semester) === Number(student.currentSemester)) &&
+    (!group.studyGroup || !student.studyGroup || String(group.studyGroup) === String(student.studyGroup))
+  );
+}

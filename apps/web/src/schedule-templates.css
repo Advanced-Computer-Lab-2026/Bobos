@@ -278,14 +278,14 @@
   grid-template-columns: minmax(0, 1fr) minmax(170px, .46fr);
   align-items: start;
   align-content: start;
-  gap: 19px 24px;
-  padding: 19px var(--template-editor-inset) 23px;
+  gap: 17px 24px;
+  padding: 19px var(--template-editor-inset) 18px;
   overflow: auto;
   overscroll-behavior: contain;
 }
 .template-editor-cohort {
   grid-column: 1/-1;
-  padding-bottom: 19px;
+  padding-bottom: 15px;
   border-block-end: 1px solid var(--line);
 }
 .template-editor h3, .template-editor legend { margin: 0 0 9px; padding: 0; color: var(--ink); font-size: 16px; font-weight: 550; }
@@ -328,7 +328,38 @@
   border-block-start: 1px solid var(--line);
 }
 .template-editor-footer .feedback { margin: 0 0 9px; }
-.template-editor-footer .form-footer { margin: 0; justify-content: flex-end; }
+.template-editor-footer .form-footer { margin: 0; padding: 0; border: 0; justify-content: flex-end; }
+
+.service-surface[data-service="templates"] .academic-services-embedded .template-delete > .modal-card {
+  width: min(100%, 480px);
+  padding: clamp(17px, 3vw, 24px);
+}
+.service-surface[data-service="templates"] .academic-services-embedded .template-delete .modal-heading {
+  padding: 0;
+  margin-block-end: 15px;
+  border: 0;
+}
+.template-delete-selection {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: start;
+  gap: 8px 14px;
+  padding: 12px 15px;
+  background: var(--raised);
+  border-radius: 8px;
+}
+.template-delete-selection > div { display: grid; gap: 3px; min-width: 0; }
+.template-delete-selection strong { font-size: 17px; font-weight: 600; overflow-wrap: anywhere; }
+.template-delete-selection > div > span { color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+.template-delete-copy { margin: 13px 0 18px; color: var(--muted); font-size: 14px; line-height: 1.5; }
+.template-delete .form-footer { margin: 0; padding: 0; border: 0; }
+.template-delete .paper-toss-button {
+  border: 1px solid color-mix(in srgb, var(--danger-ink) 52%, var(--line));
+  background: var(--danger-bg);
+  color: var(--danger-ink);
+}
+.template-delete .paper-toss-button:hover:enabled { background: color-mix(in srgb, var(--danger-bg) 86%, var(--danger-ink)); }
 
 @container schedule-templates (width < 43rem) {
   .template-library { grid-template-columns: minmax(0, 1fr); }

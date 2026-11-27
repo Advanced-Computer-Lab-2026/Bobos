@@ -223,11 +223,9 @@ export default function GraduationPlans({ student, token, onBack, backLabel }) {
           </table></div>}
           <div className="planner-course-tools"><div><h3>Remaining courses</h3><p className="helper-text">Assign each course to an available term. Your selections stay selected when you search.</p></div><label className="field"><span>Find a course</span><input type="search" name="plan-course-search" autoComplete="off" placeholder="Course code or name…" value={courseSearch} onChange={(event) => setCourseSearch(event.target.value)} /></label></div>
           <div className="table-scroll planner-course-table" role="region" tabIndex={0} aria-label="Remaining courses"><table>
-            <thead><tr><th>Remaining course</th><th>Hours</th><th>Prerequisites</th><th>Assign to</th></tr></thead>
+            <thead><tr><th>Remaining course</th><th>Hours</th><th>Prerequisites</th><th>Term</th></tr></thead>
             <tbody>{visibleCourses.map((course) => <tr key={course._id}>
-              <td>{course.code} · {course.name}
-                {course.elective && <span className="secondary-text">{course.required ? "Required elective retake" : "Elective choice"}</span>}
-                {course.failed && <span className="secondary-text">Failed</span>}</td>
+              <td><div className="planner-course-identity"><OfferingCourseIcon code={course.code} /><div><strong>{course.name}</strong><small>{[course.code, course.elective && (course.required ? "Required elective retake" : "Elective choice"), course.failed && "Failed"].filter(Boolean).join(" · ")}</small></div></div></td>
               <td>{course.creditHours}</td>
               <td>{course.prerequisites.map((id) => workspace.prerequisiteCodes[id] || "Unavailable course").join(", ") || "—"}</td>
               <td><select aria-label={`Term for ${course.code}`} value={assignments[course._id] ?? ""}

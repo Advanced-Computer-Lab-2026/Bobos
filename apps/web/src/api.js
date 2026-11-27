@@ -13,9 +13,9 @@ const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "
 function requestFailureMessage(status, data) {
   if (data?.message) return data.message;
   if ([502, 503, 504].includes(status)) {
-    return `The API service is unavailable (${status}). Check the configured API URL and that the backend is running.`;
+    return "This service is temporarily unavailable. Please try again in a few minutes.";
   }
-  return `Request failed (${status}).`;
+  return "We couldn’t complete your request. Please try again.";
 }
 
 export async function api(path, { token, method = "GET", body, signal, responseType = "json" } = {}) {
@@ -33,7 +33,7 @@ export async function api(path, { token, method = "GET", body, signal, responseT
     });
   } catch (error) {
     if (error.name === "AbortError") throw error;
-    throw new ApiError("The API could not be reached. Check that the backend is running.", 0, path);
+    throw new ApiError("We couldn’t connect to the portal. Check your internet connection and try again.", 0, path);
   }
 
   if (responseType === "blob") {
@@ -51,9 +51,9 @@ export async function api(path, { token, method = "GET", body, signal, responseT
   return data;
 }
 
-export function explainApiError(error, feature) {
+export function explainApiError(error) {
   if (error?.status === 404 && !error?.data?.message) {
-    return `${feature} is not available on the current Development backend yet (${error.path}).`;
+    return "We couldn’t find what you requested.";
   }
   return error?.data?.message || error?.message || "Something went wrong. Please try again.";
 }

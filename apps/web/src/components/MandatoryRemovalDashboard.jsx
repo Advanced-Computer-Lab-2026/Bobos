@@ -367,8 +367,8 @@ export default function MandatoryRemovalDashboard({ token, role, advisorId, noti
       </section>
 
       {relatedRecord?.kind === "course" && <CourseDetailsModal course={relatedRecord.data} onClose={closeRelatedRecord} />}
-      {relatedRecord?.kind === "student" && <Modal title={relatedRecord.data.user?.fullName || "Student profile"} onClose={closeRelatedRecord}>
-        <StudentProfileDetails details={relatedRecord.data} prominentIdentity />
+      {relatedRecord?.kind === "student" && <Modal title="Student profile" accessibleName={relatedRecord.data.user?.fullName || "Student profile"} className="record-dossier-dialog" onClose={closeRelatedRecord} wide>
+        <StudentProfileDetails details={relatedRecord.data} />
       </Modal>}
 
       {selectedDetail && (
@@ -469,7 +469,7 @@ export default function MandatoryRemovalDashboard({ token, role, advisorId, noti
                 <fieldset className="removal-decision-options" aria-label="Decision" disabled={submittingDecision}>
                   {REMOVAL_DECISIONS.map(({ value, choice }) => <label key={value}>
                     <input type="radio" name="removal-decision" value={value} checked={decision === value} onChange={() => setDecision(value)} required />
-                    <svg aria-hidden="true" viewBox="0 0 56 56" width="48" height="48" fill="currentColor">
+                    <svg aria-hidden="true" viewBox="0 0 56 56" width="24" height="24" fill="currentColor">
                       <path d={value === "approved"
                         ? "M8 29c2-1 5 .3 7 2.7l9 9C31 29 39 18 48 12c2-1 3 .7 1.5 2.5-8 9.5-15 20-23 32-1 1.7-3.2 1.9-4.8.5C17 42 12 36.5 8 32.5c-1.2-1.2-1.4-2.7 0-3.5Z"
                         : "M13 11c1.4-.7 3.1.3 4.1 1.5C26 22 35.4 31.7 45 42.9c1.6 1.8-.2 4.2-2.5 3C30.6 36 21 26.4 12.6 15.2c-1.1-1.5-1.1-3.4.4-4.2Z M43.7 11.4c2.1-1 3.8 1 2.4 3C36 28 25.9 38.1 14.6 46.4c-2 1.5-4.1-.6-2.4-2.5 8.6-10.6 18.4-20.8 29.5-31.3.6-.6 1.4-1 2-1.2Z"} />

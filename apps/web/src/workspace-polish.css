@@ -138,3 +138,16 @@
 @media (max-width: 700px) {
   .pending-work-group-grid { grid-template-columns: 1fr; gap: 14px; }
 }
+
+.workspace-page .planner-course-table { border: 1px solid var(--line); border-radius: 9px; }
+.workspace-page .planner-course-table table { min-width: 590px; table-layout: fixed; }
+.workspace-page .planner-course-table :is(th,td) { padding: 10px 14px; vertical-align: middle; text-align: start; overflow-wrap: anywhere; }
+.workspace-page .planner-course-table th:first-child { width: 39%; }
+.workspace-page .planner-course-table th:nth-child(2) { width: 11%; }
+.workspace-page .planner-course-table th:nth-child(3) { width: 22%; }
+.workspace-page .planner-course-table th:nth-child(4) { width: 28%; }
+.workspace-page .planner-course-table select { min-width: 0; text-overflow: ellipsis; }
+.planner-course-identity { display: flex; gap: 9px; align-items: center; }
+.planner-course-identity strong, .planner-course-identity small { display: block; }
+.planner-course-identity small { color: var(--muted); margin-top: 3px; }
+.planner-course-identity .offering-course-emblem { width: 36px; height: 36px; }

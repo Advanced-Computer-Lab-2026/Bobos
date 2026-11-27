@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, explainApiError } from "../api.js";
+import { Modal } from "./AcademicWorkspace.jsx";
 import { ScheduleActivityPage } from "./B1Pages.jsx";
 import { StudentRegister, RegisterRow, StudentIdentity, RegisterEmpty, RecordPages, scheduleTone } from "./CoordinatorRecords.jsx";
 import { ChromeIcon } from "./PortalChrome.jsx";
@@ -49,8 +50,14 @@ export default function StudentDirectoryPage({ token, role, notify }) {
   const loadStudents = useCallback(async (signal) => {
     setLoading(true); setError("");
     const params = new URLSearchParams(Object.entries(applied).filter(([, value]) => value));
-    try { setDirectory(await api(`/api/admin/students?${params.toString()}`, { token, signal })); }
-    catch (requestError) { if (requestError.name !== "AbortError") setError(explainApiError(requestError, "Student directory")); }
+    try {
+      const result = await api(`/api/admin/students?${params.toString()}`, { token, signal });
+      if (signal?.aborted) return;
+      if (!Array.isArray(result?.students)) throw new Error("The student directory could not load. Please try again.");
+      setDirectory(result);
+    } catch (requestError) {
+      if (!signal?.aborted && requestError.name !== "AbortError") setError(explainApiError(requestError, "Student directory"));
+    }
     finally { if (!signal?.aborted) setLoading(false); }
   }, [applied, token]);
 
@@ -150,30 +157,46 @@ export default function StudentDirectoryPage({ token, role, notify }) {
 
 
 
-    {details && <div className="modal-backdrop" role="presentation" onClick={() => setDetails(null)}><section className="modal-card" role="dialog" aria-modal="true" aria-labelledby="student-details-title" onClick={(event) => event.stopPropagation()}><div className="modal-heading"><div><p className="eyebrow">STUDENT RECORD</p><h2 id="student-details-title">Student details</h2></div><button className="icon-button" type="button" onClick={() => setDetails(null)} aria-label="Close">×</button></div>{details.loading ? <div className="loading-state"><span className="loader" />Loading student…</div> : details.error ? <div className="feedback error" role="alert">{details.error}</div> : <><StudentProfileDetails details={details} prominentIdentity workflow={students.find((student) => student.id === details._id)} showWorkflow />{role === "administrator" && details.user && <button className={details.user.isActive ? "outline-button danger-button" : "primary-button"} type="button" onClick={setAccountStatus}>{details.user.isActive ? "Deactivate account" : "Activate account"}</button>}{details.studentType === "advising" && <div style={{ marginTop: "1rem" }}><ScheduleActivityPage token={token} studentId={details._id} /></div>}</>}</section></div>}
+    {details && <Modal title="Student details" className="record-dossier-dialog" wide onClose={() => setDetails(null)}>
+      {details.loading ? <div className="loading-state"><span className="loader" />Loading student…</div> : details.error ? <div className="feedback error" role="alert">{details.error}</div> : <>
+        <StudentProfileDetails details={details} workflow={students.find((student) => student.id === details._id)} showWorkflow />
+        {role === "administrator" && details.user && <div className="record-dossier-action"><button className={details.user.isActive ? "outline-button danger-button" : "primary-button"} type="button" onClick={setAccountStatus}>{details.user.isActive ? "Deactivate account" : "Activate account"}</button></div>}
+        {details.studentType === "advising" && <section className="record-dossier-activity" aria-label="Student schedule history"><ScheduleActivityPage token={token} studentId={details._id} /></section>}
+      </>}
+    </Modal>}
   </div>;
 }
 
-export function StudentProfileDetails({ details, prominentIdentity, workflow, showWorkflow }) {
-  return <div className="detail-grid modal-details">
-    {prominentIdentity ? <StudentIdentity name={details.user?.fullName} id={details.studentId} /> : <><Detail label="Student ID" value={details.studentId} /><Detail label="Name" value={details.user?.fullName} /></>}
-    <Detail label="Email" value={details.user?.email} />
-    <Detail label="Student type" value={pretty(details.studentType)} />
-    <Detail label="Major" value={details.major} />
-    <Detail label="Semester" value={details.currentSemester} />
-    <Detail label="Academic standing" value={pretty(details.academicStanding)} />
-    <Detail label="GPA" value={details.gpa} />
-    <Detail label="Enrollment" value={pretty(details.enrollmentStatus)} />
-    <Detail label="Advisor" value={details.assignedAdvisor?.fullName || "Unassigned"} />
-    {details.user?.isActive != null && <Detail label="Account" value={details.user.isActive ? "Active" : "Inactive"} />}
-    {showWorkflow && <>
+export function StudentProfileDetails({ details, workflow, showWorkflow }) {
+  const name = details.user?.fullName || details.fullName || "Student";
+  const email = details.user?.email;
+  return <div className="record-dossier">
+    <div className="record-dossier-intro">
+      <PortalAvatar name={name} />
+      <div><h3>{name}</h3><p><span>{details.studentId}</span>{details.studentType && <> · {pretty(details.studentType)}</>}</p></div>
+    </div>
+    <div className="record-dossier-grid">
+      <section><h4>Academic record</h4><dl className="record-dossier-facts">
+        <Detail label="Major" value={details.major} />
+        <Detail label="Semester" value={details.currentSemester} />
+        <Detail label="GPA" value={details.gpa} />
+        <Detail label="Academic standing" value={pretty(details.academicStanding)} />
+      </dl></section>
+      <section><h4>Contact and enrollment</h4><dl className="record-dossier-facts">
+        <Detail label="Advisor" value={details.assignedAdvisor?.fullName || "Unassigned"} />
+        <Detail label="Enrollment" value={pretty(details.enrollmentStatus)} />
+        {details.user?.isActive != null && <Detail label="Account" value={details.user.isActive ? "Active" : "Inactive"} />}
+        <Detail label="Email" value={email ? <a href={`mailto:${email}`}>{email}</a> : null} />
+      </dl></section>
+    </div>
+    {showWorkflow && <section className="record-dossier-workflow"><h4>Advising workflow</h4><dl className="record-dossier-facts">
       <Detail label="Blocking step" value={workflow?.blockingStep || "None"} />
-      <Detail label="Workflow updated" value={workflow?.lastUpdatedAt ? new Date(workflow.lastUpdatedAt).toLocaleString() : "—"} />
-    </>}
+      <Detail label="Last updated" value={workflow?.lastUpdatedAt ? new Date(workflow.lastUpdatedAt).toLocaleString() : null} />
+    </dl></section>}
   </div>;
 }
 
 function Select({ label, value, onChange, options, disabled }) {
   return <label className="field"><span>{label}</span><select value={value} disabled={disabled} onChange={(event) => onChange(event.target.value)}><option value="">All</option>{options.map((option) => { const item = typeof option === "string" ? { value: option, label: pretty(option) } : option; return <option key={item.value} value={item.value}>{item.label}</option>; })}</select></label>;
 }
-function Detail({ label, value }) { return <div className="detail-item"><span>{label}</span><strong>{value ?? "—"}</strong></div>; }
+function Detail({ label, value }) { return <div><dt>{label}</dt><dd>{value ?? "—"}</dd></div>; }
