@@ -1,0 +1,853 @@
+/* Match the surrounding Portal registers and Schedule templates workspace.
+   Keep these rules inside academic services so other workspaces retain their design. */
+.service-surface .academic-services-embedded {
+  --primary: var(--ink);
+  --inverse: var(--canvas);
+  --control: var(--line);
+  --green: var(--ink);
+  --green-dark: var(--ink);
+  font: 400 14px/1.55 Styrene, system-ui, sans-serif;
+}
+.academic-services-embedded .page-content { padding: 0; }
+.academic-services-embedded :is(.page-stack, .workspace-page) { gap: 28px; }
+.academic-services-embedded :is(.workspace-header, .page-title-row) {
+  align-items: center;
+  gap: 20px;
+  margin: 0 0 4px;
+}
+.academic-services-embedded :is(.workspace-header, .page-title-row) h1 {
+  margin: 0;
+  color: var(--ink);
+  font: 500 22px/1.22 Styrene, system-ui, sans-serif;
+  letter-spacing: -.03em;
+}
+.academic-services-embedded :is(.workspace-header, .page-title-row) :is(p, .page-description) {
+  max-width: 68ch;
+  margin: 11px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.academic-services-embedded :is(.workspace-header, .page-title-row) .eyebrow { display: none; }
+.academic-services-embedded .panel {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.academic-services-embedded .panel + .panel { padding-top: 24px; border-top: 1px solid var(--line); }
+.academic-services-embedded :is(.results-heading, .panel-heading) { margin-bottom: 18px; }
+.academic-services-embedded :is(h2, .panel h2) {
+  color: var(--ink);
+  font: 500 17px/1.35 Styrene, system-ui, sans-serif;
+  letter-spacing: -.025em;
+}
+.academic-services-embedded :is(.table-wrap, .table-scroll) { border: 0; border-radius: 0; }
+.academic-services-embedded table { font-size: 14px; line-height: 1.5; }
+.academic-services-embedded table th {
+  padding: 12px 14px;
+  color: var(--muted);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: normal;
+}
+.academic-services-embedded table td { padding: 18px 14px; border-bottom: 1px solid var(--line); }
+.academic-services-embedded table :is(th, td):first-child { padding-inline-start: 0; }
+.academic-services-embedded table :is(th, td):last-child { padding-inline-end: 0; }
+.academic-services-embedded table td strong { font-weight: 500; }
+.academic-services-embedded tbody tr:hover { background: transparent; }
+.academic-services-embedded :is(.primary-button, .outline-button) {
+  min-height: 38px;
+  padding: 9px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: 500 13px/1.4 Styrene, system-ui, sans-serif;
+  box-shadow: none;
+}
+.academic-services-embedded .primary-button,
+.academic-services-embedded .primary-button:hover:not(:disabled) {
+  color: var(--canvas);
+  background: var(--ink);
+  border-color: var(--ink);
+  filter: none;
+  transform: none;
+}
+.academic-services-embedded .outline-button { color: var(--ink); background: transparent; }
+.academic-services-embedded .outline-button:hover:not(:disabled) { background: var(--raised); }
+.academic-services-embedded .primary-button.destructive-action {
+  color: var(--danger-ink);
+  background: var(--danger-bg);
+  border-color: transparent;
+}
+.academic-services-embedded :is(.field input, .field select, .field textarea, .search-control input) {
+  min-height: 40px;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  background-color: var(--paper);
+  font: 400 14px/1.5 Styrene, system-ui, sans-serif;
+  box-shadow: none;
+}
+.academic-services-embedded .field select { padding-inline-end: 40px; }
+.academic-services-embedded .field > span { color: var(--muted); font-size: 12px; font-weight: 500; }
+.academic-services-embedded .field :is(input, select, textarea):focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+}
+.academic-services-embedded :is(.pending-summary-card, .pending-work-summary) {
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.academic-services-embedded .status-pill { font-size: 12px; font-weight: 500; }
+.academic-services-embedded .workspace-empty { min-height: 190px; padding: 32px 16px; }
+.academic-services-embedded .workspace-empty-icon { border: 0; background: transparent; }
+.academic-services-embedded .draft-section-nav { padding-block: 12px; border-block: 1px solid var(--line); }
+@media (max-width: 700px) {
+  .academic-services-embedded :is(.workspace-header, .page-title-row) { align-items: flex-start; }
+  .academic-services-embedded table td { padding-block: 14px; }
+  .academic-services-embedded .panel + .panel { padding-top: 18px; }
+}
+.service-surface[data-heading-art="true"] .academic-services-embedded :is(.workspace-header, .page-title-row) > div:first-child {
+  position: relative;
+  min-height: 64px;
+  padding-inline-start: 96px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.service-surface[data-heading-art="true"] .academic-services-embedded :is(.workspace-header, .page-title-row) > div:first-child::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: 0;
+  top: 50%;
+  width: 78px;
+  height: 64px;
+  transform: translateY(-50%);
+  background: var(--portal-heading-art) center / contain no-repeat;
+  pointer-events: none;
+}
+@media (max-width: 700px) {
+  .service-surface[data-heading-art="true"] .academic-services-embedded :is(.workspace-header, .page-title-row) > div:first-child { padding-inline-start: 78px; }
+  .service-surface[data-heading-art="true"] .academic-services-embedded :is(.workspace-header, .page-title-row) > div:first-child::before { width: 64px; }
+}
+/* Student register and financial ledger use the same quiet workspace hierarchy. */
+.service-surface:is([data-service="directory"], [data-service="financial-records"]) .academic-services-embedded :is(.eyebrow, .panel-count) { display: none; }
+.service-surface:is([data-service="directory"], [data-service="financial-records"]) .academic-services-embedded .directory-filters {
+  padding-block: 0 22px;
+  border-bottom: 1px solid var(--line);
+}
+.service-surface:is([data-service="directory"], [data-service="financial-records"]) .academic-services-embedded .results-panel {
+  padding-top: 0;
+  border-top: 0;
+}
+.service-surface:is([data-service="directory"], [data-service="financial-records"]) .academic-services-embedded :is(.filter-actions, .filter-panel-actions) {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+.service-surface:is([data-service="directory"], [data-service="financial-records"]) .academic-services-embedded :is(.term-label, .result-count) {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+.service-surface[data-service="financial-records"] .finance-page > .directory-filters > .filter-grid {
+  grid-template-columns: minmax(240px, 2fr) repeat(3, minmax(130px, 1fr));
+  align-items: end;
+  gap: 14px;
+}
+.service-surface[data-service="financial-records"] .finance-page > .directory-filters > .filter-grid .span-two { grid-column: auto; }
+.service-surface[data-service="financial-records"] :is(.badge-currency, .detail-item strong, td:nth-child(5)) {
+  font-variant-numeric: tabular-nums;
+}
+.service-surface[data-service="financial-records"] .role-pill {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+.service-surface[data-service="directory"] .student-cell-button { gap: 3px; }
+.service-surface[data-service="directory"] .student-cell-button strong { font-size: 13px; font-variant-numeric: tabular-nums; }
+.service-surface[data-service="directory"] .student-cell-button span { margin: 0; font-size: 14px; font-weight: 500; }
+.service-surface[data-service="directory"] .student-cell-button small { margin: 0; color: var(--muted); font-size: 12px; }
+.service-surface[data-service="directory"] .filter-panel {
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  box-shadow: none;
+}
+.service-surface:is([data-service="directory"], [data-service="financial-records"]) .modal-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: none;
+}
+.service-surface:is([data-service="directory"], [data-service="financial-records"]) .detail-item {
+  padding-block: 12px;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+}
+.service-surface:is([data-service="directory"], [data-service="financial-records"]) .detail-item strong { font-weight: 500; }
+@media (max-width: 1100px) {
+  .service-surface[data-service="financial-records"] .finance-page > .directory-filters > .filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 600px) {
+  .service-surface[data-service="financial-records"] .finance-page > .directory-filters > .filter-grid { grid-template-columns: minmax(0, 1fr); }
+  .service-surface[data-service="directory"] .filter-panel { padding: 14px; }
+}
+
+/* B1 queues and activity use the same filter and section treatment as the register. */
+.service-surface:is([data-service="pending-work"], [data-service="schedule-activity"]) .result-count {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 400;
+}
+.service-surface[data-service="schedule-activity"] .filter-panel {
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  box-shadow: none;
+}
+.service-surface[data-service="pending-work"] .pending-summary-group li { padding-block: 10px; font-size: 13px; }
+.service-surface[data-service="pending-work"] .pending-work-records th { border-bottom: 1px solid var(--line); }
+.service-surface[data-service="pending-work"] .pending-request-list li { padding-block: 3px; }
+@media (max-width: 700px) {
+  .service-surface[data-service="schedule-activity"] .filter-panel { padding: 14px; }
+}
+
+/* Scheduling follows the Portal register: one task at a time, on the canvas. */
+.academic-services-embedded .scheduling-page [hidden] { display: none !important; }
+.academic-services-embedded .scheduling-page { gap: 24px; }
+.academic-services-embedded .scheduling-page .eyebrow { display: none; }
+.academic-services-embedded .scheduling-page .draft-summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  padding: 0 0 18px;
+  border-bottom: 1px solid var(--line);
+}
+.academic-services-embedded .draft-summary > div { flex: 1; }
+.academic-services-embedded .draft-summary h2 { margin: 0 0 5px; font-size: 14px; }
+.academic-services-embedded .draft-view-tabs { margin: 0; border: 0; padding: 0; gap: 6px; }
+.academic-services-embedded .draft-view-tabs button { min-height: 40px; padding-inline: 16px; font-size: 13px; }
+.academic-services-embedded .draft-other-courses {
+  padding: 14px 0;
+  border-block: 1px solid var(--line);
+}
+.academic-services-embedded .draft-other-courses > summary {
+  width: fit-content;
+  color: var(--muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+.academic-services-embedded .draft-other-courses[open] > summary { margin-bottom: 22px; color: var(--ink); }
+.academic-services-embedded .draft-course-editor { display: grid; gap: 22px; }
+.academic-services-embedded .draft-course-editor > .helper-text { max-width: 65ch; }
+.academic-services-embedded .draft-course-list { display: grid; gap: 0; }
+.academic-services-embedded .draft-course {
+  padding: 18px 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.academic-services-embedded .draft-course.selected { background: transparent; border-color: var(--line); }
+.academic-services-embedded .draft-course-heading strong { font-size: 14px; font-weight: 500; }
+.academic-services-embedded .draft-course-heading .secondary-text { margin-top: 5px; font-size: 12px; }
+.academic-services-embedded .draft-group-grid { margin-top: 18px; gap: 20px; }
+.academic-services-embedded .draft-credit-grid {
+  padding: 16px 0;
+  border-block: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+}
+.academic-services-embedded .draft-credit-grid dd { font-size: 20px; font-weight: 500; }
+.academic-services-embedded .draft-course-editor > .form-footer {
+  padding: 18px 0 0;
+  margin: 0;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.academic-services-embedded .draft-course-editor > .form-footer .helper-text { max-width: 55ch; }
+.academic-services-embedded .draft-preferences { margin-top: 24px; }
+@media (max-width: 700px) {
+  .academic-services-embedded .draft-view-tabs { width: 100%; }
+  .academic-services-embedded .draft-view-tabs button { padding-inline: 10px; }
+  .academic-services-embedded .draft-course-editor > .form-footer { align-items: flex-start; flex-direction: column; }
+}
+
+/* Live schedules use the same course-colored teaching week as the Portal home. */
+.academic-services-embedded .portal-week {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(150px, 1fr));
+  align-items: start;
+  gap: 14px;
+  padding-bottom: 12px;
+  overflow-x: auto;
+}
+.academic-services-embedded .portal-week .schedule-day {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.academic-services-embedded .portal-week .schedule-day h3 {
+  margin: 0 0 14px;
+  color: var(--ink);
+  font: 400 20px/1.3 Tiempos, Georgia, serif;
+  letter-spacing: -.025em;
+}
+.academic-services-embedded .portal-week .schedule-slot {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 0 8px;
+  padding: 14px 12px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--course-stock);
+  color: #25382f;
+  box-shadow: none;
+}
+.portal-week [data-course-tone="blue"] { --course-stock: #76ace9; }
+.portal-week [data-course-tone="coral"] { --course-stock: #ee9b7d; }
+.portal-week [data-course-tone="sage"] { --course-stock: #bed1c9; }
+.portal-week [data-course-tone="ivory"] { --course-stock: #efeee6; }
+.academic-services-embedded .portal-week .schedule-slot :is(strong, small, time) { color: inherit; }
+.academic-services-embedded .portal-week .schedule-slot .schedule-course-name { margin: 6px 0 2px; font-size: 14px; font-weight: 500; line-height: 1.4; }
+.academic-services-embedded .portal-week .schedule-slot small { font-size: 12px; line-height: 1.45; }
+.academic-services-embedded .portal-week .schedule-meeting-time { padding-inline-end: 24px; font-size: 11px; line-height: 1.5; font-variant-numeric: tabular-nums; }
+.academic-services-embedded .portal-week .schedule-course-art { position: absolute; top: 12px; right: 10px; width: 24px; height: 24px; object-fit: contain; opacity: .8; }
+.academic-services-embedded .portal-week .empty-day { display: grid; justify-items: center; gap: 8px; padding: 16px 4px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.academic-services-embedded .portal-week .empty-day svg { width: 78px; height: 70px; }
+.academic-services-embedded .portal-week.compact { grid-template-columns: repeat(6, minmax(150px, 1fr)); }
+@media (max-width: 700px) {
+  .academic-services-embedded .portal-week { grid-template-columns: repeat(6, 160px); }
+}
+
+/* Advising, preference and graduation tools share the Portal control language. */
+.portal-advising-services .academic-services-embedded :is(.eyebrow, .panel-count) { display: none; }
+.portal-advising-services .academic-services-embedded .results-panel { padding-top: 0; border-top: 0; }
+.portal-advising-services .academic-services-embedded .directory-filters {
+  padding-bottom: 22px;
+  border-bottom: 1px solid var(--line);
+}
+.portal-advising-services .academic-services-embedded :is(.term-label, .result-count) {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+.portal-advising-services .academic-services-embedded :is(.table-actions .text-button, td > .text-button, .filter-toggle) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  font: 500 13px/1.4 Styrene, system-ui, sans-serif;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: none;
+}
+.portal-advising-services .academic-services-embedded :is(.text-button, .outline-button, .filter-toggle):hover:not(:disabled) { background: var(--raised); }
+.portal-advising-services .academic-services-embedded .table-actions { flex-wrap: wrap; gap: 8px; min-width: 200px; }
+.portal-advising-services .academic-services-embedded .filter-panel {
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  box-shadow: none;
+}
+.portal-advising-services .academic-services-embedded .filter-panel-actions,
+.portal-advising-services .academic-services-embedded .filter-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px; }
+.portal-advising-services .academic-services-embedded .modal-card {
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: none;
+}
+.portal-advising-services .academic-services-embedded .detail-item { background: transparent; border-bottom: 1px solid var(--line); padding-block: 12px; }
+.portal-advising-services .academic-services-embedded .detail-item strong { font-weight: 500; }
+.portal-advising-services .academic-services-embedded .preference-grid { gap: 28px; }
+.portal-advising-services .academic-services-embedded .preference-grid > .panel { padding: 0; border: 0; }
+.portal-advising-services .academic-services-embedded .preference-grid > .panel .helper-text { margin-bottom: 12px; }
+.portal-advising-services .academic-services-embedded :is(.preference-student-selected, .preference-student-result) {
+  padding: 14px 0;
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  box-shadow: none;
+}
+.portal-advising-services .academic-services-embedded .preference-student-result:hover { background: var(--raised); }
+.portal-advising-services .academic-services-embedded .preference-offering { padding: 18px 0; border: 0; border-top: 1px solid var(--line); border-radius: 0; background: transparent; }
+.portal-advising-services .academic-services-embedded .group-chip {
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  text-align: start;
+  box-shadow: none;
+}
+.portal-advising-services .academic-services-embedded .group-chip:is(.selected, [aria-pressed="true"]) {
+  border-color: #8aab99;
+  background: color-mix(in srgb, var(--paper) 86%, #aac5ad);
+}
+.portal-advising-services .academic-services-embedded .group-chip strong { font-size: 13px; font-weight: 500; }
+.portal-advising-services .academic-services-embedded .group-chip small { color: var(--muted); font-size: 12px; line-height: 1.5; }
+.portal-advising-services .academic-services-embedded .priority-list { padding: 0; }
+.portal-advising-services .academic-services-embedded .priority-list li { padding-block: 10px; border-bottom: 1px solid var(--line); background: transparent; }
+.portal-advising-services .academic-services-embedded .priority-list button { min-width: 32px; min-height: 32px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: var(--ink); }
+.portal-advising-services .academic-services-embedded :is(button, a, input, select, textarea):focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+.portal-advising-services .academic-services-embedded button:disabled { opacity: .5; cursor: not-allowed; }
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .portal-advising-services .academic-services-embedded :is(.outline-button, .primary-button, .table-actions .text-button, .group-chip) { transition: background-color 120ms ease-out, border-color 120ms ease-out; }
+}
+@media (max-width: 700px) {
+  .portal-advising-services .academic-services-embedded .filter-panel { padding: 14px; }
+  .portal-advising-services .academic-services-embedded .table-actions { min-width: 160px; }
+}
+
+/* Live records share the established Course catalogue table, in both themes. */
+.academic-services-embedded :is(.table-scroll, .table-wrap) {
+  max-width: 100%;
+  border: 1px solid color-mix(in srgb, var(--line) 80%, var(--muted));
+  border-radius: 10px;
+  background: transparent;
+  overflow-x: auto;
+}
+.academic-services-embedded :is(.table-scroll, .table-wrap) > table {
+  margin: 0;
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.academic-services-embedded :is(.table-scroll, .table-wrap) > table th {
+  padding: 13px 16px;
+  border: 0;
+  background: color-mix(in srgb, var(--raised) 60%, var(--canvas));
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  text-align: start;
+  white-space: nowrap;
+}
+.academic-services-embedded :is(.table-scroll, .table-wrap) > table td {
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  vertical-align: middle;
+}
+.academic-services-embedded :is(.table-scroll, .table-wrap) > table tr:last-child td { border-bottom: 0; }
+.academic-services-embedded :is(.table-scroll, .table-wrap) > table tbody tr:hover { background: color-mix(in srgb, var(--raised) 35%, transparent); }
+.academic-services-embedded :is(.table-scroll, .table-wrap) > table td .secondary-text { margin-top: 4px; color: var(--muted); font-size: 12px; }
+.academic-services-embedded .slot-changes-page .table-scroll > table :is(th, td) { font-size: 13px; }
+.academic-services-embedded .slot-changes-page .table-scroll > table th { font-size: 12px; }
+.academic-services-embedded .slot-changes-page .table-scroll > table .text-button {
+  min-height: 36px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  font: 500 13px/1.4 Styrene, system-ui, sans-serif;
+}
+.academic-services-embedded .slot-changes-page :is(.slot-request-detail-block, .slot-comparison) {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+}
+.academic-services-embedded .slot-changes-page .slot-request-detail-block .eyebrow {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: normal;
+  text-transform: none;
+}
+.academic-services-embedded .slot-changes-page .slot-request-detail-block p { margin: 8px 0 0; font-size: 14px; line-height: 1.5; }
+.academic-services-embedded .slot-changes-page .slot-request-filters { gap: 14px; }
+.academic-services-embedded .slot-changes-page .slot-request-card { padding: 24px; }
+@media (max-width: 700px) {
+  .academic-services-embedded :is(.table-scroll, .table-wrap) > table :is(th, td) { padding: 12px; }
+  .academic-services-embedded .slot-changes-page .slot-request-card { padding: 18px; }
+}
+
+/* Offering register reuses the catalogue's illustrated course identities. */
+.service-surface[data-service="offerings"] .eyebrow { display: none; }
+.service-surface[data-service="offerings"] .offering-course-identity { display: flex; align-items: center; gap: 12px; min-width: 220px; }
+.offering-course-emblem { display: inline-grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: 9px; background: #e8e4d9; color: #38342c; vertical-align: middle; }
+.offering-course-emblem[data-tone="blue"] { background: #a6c8e6; }
+.offering-course-emblem[data-tone="coral"] { background: #edb292; }
+.offering-course-emblem[data-tone="sage"] { background: #bdd2c7; }
+.offering-course-emblem :is(img,svg) { width: 28px; height: 28px; object-fit: contain; }
+.academic-services-embedded .offering-copy { padding: 18px 0; border-block: 1px solid var(--line); }
+.offering-copy > summary { width: fit-content; cursor: pointer; color: var(--ink); font: 500 15px/1.5 Styrene, system-ui, sans-serif; }
+.offering-copy[open] > summary { margin-bottom: 18px; }
+.offering-copy > .helper-text { margin-bottom: 18px; }
+.offering-copy fieldset { margin: 0; padding: 0; border: 0; }
+.offering-copy fieldset > label { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.offering-copy fieldset input { accent-color: #8aab99; }
+
+/* Offering creation is a quiet Portal form, with a stable action footer. */
+.service-surface[data-service="offerings"] .modal-card.wide-modal:has(.offering-create-form) {
+  width: min(1020px, calc(100vw - 40px));
+  max-width: 1020px;
+  max-height: calc(100dvh - 48px);
+  padding: 28px;
+  border-radius: 12px;
+  background: var(--paper);
+  color: var(--ink);
+  overflow-y: auto;
+}
+.service-surface[data-service="offerings"] .modal-card:has(.offering-create-form) .modal-heading {
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--line);
+}
+.service-surface[data-service="offerings"] .modal-card:has(.offering-create-form) .modal-heading h2 { font: 500 22px/1.25 Styrene,system-ui,sans-serif; letter-spacing: -.03em; }
+.offering-create-form { gap: 24px; }
+.offering-create-form > .form-grid { gap: 20px; }
+.offering-create-form .slot-editor-heading { margin: 8px 0 0; padding-top: 22px; border-top: 1px solid var(--line); align-items: center; }
+.offering-create-form .slot-editor-heading h3 { font: 500 17px/1.35 Styrene,system-ui,sans-serif; }
+.offering-create-form .slot-row { padding: 18px; border: 1px solid var(--line); background: transparent; border-radius: 10px; }
+.offering-create-form .slot-row .form-grid { gap: 14px; }
+.offering-create-form .slot-row-title { margin-bottom: 18px; }
+.offering-create-form .slot-row-title strong { font-size: 14px; font-weight: 500; }
+.offering-create-form > .form-footer { position: sticky; bottom: -28px; z-index: 2; margin: 0 -4px -4px; padding: 18px 4px; background: var(--paper); border-top: 1px solid var(--line); }
+.offering-create-form .field small { font-size: 12px; line-height: 1.5; color: var(--muted); }
+@media (max-width: 700px) {
+  .service-surface[data-service="offerings"] .modal-card.wide-modal:has(.offering-create-form) { width: calc(100vw - 24px); padding: 18px; max-height: calc(100dvh - 24px); }
+  .offering-create-form > .form-grid { grid-template-columns: minmax(0,1fr); }
+  .offering-create-form > .form-footer { bottom: -18px; }
+}
+
+.offering-empty { display: grid; justify-items: center; gap: 10px; padding: 40px 20px; border-top: 1px solid var(--line); text-align: center; }
+.offering-empty img { display: block; object-fit: contain; }
+.offering-empty h3 { margin: 0; color: var(--ink); font: 500 18px/1.35 Styrene, system-ui, sans-serif; }
+.offering-empty p { max-width: 48ch; margin: 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
+.offering-copy-dialog > .helper-text { margin-bottom: 20px; }
+.offering-copy-dialog fieldset { border: 0; margin: 0; padding: 0; }
+.offering-copy-dialog fieldset > label { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.offering-copy-dialog input[type="checkbox"] { accent-color: #8aab99; }
+
+/* Shared person identity matches Portal's illustrated directory/roster rows. */
+.academic-services-embedded .portal-person-cell { display: flex; align-items: center; gap: 12px; min-width: 210px; }
+.academic-services-embedded .portal-person-cell > div { min-width: 0; }
+.academic-services-embedded .portal-person-avatar { display: inline-grid; flex: 0 0 36px; width: 36px; height: 36px; place-items: center; border: 0; border-radius: 50%; color: #313532; font: 500 12px/1 Styrene, system-ui, sans-serif; }
+.academic-services-embedded .portal-person-cell strong { font-size: 14px; font-weight: 500; line-height: 1.4; }
+.academic-services-embedded .scheduling-page .table-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 180px; }
+@media (max-width: 700px) {
+  .academic-services-embedded .portal-person-cell { gap: 10px; min-width: 190px; }
+  .academic-services-embedded .portal-person-avatar { flex-basis: 32px; width: 32px; height: 32px; }
+}
+
+.academic-services-embedded .advising-overview .overview-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; padding-block: 18px; border-block: 1px solid var(--line); }
+.academic-services-embedded .advising-overview .overview-grid dt { color: var(--muted); font: 500 12px/1.5 Styrene,system-ui,sans-serif; letter-spacing: normal; text-transform: none; }
+.academic-services-embedded .advising-overview .overview-grid dd { margin-top: 6px; font-size: 16px; font-weight: 500; }
+.advising-facts, .bachelor-eligibility-details { padding-block: 14px; }
+.advising-facts summary, .bachelor-eligibility-details summary { width: fit-content; color: var(--muted); font-size: 13px; cursor: pointer; }
+.advising-facts[open] summary, .bachelor-eligibility-details[open] summary { margin-bottom: 12px; color: var(--ink); }
+.bachelor-eligibility-details ul { padding-inline-start: 20px; overflow-wrap: anywhere; }
+.bachelor-eligibility-details li + li { margin-top: 10px; }
+.bachelor-unavailable { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding-top: 14px; }
+.academic-services-embedded .mandatory-panel { padding: 20px 0; border-block: 1px solid var(--line); }
+.academic-services-embedded .mandatory-list { list-style: none; padding: 0; margin: 18px 0 0; }
+.academic-services-embedded .mandatory-list li { padding: 14px 0; border-bottom: 1px solid var(--line); }
+.academic-services-embedded .mandatory-list label { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 14px; line-height: 1.5; cursor: pointer; }
+.academic-services-embedded .mandatory-list input { width: 17px; height: 17px; accent-color: #8aab99; }
+.academic-services-embedded .mandatory-panel .results-heading { margin-bottom: 10px; }
+.academic-services-embedded .draft-preferences .results-heading { flex-wrap: wrap; gap: 10px; }
+@media (max-width: 600px) {
+  .academic-services-embedded .advising-overview .overview-grid { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+}
+/* Advising editor: credit sheet, compact requirements and illustrated course rows. */
+.academic-services-embedded .advising-draft-page { gap: 20px; }
+.academic-services-embedded .advising-draft-page .draft-summary { padding: 0; border: 0; gap: 16px; }
+.academic-services-embedded .draft-summary h2 { font-size: 16px; }
+.draft-student-meta { margin-left: 14px; color: var(--muted); font-size: 13px; font-weight: 400; }
+.academic-services-embedded .draft-summary .helper-text { margin: 4px 0 0; font-size: 12px; }
+.academic-services-embedded .draft-view-tabs { width: fit-content; padding: 4px; border: 1px solid var(--line); border-radius: 10px; gap: 4px; }
+.academic-services-embedded .draft-view-tabs button { border-radius: 6px; }
+.academic-services-embedded .draft-view-tabs button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.academic-services-embedded .mandatory-clear { display: flex; align-items: center; gap: 14px; padding: 16px 18px; border: 1px solid var(--line); border-radius: 10px; }
+.academic-services-embedded .mandatory-clear-icon { display: grid; place-items: center; flex: none; width: 34px; height: 34px; border-radius: 50%; background: #bdd2c7; color: #303b33; font-size: 20px; }
+.academic-services-embedded .mandatory-clear h2 { margin: 0; font-size: 14px; }
+.academic-services-embedded .mandatory-clear p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+.academic-services-embedded .mandatory-panel { border: 1px solid #7c9789; border-radius: 10px; padding: 20px; }
+.academic-services-embedded .mandatory-panel .panel-heading { margin-bottom: 8px; }
+.academic-services-embedded .draft-other-courses { padding: 0; border: 0; }
+.academic-services-embedded .draft-other-courses > summary { color: var(--ink); font-size: 13px; padding-block: 2px; }
+.academic-services-embedded .draft-course-editor { gap: 16px; }
+.academic-services-embedded .draft-course-toolbar { align-items: center; margin: 4px 0 0; }
+.academic-services-embedded .draft-course-toolbar h2 { font-size: 22px; }
+.draft-course-count { color: var(--muted); font-size: 12px; margin: 6px 0 0; }
+.academic-services-embedded .draft-course-editor > .helper-text { max-width: none; margin: 0; font-size: 13px; }
+.academic-services-embedded .draft-allowance { padding: 20px 24px; background: #e8e4d9; color: #38342c; border-radius: 10px; }
+.draft-allowance-main { display: flex; align-items: center; gap: 18px; }
+.draft-allowance-main > span:first-child { font-size: 14px; font-weight: 500; }
+.draft-allowance-main strong { font-size: 30px; font-weight: 500; letter-spacing: -.04em; }
+.draft-allowance-main .draft-credit-divider { color: #625e54; }
+.draft-allowance-main > span:last-child { margin-left: auto; font-size: 13px; }
+.draft-allowance-track { height: 5px; margin-top: 14px; background: #c8c4b9; overflow: hidden; border-radius: 4px; }
+.draft-allowance-track > span { display: block; height: 100%; background: #506858; }
+.academic-services-embedded .draft-allowance .draft-credit-grid { display: flex; flex-wrap: wrap; gap: 14px 36px; padding: 14px 0 0; margin: 0; border: 0; background: transparent; }
+.academic-services-embedded .draft-allowance .draft-credit-grid > div { display: flex; gap: 8px; align-items: baseline; }
+.academic-services-embedded .draft-allowance .draft-credit-grid dt { color: #625e54; font-size: 12px; text-transform: none; letter-spacing: normal; }
+.academic-services-embedded .draft-allowance .draft-credit-grid dd { margin: 0; font-size: 13px; color: #38342c; }
+.academic-services-embedded .draft-course-list { gap: 10px; margin: 0; }
+.academic-services-embedded .draft-course { padding: 18px; border: 1px solid var(--line); border-radius: 10px; }
+.academic-services-embedded .draft-course.selected { border-color: #8aab99; background: color-mix(in srgb, #bdd2c7 5%, transparent); }
+.draft-course-identity { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.draft-course-identity > div { min-width: 0; }
+.draft-course-code { display: block; color: var(--muted); font-size: 11px; margin-bottom: 4px; }
+.academic-services-embedded .draft-course-heading strong { display: block; font-size: 15px; }
+.academic-services-embedded .draft-component-grid { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line); }
+.academic-services-embedded .draft-course-editor > .form-footer { padding-top: 16px; border-top: 1px solid var(--line); }
+@media (max-width: 700px) {
+  .draft-student-meta { display: block; margin: 6px 0 0; }
+  .academic-services-embedded .draft-view-tabs { width: 100%; }
+  .academic-services-embedded .draft-view-tabs button { flex: 1; padding-inline: 8px; }
+  .academic-services-embedded .draft-allowance { padding: 16px; }
+  .draft-allowance-main { flex-wrap: wrap; gap: 6px 12px; }
+  .draft-allowance-main > span:first-child { flex-basis: 100%; }
+  .draft-allowance-main strong { font-size: 28px; }
+  .academic-services-embedded .draft-course { padding: 14px; }
+  .draft-course-heading { flex-wrap: wrap; gap: 14px; }
+  .draft-course-identity { flex: 1 1 220px; }
+}
+.academic-services-embedded .draft-allowance .draft-credit-grid > div { padding: 0; border: 0; border-radius: 0; background: transparent; }
+.academic-services-embedded .advising-draft-page .mandatory-clear { padding-block: 12px; }
+.academic-services-embedded .draft-course-heading > .draft-course-identity { display: flex; flex-direction: row; align-items: center; gap: 14px; }
+
+/* Mandatory first, eligible next: both remain visible in Course selection. */
+.academic-services-embedded .draft-other-courses { padding: 0; border: 0; }
+.academic-services-embedded .advising-draft-page .eligible-courses { padding: 20px; border: 1px solid var(--line); border-radius: 10px; }
+.academic-services-embedded .course-section-title { display: flex; align-items: center; gap: 12px; }
+.academic-services-embedded .course-section-title h2 { margin: 0; font-size: 18px; }
+.academic-services-embedded .course-section-title p { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
+.course-section-symbol { display: grid; place-items: center; flex: none; width: 38px; height: 38px; border-radius: 9px; color: #303b33; font-size: 24px; }
+.mandatory-symbol { background: #bdd2c7; }
+.eligible-symbol { background: #a6c8e6; }
+.academic-services-embedded .eligibility-checks { display: flex; flex-wrap: wrap; gap: 8px 18px; list-style: none; padding: 0; margin: 12px 0 18px; }
+.eligibility-checks li { color: var(--muted); font-size: 12px; line-height: 1.5; }
+.eligibility-checks li::before { content: '✓'; margin-right: 6px; color: #8aab99; }
+.academic-services-embedded .eligible-courses .results-heading { flex-wrap: wrap; gap: 12px; }
+.academic-services-embedded .eligible-courses .roster-search { max-width: 460px; margin-block: 14px; }
+@media (max-width: 700px) {
+  .academic-services-embedded .advising-draft-page .eligible-courses { padding: 16px; }
+  .academic-services-embedded .course-section-title h2 { font-size: 16px; }
+}
+
+/* Student details follows the same paper allowance and illustrated section hierarchy. */
+.academic-services-embedded .advising-draft-page .advising-overview { display: grid; gap: 20px; padding: 0; }
+.academic-services-embedded .student-allowance-sheet { padding: 22px 24px; background: #e8e4d9; color: #38342c; border-radius: 10px; }
+.student-details-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+.academic-services-embedded .student-details-heading h2 { margin: 0; font-size: 18px; }
+.student-standing { padding: 5px 10px; border: 1px solid #b3ac9c; border-radius: 6px; font-size: 12px; }
+.student-hours-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 20px; margin: 22px 0 0; }
+.student-hours-grid > div + div { border-left: 1px solid #c8c2b5; padding-left: 24px; }
+.student-hours-grid dt { color: #625e54; font-size: 12px; }
+.student-hours-grid dd { margin: 8px 0 4px; color: #38342c; font-size: 28px; font-weight: 500; letter-spacing: -.03em; }
+.student-hours-grid .student-hours-primary dd { font-size: 36px; }
+.student-hours-grid dd small { font-size: 16px; }
+.student-hours-grid span { font-size: 12px; color: #625e54; }
+.academic-services-embedded .student-allowance-sheet .advising-facts { margin-top: 18px; padding: 14px 0 0; border-top: 1px solid #c8c2b5; }
+.academic-services-embedded .student-allowance-sheet .advising-facts summary { color: #514d43; }
+.student-allowance-sheet .advising-facts p { font-size: 13px; line-height: 1.6; margin-bottom: 0; }
+.academic-services-embedded .student-project-panel { padding: 20px; border: 1px solid var(--line); border-radius: 10px; }
+.academic-services-embedded .student-project-panel .bachelor-unavailable { gap: 12px; padding-top: 18px; }
+.academic-services-embedded .student-project-panel .bachelor-eligibility-details { padding-bottom: 0; }
+.academic-services-embedded .student-project-panel .bachelor-eligibility-details summary { color: var(--ink); }
+.academic-services-embedded .advising-draft-page .draft-preferences { padding: 20px; margin: 0; border: 1px solid var(--line); border-radius: 10px; }
+.academic-services-embedded .draft-preferences > .helper-text { margin: 16px 0 0; font-size: 13px; }
+@media (max-width: 700px) {
+  .academic-services-embedded .student-allowance-sheet { padding: 18px; }
+  .student-hours-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; }
+  .student-hours-grid .student-hours-primary { grid-column: 1/-1; padding-bottom: 14px; border-bottom: 1px solid #c8c2b5; }
+  .student-hours-grid > div + div { border: 0; padding-left: 0; }
+  .student-hours-grid dd { font-size: 24px; }
+  .academic-services-embedded .student-project-panel, .academic-services-embedded .advising-draft-page .draft-preferences { padding: 16px; }
+}
+.academic-services-embedded .student-allowance-sheet .student-details-heading h2 { color: #38342c; }
+
+/* Cream allowance paper keeps a high-contrast red for over-limit totals. */
+.academic-services-embedded .draft-allowance.is-over-limit .draft-allowance-main strong,
+.academic-services-embedded .draft-allowance.is-over-limit .draft-credit-divider,
+.academic-services-embedded .draft-allowance.is-over-limit .draft-allowance-main > span:last-child { color: #852d26; }
+.academic-services-embedded .draft-allowance.is-over-limit .draft-allowance-track > span { background: #852d26; }
+
+/* Eligibility explains the rule first; course inventories stay behind category disclosures. */
+.bachelor-requirements { margin-top: 18px; }
+.bachelor-requirements-intro { color: var(--muted); max-width: 75ch; font-size: 13px; line-height: 1.6; margin: 0 0 12px; }
+.bachelor-requirement-group { border-top: 1px solid var(--line); }
+.bachelor-requirement-group > summary { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 14px 0; cursor: pointer; font-size: 13px; list-style: none; }
+.bachelor-requirement-group > summary::-webkit-details-marker { display: none; }
+.bachelor-requirement-group > summary::before { content: '›'; width: 14px; font-size: 20px; line-height: 1; color: var(--muted); }
+.bachelor-requirement-group[open] > summary::before { transform: rotate(90deg); }
+.bachelor-requirement-group > summary:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 3px; }
+.requirement-count { margin-left: auto; font-size: 12px; color: var(--muted); }
+.requirement-count.is-complete { color: var(--ink); }
+.bachelor-course-chips { display: grid; grid-template-columns: repeat(auto-fit,minmax(200px,1fr)); gap: 8px; list-style: none; padding: 0; margin: 0 0 16px; }
+.bachelor-course-chips li { min-width: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; }
+.bachelor-course-chips strong { display: block; font-size: 12px; font-weight: 500; }
+.bachelor-course-chips span { display: block; color: var(--muted); font-size: 12px; line-height: 1.5; margin-top: 4px; overflow-wrap: anywhere; }
+@media (max-width: 500px) { .bachelor-course-chips { grid-template-columns: minmax(0,1fr); } }
+
+.excluded-course-list { list-style: none; padding: 0; margin: 14px 0 0; }
+.excluded-course-list > li { display: grid; grid-template-columns: minmax(180px,1fr) minmax(180px,1fr); gap: 12px 24px; padding: 14px 0; border-top: 1px solid var(--line); }
+.excluded-course-name strong { display: block; font-size: 13px; font-weight: 500; }
+.excluded-course-name > span, .excluded-course-reason > span { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.prerequisite-codes { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.prerequisite-codes > span { padding: 4px 8px; border: 1px solid var(--line); border-radius: 5px; font-size: 12px; }
+@media (max-width: 600px) { .excluded-course-list > li { grid-template-columns: minmax(0,1fr); gap: 6px; } }
+
+.service-surface[data-service="student-schedules"][data-heading-art="true"] .academic-services-embedded .page-title-row > div:first-child::before { background-size: 110px auto; }
+@media (max-width: 700px) {
+  .service-surface[data-service="student-schedules"][data-heading-art="true"] .academic-services-embedded .page-title-row > div:first-child::before { background-size: 90px auto; }
+}
+
+.service-surface[data-service="student-schedules"][data-heading-art="true"] .academic-services-embedded :is(.workspace-header,.page-title-row) > div:first-child { min-height: 92px; padding-inline-start: 120px; }
+.service-surface[data-service="student-schedules"][data-heading-art="true"] .academic-services-embedded :is(.workspace-header,.page-title-row) > div:first-child::before { width: 102px; height: 92px; background-size: 150px auto; }
+@media(max-width:700px) {
+ .service-surface[data-service="student-schedules"][data-heading-art="true"] .academic-services-embedded :is(.workspace-header,.page-title-row) > div:first-child { padding-inline-start: 94px; min-height: 76px; }
+ .service-surface[data-service="student-schedules"][data-heading-art="true"] .academic-services-embedded :is(.workspace-header,.page-title-row) > div:first-child::before { width: 80px; height: 76px; background-size: 118px auto; }
+}
+
+/* Unavailable courses share the catalogue's illustrated course identity. */
+.academic-services-embedded .excluded-course-list { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.academic-services-embedded .excluded-course-list > li { padding: 16px 18px; margin: 0; align-items: center; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); }
+.academic-services-embedded .excluded-course-list > li:first-child { border-top: 0; }
+.excluded-course-identity { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.academic-services-embedded .excluded-course-name strong { font-size: 14px; line-height: 1.5; margin-top: 3px; overflow-wrap: anywhere; }
+.academic-services-embedded .excluded-course-name > span { margin: 0; font-size: 11px; }
+.academic-services-embedded .excluded-course-reason > span { margin: 0; font-size: 12px; }
+.academic-services-embedded .prerequisite-codes { gap: 8px; }
+.academic-services-embedded .prerequisite-codes > span { padding: 5px 9px; background: color-mix(in srgb,var(--raised) 45%,transparent); color: var(--ink); }
+@media (max-width: 600px) {
+  .academic-services-embedded .excluded-course-list > li { grid-template-columns: minmax(0,1fr); gap: 12px; padding: 14px; }
+  .academic-services-embedded .excluded-course-reason { padding-inline-start: 52px; }
+}
+
+/* One completion area: save quietly, send as the main action. */
+.academic-services-embedded .draft-completion-actions { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 20px; margin-top: 8px; padding: 24px 0 8px; border-top: 1px solid var(--line); }
+.draft-completion-copy { flex: 1 1 260px; }
+.academic-services-embedded .draft-completion-copy h3 { margin: 0; font: 500 16px/1.4 Styrene,system-ui,sans-serif; color: var(--ink); }
+.draft-completion-copy p { margin: 6px 0 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.draft-save-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.academic-services-embedded .draft-save-actions button { min-height: 46px; padding: 12px 18px; }
+.academic-services-embedded .draft-save-actions .draft-send-button { display: inline-flex; align-items: center; justify-content: center; gap: 12px; }
+.academic-services-embedded .draft-save-actions .draft-send-button:disabled { opacity: 1; background: var(--raised); border: 1px solid var(--line); color: var(--muted); cursor: not-allowed; }
+@media (max-width: 700px) {
+ .draft-save-actions { width: 100%; }
+ .academic-services-embedded .draft-save-actions button { flex: 1 1 auto; }
+}
+
+.academic-services-embedded .student-roster-empty { display: grid; justify-items: center; gap: 12px; padding: 48px 20px; text-align: center; border-top: 1px solid var(--line); }
+.student-roster-empty img { object-fit: contain; }
+.academic-services-embedded .student-roster-empty h3 { margin: 0; color: var(--ink); font: 500 18px/1.4 Styrene,system-ui,sans-serif; }
+.student-roster-empty p { max-width: 43ch; margin: 0; font-size: 13px; line-height: 1.6; color: var(--muted); }
+.student-roster-empty button { margin-top: 6px; }
+
+/* Explicit labels make the Req 59 overview easy to scan. */
+.academic-services-embedded .student-advising-context { display: grid; grid-template-columns: minmax(0,1fr) minmax(160px,.45fr); gap: 24px; padding: 4px 0 20px; margin: 0; border-bottom: 1px solid var(--line); }
+.student-advising-context dt { margin: 0 0 8px; color: var(--muted); font-size: 12px; font-weight: 400; }
+.student-advising-context dd { margin: 0; color: var(--ink); font-size: 17px; line-height: 1.5; font-weight: 500; }
+@media(max-width:600px) {
+ .academic-services-embedded .student-advising-context { grid-template-columns: minmax(0,1fr); gap: 16px; }
+ .student-advising-context dd { font-size: 15px; }
+}
+
+/* Schedule preferences: grouped Portal forms, with ranking controls unchanged. */
+.portal-advising-services .academic-services-embedded .schedule-preferences-page { gap: 24px; }
+.schedule-preferences-page .page-description { max-width: 68ch; }
+.portal-advising-services .academic-services-embedded .schedule-preferences-page .preference-toolbar { padding: 18px; border: 1px solid var(--line); border-radius: 10px; gap: 14px; align-items: end; }
+.portal-advising-services .academic-services-embedded .schedule-preferences-page .preference-grid { gap: 20px; align-items: start; }
+.portal-advising-services .academic-services-embedded .schedule-preferences-page .preference-grid > .panel { padding: 22px; border: 1px solid var(--line); border-radius: 10px; gap: 18px; }
+.preference-section-heading { display: flex; align-items: center; gap: 12px; }
+.preference-section-icon { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: 9px; color: #383e37; background: #bdd2c7; }
+.preference-section-icon.is-times { background: #a6c8e6; }
+.preference-section-icon.is-groups { background: #edb292; }
+.preference-section-icon.is-note { background: #e8e4d9; }
+.preference-section-icon svg { width: 25px; height: 25px; }
+.academic-services-embedded .preference-section-heading h2 { margin: 0; font-size: 18px; }
+.preference-section-heading p { margin: 4px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.academic-services-embedded .schedule-preferences-page .preference-grid .helper-text { font-size: 12px; line-height: 1.6; margin: 0; }
+.schedule-preferences-page .ranked-preference-field + .ranked-preference-field { padding-top: 16px; border-top: 1px solid var(--line); }
+.schedule-preferences-page .preference-note { grid-column: 1/-1; }
+.schedule-preferences-page .preference-note textarea { min-height: 100px; }
+.preference-course-identity { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.preference-course-identity small { display: block; font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+.preference-course-identity strong { font-size: 14px; font-weight: 500; }
+.portal-advising-services .academic-services-embedded .schedule-preferences-page .preference-offering { padding-block: 18px; }
+.schedule-preferences-page .group-chip-list { gap: 10px; }
+.schedule-preferences-page .preference-grid > .form-footer { padding-top: 20px; border-top: 1px solid var(--line); gap: 16px; }
+@media(max-width:700px) {
+ .portal-advising-services .academic-services-embedded .schedule-preferences-page .preference-grid { grid-template-columns: minmax(0,1fr); }
+ .portal-advising-services .academic-services-embedded .schedule-preferences-page .preference-grid > .panel { padding: 16px; }
+ .schedule-preferences-page .preference-groups, .schedule-preferences-page .preference-grid > .form-footer { grid-column: 1/-1; }
+ .academic-services-embedded .preference-section-heading h2 { font-size: 16px; }
+ .schedule-preferences-page .preference-toolbar { grid-template-columns: minmax(0,1fr); }
+}
+
+.academic-services-embedded .schedule-preferences-page .preference-save-confirmation { color: var(--ink); font-weight: 500; }
+.academic-services-embedded .schedule-preferences-page .preference-save-confirmation::before { content: '✓'; display: inline-block; margin-right: 8px; color: #8aab99; }
+
+.schedule-preferences-page .priority-list li { display: flex; align-items: center; gap: 10px; }
+.schedule-preferences-page .priority-item-label { flex: 1; }
+.academic-services-embedded .preference-remove-choice { flex: none; width: 32px; min-height: 32px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: var(--muted); font-size: 20px; cursor: pointer; }
+.academic-services-embedded .preference-remove-choice:hover { color: var(--ink); background: var(--raised); }
+
+.portal-advising-services .academic-services-embedded .schedule-preferences-page .preference-groups { gap: 12px; }
+.academic-services-embedded .schedule-preferences-page .preference-groups .preference-section-heading h2 { font-size: 16px; }
+.schedule-preferences-page .preference-groups .preference-section-icon { width: 34px; height: 34px; }
+.schedule-preferences-page .preference-groups .preference-section-icon svg { width: 22px; height: 22px; }
+.academic-services-embedded .preference-refresh-groups { display: inline-flex; justify-self: start; align-items: center; justify-content: center; gap: 8px; width: auto; min-height: 34px; padding: 7px 12px; font-size: 12px; }
+.preference-button-spinner { display: inline-block; width: 12px; height: 12px; border: 1.5px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: preference-spin .7s linear infinite; }
+.preference-group-feedback { margin: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; color: var(--ink); font-size: 13px; line-height: 1.5; }
+@keyframes preference-spin { to { transform: rotate(360deg); } }
+@media(prefers-reduced-motion: reduce) { .preference-button-spinner { animation: none; border-style: dotted; } }
+
+.calendar-open-link { display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; }
+.calendar-link-hint { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+.catalogue-course-identity { display: flex; align-items: center; gap: 12px; min-width: 220px; }
+.catalogue-course-identity > button { min-width: 0; }

@@ -1,0 +1,47 @@
+/* Rectangular selectors for switching between views in either Portal entry. */
+.tabs {
+  display: flex;
+  gap: 2px;
+  width: max-content;
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 3px;
+  border: 1px solid var(--surface-edge, var(--line));
+  border-radius: 8px;
+}
+
+.tabs > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: none;
+  min-height: 36px;
+  padding: 5px 12px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.tabs > button:is([aria-selected="true"], [aria-pressed="true"]) {
+  background: var(--raised);
+  color: var(--ink);
+}
+
+.tabs > button:hover:not(:disabled) { color: var(--ink); }
+.tabs > button:disabled { cursor: default; opacity: .65; }
+.tabs > button:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
+
+@media (max-width: 680px), (pointer: coarse) {
+  .tabs > button { min-height: 44px; }
+}
+
+@media (forced-colors: active) {
+  .tabs > button:is([aria-selected="true"], [aria-pressed="true"]) { border-color: Highlight; }
+  .tabs > button:focus-visible { outline-color: Highlight; }
+}

@@ -1,0 +1,316 @@
+{
+  "scope": "Supplemental host operation, visual continuity and local preview states",
+  "checks": 17,
+  "passed": 17,
+  "failed": 0,
+  "browserErrors": [],
+  "results": [
+    {
+      "name": "overview:next-month",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "overview:previous-month",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "overview:today",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "overview:deadline-detail",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "continuity:dark:my-schedule",
+      "passed": true,
+      "detail": {
+        "overview": {
+          ".sidebar": {
+            "x": 0,
+            "y": 0,
+            "width": 224,
+            "height": 1000,
+            "fontFamily": "Styrene, system-ui, sans-serif",
+            "background": "rgb(15, 15, 15)"
+          },
+          ".topbar": {
+            "x": 224,
+            "y": 0,
+            "width": 1216,
+            "height": 48,
+            "fontFamily": "Styrene, system-ui, sans-serif",
+            "background": "rgb(15, 15, 15)"
+          }
+        },
+        "page": {
+          ".sidebar": {
+            "x": 0,
+            "y": 0,
+            "width": 224,
+            "height": 1000,
+            "fontFamily": "Styrene, system-ui, sans-serif",
+            "background": "rgb(15, 15, 15)"
+          },
+          ".topbar": {
+            "x": 224,
+            "y": 0,
+            "width": 1216,
+            "height": 48,
+            "fontFamily": "Styrene, system-ui, sans-serif",
+            "background": "rgb(15, 15, 15)"
+          }
+        }
+      }
+    },
+    {
+      "name": "continuity:dark:records",
+      "passed": true,
+      "detail": {
+        "overview": {
+          ".sidebar": {
+            "x": 0,
+            "y": 0,
+            "width": 224,
+            "height": 1000,
+            "fontFamily": "Styrene, system-ui, sans-serif",
+            "background": "rgb(15, 15, 15)"
+          },
+          ".topbar": {
+            "x": 224,
+            "y": 0,
+            "width": 1216,
+            "height": 48,
+            "fontFamily": "Styrene, system-ui, sans-serif",
+            "background": "rgb(15, 15, 15)"
+          }
+        },
+        "page": {
+          ".sidebar": {
+            "x": 0,
+            "y": 0,
+            "width": 224,
+            "height": 1000,
+            "fontFamily": "Styrene, system-ui, sans-serif",
+            "background": "rgb(15, 15, 15)"
+          },
+          ".topbar": {
+            "x": 224,
+            "y": 0,
+            "width": 1216,
+            "height": 48,
+            "fontFamily": "Styrene, system-ui, sans-serif",
+            "background": "rgb(15, 15, 15)"
+          }
+        }
+      }
+    },
+    {
+      "name": "continuity:dark:my-advisor",
+      "passed": true,
+      "detail": {
+        "overview": {
+          ".sidebar": {
+            "x": 0,
+            "y": 0,
+            "width": 224,
+            "height": 1000,
+            "fontFamily": "Styrene, system-ui, sans-serif",
+            "background": "rgb(15, 15, 15)"
+          },
+          ".topbar": {
+            "x": 224,
+            "y": 0,
+            "width": 1216,
+            "height": 48,
+            "fontFamily": "Styrene, system-ui, sans-serif",
+            "background": "rgb(15, 15, 15)"
+          }
+        },
+        "page": {
+          ".sidebar": {
+            "x": 0,
+            "y": 0,
+            "width": 224,
+            "height": 1000,
+            "fontFamily": "Styrene, system-ui, sans-serif",
+            "background": "rgb(15, 15, 15)"
+          },
+          ".topbar": {
+            "x": 224,
+            "y": 0,
+            "width": 1216,
+            "height": 48,
+            "fontFamily": "Styrene, system-ui, sans-serif",
+            "background": "rgb(15, 15, 15)"
+          }
+        }
+      }
+    },
+    {
+      "name": "continuity:light:my-schedule",
+      "passed": true,
+      "detail": {
+        "overview": {
+          ".sidebar": {
+            "x": 0,
+            "y": 0,
+            "width": 224,
+            "height": 1000,
+            "fontFamily": "Styrene, system-ui, sans-serif",
+            "background": "rgb(232, 228, 218)"
+          },
+          ".topbar": {
+            "x": 224,
+            "y": 0,
+            "width": 1216,
+            "height": 48,
+            "fontFamily": "Styrene, system-ui, sans-serif",
+            "background": "rgb(232, 228, 218)"
+          }
+        },
+        "page": {
+          ".sidebar": {
+            "x": 0,
+            "y": 0,
+            "width": 224,
+            "height": 1000,
+            "fontFamily": "Styrene, system-ui, sans-serif",
+            "background": "rgb(232, 228, 218)"
+          },
+          ".topbar": {
+            "x": 224,
+            "y": 0,
+            "width": 1216,
+            "height": 48,
+            "fontFamily": "Styrene, system-ui, sans-serif",
+            "background": "rgb(232, 228, 218)"
+          }
+        }
+      }
+    },
+    {
+      "name": "continuity:light:records",
+      "passed": true,
+      "detail": {
+        "overview": {
+          ".sidebar": {
+            "x": 0,
+            "y": 0,
+            "width": 224,
+            "height": 1000,
+            "fontFamily": "Styrene, system-ui, sans-serif",
+            "background": "rgb(232, 228, 218)"
+          },
+          ".topbar": {
+            "x": 224,
+            "y": 0,
+            "width": 1216,
+            "height": 48,
+            "fontFamily": "Styrene, system-ui, sans-serif",
+            "background": "rgb(232, 228, 218)"
+          }
+        },
+        "page": {
+          ".sidebar": {
+            "x": 0,
+            "y": 0,
+            "width": 224,
+            "height": 1000,
+            "fontFamily": "Styrene, system-ui, sans-serif",
+            "background": "rgb(232, 228, 218)"
+          },
+          ".topbar": {
+            "x": 224,
+            "y": 0,
+            "width": 1216,
+            "height": 48,
+            "fontFamily": "Styrene, system-ui, sans-serif",
+            "background": "rgb(232, 228, 218)"
+          }
+        }
+      }
+    },
+    {
+      "name": "continuity:light:my-advisor",
+      "passed": true,
+      "detail": {
+        "overview": {
+          ".sidebar": {
+            "x": 0,
+            "y": 0,
+            "width": 224,
+            "height": 1000,
+            "fontFamily": "Styrene, system-ui, sans-serif",
+            "background": "rgb(232, 228, 218)"
+          },
+          ".topbar": {
+            "x": 224,
+            "y": 0,
+            "width": 1216,
+            "height": 48,
+            "fontFamily": "Styrene, system-ui, sans-serif",
+            "background": "rgb(232, 228, 218)"
+          }
+        },
+        "page": {
+          ".sidebar": {
+            "x": 0,
+            "y": 0,
+            "width": 224,
+            "height": 1000,
+            "fontFamily": "Styrene, system-ui, sans-serif",
+            "background": "rgb(232, 228, 218)"
+          },
+          ".topbar": {
+            "x": 224,
+            "y": 0,
+            "width": 1216,
+            "height": 48,
+            "fontFamily": "Styrene, system-ui, sans-serif",
+            "background": "rgb(232, 228, 218)"
+          }
+        }
+      }
+    },
+    {
+      "name": "mobile:navigation-open",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "mobile:navigation-route",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "mobile:slot-submit",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "state:preference-validation",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "state:calendar-recovery",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "state:swap-open",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "name": "runtime:no-errors",
+      "passed": true,
+      "detail": []
+    }
+  ]
+}

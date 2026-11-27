@@ -1,0 +1,1224 @@
+{
+  "schemaVersion": 1,
+  "package": "02-student-life-round-2",
+  "version": "2.0.0",
+  "integrationRoot": "project/apps/web/public/portal-studio/variants/02-student-life",
+  "entrypoint": "pages.js",
+  "stylesheet": "pages.css",
+  "hostHook": "window.portalVariants[pageKey] = [{ name, apply({root,page,role}) }]",
+  "ownedPageCount": 7,
+  "variantCount": 70,
+  "original": "Unchanged native renderer; host selector value 0",
+  "selectionStorage": "Host-owned localStorage key portal-page-design:<page>",
+  "previewStateStorage": "sessionStorage prefix portal-student-life:round2:; explicit local synthetic fixture",
+  "previewClock": "2026-11-14T10:00:00+02:00",
+  "notProduction": [
+    "Static preview does not authenticate credentials, fetch university data, contact Google, enforce database ownership, or perform cross-user atomic transactions.",
+    "Production adapter reuses existing authenticated components; it does not transplant the 70 DOM preview compositions into React."
+  ],
+  "dependencies": {
+    "newRuntimePackages": [],
+    "localAssets": [
+      "assets/algorithms.svg",
+      "assets/advanced-lab.svg",
+      "assets/graphics.svg"
+    ],
+    "baselineGlobals": [
+      "portalVariants",
+      "render",
+      "courseData",
+      "tab",
+      "connected",
+      "preferencesState",
+      "link",
+      "toast",
+      "timetableDrawing",
+      "queueSketch"
+    ],
+    "noShellPatchRequired": true
+  },
+  "productionIntegration": {
+    "adapter": "integration/StudentLifeRoutes.jsx",
+    "copyTo": "apps/web/src/components/StudentLifeRoutes.jsx",
+    "patch": "integration/app-integration.patch",
+    "target": "apps/web/src/App.jsx",
+    "apiMode": "Existing components retain their original api() calls and server authorization."
+  },
+  "pages": [
+    {
+      "key": "my-schedule",
+      "roles": [
+        "normalStudent",
+        "advisingStudent",
+        "advisor",
+        "coordinator",
+        "administrator"
+      ],
+      "requirements": [
+        "R31",
+        "R40",
+        "R41",
+        "R42",
+        "R49"
+      ],
+      "retainedControls": [
+        "Original heading, term treatment and Week/Course list tabs",
+        "Original timetable artwork",
+        "Export control with processed-only .ics/PDF/Print behavior",
+        "Meeting detail, slot-request submission/history/withdrawal"
+      ],
+      "previewStates": [
+        "default",
+        "empty",
+        "unavailable",
+        "error/retry",
+        "ready",
+        "processed",
+        "deadline",
+        "pending",
+        "resolved (Approved/Rejected/Withdrawn)",
+        "draft"
+      ],
+      "variants": [
+        {
+          "id": 1,
+          "name": "Week & requests",
+          "composition": "Three-day-width week with an adjacent slot-request rail; scan and act without opening a separate workflow.",
+          "requirements": [
+            "R31",
+            "R40",
+            "R41",
+            "R42",
+            "R49"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-my-schedule-1.png",
+          "lightEvidence": "evidence/screens/light-1440-my-schedule-1.png",
+          "mobileEvidence": "evidence/screens/dark-390-my-schedule-1.png",
+          "mobileLightEvidence": "evidence/screens/light-390-my-schedule-1.png"
+        },
+        {
+          "id": 2,
+          "name": "One day at a time",
+          "composition": "One selected day at a time, with keyboard-operable day controls and the same request history.",
+          "requirements": [
+            "R31",
+            "R40",
+            "R41",
+            "R42",
+            "R49"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-my-schedule-2.png",
+          "lightEvidence": "evidence/screens/light-1440-my-schedule-2.png"
+        },
+        {
+          "id": 3,
+          "name": "Weekly agenda",
+          "composition": "Chronological, full-width meeting rows; compare time, component and room without card-height noise.",
+          "requirements": [
+            "R31",
+            "R40",
+            "R41",
+            "R42",
+            "R49"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-my-schedule-3.png",
+          "lightEvidence": "evidence/screens/light-1440-my-schedule-3.png"
+        },
+        {
+          "id": 4,
+          "name": "Course lanes",
+          "composition": "One lane per course with its lecture, tutorial and lab grouped together.",
+          "requirements": [
+            "R31",
+            "R40",
+            "R41",
+            "R42",
+            "R49"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-my-schedule-4.png",
+          "lightEvidence": "evidence/screens/light-1440-my-schedule-4.png"
+        },
+        {
+          "id": 5,
+          "name": "Time grid",
+          "composition": "Time-proportioned columns expose gaps and overlaps; component details stay inspectable.",
+          "requirements": [
+            "R31",
+            "R40",
+            "R41",
+            "R42",
+            "R49"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-my-schedule-5.png",
+          "lightEvidence": "evidence/screens/light-1440-my-schedule-5.png"
+        },
+        {
+          "id": 6,
+          "name": "Schedule inspector",
+          "composition": "A stable detail inspector beside the week keeps context while reviewing a meeting.",
+          "requirements": [
+            "R31",
+            "R40",
+            "R41",
+            "R42",
+            "R49"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-my-schedule-6.png",
+          "lightEvidence": "evidence/screens/light-1440-my-schedule-6.png",
+          "mobileEvidence": "evidence/screens/dark-390-my-schedule-6.png",
+          "mobileLightEvidence": "evidence/screens/light-390-my-schedule-6.png"
+        },
+        {
+          "id": 7,
+          "name": "Course index & week",
+          "composition": "A course index filters the shared week; a meeting inspector and reset-to-all retain context.",
+          "requirements": [
+            "R31",
+            "R40",
+            "R41",
+            "R42",
+            "R49"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-my-schedule-7.png",
+          "lightEvidence": "evidence/screens/light-1440-my-schedule-7.png"
+        },
+        {
+          "id": 8,
+          "name": "Foldout days",
+          "composition": "Open and close individual day folders; inspect only the days that matter.",
+          "requirements": [
+            "R31",
+            "R40",
+            "R41",
+            "R42",
+            "R49"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-my-schedule-8.png",
+          "lightEvidence": "evidence/screens/light-1440-my-schedule-8.png"
+        },
+        {
+          "id": 9,
+          "name": "Room-to-room route",
+          "composition": "Room-to-room meeting sequences foreground the route through each teaching day.",
+          "requirements": [
+            "R31",
+            "R40",
+            "R41",
+            "R42",
+            "R49"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-my-schedule-9.png",
+          "lightEvidence": "evidence/screens/light-1440-my-schedule-9.png"
+        },
+        {
+          "id": 10,
+          "name": "Review & release",
+          "composition": "Review sequence and request history precede the final week, distinguishing ready from processed.",
+          "requirements": [
+            "R31",
+            "R40",
+            "R41",
+            "R42",
+            "R49"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-my-schedule-10.png",
+          "lightEvidence": "evidence/screens/light-1440-my-schedule-10.png",
+          "mobileEvidence": "evidence/screens/dark-390-my-schedule-10.png",
+          "mobileLightEvidence": "evidence/screens/light-390-my-schedule-10.png"
+        }
+      ]
+    },
+    {
+      "key": "my-courses",
+      "roles": [
+        "normalStudent",
+        "advisingStudent"
+      ],
+      "requirements": [
+        "R32",
+        "R33"
+      ],
+      "retainedControls": [
+        "Original course articles, course names and credit hours",
+        "Original catalogue links",
+        "Assigned lecture/tutorial/lab details",
+        "Original removal entry redirected to permission-appropriate guidance, not an unauthorized student mutation"
+      ],
+      "previewStates": [
+        "default",
+        "empty",
+        "unavailable",
+        "error/retry",
+        "draft"
+      ],
+      "variants": [
+        {
+          "id": 1,
+          "name": "Course register",
+          "composition": "An expanded register exposes all three assigned components under every course.",
+          "requirements": [
+            "R32",
+            "R33"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-my-courses-1.png",
+          "lightEvidence": "evidence/screens/light-1440-my-courses-1.png",
+          "mobileEvidence": "evidence/screens/dark-390-my-courses-1.png",
+          "mobileLightEvidence": "evidence/screens/light-390-my-courses-1.png"
+        },
+        {
+          "id": 2,
+          "name": "Course & sections",
+          "composition": "Select a course in a master list and inspect its three components alongside it.",
+          "requirements": [
+            "R32",
+            "R33"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-my-courses-2.png",
+          "lightEvidence": "evidence/screens/light-1440-my-courses-2.png"
+        },
+        {
+          "id": 3,
+          "name": "Section matrix",
+          "composition": "Component-by-course matrix makes lecture, tutorial and lab differences comparable.",
+          "requirements": [
+            "R32",
+            "R33"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-my-courses-3.png",
+          "lightEvidence": "evidence/screens/light-1440-my-courses-3.png"
+        },
+        {
+          "id": 4,
+          "name": "Course index",
+          "composition": "A compact course index controls a wider assigned-section panel.",
+          "requirements": [
+            "R32",
+            "R33"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-my-courses-4.png",
+          "lightEvidence": "evidence/screens/light-1440-my-courses-4.png"
+        },
+        {
+          "id": 5,
+          "name": "Teaching-day index",
+          "composition": "Teaching-day folders lead back to the full course-section inspector.",
+          "requirements": [
+            "R32",
+            "R33"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-my-courses-5.png",
+          "lightEvidence": "evidence/screens/light-1440-my-courses-5.png"
+        },
+        {
+          "id": 6,
+          "name": "Credit ledger",
+          "composition": "A credit-ledger arrangement retains course identity and component disclosure.",
+          "requirements": [
+            "R32",
+            "R33"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-my-courses-6.png",
+          "lightEvidence": "evidence/screens/light-1440-my-courses-6.png",
+          "mobileEvidence": "evidence/screens/dark-390-my-courses-6.png",
+          "mobileLightEvidence": "evidence/screens/light-390-my-courses-6.png"
+        },
+        {
+          "id": 7,
+          "name": "Course folders",
+          "composition": "Course folders disclose their own three components, avoiding a separate detail page.",
+          "requirements": [
+            "R32",
+            "R33"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-my-courses-7.png",
+          "lightEvidence": "evidence/screens/light-1440-my-courses-7.png"
+        },
+        {
+          "id": 8,
+          "name": "Component focus",
+          "composition": "Filter the selected course by component type with keyboard-operable controls.",
+          "requirements": [
+            "R32",
+            "R33"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-my-courses-8.png",
+          "lightEvidence": "evidence/screens/light-1440-my-courses-8.png"
+        },
+        {
+          "id": 9,
+          "name": "Two-course comparison",
+          "composition": "Choose at most two courses and compare their assigned sections side by side.",
+          "requirements": [
+            "R32",
+            "R33"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-my-courses-9.png",
+          "lightEvidence": "evidence/screens/light-1440-my-courses-9.png"
+        },
+        {
+          "id": 10,
+          "name": "Find a course",
+          "composition": "Filter the course register by code or name; empty results explain how to recover.",
+          "requirements": [
+            "R32",
+            "R33"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-my-courses-10.png",
+          "lightEvidence": "evidence/screens/light-1440-my-courses-10.png",
+          "mobileEvidence": "evidence/screens/dark-390-my-courses-10.png",
+          "mobileLightEvidence": "evidence/screens/light-390-my-courses-10.png"
+        }
+      ]
+    },
+    {
+      "key": "schedule-swap",
+      "roles": [
+        "normalStudent"
+      ],
+      "requirements": [
+        "R34",
+        "R35",
+        "R36",
+        "R37",
+        "R38",
+        "R39"
+      ],
+      "retainedControls": [
+        "Original Available groups/Open requests/My requests tabs",
+        "Complete eligible group schedules",
+        "Immutable current group and multi-destination selection",
+        "Confirmation, one-active-request guard, own history, withdrawal and anonymous exchange"
+      ],
+      "previewStates": [
+        "default",
+        "empty",
+        "unavailable",
+        "error/retry",
+        "pending (Open)",
+        "resolved (Completed/Withdrawn/Expired)",
+        "deadline",
+        "conflict"
+      ],
+      "variants": [
+        {
+          "id": 1,
+          "name": "Side-by-side groups",
+          "composition": "Compare two eligible groups and build a multi-destination request in a separate selection rail.",
+          "requirements": [
+            "R34",
+            "R35",
+            "R36",
+            "R37",
+            "R38",
+            "R39"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-schedule-swap-1.png",
+          "lightEvidence": "evidence/screens/light-1440-schedule-swap-1.png",
+          "mobileEvidence": "evidence/screens/dark-390-schedule-swap-1.png",
+          "mobileLightEvidence": "evidence/screens/light-390-schedule-swap-1.png"
+        },
+        {
+          "id": 2,
+          "name": "Current & destination",
+          "composition": "Keep the current whole schedule visible above destination comparisons.",
+          "requirements": [
+            "R34",
+            "R35",
+            "R36",
+            "R37",
+            "R38",
+            "R39"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-schedule-swap-2.png",
+          "lightEvidence": "evidence/screens/light-1440-schedule-swap-2.png"
+        },
+        {
+          "id": 3,
+          "name": "Group inspector",
+          "composition": "Compact group choices lead to a full-schedule inspection drawer before committing.",
+          "requirements": [
+            "R34",
+            "R35",
+            "R36",
+            "R37",
+            "R38",
+            "R39"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-schedule-swap-3.png",
+          "lightEvidence": "evidence/screens/light-1440-schedule-swap-3.png"
+        },
+        {
+          "id": 4,
+          "name": "Days-off explorer",
+          "composition": "Filter eligible destinations by desired day off without changing eligibility rules.",
+          "requirements": [
+            "R34",
+            "R35",
+            "R36",
+            "R37",
+            "R38",
+            "R39"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-schedule-swap-4.png",
+          "lightEvidence": "evidence/screens/light-1440-schedule-swap-4.png"
+        },
+        {
+          "id": 5,
+          "name": "Complete week comparison",
+          "composition": "Full component tables replace compact week cards for precise schedule comparison.",
+          "requirements": [
+            "R34",
+            "R35",
+            "R36",
+            "R37",
+            "R38",
+            "R39"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-schedule-swap-5.png",
+          "lightEvidence": "evidence/screens/light-1440-schedule-swap-5.png"
+        },
+        {
+          "id": 6,
+          "name": "Choose & review",
+          "composition": "A choose-then-review arrangement makes the immutable current group and confirmation step explicit.",
+          "requirements": [
+            "R34",
+            "R35",
+            "R36",
+            "R37",
+            "R38",
+            "R39"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-schedule-swap-6.png",
+          "lightEvidence": "evidence/screens/light-1440-schedule-swap-6.png",
+          "mobileEvidence": "evidence/screens/dark-390-schedule-swap-6.png",
+          "mobileLightEvidence": "evidence/screens/light-390-schedule-swap-6.png"
+        },
+        {
+          "id": 7,
+          "name": "Meeting change map",
+          "composition": "A meeting-by-meeting change map shows what moves between current and destination schedules.",
+          "requirements": [
+            "R34",
+            "R35",
+            "R36",
+            "R37",
+            "R38",
+            "R39"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-schedule-swap-7.png",
+          "lightEvidence": "evidence/screens/light-1440-schedule-swap-7.png"
+        },
+        {
+          "id": 8,
+          "name": "Exchange inbox",
+          "composition": "Lead with the anonymous exchange inbox; retain group selection and request history.",
+          "requirements": [
+            "R34",
+            "R35",
+            "R36",
+            "R37",
+            "R38",
+            "R39"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-schedule-swap-8.png",
+          "lightEvidence": "evidence/screens/light-1440-schedule-swap-8.png"
+        },
+        {
+          "id": 9,
+          "name": "Request ledger",
+          "composition": "Lead with the request ledger, with explicit routes back to eligible groups and offers.",
+          "requirements": [
+            "R34",
+            "R35",
+            "R36",
+            "R37",
+            "R38",
+            "R39"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-schedule-swap-9.png",
+          "lightEvidence": "evidence/screens/light-1440-schedule-swap-9.png"
+        },
+        {
+          "id": 10,
+          "name": "Destination shortlist",
+          "composition": "A narrow destination shortlist with full schedule drawers supports focused selection.",
+          "requirements": [
+            "R34",
+            "R35",
+            "R36",
+            "R37",
+            "R38",
+            "R39"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-schedule-swap-10.png",
+          "lightEvidence": "evidence/screens/light-1440-schedule-swap-10.png",
+          "mobileEvidence": "evidence/screens/dark-390-schedule-swap-10.png",
+          "mobileLightEvidence": "evidence/screens/light-390-schedule-swap-10.png"
+        }
+      ]
+    },
+    {
+      "key": "preferences",
+      "roles": [
+        "advisingStudent",
+        "advisor",
+        "coordinator"
+      ],
+      "requirements": [
+        "R57",
+        "R58"
+      ],
+      "retainedControls": [
+        "Original days-off checkboxes, group selectors, notes and Save button",
+        "Preferred/avoided days and time ranges, component and numeric priorities",
+        "Student updates and staff read-only views",
+        "Latest saved summary, validation and deadline gate"
+      ],
+      "previewStates": [
+        "default",
+        "empty",
+        "unavailable",
+        "error/retry",
+        "invalid input",
+        "deadline/locked",
+        "saved",
+        "staff read-only",
+        "empty unsubmitted"
+      ],
+      "variants": [
+        {
+          "id": 1,
+          "name": "Two-column brief",
+          "composition": "Keep day constraints and course groups alongside each other, followed by time ranges and notes.",
+          "requirements": [
+            "R57",
+            "R58"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-preferences-1.png",
+          "lightEvidence": "evidence/screens/light-1440-preferences-1.png",
+          "mobileEvidence": "evidence/screens/dark-390-preferences-1.png",
+          "mobileLightEvidence": "evidence/screens/light-390-preferences-1.png"
+        },
+        {
+          "id": 2,
+          "name": "Priority ladder",
+          "composition": "Reorder preference sections with explicit Move up/Move down controls; course/time priorities remain editable.",
+          "requirements": [
+            "R57",
+            "R58"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-preferences-2.png",
+          "lightEvidence": "evidence/screens/light-1440-preferences-2.png"
+        },
+        {
+          "id": 3,
+          "name": "Week preferences",
+          "composition": "A live weekly preference map summarizes days off, preferred days and avoided days.",
+          "requirements": [
+            "R57",
+            "R58"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-preferences-3.png",
+          "lightEvidence": "evidence/screens/light-1440-preferences-3.png"
+        },
+        {
+          "id": 4,
+          "name": "Groups first",
+          "composition": "Course groups come first, then day and time constraints.",
+          "requirements": [
+            "R57",
+            "R58"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-preferences-4.png",
+          "lightEvidence": "evidence/screens/light-1440-preferences-4.png"
+        },
+        {
+          "id": 5,
+          "name": "Form & live review",
+          "composition": "A live read-only review summarizes the form before saving.",
+          "requirements": [
+            "R57",
+            "R58"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-preferences-5.png",
+          "lightEvidence": "evidence/screens/light-1440-preferences-5.png"
+        },
+        {
+          "id": 6,
+          "name": "Guided submission",
+          "composition": "Four keyboard-operable steps divide days, groups, times and note; one persistent Save action.",
+          "requirements": [
+            "R57",
+            "R58"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-preferences-6.png",
+          "lightEvidence": "evidence/screens/light-1440-preferences-6.png",
+          "mobileEvidence": "evidence/screens/dark-390-preferences-6.png",
+          "mobileLightEvidence": "evidence/screens/light-390-preferences-6.png"
+        },
+        {
+          "id": 7,
+          "name": "Compact outline",
+          "composition": "Fold each form section into a compact outline while preserving its controls.",
+          "requirements": [
+            "R57",
+            "R58"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-preferences-7.png",
+          "lightEvidence": "evidence/screens/light-1440-preferences-7.png"
+        },
+        {
+          "id": 8,
+          "name": "Advisor note first",
+          "composition": "An advisor note leads, using the existing Portal conversation drawing rather than a new chat product.",
+          "requirements": [
+            "R57",
+            "R58"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-preferences-8.png",
+          "lightEvidence": "evidence/screens/light-1440-preferences-8.png"
+        },
+        {
+          "id": 9,
+          "name": "Course group cards",
+          "composition": "Course-group cards emphasize component-specific group and priority choices.",
+          "requirements": [
+            "R57",
+            "R58"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-preferences-9.png",
+          "lightEvidence": "evidence/screens/light-1440-preferences-9.png"
+        },
+        {
+          "id": 10,
+          "name": "Week & constraints",
+          "composition": "The released week provides read-only context beside preferences; saving never edits assignments.",
+          "requirements": [
+            "R57",
+            "R58"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-preferences-10.png",
+          "lightEvidence": "evidence/screens/light-1440-preferences-10.png",
+          "mobileEvidence": "evidence/screens/dark-390-preferences-10.png",
+          "mobileLightEvidence": "evidence/screens/light-390-preferences-10.png"
+        }
+      ]
+    },
+    {
+      "key": "records",
+      "roles": [
+        "advisingStudent",
+        "advisor",
+        "coordinator"
+      ],
+      "requirements": [
+        "R54",
+        "R55",
+        "R56"
+      ],
+      "retainedControls": [
+        "Original history/transcript/wallet navigation; wallet remains student-only",
+        "Completed/current/remaining course history",
+        "Attended-year selection and selected-year PDF",
+        "Original wallet ledger, not a second financial workflow"
+      ],
+      "previewStates": [
+        "default",
+        "empty",
+        "unavailable",
+        "error/retry",
+        "attended-year selection",
+        "no search matches",
+        "PDF download",
+        "staff read-only/no wallet"
+      ],
+      "variants": [
+        {
+          "id": 1,
+          "name": "Transcript desk",
+          "composition": "An attended-year index sits beside the selected transcript, with history still reachable below.",
+          "requirements": [
+            "R54",
+            "R55",
+            "R56"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-records-1.png",
+          "lightEvidence": "evidence/screens/light-1440-records-1.png",
+          "mobileEvidence": "evidence/screens/dark-390-records-1.png",
+          "mobileLightEvidence": "evidence/screens/light-390-records-1.png"
+        },
+        {
+          "id": 2,
+          "name": "Academic timeline",
+          "composition": "Completed, current and remaining course blocks form an academic timeline.",
+          "requirements": [
+            "R54",
+            "R55",
+            "R56"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-records-2.png",
+          "lightEvidence": "evidence/screens/light-1440-records-2.png"
+        },
+        {
+          "id": 3,
+          "name": "Course dossier",
+          "composition": "Individual course dossiers disclose their grade or prerequisite record.",
+          "requirements": [
+            "R54",
+            "R55",
+            "R56"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-records-3.png",
+          "lightEvidence": "evidence/screens/light-1440-records-3.png"
+        },
+        {
+          "id": 4,
+          "name": "Year folders",
+          "composition": "Year folders select the displayed transcript and its matching PDF.",
+          "requirements": [
+            "R54",
+            "R55",
+            "R56"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-records-4.png",
+          "lightEvidence": "evidence/screens/light-1440-records-4.png"
+        },
+        {
+          "id": 5,
+          "name": "Academic ledger",
+          "composition": "A compact academic ledger prioritizes the three required history categories.",
+          "requirements": [
+            "R54",
+            "R55",
+            "R56"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-records-5.png",
+          "lightEvidence": "evidence/screens/light-1440-records-5.png"
+        },
+        {
+          "id": 6,
+          "name": "Year comparison",
+          "composition": "Compare two attended years while the primary year remains the PDF export target.",
+          "requirements": [
+            "R54",
+            "R55",
+            "R56"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-records-6.png",
+          "lightEvidence": "evidence/screens/light-1440-records-6.png",
+          "mobileEvidence": "evidence/screens/dark-390-records-6.png",
+          "mobileLightEvidence": "evidence/screens/light-390-records-6.png"
+        },
+        {
+          "id": 7,
+          "name": "Term-by-term results",
+          "composition": "Group the selected year by Winter, Spring, Summer and applicable makeup periods.",
+          "requirements": [
+            "R54",
+            "R55",
+            "R56"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-records-7.png",
+          "lightEvidence": "evidence/screens/light-1440-records-7.png"
+        },
+        {
+          "id": 8,
+          "name": "Remaining courses first",
+          "composition": "Remaining courses, prerequisites and offering seasons precede completed and current history.",
+          "requirements": [
+            "R54",
+            "R55",
+            "R56"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-records-8.png",
+          "lightEvidence": "evidence/screens/light-1440-records-8.png"
+        },
+        {
+          "id": 9,
+          "name": "Find a result",
+          "composition": "Search course history by code, title, term or status, with an explicit no-match result.",
+          "requirements": [
+            "R54",
+            "R55",
+            "R56"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-records-9.png",
+          "lightEvidence": "evidence/screens/light-1440-records-9.png"
+        },
+        {
+          "id": 10,
+          "name": "Print-ready transcript",
+          "composition": "A document-oriented transcript layout foregrounds the attended year and its export.",
+          "requirements": [
+            "R54",
+            "R55",
+            "R56"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-records-10.png",
+          "lightEvidence": "evidence/screens/light-1440-records-10.png",
+          "mobileEvidence": "evidence/screens/dark-390-records-10.png",
+          "mobileLightEvidence": "evidence/screens/light-390-records-10.png"
+        }
+      ]
+    },
+    {
+      "key": "my-advisor",
+      "roles": [
+        "advisingStudent"
+      ],
+      "requirements": [
+        "R15"
+      ],
+      "retainedControls": [
+        "Original advisor identity, email, office and office hours",
+        "Original checklist, schedule-review link and preference-deadline link",
+        "Copy email, private local preparation and mailto handoff"
+      ],
+      "previewStates": [
+        "default",
+        "empty",
+        "unavailable",
+        "error/retry",
+        "unassigned",
+        "private note saved",
+        "clipboard fallback",
+        "mail-app handoff"
+      ],
+      "variants": [
+        {
+          "id": 1,
+          "name": "Contact & preparation",
+          "composition": "Contact details, personal preparation and the existing next-action links share one workspace.",
+          "requirements": [
+            "R15"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-my-advisor-1.png",
+          "lightEvidence": "evidence/screens/light-1440-my-advisor-1.png",
+          "mobileEvidence": "evidence/screens/dark-390-my-advisor-1.png",
+          "mobileLightEvidence": "evidence/screens/light-390-my-advisor-1.png"
+        },
+        {
+          "id": 2,
+          "name": "Contact first",
+          "composition": "Name, email and office information take precedence over preparation tools.",
+          "requirements": [
+            "R15"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-my-advisor-2.png",
+          "lightEvidence": "evidence/screens/light-1440-my-advisor-2.png"
+        },
+        {
+          "id": 3,
+          "name": "Contact strip",
+          "composition": "A compact contact strip spans the page above preparation and schedule links.",
+          "requirements": [
+            "R15"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-my-advisor-3.png",
+          "lightEvidence": "evidence/screens/light-1440-my-advisor-3.png"
+        },
+        {
+          "id": 4,
+          "name": "Office-hours agenda",
+          "composition": "Listed office hours become a readable agenda; no fake appointment booking is introduced.",
+          "requirements": [
+            "R15"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-my-advisor-4.png",
+          "lightEvidence": "evidence/screens/light-1440-my-advisor-4.png"
+        },
+        {
+          "id": 5,
+          "name": "Meeting brief",
+          "composition": "Personal meeting preparation leads, with contact details retained in view.",
+          "requirements": [
+            "R15"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-my-advisor-5.png",
+          "lightEvidence": "evidence/screens/light-1440-my-advisor-5.png"
+        },
+        {
+          "id": 6,
+          "name": "Email draft",
+          "composition": "Compose a private note and hand it to the user\u2019s mail app; no message is falsely reported as sent.",
+          "requirements": [
+            "R15"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-my-advisor-6.png",
+          "lightEvidence": "evidence/screens/light-1440-my-advisor-6.png",
+          "mobileEvidence": "evidence/screens/dark-390-my-advisor-6.png",
+          "mobileLightEvidence": "evidence/screens/light-390-my-advisor-6.png"
+        },
+        {
+          "id": 7,
+          "name": "Advisor file",
+          "composition": "An open contact-record folder holds the assigned advisor\u2019s details.",
+          "requirements": [
+            "R15"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-my-advisor-7.png",
+          "lightEvidence": "evidence/screens/light-1440-my-advisor-7.png"
+        },
+        {
+          "id": 8,
+          "name": "Next action first",
+          "composition": "The supplied schedule-review and preference-deadline links lead the composition.",
+          "requirements": [
+            "R15"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-my-advisor-8.png",
+          "lightEvidence": "evidence/screens/light-1440-my-advisor-8.png"
+        },
+        {
+          "id": 9,
+          "name": "Compact contact",
+          "composition": "Contact stays compact while preparation is disclosed on demand.",
+          "requirements": [
+            "R15"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-my-advisor-9.png",
+          "lightEvidence": "evidence/screens/light-1440-my-advisor-9.png"
+        },
+        {
+          "id": 10,
+          "name": "Preparation checklist",
+          "composition": "The meeting checklist leads, persists locally and reports preparation progress.",
+          "requirements": [
+            "R15"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-my-advisor-10.png",
+          "lightEvidence": "evidence/screens/light-1440-my-advisor-10.png",
+          "mobileEvidence": "evidence/screens/dark-390-my-advisor-10.png",
+          "mobileLightEvidence": "evidence/screens/light-390-my-advisor-10.png"
+        }
+      ]
+    },
+    {
+      "key": "calendar-sync",
+      "roles": [
+        "normalStudent",
+        "advisingStudent"
+      ],
+      "requirements": [
+        "R116"
+      ],
+      "retainedControls": [
+        "Original provider, account control, last-sync and calendar-file controls",
+        "Connection/disconnection, processed-source gate, recurring-event inspection",
+        "Idempotent local sync simulation and retry feedback",
+        "Real .ics file export; OAuth remains in the existing authenticated application"
+      ],
+      "previewStates": [
+        "default",
+        "empty",
+        "unavailable",
+        "error/retry",
+        "connected/disconnected",
+        "ready (sync disabled)",
+        "processed",
+        "sync pending",
+        "sync success",
+        "conflict (provider failure then retry)"
+      ],
+      "variants": [
+        {
+          "id": 1,
+          "name": "Connection & source",
+          "composition": "Connection status and the processed source schedule sit side by side.",
+          "requirements": [
+            "R116"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-calendar-sync-1.png",
+          "lightEvidence": "evidence/screens/light-1440-calendar-sync-1.png",
+          "mobileEvidence": "evidence/screens/dark-390-calendar-sync-1.png",
+          "mobileLightEvidence": "evidence/screens/light-390-calendar-sync-1.png"
+        },
+        {
+          "id": 2,
+          "name": "Connection steps",
+          "composition": "A short connection sequence explains consent, processed eligibility and synchronization.",
+          "requirements": [
+            "R116"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-calendar-sync-2.png",
+          "lightEvidence": "evidence/screens/light-1440-calendar-sync-2.png"
+        },
+        {
+          "id": 3,
+          "name": "Event ledger",
+          "composition": "A recurring-event ledger makes the exact component events inspectable.",
+          "requirements": [
+            "R116"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-calendar-sync-3.png",
+          "lightEvidence": "evidence/screens/light-1440-calendar-sync-3.png"
+        },
+        {
+          "id": 4,
+          "name": "Calendar file first",
+          "composition": "Calendar-file export leads, clearly separated from a live provider connection.",
+          "requirements": [
+            "R116"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-calendar-sync-4.png",
+          "lightEvidence": "evidence/screens/light-1440-calendar-sync-4.png"
+        },
+        {
+          "id": 5,
+          "name": "Event inspector",
+          "composition": "Select an event in the ledger to inspect its recurring payload alongside it.",
+          "requirements": [
+            "R116"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-calendar-sync-5.png",
+          "lightEvidence": "evidence/screens/light-1440-calendar-sync-5.png"
+        },
+        {
+          "id": 6,
+          "name": "Connection drawer",
+          "composition": "Connection settings fold away after review, leaving source and privacy information.",
+          "requirements": [
+            "R116"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-calendar-sync-6.png",
+          "lightEvidence": "evidence/screens/light-1440-calendar-sync-6.png",
+          "mobileEvidence": "evidence/screens/dark-390-calendar-sync-6.png",
+          "mobileLightEvidence": "evidence/screens/light-390-calendar-sync-6.png"
+        },
+        {
+          "id": 7,
+          "name": "Permissions first",
+          "composition": "Permissions and privacy precede connection controls.",
+          "requirements": [
+            "R116"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-calendar-sync-7.png",
+          "lightEvidence": "evidence/screens/light-1440-calendar-sync-7.png"
+        },
+        {
+          "id": 8,
+          "name": "Review sync changes",
+          "composition": "Review the next sync\u2019s changes and stable event identifiers before synchronizing.",
+          "requirements": [
+            "R116"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-calendar-sync-8.png",
+          "lightEvidence": "evidence/screens/light-1440-calendar-sync-8.png"
+        },
+        {
+          "id": 9,
+          "name": "Sync activity",
+          "composition": "A local sync activity log exposes successful runs and unchanged re-syncs.",
+          "requirements": [
+            "R116"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-calendar-sync-9.png",
+          "lightEvidence": "evidence/screens/light-1440-calendar-sync-9.png"
+        },
+        {
+          "id": 10,
+          "name": "Compact settings",
+          "composition": "Compact settings disclosures organize source, permissions and the .ics snapshot.",
+          "requirements": [
+            "R116"
+          ],
+          "sharedWorkflow": true,
+          "desktopEvidence": "evidence/screens/dark-1440-calendar-sync-10.png",
+          "lightEvidence": "evidence/screens/light-1440-calendar-sync-10.png",
+          "mobileEvidence": "evidence/screens/dark-390-calendar-sync-10.png",
+          "mobileLightEvidence": "evidence/screens/light-390-calendar-sync-10.png"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "browser": "evidence/reports/browser-report.json",
+    "browserAssertionsPassed": 979,
+    "supplemental": "evidence/reports/supplemental-report.json",
+    "supplementalAssertionsPassed": 17,
+    "domain": "evidence/reports/domain-report.json",
+    "domainAssertionsPassed": 61,
+    "adapter": "evidence/reports/adapter-report.json",
+    "adapterAssertionsPassed": 50,
+    "baselineIntegrity": "evidence/reports/baseline-integrity.json",
+    "unchangedExternalFiles": 287,
+    "screenCaptureCount": 182,
+    "supplementalCaptureCount": 31,
+    "productionBackendTested": false,
+    "realOAuthTested": false,
+    "extractedArchiveBrowser": "evidence/reports/archive-browser-report.json",
+    "extractedArchiveAssertionsPassed": 979,
+    "archiveRuntimeIntegrity": "evidence/reports/archive-runtime-integrity.json"
+  },
+  "archiveRoot": "variants/02-student-life/"
+}

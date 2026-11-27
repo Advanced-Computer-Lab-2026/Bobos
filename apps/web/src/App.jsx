@@ -1,72 +1,79 @@
-import { useEffect, useMemo, useState } from "react";
-import { api, explainApiError } from "./api.js";
-import AuthPage from "./components/AuthPage.jsx";
-import {
-  OverviewPage,
-  ProfilePage,
-  NotificationsPage,
-  StudentRecordsPage,
-  PreferencesPage,
-} from "./components/BasicPages.jsx";
+import { useEffect, useState } from "react";
+import { api } from "./api.js";
+import { NotificationsPage, PreferencesPage, ProfilePage, StudentRecordsPage } from "./components/BasicPages.jsx";
 import StudentDirectoryPage from "./components/StudentDirectoryPage.jsx";
+import FinancialRecordsPage from "./components/FinancialRecordsPage.jsx";
 import AdvisingPage, { MyAdvisorPage } from "./components/AdvisingPage.jsx";
+import SlotChangesPage from "./components/SlotChangesPage.jsx";
 import AcademicWorkspace from "./components/AcademicWorkspace.jsx";
 import { GroupAssignmentsPage, StaffSchedulesPage, StudentSchedulingPage } from "./components/SchedulingPages.jsx";
+import { CalendarSyncPage, PendingWorkPage, ScheduleActivityPage } from "./components/B1Pages.jsx";
+import MandatoryRemovalDashboard from "./components/MandatoryRemovalDashboard.jsx";
+import ExtraHoursPage from "./components/ExtraHoursPage.jsx";
+import GraduationReview, { StudentGraduation } from "./components/GraduationReview.jsx";
 
-const roleNames = {
-  normalStudent: "Normal student",
-  advisingStudent: "Advising student",
-  advisor: "Advisor",
-  coordinator: "Coordinator",
-  administrator: "Administrator",
-};
+const notify = (tone, text) => document.querySelector("portal-action-feedback")?.show(tone, text);
 
 const navGroups = (role) => {
   const student = ["normalStudent", "advisingStudent"].includes(role);
   const staff = ["advisor", "coordinator", "administrator"].includes(role);
   return [
-    { title: "Workspace", items: [{ id: "overview", label: "Overview", icon: "⌂" }, { id: "notifications", label: "Notifications", icon: "◌" }] },
+    { title: "Home", items: [{ id: "overview", label: "Overview" }, { id: "notifications", label: "Notifications" }, ...(role === "coordinator" ? [{ id: "pending-work", label: "Pending work" }] : [])] },
     ...(student ? [{ title: "Student services", items: [
-      ...(role === "advisingStudent" ? [{ id: "records", label: "Academic records", icon: "▤" }] : []),
-      { id: "my-schedule", label: "My schedule", icon: "◷" },
-      { id: "my-courses", label: "Registered courses", icon: "▦" },
-      ...(role === "normalStudent" ? [{ id: "schedule-swap", label: "Eligible swap groups", icon: "⇄" }] : []),
-      ...(role === "advisingStudent" ? [{ id: "preferences", label: "Schedule preferences", icon: "☷" }] : []),
-      { id: "my-advisor", label: "My advisor", icon: "♧" },
+      ...(role === "advisingStudent" ? [{ id: "records", label: "Academic records" }] : []),
+      { id: "my-schedule", label: "My schedule" },
+      { id: "my-courses", label: "Registered courses" },
+      ...(role === "advisingStudent" ? [{ id: "my-graduation", label: "My graduation" }] : []),
+      ...(role === "advisingStudent" ? [{ id: "extra-hours", label: "Extra-hours requests" }] : []),
+      ...(role === "advisingStudent" ? [{ id: "slot-changes", label: "Slot change requests" }] : []),
+      ...(role === "normalStudent" ? [{ id: "schedule-swap", label: "Eligible swap groups" }] : []),
+      ...(role === "advisingStudent" ? [{ id: "preferences", label: "Schedule preferences" }] : []),
+      ...(role === "advisingStudent" ? [{ id: "my-advisor", label: "My advisor" }] : []),
+      { id: "calendar-sync", label: "Calendar sync" },
     ] }] : []),
-    ...(staff ? [{ title: "People", items: [
-      ...(["coordinator", "administrator"].includes(role) ? [{ id: "directory", label: "Student directory", icon: "♙" }] : []),
-      ...(role === "advisor" || role === "coordinator" ? [{ id: "advising", label: "Advising students", icon: "♧" }] : []),
-      ...(role === "advisor" || role === "coordinator" ? [{ id: "preferences", label: "Student preferences", icon: "☷" }] : []),
-      { id: "student-schedules", label: "Student schedules", icon: "◷" },
+    ...(staff ? [{ title: "Student services", items: [
+      ...(["coordinator", "administrator"].includes(role) ? [
+        { id: "directory", label: "Student directory" },
+        { id: "financial-records", label: "Financial records" },
+      ] : []),
+      ...(role === "advisor" || role === "coordinator" ? [{ id: "advising", label: "Advising students" }] : []),
+      ...(role === "advisor" || role === "coordinator" ? [{ id: "preferences", label: "Student preferences" }] : []),
+      ...(["coordinator", "administrator"].includes(role) ? [{ id: "schedule-activity", label: "Schedule activity" }] : []),
+      ...(["coordinator", "administrator", "advisor"].includes(role) ? [{ id: "mandatory-removals", label: "Course removals" }] : []),
+      { id: "student-schedules", label: "Student schedules" },
+      ...(["advisor", "coordinator"].includes(role) ? [{ id: "graduation-review", label: role === "coordinator" ? "Graduation review" : "My submitted plans" }] : []),
+      ...(["advisor", "coordinator"].includes(role) ? [{ id: "extra-hours", label: "Extra-hours requests" }] : []),
+      ...(["advisor", "coordinator"].includes(role) ? [{ id: "slot-changes", label: "Slot change requests" }] : []),
     ] }] : []),
     ...(["coordinator", "administrator"].includes(role) ? [{ title: "Academic setup", items: [
-      { id: "courses", label: "Course catalogue", icon: "▦" },
-      { id: "terms", label: "Academic terms", icon: "◷" },
-      ...(role === "administrator" ? [{ id: "offerings", label: "Course offerings", icon: "▤" }] : []),
-      ...(role === "coordinator" ? [{ id: "templates", label: "Schedule templates", icon: "▧" }] : []),
-      { id: "group-assignments", label: "Schedule group assignments", icon: "⇄" },
+      { id: "courses", label: "Course catalogue" },
+      { id: "terms", label: "Academic terms" },
+      ...(role === "administrator" ? [{ id: "offerings", label: "Course offerings" }] : []),
+      ...(role === "coordinator" ? [{ id: "templates", label: "Schedule templates" }] : []),
+      { id: "group-assignments", label: "Schedule group assignments" },
     ] }] : []),
   ];
 };
 
-const titleByScreen = {
-  overview: "Overview", profile: "My profile", notifications: "Notifications",
-  records: "Academic records", preferences: "Schedule preferences", directory: "Student directory",
-  advising: "Advising students", "my-advisor": "My advisor", courses: "Course catalogue",
-  terms: "Academic terms", offerings: "Course offerings", templates: "Schedule templates",
-  "my-schedule": "My schedule", "my-courses": "Registered courses", "schedule-swap": "Eligible swap groups",
-  "student-schedules": "Student schedules", "group-assignments": "Schedule group assignments",
-};
-
-export default function App() {
+export default function App({ service }) {
+  const workspaceParams = new URLSearchParams(service);
+  const requestedScreen = workspaceParams.get("screen");
+  const embeddedServices = workspaceParams.get("section") === "academic-services";
+  const embeddedCalendar = !embeddedServices && requestedScreen === "calendar-sync";
+  const embeddedExtraHours = !embeddedServices && requestedScreen === "extra-hours";
+  const embeddedGraduation = !embeddedServices && requestedScreen === "graduation-plans";
+  const embeddedPage = embeddedServices ? "academic-services" : embeddedGraduation ? "graduation-plans" : embeddedExtraHours ? "extra-hours" : null;
   const [token, setToken] = useState(() => window.localStorage.getItem("bobos.token"));
+  const [previewExtraHours] = useState(() =>
+    embeddedExtraHours && !token && workspaceParams.get("role") === "advisingStudent"
+    && window.localStorage.getItem("portal-studio-preview-session") === "1"
+  );
   const [profile, setProfile] = useState(null);
   const [profileLoading, setProfileLoading] = useState(Boolean(token));
-  const [activeScreen, setActiveScreen] = useState("overview");
-  const [screenContext, setScreenContext] = useState(null);
-  const [notice, setNotice] = useState(null);
-
+  const [activeScreen, setActiveScreen] = useState(null);
+  const [embeddedProfileError, setEmbeddedProfileError] = useState("");
+  const routeState = window.history.state;
+  const screenContext = routeState?.portalScreen === requestedScreen ? routeState.portalContext : null;
   useEffect(() => {
     if (!token) {
       setProfile(null);
@@ -77,109 +84,129 @@ export default function App() {
     setProfileLoading(true);
     api("/api/identity/profile", { token })
       .then((data) => {
-        if (alive) setProfile(data.profile);
+        if (!alive) return;
+        setProfile(data.profile);
+        if (requestedScreen === "profile" || navGroups(data.profile.role).some(group => group.items.some(item => item.id === requestedScreen))) {
+          setActiveScreen(requestedScreen);
+        }
       })
       .catch((error) => {
         if (!alive) return;
-        window.localStorage.removeItem("bobos.token");
+        if (embeddedPage && error.status !== 401) {
+          setEmbeddedProfileError("Your workspace couldn’t load. Try refreshing the page.");
+          return;
+        }
+        if (window.localStorage.getItem("bobos.token") === token) {
+          window.localStorage.removeItem("bobos.token");
+        }
         setToken(null);
         setProfile(null);
-        if (error.status !== 401) setNotice({ type: "error", text: error.message });
+        if (error.status !== 401) notify("error", error.message);
       })
       .finally(() => alive && setProfileLoading(false));
     return () => { alive = false; };
-  }, [token]);
+  }, [token, embeddedPage, requestedScreen]);
 
-  useEffect(() => {
-    if (!notice) return undefined;
-    const timeout = window.setTimeout(() => setNotice(null), 5000);
-    return () => window.clearTimeout(timeout);
-  }, [notice]);
-
-  const groups = useMemo(() => navGroups(profile?.role), [profile?.role]);
-  const allNavItems = groups.flatMap((group) => group.items);
-
-  const acceptLogin = (newToken) => {
-    window.localStorage.setItem("bobos.token", newToken);
-    setToken(newToken);
-    setActiveScreen("overview");
-    setScreenContext(null);
-  };
-
-  const signOut = async () => {
-    try { await api("/api/identity/logout", { token, method: "POST", body: {} }); } catch { /* Clear the local session even when the API is offline. */ }
-    window.localStorage.removeItem("bobos.token");
-    setToken(null);
-    setProfile(null);
-    setActiveScreen("overview");
-  };
-
-  const notify = (type, text) => setNotice({ type, text });
   const openScreen = (screen, context = null) => {
-    setActiveScreen(screen);
-    setScreenContext(context);
+    document.dispatchEvent(new CustomEvent("portal:open-service", { detail: { screen, context } }));
   };
 
-  if (!token) return <AuthPage onLogin={acceptLogin} />;
+  if (profileLoading && embeddedExtraHours) return <div className="extra-hours-loading" aria-busy="true"><span className="sr-only">Loading extra-hours requests…</span></div>;
   if (profileLoading) return <div className="app-loading"><span className="loader" />Loading your workspace…</div>;
-  if (!profile) return <AuthPage onLogin={acceptLogin} />;
+  if (embeddedPage && embeddedProfileError) {
+    return <div className="feedback error" role="alert">{embeddedProfileError}</div>;
+  }
+  if (previewExtraHours) {
+    return <div className="extra-hours-shell extra-hours-embedded">
+      <ExtraHoursPage role="advisingStudent" notify={notify} embedded preview />
+    </div>;
+  }
+  if (!token || !profile) {
+    const signIn = new URL("/portal-studio/index.html", window.location.href);
+    const isSubmittedView = embeddedGraduation && workspaceParams.get("view") === "submitted";
+    signIn.search = new URLSearchParams({
+      page: "login",
+      role: workspaceParams.get("role") || "",
+      preview: "live",
+      next: isSubmittedView ? "my-submitted-plans" : new URLSearchParams(window.location.search).get("page") || embeddedPage || "overview",
+    });
+    if (signIn.searchParams.get("next") === "academic-services" && requestedScreen) signIn.searchParams.set("screen", requestedScreen);
+    return <p className="feedback error">Your session has ended. <a href={signIn.href}>Sign in to Portal</a>.</p>;
+  }
 
-  return (
-    <div className="app-shell">
-      <aside className="sidebar">
-        <div className="brand"><span className="brand-mark">B</span><span>bobos<span className="brand-dot">.</span><small>UNIVERSITY SCHEDULING</small></span></div>
-        <div className="sidebar-label">MENU</div>
-        <nav aria-label="Main navigation">
-          {groups.map((group) => (
-            <div className="nav-group" key={group.title}>
-              <p className="nav-group-title">{group.title}</p>
-              {group.items.map((item) => (
-                <button
-                  className={`nav-item ${activeScreen === item.id ? "active" : ""}`}
-                  type="button"
-                  key={item.id}
-                  onClick={() => openScreen(item.id)}
-                >
-                  <span className="nav-icon" aria-hidden="true">{item.icon}</span><span>{item.label}</span>
-                </button>
-              ))}
-            </div>
-          ))}
-        </nav>
-        <div className="sidebar-bottom"><span className="online-dot" />Academic portal <span className="version">Development</span></div>
-      </aside>
+  if (embeddedCalendar) {
+    if (!["normalStudent", "advisingStudent"].includes(profile.role)) {
+      return <p role="alert">Sign in with a Bobos student account to connect Google Calendar.</p>;
+    }
+    return <div className="extra-hours-embedded"><CalendarSyncPage token={token} /></div>;
+  }
 
-      <main className="main-area">
-        <header className="topbar">
-          <div className="breadcrumbs"><span>Workspace</span><span className="crumb-separator">/</span><strong>{titleByScreen[activeScreen] || "Overview"}</strong></div>
-          <div className="topbar-actions">
-            <button className="icon-button" type="button" aria-label="Open notifications" title="Notifications" onClick={() => openScreen("notifications")}>♧</button>
-            <span className="topbar-divider" />
-            <button className="user-chip" type="button" aria-label="My profile" title="My profile" aria-current={activeScreen === "profile" ? "page" : undefined} onClick={() => openScreen("profile")}>
-              <span className="avatar" aria-hidden="true">{(profile.fullName || "U").trim().slice(0, 1).toUpperCase()}</span>
-              <span><strong>{profile.fullName}</strong><small>{roleNames[profile.role] || profile.role}</small></span>
-            </button>
-            <button className="signout-button" type="button" onClick={signOut}>Sign out</button>
-          </div>
-        </header>
+  if (embeddedGraduation) {
+    const { role } = profile;
+    if (!["advisor", "coordinator", "advisingStudent"].includes(role) || workspaceParams.get("role") !== role) {
+      return <p className="feedback error" role="alert">Sign in with the matching portal role to view graduation plans.</p>;
+    }
+    return <div className={`extra-hours-shell extra-hours-embedded ${role !== "advisingStudent" ? "academic-services-embedded" : ""}`}>
+      {role === "advisingStudent" ? <StudentGraduation token={token} />
+        : role === "advisor" && workspaceParams.get("view") !== "submitted"
+          ? <AdvisingPage token={token} role={role} graduationOnly />
+          : <GraduationReview token={token} role={role} />}
+    </div>;
+  }
 
-        <div className="page-content">
-          {notice && <div className={`toast ${notice.type}`} role={notice.type === "error" ? "alert" : "status"}>{notice.text}<button type="button" aria-label="Dismiss" onClick={() => setNotice(null)}>×</button></div>}
-          {activeScreen === "overview" && <OverviewPage profile={profile} onOpen={openScreen} />}
-          {activeScreen === "profile" && <ProfilePage profile={profile} />}
-          {activeScreen === "notifications" && <NotificationsPage token={token} notify={notify} />}
-          {activeScreen === "records" && profile.role !== "normalStudent" && <StudentRecordsPage token={token} profile={profile} notify={notify} />}
-          {activeScreen === "preferences" && <PreferencesPage token={token} profile={profile} profileId={screenContext?.id || screenContext?._id || profile.studentProfileId} studentTarget={screenContext?._id ? screenContext : undefined} notify={notify} onOpenDraftSchedule={(student, selectedTermId) => openScreen("student-schedules", { draftStudent: student, termId: selectedTermId })} />}
-          {activeScreen === "directory" && <StudentDirectoryPage token={token} role={profile.role} notify={notify} />}
-          {activeScreen === "advising" && <AdvisingPage token={token} role={profile.role} onOpenPreferences={(student) => openScreen("preferences", student)} />}
-          {activeScreen === "my-advisor" && <MyAdvisorPage token={token} />}
-          {activeScreen === "group-assignments" && <GroupAssignmentsPage token={token} canAssign={profile.role === "coordinator"} notify={notify} />}
-          {activeScreen === "student-schedules" && <StaffSchedulesPage token={token} role={profile.role} notify={notify} initialStudent={screenContext?.draftStudent} initialTermId={screenContext?.termId} />}
-          {["my-schedule", "my-courses", "schedule-swap"].includes(activeScreen) && <StudentSchedulingPage token={token} section={activeScreen} />}
-          {["courses", "terms", "offerings", "templates"].includes(activeScreen) && <AcademicWorkspace token={token} role={profile.role} section={activeScreen} onNavigate={openScreen} notify={notify} />}
-          {activeScreen !== "profile" && !allNavItems.some((item) => item.id === activeScreen) && <OverviewPage profile={profile} onOpen={openScreen} />}
-        </div>
-      </main>
+  if (embeddedExtraHours) {
+    const notifyEmbedded = (tone, text) => {
+      const feedback = document.querySelector("portal-action-feedback");
+      if (feedback) feedback.show(tone, text);
+      else notify(tone, text);
+    };
+    if (!["advisor", "coordinator", "advisingStudent"].includes(profile.role) || workspaceParams.get("role") !== profile.role) {
+      return <div className="feedback error" role="alert">Sign in with the matching portal role to view extra-hours requests.</div>;
+    }
+    return <div className="extra-hours-shell extra-hours-embedded">
+      <ExtraHoursPage token={token} role={profile.role} advisorId={profile._id} notify={notifyEmbedded} embedded />
+    </div>;
+  }
+
+  const report = notify;
+
+  const workspaceContent = (
+    <div className="page-content" id="workspace-content" tabIndex={-1}>
+      {activeScreen === "profile" && <ProfilePage profile={profile} />}
+      {activeScreen === "notifications" && <NotificationsPage token={token} notify={report} />}
+      {activeScreen === "records" && <StudentRecordsPage token={token} profile={profile} notify={report} />}
+      {activeScreen === "my-advisor" && <MyAdvisorPage token={token} />}
+      {activeScreen === "preferences" && <PreferencesPage token={token} profile={profile} profileId={screenContext?.id || screenContext?._id || profile.studentProfileId} studentTarget={screenContext?._id ? screenContext : undefined} notify={report} onOpenDraftSchedule={(student, selectedTermId) => openScreen("student-schedules", { draftStudent: student, termId: selectedTermId })} />}
+      {activeScreen === "directory" && <StudentDirectoryPage token={token} role={profile.role} notify={report} />}
+      {activeScreen === "financial-records" && ["coordinator", "administrator"].includes(profile.role) && <FinancialRecordsPage token={token} role={profile.role} notify={report} />}
+      {activeScreen === "advising" && <AdvisingPage token={token} role={profile.role} notify={report} onOpenPreferences={(student) => openScreen("preferences", student)} />}
+      {activeScreen === "graduation-review" && ["advisor", "coordinator"].includes(profile.role) && <GraduationReview token={token} role={profile.role} />}
+      {activeScreen === "my-graduation" && profile.role === "advisingStudent" && <StudentGraduation token={token} />}
+      {activeScreen === "calendar-sync" && <CalendarSyncPage token={token} />}
+      {activeScreen === "pending-work" && profile.role === "coordinator" && <PendingWorkPage token={token} />}
+      {activeScreen === "schedule-activity" && ["coordinator", "administrator"].includes(profile.role) && <ScheduleActivityPage token={token} />}
+      {activeScreen === "mandatory-removals" && ["coordinator", "administrator", "advisor"].includes(profile.role) && <MandatoryRemovalDashboard token={token} role={profile.role} notify={report} />}
+      {activeScreen === "extra-hours" && ["advisingStudent", "coordinator", "advisor"].includes(profile.role) && <ExtraHoursPage token={token} role={profile.role} advisorId={profile._id} notify={report} />}
+      {activeScreen === "group-assignments" && <GroupAssignmentsPage token={token} canAssign={profile.role === "coordinator"} notify={report} />}
+      {activeScreen === "student-schedules" && <StaffSchedulesPage token={token} role={profile.role} notify={report} initialStudent={screenContext?.draftStudent} initialTermId={screenContext?.termId} />}
+      {activeScreen === "slot-changes" && <SlotChangesPage token={token} role={profile.role} onOpenSchedule={() => openScreen("my-schedule")} />}
+      {["my-schedule", "my-courses", "schedule-swap"].includes(activeScreen) && <StudentSchedulingPage token={token} section={activeScreen} onOpenSlotChanges={profile.role === "advisingStudent" ? () => openScreen("slot-changes") : undefined} />}
+      {["courses", "terms", "offerings", "templates"].includes(activeScreen) && <AcademicWorkspace token={token} role={profile.role} section={activeScreen} onNavigate={openScreen} notify={report} />}
+
     </div>
   );
+
+  if (embeddedServices) {
+    if (workspaceParams.get("role") !== profile.role) {
+      return <p className="feedback error" role="alert">Sign in with the matching portal role to view academic services.</p>;
+    }
+    if (!activeScreen) return <p className="feedback error" role="alert">This page is unavailable for your role.</p>;
+    return (
+      <div className="extra-hours-shell extra-hours-embedded academic-services-embedded">
+        {workspaceContent}
+      </div>
+    );
+  }
+
+  return <p role="alert">This service is unavailable.</p>;
 }

@@ -1,0 +1,1 @@
+{"name":"portal-academic-setup-variants","version":"2.0.0","private":true,"type":"module","scripts":{"build":"node build.mjs","test":"node --test tests/domain.test.mjs"}}

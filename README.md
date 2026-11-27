@@ -48,3 +48,27 @@ See [the authentication backend guide](docs/authentication.md) for login, email 
 See [scheduling preferences](docs/scheduling-preferences.md) for requirements 57/58: students submit ranked term-specific hints before the advising deadline, and Advisors/Coordinators read the latest hints without making them mandatory. Run `npm run test:group-a` for the Group A API integration and edge-case checks.
 
 See [Group B API coverage](docs/group-b-verification.md) for the student directory, account status, advisor roster, advising directory, and advisor assignment routes. Run `npm run test:group-b` for Group B role, filtering, and assignment-history checks.
+
+Run `npm test` for the current portal's API, frontend, and acceptance suites. Run `npm run test:a` or `npm run test:bc` for the focused group suites. The earlier audit documents record the findings at the time of each audit.
+
+### Extra-hours card payments (Req. 91 and 93)
+
+Set `STRIPE_SECRET_KEY` to a Stripe sandbox secret key in the API environment. Hosted Stripe Checkout accepts test cards in EGP. The Portal displays **Pay by card** for an approved request and confirms the payment with Stripe before applying the extra hours. The API checks pending checkouts in the background every minute, so a student can close the tab after paying. Use `WEB_ORIGIN` to set the return origin when hosted.
+
+### Probation warning emails (Req. 118)
+
+Administrators can record official semester standings in **Academic terms → Record standing**. The API stores one standing per student and term. API clients can also use `PUT /api/academic-terms/academicTerm/<termCode>/standings/<studentId>` with `academicStanding` set to `probation` or `goodAcademicStanding`.
+
+With SMTP configured, the production API checks the student when a standing is saved. It also checks at startup and hourly. It sends a warning to an advising student's GUC email after the second consecutive completed Winter or Spring semester on probation. The student's **Notifications** shows the email delivery status. Development can enable the same check with `PROBATION_WARNINGS_ENABLED=true` and a local SMTP catcher.
+
+### Google Calendar sync
+
+For requirement 116, configure a Google OAuth client with the redirect URI `http://localhost:3000/api/calendar/oauth/callback` (use the matching public API URI when hosted). Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `GOOGLE_REDIRECT_URI` in the ignored `.env` file. Generate an encryption key with `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"` and set it as `CALENDAR_TOKEN_ENCRYPTION_KEY`. Set `UNIVERSITY_TIMEZONE` to the institution's IANA timezone. Students can connect Google Calendar from **Calendar sync** after signing in, or open `/portal-studio/index.html?page=calendar-sync&role=normalStudent&preview=live`. The app stores encrypted OAuth tokens and never requests a calendar password. The API watches MongoDB changes and synchronizes processed schedules automatically while the browser is closed; a 60-second reconciliation retries missed changes and temporary Google failures. Recurring classes use the university timezone and teaching dates. Course/room changes update stable event IDs, and removed meetings are deleted. Revoked authorization requires reconnecting. Google OAuth must grant Calendar events access and an offline refresh token. The server exposes configuration and sync failures on the real connection page; the illustrated preview is not proof of a connected account.
+
+The web app opens the illustrated Portal Studio sign-in at the root URL. Continue enters the Teaching week dashboard and the full navigable Studio experience with demonstration records. Choose Academic services in the Portal navigation for API-backed workflows. Bookmarks for Academic services, Calendar sync, and Graduation plans open the corresponding service.
+
+### B1 manual test data
+
+Run `npm run seed:b1 --workspace @bobos/api` after the evaluation seed to add dedicated B1 accounts, seven request categories and 120 history events without clearing existing data. See [B1 seed scenarios and logins](docs/b1-seed.md). All initial B1 passwords are `Password123!`.
+
+Run `npm run seed:group4 --workspace @bobos/api` to set the local default Layla and Karim demo accounts to the illustrated Group 4 processed timetable (CSEN 701, CSEN 703, CSEN 704, DMET 701; 19 credits). This explicitly replaces only those two accounts’ active-term schedules, records processing history, reconciles seat counts and preserves other students. Meetings use the illustrated start times and rooms with 90-minute durations. Rerunning retains matching processed schedules.

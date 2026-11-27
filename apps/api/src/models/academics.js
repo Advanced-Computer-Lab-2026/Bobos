@@ -1,6 +1,6 @@
 import { ACADEMIC_STANDINGS, DAYS_OF_WEEK, STUDENT_TYPES, WORKFLOW_STATUSES, ref, registerModel, Schema, withTimestamps } from "./shared.js";
 import mongoose from 'mongoose';
-import "./finance.js";
+import { FinancialTransaction, walletDelta, walletKinds } from "./finance.js";
 
 // ## Sprint 1 schemas
 // ScheduleTemplate: Req. 28-29; StudentSchedule: Req. 30-34, 49; CourseAttempt: Req. 54-56, 61.
@@ -67,6 +67,15 @@ const studentScheduleSchema = withTimestamps({
   // Older advising drafts stored slot choices without updating seat counts.
   seatsReserved: { type: Boolean, default: false },
   version: { type: Number, default: 1, min: 1 },
+  // Req. 60: bachelor project chosen by staff for an eligible advising student; it has no lecture/tutorial/lab slots.
+  bachelorProject: {
+    type: new Schema({
+      season: { type: String, required: true, enum: ["winter", "spring"] },
+      addedBy: ref("User", { required: true }),
+      addedAt: { type: Date, required: true, default: Date.now },
+    }, { _id: false }),
+    default: null,
+  },
   createdBy: ref("User", { required: true }),
   processedBy: ref("User", { default: null }),
   processedAt: { type: Date, default: null },
@@ -305,27 +314,14 @@ export const getAttendedAcademicYears = async (studentId) => {
 
 //Added for Req 89: View wallet
 export const getWallet = async (studentId) => {
-  const FinancialTransaction = mongoose.model('FinancialTransaction');
-
-  const transactions = await FinancialTransaction.find({ student: studentId })
-    .where('kind').in(['walletTopUp', 'refund', 'extraHoursWalletPayment'])
+  const transactions = await FinancialTransaction.find({ student: studentId, kind: { $in: walletKinds } })
     .sort({ occurredAt: 1, _id: 1 })
     .lean();
-
-  if (!transactions) {
-    return null;
-  }
 
   let balanceCents = 0;
 
   transactions.forEach(txn => {
-    if (txn.status === 'succeeded') {
-      if (txn.kind === 'walletTopUp' || txn.kind === 'refund') {
-        balanceCents += Math.round(txn.amount * 100);
-      } else if (txn.kind === 'extraHoursWalletPayment') {
-        balanceCents -= Math.round(txn.amount * 100);
-      }
-    }
+    balanceCents += walletDelta(txn);
     txn.resultingBalance = balanceCents / 100;
     txn.direction = txn.kind === 'extraHoursWalletPayment' ? 'debit' : 'credit';
   });

@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Portal · Student overview layouts</title>
+  <link rel="icon" href="portal-card-index.svg">
+  <link rel="stylesheet" href="base.css">
+  <style>
+    body {--paper:#151515;--ink:#efeee9;--muted:#bdbbb0;--raised:#242424;margin:0;background:var(--paper);color:var(--ink)}
+    main {width:min(100% - 32px,960px);margin:32px auto}
+    h1 {margin:0 0 20px;font:400 clamp(25px,4vw,38px)/1.1 Tiempos,Georgia,serif}
+    .study-controls {display:flex;flex-wrap:wrap;align-items:end;gap:12px 16px}
+    label {display:grid;gap:5px;font-size:13px}
+    select,a {min-height:38px;padding:6px 10px;border-radius:6px;background:var(--raised);color:var(--ink);font:inherit}
+    select {max-width:100%;border:1px solid #484848}
+    a {display:inline-flex;align-items:center;text-decoration:none;font-size:13px}
+    :is(a,select):focus-visible {outline:2px solid #a0c4ff;outline-offset:3px}
+    p {color:var(--muted);margin:12px 0}
+    iframe {display:block;width:100%;height:660px;margin:14px auto 0;border:1px solid #303030;border-radius:10px;background:#151515}
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Coming up &amp; Notifications</h1>
+    <div class="study-controls">
+      <label>Layout
+        <select id="layout">
+          <option value="1">1. Course preferences</option>
+          <option value="2">2. Time first</option>
+          <option value="3">3. Class slips</option>
+          <option value="4">4. Grouped panels</option>
+          <option value="5">5. Next class spotlight</option>
+          <option value="6">6. Course tickets</option>
+          <option value="7">7. Compact digest</option>
+          <option value="8">8. Class tiles</option>
+          <option value="9">9. Daybook and inbox</option>
+          <option value="10">10. Side-by-side desk</option>
+        </select>
+      </label>
+      <label>Theme
+        <select id="theme"><option value="dark">Dark</option><option value="light">Light</option></select>
+      </label>
+      <label>Preview width
+        <select id="width"><option value="100%">Wide</option><option value="390px">Phone</option></select>
+      </label>
+      <label>Student view
+        <select id="role"><option value="advisingStudent">Advising student</option><option value="normalStudent">Normal student</option></select>
+      </label>
+      <a id="dashboard" href="./index.html?page=overview&amp;role=advisingStudent&amp;preview=live" target="_blank" rel="noopener">Open in dashboard</a>
+    </div>
+    <p id="description"></p>
+    <iframe id="preview" title="Coming up and Notifications preview"></iframe>
+  </main>
+  <script>
+    const descriptions = [
+      'Course emblems from Schedule preferences, with notices on separate cards. Applied to the dashboard.',
+      'Class times lead each row. Notices use the same open spacing as the course list.',
+      'Each class gets a soft slip, with the room and time together at a glance. Notices sit directly on the page.',
+      'Coming up and Notifications each sit on their own surface, with room for full notice copy.',
+      'The next class gets a larger lead card. The following class and notices stay quiet.',
+      'Time appears first on each ticket, and the course emblem sits at its right edge.',
+      'A compact list keeps classes and short notices together with minimal vertical space.',
+      'Two class tiles sit side by side when space allows, with a simple list beneath for notices.',
+      'Day and time lead each class entry, and both notices share a single inbox surface.',
+      'Classes and notices are peers in two columns when there is room, and stack on phones.'
+    ];
+    const layout = document.querySelector('#layout');
+    const theme = document.querySelector('#theme');
+    const width = document.querySelector('#width');
+    const role = document.querySelector('#role');
+    const preview = document.querySelector('#preview');
+
+    function render() {
+      const url = new URL('./index.html', location.href);
+      url.search = new URLSearchParams({
+        page:'overview', role:role.value, 'feed-layout':layout.value,
+        ...(theme.value==='dark' ? {preview:'live'} : {preview:'studio',layout:21,palette:10,mode:'light'})
+      });
+      url.hash = 'student-feed';
+      document.querySelector('#dashboard').href = url;
+      url.hash = '';
+      url.searchParams.set('feed-only','1');
+      if (preview.src!==url.href) preview.src = url;
+      preview.style.maxWidth = width.value;
+      document.querySelector('#description').textContent = descriptions[Number(layout.value)-1];
+    }
+    document.querySelector('.study-controls').addEventListener('change',render);
+    render();
+  </script>
+</body>
+</html>

@@ -1,5 +1,9 @@
+import OfferingCourseIcon from "./OfferingCourseIcon.jsx";
+import PortalAvatar from "./PortalAvatar.jsx";
+import { termLabel } from "../term-label.js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api.js";
+import PaperTossButton, { waitForPaperToss } from "./PaperTossButton.jsx";
 
 const WEEK = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"];
 const semesters = Array.from({ length: 10 }, (_, index) => index + 1);
@@ -59,6 +63,7 @@ export function GroupAssignmentsPage({ token, canAssign = false, notify }) {
 
   useEffect(() => { load(); }, [load]);
 
+
   const targetGroups = useMemo(() => target ? groups.filter((group) =>
     group.major === target.major && Number(group.semester) === Number(target.currentSemester)
   ) : [], [groups, target]);
@@ -85,6 +90,7 @@ export function GroupAssignmentsPage({ token, canAssign = false, notify }) {
     setBusy(true);
     setUnassignError("");
     try {
+      await waitForPaperToss();
       const result = await api(`/api/group-assignments/${encodeURIComponent(unassignTarget._id)}?termId=${encodeURIComponent(termId)}`, { token, method: "DELETE" });
       notify("success", result.message);
       setUnassignTarget(null);
@@ -95,7 +101,7 @@ export function GroupAssignmentsPage({ token, canAssign = false, notify }) {
 
   return <div className="page-stack scheduling-page">
     <div className="page-title-row"><div><p className="eyebrow">COORDINATOR</p><h1>Schedule group assignments</h1><p className="page-description">Assign or move active normal students to a published group for their major and semester.</p></div>
-      <label className="field term-picker"><span>Academic term</span><select value={termId} onChange={(event) => setTermId(event.target.value)} disabled={loading || !terms.length}>{terms.map((term) => <option key={term._id} value={term.code}>Term {term.code} · {term.season}{term.isActive ? " · Active" : ""}</option>)}</select></label>
+      <label className="field term-picker"><span>Academic term</span><select value={termId} onChange={(event) => setTermId(event.target.value)} disabled={loading || !terms.length}>{terms.map((term) => <option key={term._id} value={term.code}>{termLabel(term)}{term.isActive ? " · Active" : ""}</option>)}</select></label>
     </div>
     {error && <Feedback tone="error">{error}</Feedback>}
     {!loading && !terms.length && <Feedback tone="warning">Create an academic term before assigning schedules.</Feedback>}
@@ -111,14 +117,14 @@ export function GroupAssignmentsPage({ token, canAssign = false, notify }) {
         <td><strong>{student.fullName}</strong><span className="secondary-text">{student.studentId} · {student.email}</span></td>
         <td>{student.major}</td><td>{student.currentSemester}</td><td>{student.academicStanding === "probation" ? "Probation" : "Good standing"}</td>
         <td>{student.assignment ? `Group ${student.assignment.studyGroup} · ${student.assignment.courseCount} courses` : "Unassigned"}</td>
-        <td>{canAssign ? <div className="table-actions"><button className="small-button primary-button" type="button" disabled={busy || !student.isActive} onClick={() => { setTarget(student); setPickedGroup(student.assignment?.studyGroup || ""); }}>{student.assignment ? "Reassign" : "Assign"}</button>{student.assignment && <button className="small-button outline-button danger-button" type="button" disabled={busy} onClick={() => { setUnassignError(""); setUnassignTarget(student); }}>Unassign</button>}</div> : <span className="helper-text">Read only</span>}</td>
+        <td>{canAssign ? <div className="table-actions"><button className="small-button primary-button" type="button" disabled={busy || !student.isActive} onClick={() => { setTarget(student); setPickedGroup(student.assignment?.studyGroup || ""); }}>{student.assignment ? "Reassign" : "Assign"}</button>{student.assignment && <PaperTossButton disabled={busy} onClick={() => { setUnassignError(""); setUnassignTarget(student); }}>Unassign</PaperTossButton>}</div> : <span className="helper-text">Read only</span>}</td>
       </tr>)}</tbody></table></div> : <Empty title="No students match" text="Adjust the search or filters and try again." />}
     </section>
     {unassignTarget && <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && !busy && setUnassignTarget(null)}><section className="modal-card narrow-modal" role="dialog" aria-modal="true" aria-labelledby="unassign-heading">
       <div className="modal-heading"><div><p className="eyebrow">REMOVE GROUP ASSIGNMENT</p><h2 id="unassign-heading">Unassign this student?</h2></div><button className="icon-button" type="button" aria-label="Close" disabled={busy} onClick={() => setUnassignTarget(null)}>×</button></div>
       <div className="confirmation-content"><span className="confirmation-icon" aria-hidden="true">!</span><div><p>Remove <strong>{unassignTarget.fullName}</strong> from <strong>Group {unassignTarget.assignment.studyGroup}</strong>?</p><p className="helper-text">{unassignTarget.studentId} · {unassignTarget.major} · Semester {unassignTarget.currentSemester}</p><p className="helper-text">The student will become unassigned for this academic term.</p></div></div>
       {unassignError && <Feedback tone="error">{unassignError}</Feedback>}
-      <div className="form-footer"><button type="button" className="outline-button" disabled={busy} onClick={() => setUnassignTarget(null)}>Cancel</button><button type="button" className="primary-button destructive-action" disabled={busy} onClick={unassign}>{busy ? "Removing…" : "Unassign student"}</button></div>
+      <div className="form-footer"><button type="button" className="outline-button" disabled={busy} onClick={() => setUnassignTarget(null)}>Cancel</button><PaperTossButton disabled={busy} tossing={busy} onClick={unassign}>{busy ? "Removing…" : "Unassign student"}</PaperTossButton></div>
     </section></div>}
     {target && <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setTarget(null)}><section className="modal-card" role="dialog" aria-modal="true" aria-label="Assign schedule group">
       <div className="modal-heading"><div><p className="eyebrow">{target.studentId} · {target.major} semester {target.currentSemester}</p><h2>{target.assignment ? "Reassign schedule group" : "Assign schedule group"}</h2></div><button className="icon-button" type="button" aria-label="Close" onClick={() => setTarget(null)}>×</button></div>
@@ -131,11 +137,10 @@ export function GroupAssignmentsPage({ token, canAssign = false, notify }) {
   </div>;
 }
 
-export function StudentSchedulingPage({ token, section }) {
+export function StudentSchedulingPage({ token, section, onOpenSlotChanges }) {
   const [schedule, setSchedule] = useState(null);
   const [courses, setCourses] = useState(null);
   const [courseDetails, setCourseDetails] = useState(null);
-  const [swapData, setSwapData] = useState(null);
   const [selectedCourse, setSelectedCourse] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -143,13 +148,12 @@ export function StudentSchedulingPage({ token, section }) {
 
   const loadSchedule = useCallback(() => api("/api/schedules/me", { token }), [token]);
   useEffect(() => {
+    if (section === "schedule-swap") return;
     let alive = true;
     setLoading(true); setError("");
-    const tasks = section === "schedule-swap"
-      ? api("/api/swaps/eligible-groups", { token }).then((data) => alive && setSwapData(data))
-      : section === "my-courses"
-        ? api("/api/schedules/me/courses", { token }).then((data) => { if (alive) setCourses(data); })
-        : loadSchedule().then((data) => { if (alive) setSchedule(data); });
+    const tasks = section === "my-courses"
+      ? api("/api/schedules/me/courses", { token }).then((data) => { if (alive) setCourses(data); })
+      : loadSchedule().then((data) => { if (alive) setSchedule(data); });
     tasks.catch((err) => alive && setError(err.message)).finally(() => alive && setLoading(false));
     return () => { alive = false; };
   }, [token, section, loadSchedule]);
@@ -175,13 +179,14 @@ export function StudentSchedulingPage({ token, section }) {
     finally { setDownloadBusy(false); }
   }
 
+  if (section === "schedule-swap") return <SwapManagement token={token} />;
   if (loading) return <Loading />;
-  const titles = { "my-schedule": ["MY SCHEDULE", "My weekly schedule"], "my-courses": ["REGISTERED COURSES", "Registered courses"], "schedule-swap": ["SCHEDULE GROUPS", "Eligible schedule groups"] };
+  const titles = { "my-schedule": ["MY SCHEDULE", "My weekly schedule"], "my-courses": ["REGISTERED COURSES", "Registered courses"] };
   const [eyebrow, title] = titles[section] || titles["my-schedule"];
   const scheduleNotReleased = section === "my-schedule" && error === "No schedule is available to view yet.";
   return <div className="page-stack scheduling-page">
     <div className="page-title-row"><div><p className="eyebrow">{eyebrow} · {schedule?.term ? `${schedule.term.season} ${schedule.term.academicYear}` : courses?.term ? `${courses.term.season} ${courses.term.academicYear}` : ""}</p><h1>{title}</h1></div>
-      {section === "my-schedule" && <div className="form-actions"><button type="button" className="outline-button" onClick={() => window.print()} disabled={schedule?.schedule?.status !== "processed"}>Print</button><button type="button" className="primary-button" onClick={downloadPdf} disabled={downloadBusy || schedule?.schedule?.status !== "processed"}>{downloadBusy ? "Preparing…" : "Download PDF"}</button></div>}
+      {section === "my-schedule" && <div className="form-actions">{onOpenSlotChanges && schedule?.schedule?.status === "readyForStudentReview" && Date.now() < Date.parse(schedule.term.advisingDeadline) && <button type="button" className="outline-button" onClick={onOpenSlotChanges}>Request a slot change</button>}<button type="button" className="outline-button" onClick={() => window.print()} disabled={schedule?.schedule?.status !== "processed"}>Print</button><button type="button" className="primary-button" onClick={downloadPdf} disabled={downloadBusy || schedule?.schedule?.status !== "processed"}>{downloadBusy ? "Preparing…" : "Download PDF"}</button></div>}
     </div>
     {error && <Feedback tone={scheduleNotReleased ? "info" : "error"}>{scheduleNotReleased ? "No schedule has been released for this term yet. Advising drafts appear after staff send them for student review; final schedules appear after processing." : error}</Feedback>}
     {section === "my-schedule" && schedule && <>
@@ -195,11 +200,26 @@ export function StudentSchedulingPage({ token, section }) {
       </section>
       {courseDetails && <CourseDetailPanel details={courseDetails} />}
     </>}
-    {section === "schedule-swap" && swapData && <SwapManagement token={token} data={swapData} onChanged={async () => setSwapData(await api("/api/swaps/eligible-groups", { token }))} />}
   </div>;
 }
 
-function SwapManagement({ token, data, onChanged }) {
+const swapStatuses = {
+  open: { label: "Open", tone: "good" },
+  completed: { label: "Completed", tone: "good" },
+  withdrawn: { label: "Withdrawn", tone: "muted" },
+  expired: { label: "Expired", tone: "warning" },
+};
+
+function swapGroup(group) {
+  return group == null ? "—" : `Group ${group}`;
+}
+
+function swapGroups(groups) {
+  return groups?.length ? groups.map(swapGroup).join(", ") : "—";
+}
+
+function SwapManagement({ token }) {
+  const [data, setData] = useState(null);
   const [mine, setMine] = useState([]);
   const [open, setOpen] = useState([]);
   const [selected, setSelected] = useState([]);
@@ -208,62 +228,204 @@ function SwapManagement({ token, data, onChanged }) {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(true);
-  const deadlinePassed = !data.term?.swapDeadline || new Date(data.term.swapDeadline).getTime() <= Date.now();
-  const active = mine.find(request => request.status === "open");
+  const [loadErrors, setLoadErrors] = useState({});
+  const deadline = data?.term?.swapDeadline;
+  const deadlinePassed = !deadline || new Date(deadline).getTime() <= Date.now();
+  const active = mine.find(request => request.role !== "accepter" && request.status === "open");
+  const confirmingWithdrawal = confirm?.action === "withdraw";
+  const submissionDisabled = busy || loading || Boolean(active) || deadlinePassed;
 
-  const refresh = useCallback(async () => {
-    const [myData, openData] = await Promise.all([
-      api("/api/swaps/requests/me", { token }),
-      api("/api/swaps/requests/open", { token }),
+  const refresh = useCallback(async (signal) => {
+    setLoading(true);
+    const [scheduleResult, historyResult, openResult] = await Promise.allSettled([
+      api("/api/swaps/eligible-groups", { token, signal }),
+      api("/api/swaps/requests/me", { token, signal }),
+      api("/api/swaps/requests/open", { token, signal }),
     ]);
-    setMine(myData.requests || []);
-    setOpen(openData.requests || []);
+    if (signal?.aborted) return;
+    const scheduleData = scheduleResult.status === "fulfilled" ? scheduleResult.value : null;
+    const eligibleGroups = new Set(scheduleData?.eligibleGroups?.map(group => group.studyGroup));
+    setData(scheduleData);
+    setSelected(previous => previous.filter(group => eligibleGroups.has(group)));
+    setMine(historyResult.status === "fulfilled" ? historyResult.value.requests || [] : []);
+    setOpen(openResult.status === "fulfilled" ? openResult.value.requests || [] : []);
+    setLoadErrors({
+      schedule: scheduleResult.status === "rejected" ? scheduleResult.reason : null,
+      history: historyResult.status === "rejected" ? historyResult.reason.message : "",
+      open: openResult.status === "rejected" ? openResult.reason.message : "",
+    });
+    setLoading(false);
   }, [token]);
   useEffect(() => {
-    let alive = true;
-    setLoading(true);
-    refresh().catch(err => alive && setError(err.message)).finally(() => alive && setLoading(false));
-    return () => { alive = false; };
+    const controller = new AbortController();
+    void refresh(controller.signal);
+    return () => controller.abort();
   }, [refresh]);
 
   async function perform(path, body) {
-    setBusy(true); setError(""); setNotice("");
+    if (busy || loading) return;
+    setBusy(true);
+    setError("");
+    setNotice("");
     try {
       const result = await api(path, { token, method: "POST", body });
       setNotice(result.message);
       setSelected([]);
       setConfirm(null);
-      await Promise.all([refresh(), onChanged()]);
-    } catch (err) { setError(err.message); }
-    finally { setBusy(false); }
+      await refresh();
+    } catch (err) {
+      setError(err.message);
+      if (err.status === 404 || err.status === 409) {
+        setConfirm(null);
+        await refresh();
+      }
+    } finally {
+      setBusy(false);
+    }
   }
 
   function toggle(group) {
     setSelected(previous => previous.includes(group) ? previous.filter(item => item !== group) : [...previous, group]);
   }
 
-  return <>
-    {error && <Feedback tone="error">{error}</Feedback>}
+  function openConfirmation(action, request) {
+    setError("");
+    setConfirm({ action, request });
+  }
+
+  function closeConfirmation() {
+    setConfirm(null);
+    setError("");
+  }
+
+  function submitRequest() {
+    const query = data?.term?._id ? `?termId=${encodeURIComponent(data.term._id)}` : "";
+    void perform(`/api/swaps/requests${query}`, { desiredGroups: selected });
+  }
+
+  function refreshPage() {
+    setError("");
+    setNotice("");
+    void refresh();
+  }
+
+  return <div className="page-stack scheduling-page">
+    <div className="page-title-row">
+      <div><p className="eyebrow">SCHEDULE GROUPS</p><h1>Eligible schedule groups</h1></div>
+      <button className="outline-button" type="button" disabled={busy || loading} onClick={refreshPage}>Refresh</button>
+    </div>
+    {error && !confirm && <Feedback tone="error">{error}</Feedback>}
     {notice && <Feedback tone="success">{notice}</Feedback>}
-    <section className="panel current-group-panel"><div><p className="eyebrow">Your current group</p><h2>Group {data.currentGroup?.studyGroup || "—"}</h2><p className="page-description">{data.currentGroup?.major} · semester {data.currentGroup?.semester} · {data.currentGroup?.totalCreditHours} credit hours</p></div><div className="swap-deadline"><small>Swap deadline</small><strong>{data.term?.swapDeadline ? new Date(data.term.swapDeadline).toLocaleDateString() : "Not set"}</strong></div></section>
-    <section className="panel"><div className="results-heading"><div><p className="eyebrow">Destination groups</p><h2>Request a whole schedule swap</h2></div></div>
-      <p className="page-description">Select one or more groups with exactly your registered courses. A student in a selected group can complete the exchange.</p>
-      {active && <Feedback tone="info">Your request is open for Group {active.desiredGroups.join(", Group ")}. Withdraw it before making a different request.</Feedback>}
-      {data.eligibleGroups?.length ? <div className="swap-group-grid">{data.eligibleGroups.map(group => <section className="swap-option" key={group.templateId}>
-        <label className="swap-option-heading"><input type="checkbox" checked={selected.includes(group.studyGroup)} disabled={busy || Boolean(active) || deadlinePassed} onChange={() => toggle(group.studyGroup)} /><span><strong>Group {group.studyGroup}</strong><small>{group.courseCodes.length} courses · {group.totalCreditHours} credit hours · {group.minRemainingCapacity ?? 0} seats available</small></span></label>
-        <WeeklySchedule week={group.week} daysOff={group.daysOff} compact />
-      </section>)}</div> : <Empty title="No eligible groups" text="The other published groups must contain exactly the same registered courses as your current schedule." />}
-      {deadlinePassed && <Feedback tone="warning">The swap deadline has passed.</Feedback>}
-      <div className="form-footer"><button className="primary-button" type="button" disabled={busy || Boolean(active) || deadlinePassed || !selected.length} onClick={() => perform("/api/swaps/requests", { desiredGroups: selected })}>{busy ? "Submitting…" : "Submit swap request"}</button></div>
+    {!data && !loading && loadErrors.schedule && (
+      <Feedback tone={loadErrors.schedule.status === 404 ? "info" : "error"}>{loadErrors.schedule.message}</Feedback>
+    )}
+    {data?.currentGroup && (
+      <section className="panel" aria-labelledby="current-swap-schedule">
+        <div className="results-heading">
+          <h2 id="current-swap-schedule">Your current weekly schedule</h2>
+        </div>
+        <WeeklySchedule
+          week={data.currentGroup.week}
+          daysOff={data.currentGroup.daysOff}
+        />
+      </section>
+    )}
+    {data && <>
+      <section className="panel current-group-panel">
+        <div>
+          <p className="eyebrow">Your current group</p>
+          <h2>{swapGroup(data.currentGroup?.studyGroup)}</h2>
+          <p className="page-description">{data.currentGroup?.major} · semester {data.currentGroup?.semester} · {data.currentGroup?.totalCreditHours} credit hours</p>
+        </div>
+        <div className="swap-deadline"><small>Swap deadline</small><strong>{deadline ? new Date(deadline).toLocaleDateString() : "Not set"}</strong></div>
+      </section>
+      <section className="panel">
+        <div className="results-heading"><div><p className="eyebrow">Destination groups</p><h2>Request a whole schedule swap</h2></div></div>
+        <p className="page-description">Select one or more groups with exactly your registered courses. A student in a selected group can complete the exchange.</p>
+        {active && <Feedback tone="info">Your request for {swapGroups(active.desiredGroups)} is open{active.term?.code ? ` in ${termLabel(active.term)}` : ""}. Withdraw it before making a different request.</Feedback>}
+        {data.eligibleGroups?.length ? <div className="swap-group-grid">
+          {data.eligibleGroups.map(group => <section className="swap-option" key={group.templateId}>
+            <label className="swap-option-heading">
+              <input type="checkbox" checked={selected.includes(group.studyGroup)} disabled={submissionDisabled} onChange={() => toggle(group.studyGroup)} />
+              <span><strong>{swapGroup(group.studyGroup)}</strong><small>{group.courseCodes.length} courses · {group.totalCreditHours} credit hours · {group.minRemainingCapacity ?? 0} seats available</small></span>
+            </label>
+            <WeeklySchedule week={group.week} daysOff={group.daysOff} compact />
+          </section>)}
+        </div> : <Empty title="No eligible groups" text="The other published groups must contain exactly the same registered courses as your current schedule." />}
+        {deadlinePassed && <Feedback tone="warning">The swap deadline has passed.</Feedback>}
+        <div className="form-footer">
+          <button className="primary-button" type="button" disabled={submissionDisabled || !selected.length} onClick={submitRequest}>Submit swap request</button>
+        </div>
+      </section>
+      <section className="panel">
+        <div className="results-heading"><div><p className="eyebrow">Student requests</p><h2>Open requests from other groups</h2></div></div>
+        {loading ? <Loading /> : loadErrors.open ? <Feedback tone="error">{loadErrors.open}</Feedback> : open.length ? (
+          <div className="swap-group-grid">
+            {open.map(request => (
+              <section className="swap-option" key={request._id}>
+                <div className="results-heading">
+                  <div><p className="eyebrow">Anonymous student</p><h3>{swapGroup(request.currentGroup)}</h3></div>
+                  <span className="status-pill good">Open</span>
+                </div>
+                <p className="page-description">
+                  <strong>Desired groups</strong> · {swapGroups(request.desiredGroups)}
+                </p>
+                <WeeklySchedule week={request.week} daysOff={request.daysOff} compact />
+                <div className="form-footer">
+                  <button className="primary-button" type="button" disabled={busy || deadlinePassed} onClick={() => openConfirmation("complete", request)}>
+                    Exchange schedules
+                  </button>
+                </div>
+              </section>
+            ))}
+          </div>
+        ) : <Empty title="No open swap requests" text="Requests for your group with the same registered courses in this term will appear here." />}
+      </section>
+    </>}
+    <section className="panel">
+      <div className="results-heading"><div><p className="eyebrow">Your activity</p><h2>My swap requests</h2></div></div>
+      {loading ? <Loading /> : loadErrors.history ? <Feedback tone="error">{loadErrors.history}</Feedback> : mine.length ? (
+        <div className="table-scroll">
+          <table>
+            <thead><tr><th>Term</th><th>Activity</th><th>From</th><th>Requested groups</th><th>New group</th><th>Status</th><th>Last activity</th><th>Actions</th></tr></thead>
+            <tbody>{mine.map(request => {
+              const isRequester = request.role !== "accepter";
+              const status = swapStatuses[request.status];
+              const lastActivity = request.completedAt || request.withdrawnAt || request.createdAt;
+              return <tr key={request._id}>
+                <td>{termLabel(request.term)}</td>
+                <td>{isRequester ? "Submitted" : "Accepted"}</td>
+                <td>{swapGroup(request.fromGroup ?? (isRequester ? request.currentGroup : null))}</td>
+                <td>{swapGroups(request.desiredGroups)}</td>
+                <td>{swapGroup(request.toGroup)}</td>
+                <td><span className={`status-pill ${status?.tone || "muted"}`}>{status?.label || "—"}</span></td>
+                <td>{lastActivity ? new Date(lastActivity).toLocaleString() : "—"}</td>
+                <td>{isRequester && request.status === "open" && <button className="outline-button small-button" type="button" disabled={busy} onClick={() => openConfirmation("withdraw", request)}>Withdraw</button>}</td>
+              </tr>;
+            })}</tbody>
+          </table>
+        </div>
+      ) : <Empty title="No requests yet" text="Requests you submit or accept will appear here." />}
     </section>
-    <section className="panel"><div className="results-heading"><div><p className="eyebrow">Student requests</p><h2>Open requests from other groups</h2></div></div>
-      {loading ? <Loading /> : open.length ? <div className="swap-group-grid">{open.map(request => <section className="swap-option" key={request._id}><div className="results-heading"><div><p className="eyebrow">Anonymous student</p><h3>Group {request.currentGroup}</h3></div><span className="status-pill good">Open</span></div><p className="helper-text">Their complete weekly schedule</p><WeeklySchedule week={request.week} daysOff={request.daysOff} compact /><div className="form-footer"><button className="primary-button" type="button" disabled={busy || deadlinePassed} onClick={() => setConfirm(request)}>Exchange schedules</button></div></section>)}</div> : <Empty title="No open swap requests" text="Requests from students whose course set matches yours will appear here." />}
-    </section>
-    <section className="panel"><div className="results-heading"><div><p className="eyebrow">Your activity</p><h2>My swap requests</h2></div></div>
-      {loading ? <Loading /> : mine.length ? <div className="table-scroll"><table><thead><tr><th>From</th><th>Requested groups</th><th>Submitted</th><th>Status</th><th /></tr></thead><tbody>{mine.map(request => <tr key={request._id}><td>Group {request.currentGroup}</td><td>{request.desiredGroups.map(group => `Group ${group}`).join(", ")}</td><td>{new Date(request.createdAt).toLocaleString()}</td><td>{request.status}</td><td>{request.status === "open" && <button className="outline-button small-button" type="button" disabled={busy} onClick={() => perform(`/api/swaps/requests/${request._id}/withdraw`)}>Withdraw</button>}</td></tr>)}</tbody></table></div> : <Empty title="No requests yet" text="Your swap requests and their status will appear here." />}
-    </section>
-    {confirm && <div className="modal-backdrop" onMouseDown={event => event.target === event.currentTarget && !busy && setConfirm(null)}><section className="modal-card narrow-modal" role="dialog" aria-modal="true" aria-labelledby="swap-confirm-heading"><div className="modal-heading"><div><p className="eyebrow">WHOLE SCHEDULE SWAP</p><h2 id="swap-confirm-heading">Exchange schedules?</h2></div><button className="icon-button" type="button" aria-label="Close" disabled={busy} onClick={() => setConfirm(null)}>×</button></div><p className="page-description">Your Group {data.currentGroup?.studyGroup} schedule will be exchanged with the anonymous student in Group {confirm.currentGroup}. All course meeting times will change to that group’s schedule.</p><div className="form-footer"><button className="outline-button" type="button" disabled={busy} onClick={() => setConfirm(null)}>Cancel</button><button className="primary-button" type="button" disabled={busy} onClick={() => perform(`/api/swaps/requests/${confirm._id}/complete`)}>{busy ? "Exchanging…" : "Confirm exchange"}</button></div></section></div>}
-  </>;
+    {confirm && <div className="modal-backdrop" onMouseDown={event => event.target === event.currentTarget && !busy && closeConfirmation()}>
+      <section className="modal-card narrow-modal" role="dialog" aria-modal="true" aria-labelledby="swap-confirm-heading" onKeyDown={event => event.key === "Escape" && !busy && closeConfirmation()}>
+        <div className="modal-heading">
+          <h2 id="swap-confirm-heading">{confirmingWithdrawal ? "Withdraw swap request?" : "Exchange schedules?"}</h2>
+          <button className="icon-button" type="button" aria-label="Close" disabled={busy} onClick={closeConfirmation}>×</button>
+        </div>
+        <p className="page-description">{confirmingWithdrawal
+          ? `Withdraw your request for ${swapGroups(confirm.request.desiredGroups)}?`
+          : `Exchange your ${swapGroup(data?.currentGroup?.studyGroup)} timetable with the anonymous student in ${swapGroup(confirm.request.currentGroup)}. This exchanges all lecture, tutorial, and lab slots.`}</p>
+        {error && <Feedback tone="error">{error}</Feedback>}
+        <div className="form-footer">
+          <button className="outline-button" type="button" disabled={busy} onClick={closeConfirmation} autoFocus>Cancel</button>
+          <button className={confirmingWithdrawal ? "primary-button destructive-action" : "primary-button"} type="button" disabled={busy} onClick={() => perform(`/api/swaps/requests/${confirm.request._id}/${confirm.action}`)}>
+            {confirmingWithdrawal ? (busy ? "Withdrawing…" : "Confirm withdrawal") : (busy ? "Exchanging…" : "Confirm exchange")}
+          </button>
+        </div>
+      </section>
+    </div>}
+  </div>;
 }
 
 export function StaffSchedulesPage({ token, role, notify, initialStudent = null, initialTermId = "" }) {
@@ -276,7 +438,10 @@ export function StaffSchedulesPage({ token, role, notify, initialStudent = null,
   const [termId, setTermId] = useState(initialTermId);
   const [terms, setTerms] = useState([]);
   const [draftStudent, setDraftStudent] = useState(initialStudent);
+  const [overviewStudent, setOverviewStudent] = useState(null);
+  const [overview, setOverview] = useState(null);
   const scheduleResultRef = useRef(null);
+  const overviewRef = useRef(null);
 
   useEffect(() => {
     let alive = true;
@@ -301,6 +466,15 @@ export function StaffSchedulesPage({ token, role, notify, initialStudent = null,
     scheduleResultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [selected, schedule]);
 
+  async function openOverview(student) {
+    setOverviewStudent(student); setOverview(null); setError("");
+    const query = termId ? `?termId=${encodeURIComponent(termId)}` : "";
+    try {
+      setOverview(await api(`/api/schedules/advising/${encodeURIComponent(student._id)}/overview${query}`, { token }));
+      requestAnimationFrame(() => overviewRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    } catch (err) { setError(err.message); }
+  }
+
   async function openStudent(student) {
     setSelected(student); setSchedule(null); setError("");
     const query = termId ? `?termId=${encodeURIComponent(termId)}` : "";
@@ -308,63 +482,70 @@ export function StaffSchedulesPage({ token, role, notify, initialStudent = null,
     catch (err) { setError(err.message); }
   }
 
-  if (draftStudent) return <AdvisingDraftEditor token={token} student={draftStudent} termId={termId} notify={notify} onBack={() => setDraftStudent(null)} onSaved={(status = "draft") => setStudents((current) => current.map((row) => row._id === draftStudent._id ? { ...row, scheduleStatus: status } : row))} />;
+  if (draftStudent) return <AdvisingDraftEditor token={token} role={role} student={draftStudent} termId={termId} notify={notify} onBack={() => setDraftStudent(null)} onSaved={(status = "draft") => setStudents((current) => current.map((row) => row._id === draftStudent._id ? { ...row, scheduleStatus: status } : row))} />;
 
-  return <div className="page-stack scheduling-page">
-    <div className="page-title-row"><div><p className="eyebrow">STUDENT SCHEDULES</p><h1>Student schedules</h1><p className="page-description">Review a student’s schedule according to your role and advising assignments.</p></div>
-      {terms.length > 0 && <label className="field term-picker"><span>Academic term</span><select value={termId} onChange={(event) => { setTermId(event.target.value); setSelected(null); setSchedule(null); }}>{terms.map((term) => <option key={term._id} value={term.code}>Term {term.code} · {term.season}</option>)}</select></label>}
+  return <div className="page-stack scheduling-page workspace-page">
+    <div className="workspace-header"><div><h1>Student schedules</h1><p className="page-description">Find a student to create, review or manage their advising schedule.</p></div>
+      {terms.length > 0 && <label className="field term-picker"><span>Academic term</span><select value={termId} onChange={(event) => { setTermId(event.target.value); setSelected(null); setSchedule(null); setOverviewStudent(null); setOverview(null); }}>{terms.map((term) => <option key={term._id} value={term.code}>{termLabel(term)}</option>)}</select></label>}
     </div>
     {error && <Feedback tone="error">{error}</Feedback>}
-    <section className="panel"><div className="results-heading"><div><p className="eyebrow">Roster</p><h2>Students</h2></div><span className="result-count">{students.length} students</span></div>
-      <label className="field roster-search"><span>Search students</span><input value={search} onChange={(event) => setSearch(event.target.value)} maxLength={100} placeholder="Student ID, name, or email" /></label>
-      {loading ? <Loading /> : students.length ? <div className="table-scroll"><table><thead><tr><th>Student</th><th>Type</th><th>Major / semester</th><th>Schedule status</th><th /></tr></thead><tbody>{students.map((student) => <tr key={student._id}><td><strong>{student.fullName}</strong><span className="secondary-text">{student.studentId}</span></td><td>{student.studentType}</td><td>{student.major} · {student.currentSemester}</td><td>{prettyStatus(student.scheduleStatus)}</td><td><div className="table-actions">{["advisor", "coordinator"].includes(role) && student.studentType === "advising" && (!student.scheduleStatus || student.scheduleStatus === "draft") && <button className="small-button primary-button" type="button" onClick={() => { setSelected(null); setSchedule(null); setDraftStudent(student); }}>{student.scheduleStatus === "draft" ? "Edit draft" : "Create draft"}</button>}{student.scheduleStatus && <button className="small-button outline-button" type="button" onClick={() => openStudent(student)}>View schedule</button>}</div></td></tr>)}</tbody></table></div> : <Empty title="No students found" text="Try another search term." />}
+    <section className="panel"><div className="results-heading"><div><h2>Student roster</h2></div><span className="result-count" aria-live="polite">{students.length} {students.length === 1 ? "student" : "students"}</span></div>
+      <label className="field roster-search"><span>Search students</span><input type="search" name="roster-search" autoComplete="off" value={search} onChange={(event) => setSearch(event.target.value)} maxLength={100} placeholder="Student ID, name or email…" /></label>
+      {loading ? <Loading /> : students.length ? <div className="table-scroll"><table><thead><tr><th>Student</th><th>Type</th><th>Major / semester</th><th>Schedule status</th><th /></tr></thead><tbody>{students.map((student) => <tr key={student._id}><td><div className="portal-person-cell"><PortalAvatar name={student.fullName} /><div><strong>{student.fullName}</strong><span className="secondary-text">{student.studentId}</span></div></div></td><td>{student.studentType}</td><td>{student.major} · {student.currentSemester}</td><td><span className={`status-pill ${{
+        readyForStudentReview: "ready", draft: "draft", processed: "completed",
+      }[student.scheduleStatus] || "muted"}`}>{prettyStatus(student.scheduleStatus)}</span></td><td><div className="table-actions">{student.studentType === "advising" && (["advisor", "coordinator"].includes(role) || (role === "administrator" && ["readyForStudentReview", "processed"].includes(student.scheduleStatus))) && <button className="small-button primary-button" type="button" onClick={() => { setSelected(null); setSchedule(null); setDraftStudent(student); }}>{role === "administrator" ? "Manage schedule" : student.scheduleStatus === "draft" ? "Edit draft" : !student.scheduleStatus ? "Create draft" : student.scheduleStatus === "readyForStudentReview" ? "Review & Process" : "Manage schedule"}</button>}{student.scheduleStatus && <button className="small-button outline-button" type="button" onClick={() => openStudent(student)}>View schedule</button>}{role === "administrator" && student.studentType === "advising" && <button className="small-button outline-button" type="button" onClick={() => openOverview(student)}>Advising overview</button>}</div></td></tr>)}</tbody></table></div> : <div className="student-roster-empty" role="status"><img src="/portal-studio/variants/05-operations/assets/extra-hours-folder.svg" alt="" width="104" height="80" /><h3>{search.trim() ? "No matching students" : "No students in this term"}</h3><p>{search.trim() ? "Check the student ID, name or email, or clear your search to see the roster." : "Choose another academic term to view its students."}</p>{search.trim() && <button className="outline-button" type="button" onClick={() => setSearch("")}>Clear search</button>}</div>}
     </section>
-    {selected && schedule?.schedule && <section className="panel staff-schedule-result" ref={scheduleResultRef} tabIndex={-1} aria-label={`${schedule.student?.fullName ?? "Student"} schedule`}><div className="results-heading"><div><p className="eyebrow">{schedule.student?.studentId} · {schedule.term?.season} {schedule.term?.academicYear}</p><h2>{schedule.student?.fullName}’s schedule</h2></div><span className="status-pill">{prettyStatus(schedule.schedule.status)}</span></div>{schedule.schedule.courses?.length ? <WeeklySchedule week={schedule.schedule.week} daysOff={schedule.schedule.daysOff} /> : <Feedback tone="info">This draft is empty. Choose “Edit draft” in the student list to add course groups.</Feedback>}</section>}
+    {overviewStudent && overview && <div ref={overviewRef} aria-label={`${overviewStudent.fullName} advising overview`}><AdvisingOverviewPanel overview={overview} token={token} student={overviewStudent} termQuery={termId ? `?termId=${encodeURIComponent(termId)}` : ""} canEdit={false} notify={notify} onChanged={() => openOverview(overviewStudent)} /></div>}
+    {selected && schedule?.schedule && <section className="panel staff-schedule-result" ref={scheduleResultRef} tabIndex={-1} aria-label={`${schedule.student?.fullName ?? "Student"} schedule`}><div className="results-heading"><div><p className="eyebrow">{schedule.student?.studentId} · {schedule.term?.season} {schedule.term?.academicYear}</p><h2>{schedule.student?.fullName}’s schedule</h2></div><span className="status-pill">{prettyStatus(schedule.schedule.status)}</span></div>{schedule.schedule.courses?.length ? <WeeklySchedule week={schedule.schedule.week} daysOff={schedule.schedule.daysOff} /> : <Feedback tone="info">{schedule.schedule.status === "readyForStudentReview" ? "This schedule is empty and is not processed, so it cannot be reopened. Select a schedule marked Processed, or complete a valid schedule and process it first." : schedule.schedule.status === "processed" ? "This processed schedule has no course details." : "This draft is empty. Choose “Edit draft” in the student list to add course groups."}</Feedback>}</section>}
   </div>;
 }
 
-function AdvisingDraftEditor({ token, student, termId, notify, onBack, onSaved }) {
+function AdvisingDraftEditor({ token, role, student, termId, notify, onBack, onSaved }) {
+  const [draftView, setDraftView] = useState("courses");
   const [data, setData] = useState(null);
   const [selections, setSelections] = useState({});
   const [validationIssues, setValidationIssues] = useState(null);
+  const [overview, setOverview] = useState(null);
+  const [creating, setCreating] = useState(false);
+  const [savingMandatory, setSavingMandatory] = useState(false);
   const [validating, setValidating] = useState(false);
   const validationHeading = useRef(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [sendingForReview, setSendingForReview] = useState(false);
-  const [refreshingPreferences, setRefreshingPreferences] = useState(false);
   const [error, setError] = useState("");
+  const [processError, setProcessError] = useState("");
   const [message, setMessage] = useState("");
-  const editable = !data?.schedule || data.editable;
+  const [processing, setProcessing] = useState(false);
+  const [reopenModalOpen, setReopenModalOpen] = useState(false);
+  const [reopenReason, setReopenReason] = useState("");
+  const [reopening, setReopening] = useState(false);
+  const [reopenError, setReopenError] = useState("");
+  const editable = role !== "administrator" && (!data?.schedule || data.editable);
   const draftPath = `/api/schedules/advising/${encodeURIComponent(student._id)}/draft`;
   const termQuery = termId ? `?termId=${encodeURIComponent(termId)}` : "";
 
-  const load = useCallback(async () => {
+  const load = useCallback(async ({ preserveSelections = false } = {}) => {
     setLoading(true); setError("");
     const query = termId ? `?termId=${encodeURIComponent(termId)}` : "";
     try {
-      const result = await api(`/api/schedules/advising/${encodeURIComponent(student._id)}/draft${query}`, { token });
+      const [result, latestOverview] = await Promise.all([
+        api(`/api/schedules/advising/${encodeURIComponent(student._id)}/draft${query}`, { token }),
+        api(`/api/schedules/advising/${encodeURIComponent(student._id)}/overview${query}`, { token }).catch(() => null),
+      ]);
       setData(result);
-      setValidationIssues(result.validationIssues);
-      const current = {};
-      for (const selected of result.schedule?.courses || []) current[selected.courseOffering] = { courseOffering: selected.courseOffering, groups: selected.groups || [] };
-      setSelections(current);
+      setOverview(latestOverview);
+      setValidationIssues(preserveSelections ? null : result.validationIssues);
+      if (!preserveSelections) {
+        const current = {};
+        for (const selected of result.schedule?.courses || []) current[selected.courseOffering] = { courseOffering: selected.courseOffering, groups: selected.groups || [] };
+        setSelections(current);
+      }
     } catch (requestError) { setError(requestError.message); }
     finally { setLoading(false); }
   }, [student._id, termId, token]);
 
   useEffect(() => { load(); }, [load]);
-
-  async function refreshPreferences() {
-    setRefreshingPreferences(true); setError("");
-    const query = termId ? `?termId=${encodeURIComponent(termId)}` : "";
-    try {
-      const latest = await api(`/api/schedules/advising/${encodeURIComponent(student._id)}/draft${query}`, { token });
-      setData((current) => current ? { ...current, preference: latest.preference, preferenceLastUpdatedAt: latest.preferenceLastUpdatedAt, creditPolicy: latest.creditPolicy, offerings: latest.offerings, mandatoryCourses: latest.mandatoryCourses } : latest);
-      setMessage("Latest preferences refreshed. Your unsaved group choices are still selected.");
-    } catch (requestError) { setError(requestError.message); }
-    finally { setRefreshingPreferences(false); }
-  }
 
   const editSelections = (update) => {
     setValidationIssues(null);
@@ -399,6 +580,28 @@ function AdvisingDraftEditor({ token, student, termId, notify, onBack, onSaved }
     finally { setValidating(false); }
   }
 
+  async function saveMandatory(courseIds) {
+    setSavingMandatory(true); setError(""); setMessage("");
+    try {
+      const result = await api(`/api/schedules/advising/${encodeURIComponent(student._id)}/mandatory-courses${termQuery}`, { token, method: "PUT", body: { courses: courseIds } });
+      notify?.("success", result.message);
+      onSaved?.("draft");
+      await load();
+    } catch (requestError) { setError(requestError.message); }
+    finally { setSavingMandatory(false); }
+  }
+
+  async function createDraft() {
+    setCreating(true); setError(""); setMessage("");
+    try {
+      const result = await api(`${draftPath}${termQuery}`, { token, method: "POST" });
+      notify?.("success", result.message);
+      onSaved?.("draft");
+      await load();
+    } catch (requestError) { setError(requestError.message); }
+    finally { setCreating(false); }
+  }
+
   async function save(event, submitForReview = false) {
     event?.preventDefault(); setSaving(true); setSendingForReview(submitForReview); setError(""); setMessage("");
     try {
@@ -425,6 +628,58 @@ function AdvisingDraftEditor({ token, student, termId, notify, onBack, onSaved }
       if (requestError.data?.validationIssues) setValidationIssues(requestError.data.validationIssues);
     }
     finally { setSaving(false); setSendingForReview(false); }
+  }
+
+  async function processSchedule() {
+    setProcessing(true);
+    setProcessError("");
+    setMessage("");
+    try {
+      const activeTermId = termId || data?.term?._id || data?.term?.code;
+      const result = await api(`/api/schedules/advising/${encodeURIComponent(student._id)}/process`, {
+        token,
+        method: "POST",
+        body: { termId: activeTermId },
+      });
+      setMessage(result.message || "Advising schedule processed.");
+      notify?.("success", result.message || "Advising schedule processed.");
+      await load();
+      onSaved?.("processed");
+    } catch (requestError) {
+      setProcessError(requestError.message);
+    } finally {
+      setProcessing(false);
+    }
+  }
+
+  async function reopenSchedule(event) {
+    event?.preventDefault();
+    if (!reopenReason.trim()) {
+      setReopenError("A reason is required to reopen this schedule.");
+      return;
+    }
+    setReopening(true);
+    setReopenError("");
+    setError("");
+    setMessage("");
+    try {
+      const activeTermId = termId || data?.term?._id || data?.term?.code;
+      const result = await api(`/api/schedules/advising/${encodeURIComponent(student._id)}/reopen`, {
+        token,
+        method: "POST",
+        body: { termId: activeTermId, reason: reopenReason.trim() },
+      });
+      setMessage(result.message || "Advising schedule reopened.");
+      notify?.("success", result.message || "Advising schedule reopened.");
+      setReopenModalOpen(false);
+      setReopenReason("");
+      await load();
+      onSaved?.("draft");
+    } catch (requestError) {
+      setReopenError(requestError.message);
+    } finally {
+      setReopening(false);
+    }
   }
 
   const selectedOfferings = Object.values(selections);
@@ -454,17 +709,17 @@ function AdvisingDraftEditor({ token, student, termId, notify, onBack, onSaved }
   return <div className="page-stack scheduling-page advising-draft-page">
     <div className="page-title-row"><div><p className="eyebrow">STUDENT SCHEDULES</p><h1>Advising draft schedule</h1><p className="page-description">{student.fullName} · {student.studentId}</p></div><button className="outline-button" type="button" onClick={onBack}>← Back to students</button></div>
     {error && !data && <Feedback tone="error">{error}</Feedback>}
-    {loading ? <Loading /> : data && <>
-      <section className="panel draft-summary"><div><p className="eyebrow">{data.term?.code} · {data.term?.season} {data.term?.academicYear}</p><h2>{data.student?.fullName} · {data.student?.major}, semester {data.student?.currentSemester}</h2><p className="helper-text">{data.schedule ? `Draft version ${data.schedule.version} · last edited ${formatDraftDate(data.schedule.updatedAt)}` : "No draft exists for this term yet. Saving creates an open draft."}</p></div><span className={`status-pill ${editable ? "good" : "muted"}`}>{data.schedule ? prettyStatus(data.schedule.status) : "No draft"}</span></section>
-      <nav className="draft-section-nav" aria-label="Draft sections">
-        <a href="#draft-preferences">Preferences</a>
-        <a href="#draft-timetable">Timetable</a>
-        <a href="#draft-courses">Course selection</a>
-        <a href="#draft-validation">Validation</a>
+    {loading && !data ? <Loading /> : data && <>
+      <section className="panel draft-summary"><div><p className="eyebrow">{termLabel(data.term)}</p><h2>{termLabel(data.term)} <span className="draft-student-meta">{data.student?.major} · Semester {data.student?.currentSemester}</span></h2><p className="helper-text">{data.schedule ? `Draft version ${data.schedule.version} · last edited ${formatDraftDate(data.schedule.updatedAt)}` : "No draft exists for this term yet. Saving creates an open draft."}</p></div><span className={`status-pill ${editable ? "good" : "muted"}`}>{data.schedule ? prettyStatus(data.schedule.status) : "No draft"}</span>{!data.schedule && <button className="primary-button" type="button" onClick={createDraft} disabled={creating}>{creating ? "Creating…" : "Create open draft"}</button>}</section>
+      <nav className="tabs draft-view-tabs" aria-label="Draft views">
+        {[["courses", "Course selection"], ["timetable", "Timetable"], ["student", "Student details"]].map(([view, label]) => <button key={view} type="button" aria-pressed={draftView === view} onClick={() => setDraftView(view)}>{label}</button>)}
       </nav>
+      <div hidden={draftView !== "student"}>
+        {overview && <AdvisingOverviewPanel overview={overview} token={token} student={student} termQuery={termQuery} canEdit={editable} notify={notify} onStudentMissing={onBack} onChanged={() => load({ preserveSelections: true })} />}
+      </div>
       {data.schedule?.staleCourseCount > 0 && <Feedback tone="warning">{data.schedule.staleCourseCount} course selection{data.schedule.staleCourseCount === 1 ? " is" : "s are"} no longer available for this student and term. Review the draft before saving; unavailable selections will be removed from the saved draft.</Feedback>}
-      <section className="panel draft-preferences" id="draft-preferences"><div className="results-heading"><div><p className="eyebrow">STUDENT INPUT</p><h2>Latest scheduling preferences</h2></div><div className="table-actions"><span className="result-count">{data.preferenceLastUpdatedAt ? `Updated ${formatDraftDate(data.preferenceLastUpdatedAt)}` : "No submission"}</span><button className="text-button" type="button" disabled={refreshingPreferences} onClick={refreshPreferences}>{refreshingPreferences ? "Refreshing…" : "↻ Refresh"}</button></div></div>
-        {!preferences ? <Feedback tone="info">This student has not submitted preferences for this term. You can still create the draft.</Feedback> : <>
+      <section hidden={draftView !== "student"} className="panel draft-preferences" id="draft-preferences"><div className="results-heading"><div className="course-section-title"><span className="course-section-symbol eligible-symbol" aria-hidden="true"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.3"><path d="M5 6h14M5 12h14M5 18h14"/><circle cx="9" cy="6" r="2" fill="#a6c8e6"/><circle cx="15" cy="12" r="2" fill="#a6c8e6"/><circle cx="10" cy="18" r="2" fill="#a6c8e6"/></svg></span><div><h2>Scheduling preferences</h2><p>Student input for this term</p></div></div><div className="table-actions">{data.preferenceLastUpdatedAt && <span className="result-count">Updated {formatDraftDate(data.preferenceLastUpdatedAt)}</span>}</div></div>
+        {!preferences ? <p className="helper-text">Preferences are optional. None submitted for this term.</p> : <>
           <p className="helper-text">Priority order is shown as ranked. Hints are satisfied where feasible and never override academic rules or a timetable clash.</p>
           <div className="draft-preference-grid">
             <PreferenceSummary title="Preferred days" entries={preferences.preferredDays.map((item) => `${item.day} · #${item.priority}`)} />
@@ -477,21 +732,64 @@ function AdvisingDraftEditor({ token, student, termId, notify, onBack, onSaved }
           {preferences.note && <p className="draft-student-note"><strong>Student note:</strong> {preferences.note}</p>}
         </>}
       </section>
-      {data.mandatoryCourses.length > 0 && <section className="panel"><div className="panel-heading"><div><p className="eyebrow">ACADEMIC RECORD</p><h2>Failed or unattended courses</h2></div></div><p className="helper-text">These courses are marked mandatory unless a removal was approved for this term. Include the available offerings in the draft when required.</p><div className="draft-mandatory-list">{data.mandatoryCourses.map((course) => <span className={`status-pill ${course.availableForTerm ? "warning" : "muted"}`} key={course._id}>{course.code}{course.availableForTerm ? " · mandatory" : " · no eligible published offering"}</span>)}</div></section>}
-      {!editable && data.schedule?.status === "readyForStudentReview" && <Feedback tone="success">This schedule is now visible to the advising student for review.</Feedback>}
-      <section className="panel draft-timetable" id="draft-timetable"><div className="panel-heading"><div><p className="eyebrow">LIVE PREVIEW</p><h2>Selected timetable</h2></div><span className="result-count">{selectedOfferings.length} subjects</span></div>{selectedOfferings.length ? <WeeklySchedule week={draftWeek} compact /> : <p className="helper-text">Add course groups below to preview their days and times here.</p>}</section>
-      <form className="panel draft-course-editor" id="draft-courses" onSubmit={save}>
+      <div hidden={draftView !== "courses"}><MandatoryCoursesPanel data={data} editable={editable} busy={savingMandatory} onSave={saveMandatory} /></div>
+      {!editable && data.schedule?.status === "readyForStudentReview" && (
+        <section className="panel schedule-process-panel">
+          <div>
+            <h3 style={{ margin: "0 0 4px 0", fontSize: "14px", color: "var(--green-dark)" }}>Ready for Student Review</h3>
+            <p style={{ margin: 0, fontSize: "11px", color: "var(--muted)" }}>
+              {student.fullName} can review this schedule, but it is not finalized. Resolve every pending request before processing it.
+            </p>
+          </div>
+          <button
+            className="primary-button"
+            type="button"
+            disabled={processing}
+            onClick={processSchedule}
+          >
+            {processing ? "Processing schedule…" : "Process Schedule"}
+          </button>
+          {processError && <div className="feedback error schedule-process-feedback" role="alert">{processError}</div>}
+        </section>
+      )}
+      {!editable && data.schedule?.status === "processed" && (
+        <section className="panel" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--draft-bg)", border: "1px solid var(--line)", padding: "16px 20px", borderRadius: "8px" }}>
+          <div>
+            <h3 style={{ margin: "0 0 4px 0", fontSize: "14px", color: "var(--draft-ink)" }}>Schedule Processed</h3>
+            <p style={{ margin: 0, fontSize: "11px", color: "var(--muted)" }}>
+              This schedule is processed and finalized. Reopening reverts the schedule to draft status for adjustments.
+            </p>
+          </div>
+          <button
+            className="primary-button destructive-action"
+            type="button"
+            onClick={() => {
+              setReopenReason("");
+              setReopenError("");
+              setReopenModalOpen(true);
+            }}
+          >
+            Reopen Schedule
+          </button>
+        </section>
+      )}
+      <section hidden={draftView !== "timetable"} className="panel draft-timetable" id="draft-timetable"><div className="panel-heading"><div><p className="eyebrow">LIVE PREVIEW</p><h2>Selected timetable</h2></div><span className="result-count">{selectedOfferings.length} subjects</span></div>{selectedOfferings.length ? <WeeklySchedule week={draftWeek} compact /> : <p className="helper-text">Add course groups below to preview their days and times here.</p>}</section>
+      {role !== "administrator" && <div hidden={draftView !== "courses"} className="draft-other-courses"><EligibleCoursesPanel token={token} student={student} termQuery={termQuery} editable={editable} notify={notify} version={data.schedule?.version ?? 0} onChanged={async (status) => { onSaved?.(status); await load(); }} /></div>}
+      <form hidden={draftView !== "courses"} className="panel draft-course-editor" id="draft-courses" onSubmit={save}>
         <div className="results-heading draft-course-toolbar">
-          <div><p className="eyebrow">DRAFT CONTENT</p><h2>Published course offerings</h2></div>
+          <div><p className="eyebrow">DRAFT CONTENT</p><h2>Choose courses</h2><p className="draft-course-count">{selectedOfferings.length} selected · {data.offerings.length} available</p></div>
           <button className="outline-button" type="button" onClick={checkValidation} disabled={busy}>{validating ? "Checking…" : "Check draft validation"}</button>
         </div>
-        <p className="helper-text">Choose or clear a group for each component. Saving reserves the selected seats and releases seats you remove. You can save with some groups still unassigned.</p>
-        {creditPolicy && <dl className="draft-credit-grid" id="draft-credit-summary" tabIndex={-1}>
-          <div><dt>Selected credits</dt><dd>{credits}</dd></div>
-          <div><dt>{creditPolicy.probation ? "Probation allowance" : "Standard allowance"}</dt><dd>{creditPolicy.baseAllowance ?? "—"}</dd></div>
-          <div><dt>Activated extra hours</dt><dd>{creditPolicy.approvedExtraHours}</dd></div>
-          <div><dt>Maximum credits</dt><dd>{creditPolicy.maximumCreditHours}</dd></div>
-        </dl>}
+        <p className="helper-text">Add courses, then choose their lecture, tutorial and lab groups. You can save an incomplete draft.</p>
+        {creditPolicy && <section className={`draft-allowance${overCreditLimit ? " is-over-limit" : ""}`} aria-label="Credit allowance">
+          <div className="draft-allowance-main"><span>Credit allowance</span><strong aria-label={`${credits} of ${creditPolicy.maximumCreditHours} credit hours`}>{credits}<span className="draft-credit-divider"> / </span>{creditPolicy.maximumCreditHours}</strong><span aria-live="polite">{overCreditLimit ? `${credits - creditPolicy.maximumCreditHours} h over limit` : `${Math.max(0, creditPolicy.maximumCreditHours - credits)} h remaining`}</span></div>
+          <div className="draft-allowance-track" role="meter" aria-label="Selected credit hours" aria-valuemin={0} aria-valuemax={creditPolicy.maximumCreditHours} aria-valuenow={Math.min(credits, creditPolicy.maximumCreditHours)}><span style={{width: `${Math.min(100, credits / Math.max(1, creditPolicy.maximumCreditHours) * 100)}%`}} /></div>
+          <dl className="draft-credit-grid" id="draft-credit-summary" tabIndex={-1}>
+            <div><dt>{creditPolicy.probation ? "Probation allowance" : "Standard allowance"}</dt><dd>{creditPolicy.baseAllowance ?? "—"} h</dd></div>
+            <div><dt>Activated extra hours</dt><dd>{creditPolicy.approvedExtraHours} h</dd></div>
+            <div><dt>Extra hours used</dt><dd>{Math.max(0, credits - (creditPolicy.baseAllowance ?? creditPolicy.maximumCreditHours))} h</dd></div>
+          </dl>
+        </section>}
         {creditPolicy && !creditPolicy.policyConfigured && <p className="helper-text">Semester {creditPolicy.semester} uses the 34-hour overall ceiling until its standard allowance is defined.</p>}
         {!editable && <Feedback tone="warning">This schedule has moved beyond draft status and is read-only.</Feedback>}
         {selectedConflict && <Feedback tone="error">{selectedConflict}</Feedback>}
@@ -502,7 +800,7 @@ function AdvisingDraftEditor({ token, student, termId, notify, onBack, onSaved }
           const selected = selections[offering._id];
           const savedGroups = data.schedule?.courses.find((course) => course.courseOffering === offering._id)?.groups || [];
           return <article className={`draft-course ${selected ? "selected" : ""}`} id={`draft-course-${offering._id}`} tabIndex={-1} key={offering._id}>
-            <div className="draft-course-heading"><div><strong>{offering.course.code} · {offering.course.name}</strong><span className="secondary-text">{offering.course.creditHours} credits · {offering.course.courseType}{approvedExtraCourses.has(String(offering.course._id)) ? " · approved extra-hours course (paid/deferred)" : ""}</span></div>{selected ? <button className="text-button" type="button" disabled={!editable} onClick={() => removeCourse(offering._id)}>Remove</button> : <button className="outline-button small-button" type="button" disabled={!editable} onClick={() => addCourse(offering)}>Add course</button>}</div>
+            <div className="draft-course-heading"><div className="draft-course-identity"><OfferingCourseIcon code={offering.course.code} /><div><span className="draft-course-code">{offering.course.code}</span><strong>{offering.course.name}</strong><span className="secondary-text">{offering.course.creditHours} credits · {offering.course.courseType}{approvedExtraCourses.has(String(offering.course._id)) ? " · approved extra-hours course (paid/deferred)" : ""}</span></div></div>{selected ? <button className="text-button" type="button" disabled={!editable} onClick={() => removeCourse(offering._id)}>Remove</button> : <button className="outline-button small-button" type="button" disabled={!editable} onClick={() => addCourse(offering)}>Add course</button>}</div>
             {selected && <div className="draft-component-grid">{offering.components.map((componentType) => {
               const picked = selected.groups.find((group) => group.componentType === componentType)?.groupNumber || "";
               const saved = savedGroups.find((group) => group.componentType === componentType)?.groupNumber || "";
@@ -541,9 +839,53 @@ function AdvisingDraftEditor({ token, student, termId, notify, onBack, onSaved }
         <DraftValidation issues={validationIssues} offerings={data.offerings} headingRef={validationHeading} onCheck={checkValidation} validating={validating} busy={busy} />
         {error && <Feedback tone="error">{error}</Feedback>}
         {message && <Feedback tone="success">{message}</Feedback>}
-        <div className="form-footer"><span className="helper-text">Saving keeps the schedule in draft. The server rechecks academic rules, capacity, and clashes.</span><button className="primary-button" type="submit" disabled={busy || !editable}>{saving && !sendingForReview ? "Saving draft…" : data.schedule ? "Update draft" : "Create draft"}<span>→</span></button></div>
-        {editable && selectedOfferings.length > 0 && <div className="form-footer"><span className="helper-text">When the schedule is ready, save it and make it visible to the student for review.</span><button className="outline-button" type="button" onClick={(event) => save(event, true)} disabled={busy || Boolean(selectedConflict) || Boolean(incompleteSelection) || missingMandatory.length > 0 || overCreditLimit || extraHoursNotCovered}>{sendingForReview ? "Sending for review…" : "Save and send for student review"}<span>→</span></button></div>}
+        <div className="draft-completion-actions">
+          <div className="draft-completion-copy"><h3>{editable ? "Ready for student review?" : "Draft actions"}</h3>
+            {editable && <p id="draft-review-hint">{selectedOfferings.length === 0 ? "Add a course to get started." : missingMandatory.length > 0 ? "Select all mandatory courses before sending." : incompleteSelection ? "Choose the missing class groups before sending." : selectedConflict ? "Resolve timetable clashes before sending." : overCreditLimit ? "Reduce credits to the allowed limit before sending." : extraHoursNotCovered ? "Activate the required extra-hours approval before sending." : "Send the saved schedule to the student for review."}</p>}
+          </div>
+          <div className="draft-save-actions">
+            <button className="outline-button" type="submit" disabled={busy || !editable}>{saving && !sendingForReview ? "Saving draft…" : "Save draft"}</button>
+            {editable && <button className="primary-button draft-send-button" type="button" aria-describedby="draft-review-hint" onClick={(event) => save(event, true)} disabled={selectedOfferings.length === 0 || busy || Boolean(selectedConflict) || Boolean(incompleteSelection) || missingMandatory.length > 0 || overCreditLimit || extraHoursNotCovered}>{sendingForReview ? "Sending…" : "Send for student review"}<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="m4 5 16 7-16 7 3-7zM7 12h13" /></svg></button>}
+          </div>
+        </div>
+        {data.schedule?.status === "processed" && <div className="form-footer" style={{ borderTop: "1px solid var(--line)", paddingTop: "14px" }}><span className="helper-text">Reopening reverts this schedule to draft status for further edits.</span><button className="primary-button destructive-action" type="button" onClick={() => { setReopenReason(""); setReopenError(""); setReopenModalOpen(true); }}>Reopen Schedule</button></div>}
       </form>
+      {reopenModalOpen && (
+        <div className="modal-backdrop" onClick={() => !reopening && setReopenModalOpen(false)}>
+          <div className="modal-card" role="dialog" aria-modal="true" aria-label="Reopen Schedule" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-heading">
+              <div>
+                <p className="eyebrow">AUDITED ACTION</p>
+                <h2>Reopen Advising Schedule</h2>
+              </div>
+              <button className="icon-button" type="button" aria-label="Close" disabled={reopening} onClick={() => setReopenModalOpen(false)}>×</button>
+            </div>
+            {reopenError && <div className="feedback error" role="alert" style={{ marginBottom: "12px" }}>{reopenError}</div>}
+            <form onSubmit={reopenSchedule} className="page-stack">
+              <p style={{ margin: 0, fontSize: "11px", color: "var(--muted)" }}>
+                Reopening reverts this schedule to <strong>draft</strong> status and increments the schedule version. You must provide a mandatory justification for audit logging.
+              </p>
+              <label className="field">
+                <span>Reopening Reason *</span>
+                <textarea
+                  value={reopenReason}
+                  onChange={(e) => setReopenReason(e.target.value)}
+                  rows={4}
+                  maxLength={2000}
+                  placeholder="Explain why this processed schedule is being reopened for modification..."
+                  required
+                  disabled={reopening}
+                />
+                <small className="secondary-text" style={{ textAlign: "right" }}>{reopenReason.length} / 2000 characters</small>
+              </label>
+              <div className="form-actions" style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "12px" }}>
+                <button type="button" className="outline-button" disabled={reopening} onClick={() => setReopenModalOpen(false)}>Cancel</button>
+                <button type="submit" className="primary-button destructive-action" disabled={reopening || !reopenReason.trim()}>{reopening ? "Reopening schedule…" : "Reopen Schedule"}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </>}
   </div>;
 }
@@ -667,14 +1009,156 @@ function CourseDetailPanel({ details }) {
 }
 
 function WeeklySchedule({ week = {}, daysOff = [], compact = false }) {
-  return <div className={`weekly-schedule ${compact ? "compact" : ""}`}>
-    {WEEK.map((day) => <section className={`schedule-day ${daysOff.includes(day) ? "day-off" : ""}`} key={day}><h3>{day}{daysOff.includes(day) && <small>Off</small>}</h3>
-      {(week[day] || []).length ? week[day].map((slot, index) => <article className={`schedule-slot ${slot.type || ""}`} key={`${slot.courseCode}-${slot.startTime}-${index}`}><strong>{slot.courseCode}</strong>{slot.courseName && <span className="schedule-course-name">{slot.courseName}</span>}<span>{slot.type} · {slot.startTime}–{slot.endTime}</span><small>{slot.room} · Group {slot.groupNumber}</small></article>) : <p className="empty-day">No classes</p>}
+  const codes = [...new Set(Object.values(week).flat().map(slot => slot.courseCode))].sort();
+  const knownTones = { CSEN701: "blue", CSEN703: "coral", CSEN704: "sage", DMET701: "ivory" };
+  const tones = ["blue", "coral", "sage", "ivory"];
+  return <div className={`weekly-schedule portal-week ${compact ? "compact" : ""}`}>
+    {WEEK.map(day => <section className={`schedule-day ${daysOff.includes(day) ? "day-off" : ""}`} key={day}>
+      <h3>{day}</h3>
+      {(week[day] || []).length ? week[day].map((slot, index) => {
+        const code = String(slot.courseCode || "").replace(/\s/g, "");
+        const symbol = globalThis.BobosCourseIcons?.[code]?.symbol || { CSEN703: "algorithms", CSEN704: "advanced-lab", DMET701: "graphics" }[code];
+        return <article className={`schedule-slot ${slot.type || ""}`} data-course-tone={globalThis.BobosCourseIcons?.[code]?.tone || knownTones[code] || tones[Math.max(0, codes.indexOf(slot.courseCode)) % tones.length]} key={`${slot.courseCode}-${slot.startTime}-${index}`}>
+          {symbol ? <img className="schedule-course-art" src={`/portal-studio/images/symbols/${symbol}.svg`} alt="" /> : <svg className="schedule-course-art" viewBox="0 0 30 24" fill="none" stroke="currentColor" strokeWidth="1.25" aria-hidden="true"><path d="m9 6 11-.5.6 10.5-11 1z M12 9l5-.4.4 4.4-5 .4z M11 3v3m4-3v3m4-3v2m-8 12v3m4-3v3m4-4v3M6 9h3m-3 4h3m12-5h3m-3 5h3" /></svg>}
+          <time className="schedule-meeting-time" dateTime={slot.startTime}>◷ {slot.startTime}–{slot.endTime}</time>
+          <strong className="schedule-course-name">{slot.courseName || slot.courseCode}</strong>
+          <small className="schedule-course-code">{slot.courseCode}</small>
+          <small className="schedule-meeting-place">{slot.type} · {slot.room} · Group {slot.groupNumber}</small>
+        </article>;
+      }) : <div className="empty-day"><svg viewBox="0 0 90 80" fill="none" stroke="#766b58" strokeWidth="1.4" aria-hidden="true"><ellipse cx="42" cy="65" rx="33" ry="7" fill="#d6bd9f"/><path d="M19 36h46l-4 17q-3 12-19 12T23 53Z" fill="#bed1c9"/><path d="M65 39q18-4 16 7-1 9-18 10"/><ellipse cx="42" cy="36" rx="23" ry="6" fill="#f6ecd6"/><ellipse cx="42" cy="37" rx="19" ry="4" fill="#705044"/><path d="M34 28c-8-9 7-10 1-20m13 20c-7-8 7-12 1-20"/></svg><span>No classes scheduled</span></div>}
     </section>)}
   </div>;
 }
 
 function Stat({ label, value }) { return <div className="stat-card"><span className="stat-icon">◷</span><div><p>{label}</p><strong>{value}</strong></div></div>; }
+const ADVISING_REASONS = { probation: "Probation", failedCourses: "More than two failed courses in a season", unattendedCourses: "Unattended courses", undeclaredMajor: "Undeclared CS or DMET major", transfer: "Transfer from another major/university" };
+const WORKFLOW_LABELS = { notStarted: "Not started", draft: "Draft", readyForStudentReview: "Ready for student review", changeRequestPending: "Change request pending", pendingApproval: "Pending approval", awaitingPaymentChoice: "Awaiting payment choice", deferredToNextInstallment: "Deferred to next installment", readyToProcess: "Ready to process", processed: "Processed", reopened: "Reopened" };
+
+function EligibleCoursesPanel({ token, student, termQuery, editable, notify, version, onChanged }) {
+  const [result, setResult] = useState(null);
+  const [search, setSearch] = useState("");
+  const [busyId, setBusyId] = useState("");
+  const [error, setError] = useState("");
+  const base = `/api/schedules/advising/${encodeURIComponent(student._id)}`;
+  useEffect(() => {
+    let alive = true;
+    const params = new URLSearchParams(termQuery.replace(/^\?/, "")); if (search.trim()) params.set("search", search.trim());
+    api(`${base}/eligible-courses?${params}`, { token }).then((data) => alive && setResult(data)).catch((requestError) => alive && setError(requestError.message));
+    return () => { alive = false; };
+  }, [base, termQuery, token, search, version]);
+  async function change(entry) {
+    setBusyId(entry.courseOffering); setError("");
+    try {
+      if (entry.inDraft) await waitForPaperToss();
+      const response = entry.inDraft
+        ? await api(`${base}/courses/${entry.courseOffering}${termQuery}`, { token, method: "DELETE" })
+        : await api(`${base}/courses${termQuery}`, { token, method: "POST", body: { courseOffering: entry.courseOffering } });
+      notify?.("success", response.message);
+      await onChanged?.("draft");
+    } catch (requestError) { setError(requestError.message); }
+    finally { setBusyId(""); }
+  }
+  return <section className="panel eligible-courses" id="draft-eligible"><div className="results-heading"><div className="course-section-title"><span className="course-section-symbol eligible-symbol" aria-hidden="true">+</span><div><h2>Other eligible courses</h2><p>Choose from eligible published offerings</p></div></div><span className="result-count">{result?.count ?? 0} courses</span></div>
+    <p className="helper-text">Add these after saving mandatory courses.</p><ul className="eligibility-checks" aria-label="Eligibility filters"><li>Not completed</li><li>Prerequisites met</li><li>Offered this season</li><li>Published offerings</li></ul>
+    <label className="field roster-search"><span>Search courses</span><input value={search} onChange={(event) => setSearch(event.target.value)} maxLength={100} placeholder="Course code or name" /></label>
+    {error && <Feedback tone="error">{error}</Feedback>}
+    {!result ? <Loading /> : result.courses.length ? <div className="table-scroll"><table><thead><tr><th>Course</th><th>Credits</th><th>Type</th><th>Prerequisites</th><th /></tr></thead><tbody>{result.courses.map((entry) => <tr key={entry.courseOffering}>
+      <td><div className="draft-course-identity"><OfferingCourseIcon code={entry.course.code} /><div><strong>{entry.course.code}</strong><span className="secondary-text">{entry.course.name}</span></div></div></td><td>{entry.course.creditHours}</td><td>{entry.course.courseType}</td>
+      <td>{entry.course.prerequisites.length ? entry.course.prerequisites.map((item) => item.code).join(", ") : "None"}</td>
+      <td>{editable && (entry.inDraft
+        ? <PaperTossButton disabled={Boolean(busyId)} tossing={busyId === entry.courseOffering} onClick={() => change(entry)}>{busyId === entry.courseOffering ? "Removing…" : "Remove course"}</PaperTossButton>
+        : <button className="primary-button" type="button" disabled={Boolean(busyId)} onClick={() => change(entry)}>{busyId === entry.courseOffering ? "Adding…" : "Add to draft"}</button>)}</td>
+    </tr>)}</tbody></table></div> : <Empty title="No eligible courses" text={search ? "No eligible course matches your search." : "There are no other eligible published courses for this student this term."} />}
+    {result?.excluded?.length > 0 && <details className="excluded-courses"><summary>{result.excluded.length} courses not available to this student</summary><ul className="excluded-course-list">{result.excluded.map((entry) => <li key={entry._id}><div className="excluded-course-identity"><OfferingCourseIcon code={entry.code} /><div className="excluded-course-name"><span>{entry.code}</span><strong>{entry.name}</strong></div></div><div className="excluded-course-reason">{entry.reason === "unmetPrerequisites" && entry.missingPrerequisites?.length ? <><span>Complete first</span><div className="prerequisite-codes">{entry.missingPrerequisites.map(course => <span key={course.code} title={course.name}>{course.code}</span>)}</div></> : <span>{entry.message}</span>}</div></li>)}</ul></details>}
+  </section>;
+}
+
+function MandatoryCoursesPanel({ data, editable, busy, onSave }) {
+  const available = data.mandatoryCourses.filter((course) => course.availableForTerm);
+  const [picked, setPicked] = useState(() => new Set(available.filter((course) => course.inDraft).map((course) => course._id)));
+  useEffect(() => { setPicked(new Set(available.filter((course) => course.inDraft).map((course) => course._id))); }, [data.schedule?.version]);
+  const summary = data.mandatorySummary;
+  const pickedHours = available.filter((course) => picked.has(course._id)).reduce((sum, course) => sum + Number(course.creditHours || 0), 0);
+  const toggle = (id) => { const next = new Set(picked); next.has(id) ? next.delete(id) : next.add(id); onSave([...next]); };
+  if (!data.mandatoryCourses.length) return <section className="mandatory-clear" id="draft-mandatory"><span className="mandatory-clear-icon" aria-hidden="true">✓</span><div><h2>Mandatory courses</h2><p>None required this term. Continue to Other eligible courses.</p></div></section>;
+  return <section className="panel mandatory-panel" id="draft-mandatory"><div className="panel-heading"><div className="course-section-title"><span className="course-section-symbol mandatory-symbol" aria-hidden="true">✓</span><div><h2>Mandatory courses</h2><p>Select these first</p></div></div>
+    <span className="status-pill good">{summary?.mandatoryHours ?? 0} / {summary?.allowedHours ?? data.creditPolicy.maximumCreditHours} h used</span></div>
+    <p className="helper-text">{data.mandatoryCourses.length ? "Select required courses first. Changes save automatically and use the allowed hours." : "No mandatory courses for this student in this term."}</p>
+    <ul className="mandatory-list">{data.mandatoryCourses.map((course) => <li key={course._id}>
+      {course.availableForTerm
+        ? <label><input type="checkbox" checked={picked.has(course._id)} disabled={!editable || busy} onChange={() => toggle(course._id)} /> <strong>{course.code}</strong> {course.name} · {course.creditHours} h</label>
+        : <span><strong>{course.code}</strong> {course.name} · <span className="status-pill muted">no eligible published offering</span></span>}
+    </li>)}</ul>
+    {summary && summary.mandatoryHours > 0 && (summary.otherCoursesNeedExtraHours
+      ? <Feedback tone="warning">Mandatory courses use all {summary.allowedHours} allowed hours. No other course can be added without approved extra hours.</Feedback>
+      : <p className="helper-text">{summary.remainingAllowedHours} allowed hours remain for other courses.</p>)}
+    {editable && <p className="helper-text">{busy ? "Saving mandatory courses…" : "Changes save automatically."}</p>}
+  </section>;
+}
+
+function AdvisingOverviewPanel({ overview, token, student, termQuery, canEdit, notify, onChanged, onStudentMissing }) {
+  const hours = overview.creditHours, bachelor = overview.bachelorProject;
+  const [season, setSeason] = useState(bachelor.selection?.season || "winter");
+  useEffect(() => { setSeason(bachelor.selection?.season || "winter"); }, [bachelor.selection?.season]);
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState("");
+  const projectPath = `/api/schedules/advising/${encodeURIComponent(student._id)}/bachelor-project${termQuery}`;
+  async function changeProject(remove, nextSeason = season) {
+    setBusy(remove ? "remove" : "save"); setProblem("");
+    try {
+      if (remove) await waitForPaperToss();
+      const result = await api(projectPath, { token, method: remove ? "DELETE" : "PUT", body: remove ? undefined : { season: nextSeason } });
+      notify?.("success", result.message);
+      await onChanged?.();
+    } catch (error) {
+      if (/student not found/i.test(error.message)) {
+        notify?.("warning", "This student record is no longer available. Select a student from the roster.");
+        onStudentMissing?.();
+      } else { setSeason(bachelor.selection?.season || "winter"); setProblem(error.message); }
+    }
+    finally { setBusy(false); }
+  }
+  return <section className="panel advising-overview" aria-label="Advising overview">
+    <dl className="student-advising-context">
+      <div><dt>Advising reason</dt><dd>{ADVISING_REASONS[overview.advisingReason] || overview.advisingReason || "Not recorded"}</dd></div>
+      <div><dt>Schedule status</dt><dd><span className={`status-pill ${overview.scheduleStatus === "draft" || overview.scheduleStatus === "processed" ? "good" : "muted"}`}>{WORKFLOW_LABELS[overview.scheduleStatus] || overview.scheduleStatus || "Not started"}</span></dd></div>
+    </dl>
+    <section className="student-allowance-sheet" aria-labelledby="student-allowance-title">
+      <div className="student-details-heading"><h2 id="student-allowance-title">Credit allowance</h2></div>
+      <dl className="student-hours-grid">
+        <div className="student-hours-primary"><dt>Allowed this term</dt><dd>{hours.allowedHours ?? "—"}<small> h</small></dd>{hours.probation && <span>Adjusted for probation</span>}</div>
+        <div><dt>Approved extra hours</dt><dd>{hours.approvedExtraHours}<small> h</small></dd>{hours.probation && <span>Unavailable during probation</span>}</div>
+        <div><dt>Maximum this term</dt><dd>{hours.maximumCreditHours ?? "—"}<small> h</small></dd></div>
+      </dl>
+      <details className="advising-facts"><summary>How the allowance is calculated</summary><p>Standing: {overview.academicStanding === "probation" ? "Probation" : "Good academic standing"}. Standard allowance: {hours.standardAllowance ?? "Not configured"} h.{hours.probation ? ` Probation reduction: ${hours.reductionForProbation} h.` : ""}</p></details>
+    </section>
+    <section className="student-project-panel" aria-labelledby="student-project-title">
+      <div className="student-details-heading"><div className="course-section-title"><span className="course-section-symbol mandatory-symbol" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.3"><path d="m2 8 10-5 10 5-10 5zM6 10v7q6 5 12 0v-7m4-2v9" /></svg></span><div><h2 id="student-project-title">Bachelor project</h2><p>Bachelor eligibility and project selection</p></div></div><span className={`status-pill ${bachelor.eligible ? "good" : "warning"}`}>{bachelor.eligible ? "Eligible" : "Not eligible"}</span></div>
+    {!bachelor.eligible && canEdit && <div className="bachelor-unavailable"><button className="outline-button" type="button" disabled>Add bachelor project</button><span className="helper-text">Complete the requirements below to add a project.</span></div>}
+    {bachelor.selection && <p className="helper-text"><strong>Bachelor project selected for {bachelor.selection.season === "winter" ? "Winter" : "Spring"}.</strong> Up to four companion courses: two core and two humanities. All require approved extra hours, paid or deferred.</p>}
+    {bachelor.eligible && canEdit && <div className="bachelor-project-actions">
+      <label className="field"><span>Bachelor project season</span><select value={season} onChange={(event) => { const next = event.target.value; setSeason(next); if (bachelor.selection) changeProject(false, next); }} disabled={busy}><option value="winter">Winter</option><option value="spring">Spring</option></select></label>
+      {!bachelor.selection && <button className="primary-button" type="button" disabled={busy} onClick={() => changeProject(false)}>Add bachelor project</button>}
+      {bachelor.selection && <PaperTossButton disabled={Boolean(busy)} tossing={busy === "remove"} onClick={() => changeProject(true)}>{busy === "remove" ? "Removing…" : "Remove bachelor"}</PaperTossButton>}
+    </div>}
+    {problem && <Feedback tone="error">{problem}</Feedback>}
+    {overview.blockingStep && <p className="helper-text">Next step: {overview.blockingStep}</p>}
+    {bachelor.eligibleWithFailedCourses && <p className="helper-text">Eligible with {bachelor.outstandingCourses.map((course) => course.code).join(", ")} still outstanding (one or two failed courses are allowed).</p>}
+    {!bachelor.eligible && <div className="bachelor-requirements" aria-label="Bachelor project requirements">
+      <p className="bachelor-requirements-intro">All English courses must be complete. Only one or two failed semester 1–6 courses may remain.</p>
+      {[
+        ["English courses", bachelor.outstandingEnglishCourses || []],
+        ["Semester 1–6 courses", bachelor.outstandingCourses || []],
+      ].map(([label, courses]) => <details className="bachelor-requirement-group" key={label}>
+        <summary><span>{label}</span><span className={`requirement-count ${courses.length ? "is-missing" : "is-complete"}`}>{courses.length ? `${courses.length} outstanding` : "Complete"}</span></summary>
+        {courses.length > 0 && <ul className="bachelor-course-chips">{courses.map(course => <li key={course._id || course.code}><strong>{course.code}</strong>{course.name && <span>{course.name}</span>}</li>)}</ul>}
+      </details>)}
+      {bachelor.reasons.filter(reason => !reason.startsWith("English courses not completed:") && !reason.startsWith("Semester 1-6 courses not completed:")).map(reason => <p className="helper-text" key={reason}>{reason}</p>)}
+    </div>}
+    </section>
+  </section>;
+}
+
 function Feedback({ tone = "info", children }) { return <div className={`feedback ${tone}`} role={tone === "error" ? "alert" : "status"}>{children}</div>; }
 function Empty({ title, text }) { return <div className="empty-state"><span>▤</span><h3>{title}</h3><p>{text}</p></div>; }
 function Loading() { return <div className="loading-state"><span className="loader" />Loading…</div>; }

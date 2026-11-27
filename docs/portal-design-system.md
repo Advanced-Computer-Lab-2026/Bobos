@@ -1,0 +1,166 @@
+# Portal design system
+
+The visual reference is Portal Studio’s **Claude Study** workspace and **Concertina** calendar. The staff overview opens with a full-width work queue, followed by schedule review and the academic calendar. On narrow screens the sections stack in the same reading order. Students see their teaching week. Staff can open student schedules from Schedule review, and the activity log remains a separate page. Keep the information, navigation, actions and permissions appropriate to each role. The design editions under `variants/` are explorations. Their presence in the repository does not make every treatment a house convention.
+
+## See it in motion
+
+From the repository root run `npm run dev` and open `http://localhost:5173/`. The app serves Claude Study and Concertina for every live Portal URL. Earlier site and study bookmarks enter the current Portal. The current frontend lives in `apps/web`. The former standalone frontend and superseded React page implementations are available in Git history. Toggle dark and light mode from the Portal toolbar.
+
+The paths below refer to `apps/web/public/portal-studio/`. It is the runnable visual reference. The React application lives under `apps/web/src/`. When bringing artwork to a real workflow, keep its existing data, access controls, loading states and submission behavior.
+
+For local tests with seeded accounts, start Vite with `BOBOS_PORTAL_DEMO=standard` for the standard seed or `BOBOS_PORTAL_DEMO=extra-hours` for the extra-hours sandbox. Quick demo sign-in authenticates through the API. Graduation plans, Extra-hours requests, and Academic services render their existing React components inside Portal’s main content and share its session and theme. The former Workspace and Academic Services HTML URLs redirect to Portal and preserve the requested service. Overview and the Portal wordmark return to the illustrated home for the signed-in role.
+Academic services keeps the illustrated portal sidebar and theme. Academic services use Portal navigation without an additional page-selector dropdown. Advising students, Financial records, Course removals, Group assignments, Schedule preferences and Slot change requests open their live React services. Slot change requests appears in Scheduling for advisors and coordinators and Support for advising students. Signed-in advisors can start a plan from either Advising students or Graduation plans and track submissions in My submitted plans. Coordinators use Graduation review, and advising students use My graduation under Support. Signed-in students open Calendar sync from Support. Calendar sync labels the OAuth action “Sign in with Google”. On localhost, an expired student demo session is renewed once before retrying the calendar request; Google consent still selects the calendar account.
+
+## Surface, type and composition
+
+Normal and advising students see a centered greeting above the illustrated teaching week, with schedule actions next to the timetable heading. Coming up reuses the Schedule preferences course emblems and takes its next two classes from the teaching week in Cairo time. The notification illustration sits between the section heading and its messages. Pneumatic post is the default. The five scenes in `notification-study.html` each have an unread and a caught-up drawing. Motion plays on arrival and reduced motion shows the resting pose. The academic calendar puts Calendar sync in its heading and gives upcoming deadlines their own dated rows. See `student-overview-study.html` for ten Coming up and Notifications layouts. Coordinators see assignments and requests, advisors see advising work, and administrators see academic setup in the work queue.
+
+The console palette uses charcoal canvas (#151515), a slightly deeper sidebar (#0f0f0f), warm white ink (#efeee9), muted copy (#bdbbb0) and quiet rules (#303030). Light mode uses a muted ground (#f0eee6), paper (#f8f6ef) and dark brown ink (#302d28). Read the applied tokens in `studio.js`, `base.css` and `studio.css`; theme-specific overrides matter. Use semantic tokens for controls and text. Save sky blue, clay, sage and warm cream for recognizable objects, course identities and useful distinctions. The Computer Graphics sheet is a good cream reference.
+
+The greeting and wordmark carry the serif voice. Operational titles, student names, labels, counts and controls use the sans-serif system. The stylesheet requests local Tiempos and Styrene with fallbacks. Give the greeting room and keep the term visible alongside its context. Work queue and Schedule review sit on the canvas. Timetable classes have their own colored cards. Preserve this hierarchy when adding content. Use space and alignment to group related items before adding borders or containers. The current brand mark is `portal-card-index.svg`.
+
+The live Extra-hours workspace uses the Home wordmark, grouped sidebar, breadcrumb, and Console tones in light and dark mode. Request details, forms, and financial history use the same card surfaces and typography across student, advisor, and coordinator views.
+
+## Draw an object that explains the action
+
+Start with the object at its final display size. A folder tab, the mouth of an envelope or the silhouette of a cup should read before the viewer sees the details. Give the outline slight asymmetry. Use a few opaque fills, a controlled ink edge and a small number of internal strokes. Where one object passes behind another, give the foreground its own opaque face. Keep line endings crisp and inspect them at actual size. An illustration can float directly on the page. Choose an object because it helps explain the task.
+
+## Draw the movement
+
+A **cel** is a drawing held for part of an animation. A **line boil** alternates nearby versions of a contour. The subject keeps its place while an arc, corner or end of a stroke shifts by roughly a pen width. In the advisor illustration both bubbles have their own ink movement. Their centers stay legible. Moving the entire group side to side reads as shaking. Moving the middle of opposite sides toward one another reads as squeezing.
+
+Distinguish the gesture from the held pose. Draw anticipation, contact, weight, release and settlement where the action calls for them. Give each pose its own duration. A folder can rise quickly, overshoot, and spend most of a hover sitting open. During that hold, alternate the contour or existing writing. Keep the lettering already present when the paper emerges. Replaying a writing stroke or repeating a stamp changes the meaning of the action.
+
+The code uses alternate SVG paths, stepped CSS keyframes and timed JavaScript poses. Choose the technique to suit the drawing. The binder has depth and the pull chain responds to the hand. Their behavior is specific to those objects. For a new interaction, choose one readable gesture and preview it in place. Keep the actual click target stable and preserve its label and action.
+
+## Working references
+
+| Surface | What to study | Source |
+|---|---|---|
+| Work queue | The envelope opens and holds, the advisor bubbles redraw, and the group remains recognizable as people. The full entry activates the illustration. | `app.js` → `queueSketch`, `workQueue`; `studio.css` |
+| Schedule review | A cream desktop folder exposes a sheet. The front cover yields at its base. The sheet settles before the ink does. Names and credits stay readable below it. | `app.js` → desktop-folder markup; `studio.css` → folder-lift, folder-open, folder-contour, folder-pen |
+| Timetable and greeting | Nodes depict Algorithms, a faceted solid depicts Graphics, a bug belongs to Advanced Computer Lab, and a coffee cup marks a free day. The sun or moon sits beside the greeting. Study each silhouette at card size. | `images/symbols/`, `app.js`, `studio.css` |
+| Calendar | Follow a paper corner around the rings. The binding anchors the rotation, successive turns can overlap, and the seasonal art belongs to its sheet. Deadline notes share the calendar’s perspective. | `binder-motion.js`, `concertina.js`, `concertina-turn.css`, `seasonal-calendar.js` |
+| Staff and student pages | Apply illustrations to the particular workflow while preserving the arrangement people use to complete it. Compare coordinator and student routes. | `staff-art.js`, `student-art.js`, corresponding CSS, `desk-details.css`, `academic-pages.css` |
+
+## Action feedback
+
+Use the paper toss button for actions that delete a saved record or remove a saved assignment. In a row where the record is identifiable, use Delete with an accessible name that includes the record. Use the action and record name in confirmations, and let the button fit the label. Keep confirmations in place and play the toss when the deletion starts. The graduation draft buttons retain their 120 px width. See `apps/web/src/components/PaperTossButton.jsx`.
+
+Use the shared feedback styles for success, error, warning and informational messages across all five roles. Show a short result for a completed action in the floating card. Keep form errors and detailed results beside the controls they relate to. Use the warning treatment when the next step needs attention, and use the error treatment when the requested operation fails.
+
+The card appears in the bottom corner with a status icon, message and dismiss button. Success and information clear after seven seconds when the card is idle. Warnings and errors stay visible until dismissed or replaced by the next result. The card announces updates without moving focus and respects reduced motion. Both entry points use `action-feedback.js` and `action-feedback.css` in Portal Studio.
+
+## Sign-in and the lamp
+
+The form is on the left. The lamp and paper float on the right. Its foot starts on the email field, lands at 56% scale on Continue, and then jumps to the desk. On each control the full sole is flat. The right edge of Continue dips and rebounds under the foot. The curved underside becomes visible in flight. The grip is attached beneath the shade. During the two hops the cord follows a hand-authored exposure sheet and keeps the bead below its socket. The interactive drag uses a separate simulation so someone can catch the bead, pull sideways, and release it with momentum. Tapping the shade gives it a small nod and operates the same light. The sheet reveals Group 4’s teaching week.
+
+Use `desk-lamp.js` → `hopToDesk` for choreography, `lamp-cord.js` → `drawHop` for the authored cord poses, and `images/borrowed-light.svg` for the actual artwork and joints. For the field border, read `drawInputEdges` alongside `login-art.css`. Three outlines keep the long sides equally spaced. Small clockwise registrations of 0.10° and 0.20° give the ink movement without changing field height. The full exposure cycle is 0.51 seconds. These numbers describe this input specifically.
+
+## Review a change
+
+Watch it at normal speed in the surrounding page, then inspect the first contact and last moving frame. Check that the final pose lands on the resting artwork. Move off halfway through, come back, click again and use the keyboard. Check focus, touch, light and dark backgrounds, a narrow viewport, and reduced motion. The still pose must communicate the state. Existing buttons retain their actions; the examples here give designers room to invent new gestures.
+
+When an approved change alters one of these references, update the relevant passage and source pointer in the same change.
+
+## Workspace fields and records
+
+Portal Studio uses the sign-in contour on text entry throughout the workspace, including searches, notes and dialogs. The SVG sits above the native control so the caret stays still. Keyboard focus uses the same contour throughout Portal, including buttons, links, and native controls. The main content targets receive focus without the ink contour. Reduced motion keeps one ink contour visible. Preferred days use a single drawn check that settles when selected. See `drawInputEdges` and `workspace-pages.css`.
+
+The directory files students alphabetically by first name. Schedule review pairs each student with a draft state and its action. Course removals use the catalogue’s course drawings; align each request with its student, reason and review button. Group advising and assignment rosters by who needs attention first. Financial totals use tabular sans-serif figures on the canvas, with EGP secondary to the amount. Academic terms use whitespace between entries, readable dates and a visible action button. Use the seasonal artwork directly on the canvas and keep the notification drawings large enough to identify at reading distance.
+
+Save preferences uses button study 06, **Bookmark tab**. A sage ribbon with a notched tip drops 16px on hover or keyboard focus and settles in 430ms. The existing reduced-motion rule shows its end pose immediately.
+
+
+Use the advising roster’s circular initials anywhere a student appears in a list. In notifications the person sits beside the read action. Student schedules groups records by stage. Each stage name stands alone as a section heading above the rows of students, their majors and their next actions. Status drawings borrow the timetable stock colors. A blue inbox means ready for review, a sage check means complete, and a coral warning marks an assignment that needs attention. Pair every mark with its written state. Search, filter and action contours use the three sign-in drawings. Dropdown options use the Portal paper and ink colors. Hover, keyboard focus and selection use an underline. Live workflow tables use the illustrated status marks beside the written status. The pending-work envelope and advisor bubbles respond across the full queue link. The course-removal eraser plays its slow pass on entry and holds still with reduced motion enabled.
+
+When an action shows its line boil, the active SVG path draws both the button face and its perimeter. Keep the native hit area stationary. View selectors use the compact rectangular tabs from Course removals. Portal and its service components load `view-tabs.css`. Notifications keeps the open and sealed envelope icons beside the labels. Academic Records uses a folded transcript with a stamped seal beside the academic standing figures. Work queues share rows with their student work items. Schedule actions center on the same track across groups. Schedule activity places dates above their entries and pairs the time with the author’s profile.
+
+Profiles use a sage campus ID with the same initials as the directory. On a student record, Academic details, Advisor history and Schedule workflow expand independently so the reader can consult multiple sections. Student actions carry the selected student through to their schedule and preferences.
+## Google Calendar connection
+Calendar sync renders directly within Portal Studio and reads the authenticated API connection, Google account email, synchronization time and errors. OAuth callbacks return to the same illustrated portal page. Existing workspace calendar bookmarks redirect into this page. Local student demo connection actions authenticate through the API before opening Google authorization. Other deployments use the portal student sign-in flow.
+## Theme control
+Portal Studio carries the academic workspace sun/moon control in its header and sign-in page. The circular reveal expands from the switch center over 400ms using the existing theme-reveal animation. The shared portal.theme preference persists between both interfaces and page reloads. Reduced motion changes the theme immediately.
+Calendar authorization always requests Google account selection and consent. Connected students can choose Change Google account. Google Cloud remains in Testing mode and accepts approved test users.
+Action feedback uses a content-sized Action Dock for general results and failures. Successful draft, preference and bookmark saves use the Bookmark ribbon. Both wrap at a viewport-safe maximum and preserve seven-second idle dismissal and persistent errors. Delete confirmations use the paper-toss control from the supplied motion reference, with a 130px Delete draft and label-sized alternatives. Permanent deletes retain existing confirmation and API guards. Restore appears only when a restore operation exists.
+Feedback result headings use descriptive labels such as Decision saved and Sections saved. Saved/restored results use sage green. Deleted and failed results use coral/red, warnings use amber and information uses blue. Body copy remains neutral. The label and icon accompany the color, including for screen-reader announcements.
+Preference saving in Portal Studio uses an explicit saved/unsaved toggle. Saved restores the prior preview snapshot, keeps visible edits, and retracts the sage ribbon to muted grey. Editing a field makes the current form unsaved. Save again returns the ribbon to sage. Motion respects reduced motion and aria-pressed exposes the saved state.
+
+
+The extra-hours empty state uses the existing folder illustration style and All clear for now copy. Preview sample requests shows read-only Pending, Approved and Paid examples, with a toggle back to the real empty state. Sample records never enter the database.
+
+Live academic service pages use `apps/web/src/portal-academic.css` inside the service shadow root to match Schedule templates: 22px medium sans-serif operational headings, open canvas sections, ruled records, and the shared Portal palette and controls. Keep this styling scoped to academic services; changes to presentation must retain the existing component data and actions.
+
+Student schedules keeps a quiet roster and a draft editor with Course selection, Timetable and Student details views. Preserve selections when switching views. Keep mandatory courses, validation, save and send-for-review actions in Course selection; show processing and reopening actions independently of the selected view. Other eligible courses use a disclosure.
+
+Authenticated student teaching weeks, Coming up, My schedule, registered courses and course sections read `/api/schedules/me`, rather than fixed preview records. Keep the illustrated cards and course emblems while displaying only the signed-in student’s visible schedule. Refresh on returning to the page and every 30 seconds. Schedule downloads use the authenticated PDF endpoint.
+
+Advising students, staff Graduation review and Student preferences share the academic Portal styles: illustrated operational headings, open roster sections, outlined row actions, quiet filter panels and consistent modal surfaces. Preference group selections use sage highlights and priority controls retain their original actions. These presentation rules are scoped through `.portal-advising-services`; staff graduation views receive the same academic wrapper without changing role checks or decisions.
+
+Live academic tables reuse the Course catalogue treatment: 10px rounded frame, muted raised header, 13px records, 13px by 16px cell spacing, fine row rules and outlined actions. Keep complete column data horizontally scrollable on narrow screens. Slot change requests uses these tables and the shared Portal controls for both students and staff; preserve request, decision, replacement and withdrawal handlers.
+
+API teaching weeks preserve all six Saturday–Thursday columns in one horizontally scrollable row. Unknown courses reuse the existing processor emblem; schedule states display readable labels. Do not drop days or substitute another student’s courses to make the layout fit.
+
+Course offerings and the Copy offerings bookmark open the live academic offering workspace. Select and load an existing target term, then choose a previous Winter/Spring/Summer source term and source courses. Display the API-created draft count, skipped existing courses and resource conflicts; refresh the target listing after a copy. Never show a preview success dialog for this action.
+
+Course offerings uses the Catalogue register with the original processor, algorithms, beetle and graphics emblems. Keep Manage, Publish and paper-toss Delete actions attached to their original handlers. Duplicate offerings opens a Portal dialog from the header action or copy bookmark, with course emblems in its selection list; retain real API results and the target register. Do not repeat the copy form inline.
+
+Course offerings exposes Duplicate offerings beside Create offering; it opens the copy dialog. Create offering uses a wide Portal dialog with grouped fields, quiet meeting-group sections and a sticky action footer. Keep parsing, field validation and API submission unchanged.
+
+Course offerings loads the saved or active target on entry and reloads automatically when the target-term selection changes. There is no Load offerings button. Ignore stale responses from an earlier term selection so the listing and create/copy target stay consistent.
+
+The offering register empty state uses the existing folder illustration, No offerings yet heading and concise guidance toward the header actions. Historical offering fixtures can be added locally with `npm run seed:historical-offerings --workspace @bobos/api`; existing offerings are retained.
+
+Visible term labels use the shared `termLabel` formatter: season plus academic year, never the internal term code. Dropdown values and API references retain their original IDs/codes. New term codes are generated internally; existing terms are selected by season/year.
+
+Live schedule and advising roster identities use `PortalAvatar`, sharing Studio’s name-derived eleven-color portrait palette and two-letter initials. Keep the avatar decorative, names and student IDs visible, and row action buttons separately spaced and wrapping on narrow screens.
+
+Student details shows compact allowance, extra-hours and bachelor-eligibility facts; secondary allowance calculations and missing-course explanations are disclosures. An ineligible editable draft shows a disabled Add bachelor project control with its reason. Course selection always shows Mandatory courses, including a clear empty state when none exist. Preserve eligibility guards and mandatory-course handlers.
+
+The advising draft editor uses a compact term summary and an ink-filled active view tab. Mandatory requirements appear in a dedicated sage-accented section; an empty requirement list becomes a short notice. The credit allowance is one warm-paper sheet with selected/maximum hours, remaining hours and a progress meter. Course rows reuse `OfferingCourseIcon.jsx` from the offering register, with a course code, name and add/remove action. Group selectors, validation, saving and review permissions retain their existing behavior. Scoped styles live in `portal-academic.css`.
+
+Course selection keeps Mandatory courses and Other eligible courses visible without opening a disclosure. Exact section labels remain visible even when no mandatory courses exist. Sage required-course and sky eligible-course symbols distinguish the sections; the eligible list names its four filters and retains search, exclusions and existing add/remove handlers.
+
+Student details reuses the cream allowance sheet with large allowed hours, approved extra hours and the term maximum. The advising reason appears once in the sheet. Bachelor eligibility and existing project controls occupy a separate illustrated section, followed by a sky-marked scheduling-preferences section. Keep all eligibility guards, project season handlers and preferences refresh behavior intact.
+
+When selected credits exceed the existing credit-policy maximum, the allowance total and progress fill turn red on the cream paper. Show the number of hours over the limit alongside the total; return to the normal treatment at or below the maximum. Preserve the existing validation threshold and save guards.
+
+Bachelor-project requirements show a short eligibility rule and two collapsible categories with outstanding counts (English and semesters 1–6). Expand a category to read course codes and names in a compact list. Use the structured eligibility response and preserve other server reasons. Preferences show their optional state once, without a second No submission label.
+
+Excluded course rows show course identity and a separate Complete first group of prerequisite codes, using structured missingPrerequisites from the existing eligibility response. Other exclusion messages remain visible. `npm run seed:advising-manual --workspace @bobos/api` adds local, non-resetting Req 60 and 63 fixtures; reuses 91-00011 for Req 62 while it has no schedule/preferences, otherwise creates 93-00062. Req 60 has completed prerequisite history, six companion offerings and approved/deferred extra-hours coverage for two core and two humanities courses. Existing schedules and preferences are preserved.
+
+Student schedules uses the user-selected transparent graduation-cap, calendar and clock artwork in `images/student-schedules-calendar.png`. The embedded service frames its original raster as a CSS background at Portal heading size; other services retain their existing illustrations. Source: the user's shared ChatGPT image, https://chatgpt.com/s/m_6b087697ecec8191a3d7820b1981e7ff.
+
+Bachelor-project mutations refresh the draft and overview together without unmounting the active details panel. Keep unsaved course/group choices on project add/change/remove, synchronize the season selector with the saved project, and preserve the active tab. Every companion course, including core, is marked as extra hours and requires approved paid/deferred coverage before review/processing; incomplete drafts may still be saved. Server validation enforces at most four companions, two core and two humanities. Focused integration checks cover both seasons, count limits and activation states.
+
+Mandatory selection now saves on checkbox changes; omit the separate save button. Deselecting required courses while other courses remain is blocked. Existing bachelor-season changes save from the selector; retain Add bachelor project only before selection and label removal Remove bachelor. A missing/deleted student returns to the roster with a useful message. Student schedule heading art is larger while retaining responsive spacing.
+
+Local manual fixtures now use existing Excel curriculum courses: 93-00063 has CSEN501 and CSEN503 as mandatory repeats; 93-00062 is a fresh optional-preferences draft example. Curriculum cleanup removes non-explicit codes with a local backup and remaps applicable demo references to real courses. Seeds must not invent R60/R63/B1LAB or numbered ELEC courses. The curriculum CSV is the existing export of the workbook curriculum sheet.
+
+Student details has no manual preferences Refresh button. Preferences still load when opening/reloading the draft and after saved changes; retain the latest-submission timestamp and optional empty state.
+
+Unavailable course rows reuse OfferingCourseIcon and the catalogue identity hierarchy: decorative course emblem, muted code, prominent course name, and separate prerequisite badges. Theory, networks, media engineering and graphics have consistent shared symbols/tones across offering and eligible/unavailable lists. Exclusion rules and actions remain unchanged.
+
+Draft completion uses one action footer: secondary Save draft and primary Send for student review with a send icon. Remove the technical server-validation helper. Show a concise readiness hint (missing courses/groups, clash, credit limit or extra hours) beside the actions. The send action still saves and submits using the existing handler and guards.
+
+The student roster empty state uses Portal's folder illustration, a concise title and contextual guidance. An unmatched search offers Clear search; an empty term suggests selecting another term. Req 62 preferences remain visible in Student details while creating or reopening a draft; their absence does not block draft creation.
+
+Student details labels Advising reason and Schedule status explicitly in a compact two-column summary above the allowance sheet; stack on mobile. Avoid hiding the advising reason in an unlabeled badge. Bachelor eligibility remains beside project controls. These fields stay calculated/read-only and refresh after draft saves.
+
+Schedule preferences groups day and time inputs in paired illustrated sections, class groups in their existing full-width section, and the optional note in a separate section. Reuse shared course emblems for group identities. Keep input parsing, priorities, group selection/conflict checks, term loading, role restrictions and submit handlers unchanged.
+
+Preferences accept multiple comma-separated days/time ranges; Enter inserts a separator in ranked text fields and never submits the form. Normalize weekday case on save, preserve ordered entries and report duplicates/invalid names. Only the Save preferences button sends the update. Keep an inline saved confirmation beside the footer action and clear it when inputs or ranking/group choices change.
+
+Day preference fields use dropdowns containing all seven weekdays. Time fields use only the requested teaching slots: 08:15–09:45, 10:00–11:30, 11:45–13:15, 13:45–15:15 and 15:45–17:15. Selecting adds a ranked entry locally; hide already selected options, allow removal and reordering, and save only with Save preferences. Keep existing saved ranges visible until the user removes them, rather than silently rewriting saved data.
+
+Preferred class groups uses short instructions and a compact Refresh groups button. On explicit refresh, show a spinner and Checking for at least one second while loading, then an inline count or No class groups found. Do not turn request failures into empty results. Preserve existing preference loading and saving behavior.
+
+Req 70 eligible-course access is restricted to assigned Advisors and Coordinators. Administrators retain their overview/read-only schedule access but do not render or request Other eligible courses. Server filtering continues to exclude completed courses, unmet prerequisites, wrong-season and unpublished offerings and other-semester groups.
+
+After a successful calendar sync (including a previously recorded last-sync time), show Open Google Calendar beside Sync schedule. Open the Calendar app in a new tab and pass the connected account email as the account hint; retain the current sync screen and original sync/disconnect behavior.
+
+The live Portal calendar page is rendered by app.js → initializeLiveCalendar/refresh (data-live-calendar), independently from the React calendar component. Add Open Google Calendar to both render paths after lastSyncedAt exists. Keep the Portal app script cache version current when changing this path.
+
+Board 1 user selections (1=A,2=B) are implemented as code-native vector icons in the shared public course-icons.js registry: CSEN102 A, MATH103 A, Chemistry A (CHEMP102/CHEMT102), PHYS101 A, EDPT201 B, MATH203 B, PHYS202 B, MATH301 A, Physics III A (PHYSP301/PHYST301), SM101 B. Scientific Methods is an explicit exception to the earlier shared language-book direction. Portal and React reuse the registry. The user's full list has 56 choices; only the first ten are mapped because the other boards were not supplied. Do not infer remaining mappings from the earlier 52-brief ordering.
+
+All six supplied icon boards are now mapped in board order (10/8/10/10/8/10 cards), covering all 65 canonical curriculum codes with 54 non-duplicated SVG assets. 1 means A, 2 means B. Preserve original Embedded System Architecture, Analysis and Design of Algorithms and Advanced Computer Lab artwork per the explicit override. Repeated lecture/practical and lab courses reuse assets. English AS102 and German DE101–404 share the book/quotation icon; the German board's Greek beta is omitted as a mistaken language marker. Scientific Methods, CPS and RPW have their specifically selected individual icons. The annotated positions 21 (Concepts) and 45 (Web) are checked. Use the central registry in course catalogue, offerings, preferences, eligible/unavailable courses, Studio course details and teaching-week views. No academic functionality is changed.

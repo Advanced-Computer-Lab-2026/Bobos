@@ -1,5 +1,8 @@
 import mongoose from "mongoose";
 import { Notification } from "../models/communications.js";
+import { syncAdvisorNotifications } from "../services/advisor-notifications.js";
+import { syncCoordinatorNotifications } from "../services/coordinator-notifications.js";
+import { syncAdvisingNotifications } from "../services/student-notifications.js";
 
 /**
  * Requirement 5: Retrieve currently authenticated user's in-app notifications.
@@ -17,6 +20,10 @@ export const getMyNotifications = async (req, res) => {
         message: "Authentication required to retrieve notifications.",
       });
     }
+
+    if (user.role === "advisingStudent") await syncAdvisingNotifications(user._id);
+    if (user.role === "advisor") await syncAdvisorNotifications(user._id);
+    if (user.role === "coordinator") await syncCoordinatorNotifications(user._id);
 
     // Explicitly query ONLY for the authenticated user's notifications.
     const notifications = await Notification.find({

@@ -4,6 +4,14 @@ import mongoose from "mongoose";
 import { requireAuth } from "../middleware/auth.middleware.js";
 import { createTestNotification, getMyNotifications, markNotificationAsRead } from "./notifications.controller.js";
 import { Notification } from "../models/communications.js";
+import { AdvisorAssignment, StudentProfile } from "../models/identity.js";
+import { FinancialReversalRequest } from "../models/finance.js";
+import { ExitExamRequest, GraduationPlan, MandatoryCourseRemovalRequest } from "../models/requests.js";
+
+function mockEmptyAdvisorHistory(t) {
+  t.mock.method(AdvisorAssignment, "distinct", async () => []);
+  t.mock.method(StudentProfile, "find", () => ({ select: () => ({ lean: async () => [] }) }));
+}
 
 const createMockReqRes = ({ user = null, headers = {}, query = {}, body = {}, params = {} } = {}) => {
   const req = {
@@ -96,7 +104,12 @@ test("Requirement 5: Unauthenticated user cannot mark a notification as read", a
   assert.match(res2.getBody().message, /Authentication required/i);
 });
 
-test("Requirement 5: Each required role can retrieve their own notifications", async () => {
+test("Requirement 5: Each required role can retrieve their own notifications", async (t) => {
+  t.mock.method(StudentProfile, "findOne", () => ({ select: () => ({ lean: async () => null }) }));
+  mockEmptyAdvisorHistory(t);
+  for (const model of [GraduationPlan, ExitExamRequest, MandatoryCourseRemovalRequest, FinancialReversalRequest]) {
+    t.mock.method(model, "find", () => ({ select: () => ({ populate: () => ({ lean: async () => [] }) }) }));
+  }
   const roles = [
     { role: "normalStudent", email: "student.norm@student.guc.edu.eg", name: "Normal Student" },
     { role: "advisingStudent", email: "student.adv@student.guc.edu.eg", name: "Advising Student" },
@@ -104,8 +117,6 @@ test("Requirement 5: Each required role can retrieve their own notifications", a
     { role: "coordinator", email: "coord@guc.edu.eg", name: "Eng. Coordinator" },
     { role: "administrator", email: "admin@guc.edu.eg", name: "Admin" },
   ];
-
-  const originalFind = Notification.find;
 
   for (const { role, email, name } of roles) {
     const userId = new mongoose.Types.ObjectId();
@@ -126,12 +137,12 @@ test("Requirement 5: Each required role can retrieve their own notifications", a
       },
     ];
 
-    Notification.find = (filter) => {
+    const find = t.mock.method(Notification, "find", (filter) => {
       assert.equal(filter.recipient.toString(), userId.toString());
       return {
         sort: async () => mockNotifs,
       };
-    };
+    });
 
     const { req, res } = createMockReqRes({ user });
     await getMyNotifications(req, res);
@@ -142,9 +153,8 @@ test("Requirement 5: Each required role can retrieve their own notifications", a
     assert.equal(body.count, 1);
     assert.equal(body.notifications[0].title, `Welcome ${role}`);
     assert.equal(body.notifications[0].isRead, false);
+    find.mock.restore();
   }
-
-  Notification.find = originalFind;
 });
 
 test("Requirement 5: Only the authenticated user's notifications are returned", async () => {
@@ -360,7 +370,8 @@ test("Requirement 5: Already-read notification can safely be marked read again (
   }
 });
 
-test("Requirement 5: Unread and read status is correctly returned", async () => {
+test("Requirement 5: Unread and read status is correctly returned", async (t) => {
+  mockEmptyAdvisorHistory(t);
   const userId = new mongoose.Types.ObjectId();
   const user = { _id: userId, email: "test@guc.edu.eg", role: "advisor" };
 

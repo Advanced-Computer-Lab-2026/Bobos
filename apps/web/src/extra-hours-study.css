@@ -1,0 +1,420 @@
+@font-face {
+  font-family: Styrene;
+  src: local("StyreneB-Regular");
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: Tiempos;
+  src: local("TiemposText-Regular");
+  font-weight: 400;
+  font-display: swap;
+}
+
+/* Claude Study colors and spacing for the live Extra-hours workspace. */
+.extra-hours-shell {
+  --canvas: #f0eee6;
+  --sidebar: #e8e4da;
+  --paper: #f8f6ef;
+  --raised: #eae6dc;
+  --active: #ded9cd;
+  --ink: #302d28;
+  --muted: #615c52;
+  --line: #d8d3c7;
+  --accent: #285ca1;
+  --study-gutter: clamp(24px, 4vw, 64px);
+  grid-template-columns: clamp(212px, 17vw, 300px) minmax(0, 1fr);
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: Styrene, system-ui, sans-serif;
+}
+
+:root[data-theme="dark"] .extra-hours-shell {
+  --canvas: #151515;
+  --sidebar: #0f0f0f;
+  --paper: #232323;
+  --raised: #292929;
+  --active: #3b3b3b;
+  --ink: #efeee9;
+  --muted: #bdbbb0;
+  --line: #303030;
+  --control: #656565;
+  --accent: #8dbbfa;
+}
+
+.extra-hours-shell .page-content { padding: clamp(28px, 4.5vw, 64px) var(--study-gutter) 48px; }
+
+.extra-hours-page .workspace-header { align-items: flex-end; margin-bottom: 8px; }
+.extra-hours-page .workspace-header h1 {
+  font: 400 clamp(34px, 4.2vw, 56px)/1.08 Tiempos, Georgia, serif;
+  letter-spacing: -.045em;
+}
+.extra-hours-page .workspace-header p { margin-top: 12px; }
+.extra-hours-page .panel { border-radius: 12px; }
+/* Match the Studio registers, rosters and financial ledger. */
+.extra-hours-page {
+  max-width: 1150px;
+  min-width: 0;
+}
+.extra-hours-page :is(.extra-request, .extra-financial, .extra-filters) {
+  min-width: 0;
+  border-top: 1px solid var(--line);
+  padding: 18px 0 0;
+}
+.extra-hours-page .extra-request-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 14px 20px;
+}
+.extra-hours-page .extra-request-row h2,
+.extra-hours-page .extra-financial h2 {
+  margin: 0;
+  font: 500 19px/1.35 Styrene, system-ui, sans-serif;
+  overflow-wrap: anywhere;
+}
+.extra-hours-page .extra-request-row .helper-text {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+.extra-hours-page .extra-request-row .status-pill {
+  justify-self: start;
+  white-space: normal;
+}
+.extra-wallet-summary,
+.extra-request-price { margin: 0; }
+.extra-wallet-summary dt,
+.extra-request-price dt {
+  color: var(--muted);
+  font-size: 13px;
+}
+.extra-wallet-summary dd,
+.extra-request-price dd {
+  margin: 2px 0 0;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.extra-wallet-summary {
+  width: fit-content;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--raised);
+}
+.extra-wallet-summary dd { font-size: 16px; font-weight: 600; }
+
+.extra-request-price dd {
+  font-size: clamp(23px, 3vw, 32px);
+  font-weight: 700;
+  line-height: 1.16;
+  letter-spacing: -.035em;
+}
+.extra-hours-page .extra-request > :is(.feedback, .form-stack, .form-actions) {
+  margin-top: 16px;
+}
+.extra-hours-page .extra-request > details {
+  padding-block: 7px;
+}
+.extra-hours-page .extra-request > :not(details) + details { margin-top: 14px; }
+.extra-hours-page .extra-request summary {
+  width: fit-content;
+  padding: 6px 4px;
+  color: var(--ink);
+  cursor: pointer;
+}
+.extra-hours-page .extra-request details ol {
+  margin: 6px 0 10px;
+  padding-inline-start: 24px;
+  color: var(--muted);
+}
+.extra-hours-page .extra-request details li + li { margin-top: 8px; }
+.extra-hours-page .extra-filters .field :is(input, select) {
+  background: var(--raised);
+  color: var(--ink);
+}
+.extra-hours-page .extra-financial h2 { margin-bottom: 12px; }
+.extra-hours-page :is(.extra-financial, .extra-request) .table-scroll {
+  max-width: 100%;
+  border: 0;
+  border-radius: 0;
+}
+.extra-hours-page :is(.extra-financial, .extra-request) table { min-width: max-content; }
+.extra-hours-page :is(.extra-financial, .extra-request) th {
+  border-bottom: 2px solid var(--line);
+  background: transparent;
+}
+.extra-hours-page :is(.extra-financial, .extra-request) td { padding-block: 14px; }
+.extra-hours-page :is(.extra-financial, .extra-request) tbody tr:hover { background: var(--raised); }
+.extra-hours-page :is(summary, .table-scroll):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+@media (max-width: 520px) {
+  .extra-hours-page .extra-request-row { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 800px) {
+  .extra-hours-shell { --study-gutter: 16px; }
+  .extra-hours-shell .portal-mobile-brand .portal-wordmark { font-size: clamp(21px, 5vw, 27px); font-weight: 700; }
+}
+
+@media (max-width: 700px) {
+  .extra-hours-page .workspace-header { align-items: stretch; }
+}
+
+.extra-hours-embedded {
+  background: transparent;
+  padding-bottom: 4px;
+}
+.extra-hours-loading { min-height: 80px; background: transparent; border: 0; }
+body:has(.extra-hours-embedded) { background: transparent; }
+.academic-services-embedded .page-content { padding: 0; }
+.academic-services-picker { width: min(100%, 280px); margin-bottom: 20px; }
+.extra-hours-toolbar,
+.extra-hours-toolbar-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+.extra-hours-toolbar-actions { margin-inline-start: auto; }
+
+.extra-request-details { margin-block: 20px 12px; }
+.extra-request-details h3,
+.extra-request-history summary {
+  font-size: 17px;
+  font-weight: 600;
+}
+.extra-request-details h3 { margin: 0 0 8px; }
+.extra-hours-page .extra-request-history ol {
+  list-style: none;
+  border-inline-start: 1px solid var(--line);
+  margin: 8px 0 10px 8px;
+  padding-inline-start: 16px;
+}
+.extra-hours-page .extra-request-history li { position: relative; padding-block: 5px; }
+.extra-hours-page .extra-request-history li::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: -21px;
+  top: 12px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.extra-history-event { display: flex; flex-wrap: wrap; align-items: baseline; gap: 3px 12px; }
+.extra-history-event strong { color: var(--ink); }
+.extra-history-event time { font-size: 12px; }
+.extra-request-history li p { margin: 4px 0; }
+
+:root[data-embedded="true"] body { min-width: 0; min-height: 0; background: transparent; }
+:root[data-embedded="true"] .app-loading { min-height: 100px; }
+
+/* The portal owns page scrolling. These sections fit their available width. */
+:root[data-embedded="true"] { overflow: hidden; }
+.extra-hours-page .extra-financial table {
+  min-width: 0;
+  width: 100%;
+  table-layout: fixed;
+}
+.extra-hours-page .extra-financial :is(th, td, button) {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+.extra-hours-page .extra-request {
+  padding: clamp(14px, 3vw, 24px);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.extra-request-summary {
+  display: grid;
+  justify-items: end;
+  text-align: end;
+  gap: 8px;
+}
+.extra-hours-page .extra-request-summary .status-pill {
+  justify-self: end;
+  font-size: 12px;
+  font-weight: 600;
+}
+.extra-request-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin: 10px 0 0;
+  font-size: 13px;
+}
+.extra-request-meta dt { color: var(--muted); }
+.extra-request-meta dd { margin: 2px 0 0; }
+.extra-hours-account {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+}
+.extra-hours-account .helper-text,
+.extra-payment .helper-text { margin: 0; }
+.extra-hours-page .extra-payment {
+  gap: 12px;
+  padding: 14px 0 0;
+  border-top: 1px solid var(--line);
+}
+.extra-payment h3 { margin: 0 0 4px; font-size: 15px; }
+.extra-payment .extra-gateway {
+  align-items: end;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.extra-hours-page .extra-request-details,
+.extra-hours-page .extra-request-history {
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+.extra-hours-page .extra-financial {
+  padding-bottom: 12px;
+}
+.extra-financial > .helper-text { margin: 0; }
+
+@media (max-width: 520px) {
+  .extra-request-summary {
+    justify-items: start;
+    text-align: start;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+  .extra-hours-page .extra-request-summary .status-pill { justify-self: start; }
+}
+
+.extra-eligibility-summary { margin: 0 0 10px; }
+.extra-eligibility-summary span,
+.extra-course-facts dt,
+.extra-course-list p { color: var(--muted); }
+.extra-course-facts {
+  max-width: 36rem;
+  margin: 12px 0 0;
+  font-size: 13px;
+}
+.extra-course-facts > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, auto);
+  align-items: baseline;
+  gap: 4px 14px;
+  padding: 6px 0;
+  border-top: 1px solid var(--line);
+}
+.extra-course-facts dd {
+  margin: 0;
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+.extra-course-facts small {
+  display: block;
+  color: var(--muted);
+}
+.extra-request-details .extra-course-list {
+  max-width: 36rem;
+}
+.extra-request-details .extra-course-list li {
+  flex-wrap: nowrap;
+  align-items: start;
+}
+.extra-request-details .extra-course-list li > strong {
+  white-space: nowrap;
+  color: var(--ink);
+}
+.extra-course-list { list-style: none; margin: 0; padding: 0; }
+.extra-course-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  padding-block: 7px;
+}
+.extra-course-list p { margin: 2px 0 0; }
+.extra-course-list li + li { border-top: 1px solid var(--line); }
+.extra-course-list li > strong {
+  color: var(--muted);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 680px) {
+  .extra-hours-page .extra-financial :is(th, td) { padding-inline: 4px; }
+  .extra-hours-page .extra-financial .text-button { padding-inline: 0; }
+}
+
+/* Use the surrounding Studio palette instead of the standalone app canvas. */
+:root[data-embedded="true"] {
+  background: var(--embedded-canvas, transparent);
+}
+.extra-hours-shell.extra-hours-embedded,
+:root[data-theme="dark"] .extra-hours-shell.extra-hours-embedded {
+  --canvas: var(--embedded-canvas, transparent);
+  --ink: var(--embedded-ink, inherit);
+  --muted: var(--embedded-muted, #777);
+  --line: var(--embedded-line, #777);
+  --raised: var(--embedded-raised, transparent);
+  --paper: var(--embedded-paper, transparent);
+}
+
+.extra-hours-empty { padding:34px 16px 28px; text-align:center; border-top:1px solid var(--line); }
+.extra-empty-art { display:block; margin:0 auto 10px; }
+.extra-hours-empty h3 { margin:0 0 5px; font-size:18px; font-weight:600; }
+.extra-hours-empty p { max-width:48ch; margin:0 auto 16px; color:var(--muted); font-size:13px; line-height:1.55; }
+.extra-sample-list { display:grid;gap:18px; }
+.extra-sample-list h2 small { font-size:13px;color:var(--muted);font-weight:400; }
+.extra-hours-empty .outline-button { width:max-content;max-width:100%; }
+.extra-record-desk {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: clamp(18px, 3vw, 36px);
+  margin-top: 16px;
+}
+.extra-record-content > :is(.feedback, .form-stack, .form-actions) { margin-top: 12px; }
+.extra-hours-page .extra-record-desk .extra-request-history { margin-top: 0; }
+.extra-record-ticket {
+  position: relative;
+  margin: 8px 0 14px;
+  padding: 14px 16px 23px;
+  border: 1px solid var(--line);
+  border-inline-start: 3px solid #68816e;
+  border-radius: 1px 10px 2px 3px;
+  background: transparent;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.extra-record-ticket .extra-record-number {
+  padding-bottom: 6px;
+  border-bottom: 1px dashed var(--line);
+  font-size: 12px;
+}
+.extra-hours-page .extra-record-ticket ol { border-color: #68816e; color: var(--muted); }
+.extra-record-ticket .extra-history-event strong { color: var(--ink); }
+.extra-hours-page .extra-record-ticket li::before { background: #68816e; }
+.extra-hours-page .extra-record-ticket li:last-child::before { background: #39382d; }
+.extra-record-punch {
+  position: absolute;
+  inset-inline-end: 6px;
+  bottom: -16px;
+  width: 78px;
+  pointer-events: none;
+}
+.extra-punch-lever { transform-origin: 82px 36px; }
+@media (prefers-reduced-motion: no-preference) {
+  .extra-request-history[open] .extra-punch-lever { animation: extra-punch-press .72s both; }
+  .extra-request-history[open] .extra-record-ticket { animation: extra-paper-yield .72s both; }
+}
+@keyframes extra-punch-press {
+  0%, 100% { transform: rotate(0); }
+  18% { transform: rotate(4deg); }
+  47%, 56% { transform: rotate(-16deg); }
+  78% { transform: rotate(3deg); }
+}
+@keyframes extra-paper-yield {
+  0%, 44%, 100% { transform: none; }
+  50%, 59% { transform: translateY(2px) rotate(.3deg); }
+}
+@media (max-width: 760px) {
+  .extra-record-desk { grid-template-columns: minmax(0, 1fr); }
+}
