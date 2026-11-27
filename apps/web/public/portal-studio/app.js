@@ -728,7 +728,7 @@ function notifications(){
           ${emailStatus ? `<small>Email: ${escapeHtml(emailStatus)}</small>` : ''}
           ${item.isRead ? '<small>Read</small>' : button('Mark as read','read-one','btn desk-action', `data-notification="${escapeHtml(item._id)}"`)}
       </article>`;
-    }).join('')}</div>` : `<div class="empty">${usesStaffPresentation() ? notificationScenes('tube',false) : ''}<h2>You’re all caught up.</h2><p>${tab === 'unread' ? 'No unread notifications.' : 'No notifications yet.'}</p></div>`))+'</section>';
+    }).join('')}</div>` : `<div class="empty">${notificationScenes('coffee',false)}<h2>You’re all caught up.</h2><p>${tab === 'unread' ? 'No unread notifications.' : 'No notifications yet.'}</p></div>`))+'</section>';
 }
 
 async function markPortalNotifications(ids, control) {

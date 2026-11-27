@@ -165,8 +165,8 @@ export default function SlotChangesPage({ token, role, onOpenSchedule }) {
         <label className="field"><span>Status</span><select value={filters.status} onChange={setFilter("status")}><option value="">All statuses</option>{Object.entries(statuses).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
         <label className="field"><span>Advisor</span><select value={filters.advisor} onChange={setFilter("advisor")}><option value="">All advisors</option>{advisors.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label>
         <label className="field"><span>Course</span><select value={filters.course} onChange={setFilter("course")}><option value="">All courses</option>{options(requests.map((item) => item.course?.code)).map((code) => <option key={code}>{code}</option>)}</select></label>
-        <label className="field"><span>{coordinator ? "Submitted from" : "Start date"}</span><input type="date" value={filters.from} max={filters.to || undefined} onChange={setFilter("from")} /></label>
-        <label className="field"><span>{coordinator ? "Submitted through" : "End date"}</span><input type="date" value={filters.to} min={filters.from || undefined} onChange={setFilter("to")} /></label>
+        <label className="field"><span>{coordinator ? "Submitted from" : "Start date"}</span><input type="date" data-calendar-range="slot-changes" data-calendar-edge="start" value={filters.from} max={filters.to || undefined} onChange={setFilter("from")} /></label>
+        <label className="field"><span>{coordinator ? "Submitted through" : "End date"}</span><input type="date" data-calendar-range="slot-changes" data-calendar-edge="end" value={filters.to} min={filters.from || undefined} onChange={setFilter("to")} /></label>
       </div></FilterDisclosure>}
       {shown.length ? mine ? <div className="table-scroll"><table>
         <thead><tr><th>Course and slot</th><th>Submitted</th><th>Status</th><th>Details</th></tr></thead>

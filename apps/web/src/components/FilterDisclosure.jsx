@@ -33,7 +33,8 @@ export default function FilterDisclosure({ search, chips = [], onClear, children
   useEffect(() => {
     if (!floating || !open) return;
     const outside = (event) => {
-      if (!event.composedPath().includes(root.current)) setOpen(false);
+      const path = event.composedPath();
+      if (!path.includes(root.current) && !path.some(node => node.classList?.contains("quiet-calendar"))) setOpen(false);
     };
     document.addEventListener("click", outside, true);
     return () => document.removeEventListener("click", outside, true);

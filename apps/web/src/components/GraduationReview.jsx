@@ -231,11 +231,11 @@ export default function GraduationReview({ token, role }) {
           </select>
         </label>
         <label className="field"><span>Submitted from (UTC)</span>
-          <input type="date" value={inputs.from} max={inputs.to || undefined}
+          <input type="date" data-calendar-range="graduation-review" data-calendar-edge="start" value={inputs.from} max={inputs.to || undefined}
             onChange={(event) => setInputs({ ...inputs, from: event.target.value })} />
         </label>
         <label className="field"><span>Submitted through (UTC)</span>
-          <input type="date" value={inputs.to} min={inputs.from || undefined}
+          <input type="date" data-calendar-range="graduation-review" data-calendar-edge="end" value={inputs.to} min={inputs.from || undefined}
             onChange={(event) => setInputs({ ...inputs, to: event.target.value })} />
         </label>
       </div>

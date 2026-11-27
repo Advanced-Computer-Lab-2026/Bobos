@@ -133,6 +133,9 @@ test("Req 1–5: reset through email, view your profile and inbox, and sign out"
   await page.getByRole("button", { name: "Mark all as read" }).click();
   await expect(bell).toHaveAccessibleName("Notifications");
   await expect(bell.locator(".notification-count")).toHaveCount(0);
+  await page.getByRole("tab", { name: /Unread/ }).click();
+  await expect(page.locator("#notice-results [data-scene=coffee]")).toBeVisible();
+  await expect(page.getByText("No unread notifications.")).toBeVisible();
   await navigation.getByRole("link", { name: "Home", exact: true }).click();
   await expect(page).toHaveTitle("Portal · Home");
   await page.getByRole("button", { name: /account/i }).click();
@@ -200,6 +203,40 @@ test("Req 6–10: student directory finds the matching profile and changes the a
   await expect(details.getByRole("button", { name: "Activate account" })).toBeVisible();
   await details.getByRole("button", { name: "Activate account" }).click();
   await expect(details.getByRole("button", { name: "Deactivate account" })).toBeVisible();
+});
+
+test("Calendar commits both controlled financial filters and Cancel preserves them", async ({ page }) => {
+  const response = await page.request.post(baseURL + '/api/identity/login', {
+    data: { email: 'regression@guc.edu.eg', password },
+  });
+  expect(response.ok()).toBeTruthy();
+  const session = await response.json();
+  await page.addInitScript(token => {
+    localStorage.setItem('bobos.token', token);
+    localStorage.setItem('portal-account-role', 'administrator');
+  }, session.token);
+  await page.goto(baseURL + '/portal-studio/index.html?page=financial-records&role=administrator&preview=live');
+  await page.getByRole("button", { name: /^Filters\b/i }).click();
+  const from = page.getByLabel("From date");
+  const through = page.getByLabel("To date");
+  await from.fill("2025-09-10");
+  await from.click();
+  const calendar = page.getByRole("dialog", { name: "Calendar" });
+  await calendar.getByRole("gridcell", { name: "Monday, September 15, 2025", exact: true }).click();
+  await calendar.getByRole("gridcell", { name: "Wednesday, September 17, 2025", exact: true }).click();
+  const filtered = page.waitForResponse(response => {
+    const url = new URL(response.url());
+    return url.pathname === '/api/finance/records' && url.searchParams.get('startDate') === '2025-09-15' && url.searchParams.get('endDate') === '2025-09-17';
+  });
+  await calendar.getByRole("button", { name: "Apply", exact: true }).click();
+  await filtered;
+  await expect(from).toHaveValue("2025-09-15");
+  await expect(through).toHaveValue("2025-09-17");
+  await from.click();
+  await calendar.getByRole("gridcell", { name: "Friday, September 19, 2025", exact: true }).click();
+  await calendar.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(from).toHaveValue("2025-09-15");
+  await expect(through).toHaveValue("2025-09-17");
 });
 
 test("Req 100 and 127: the Portal ledger and downloaded CSV use the same date and settlement filters", async ({ page }) => {

@@ -262,6 +262,7 @@ export default function MandatoryRemovalDashboard({ token, role, advisorId, noti
             <span>Submitted from</span>
             <input
               type="date"
+              data-calendar-range="mandatory-removals" data-calendar-edge="start"
               value={dateFrom}
               max={dateTo || undefined}
               onChange={(e) => setDateFrom(e.target.value)}
@@ -272,6 +273,7 @@ export default function MandatoryRemovalDashboard({ token, role, advisorId, noti
             <span>Submitted to</span>
             <input
               type="date"
+              data-calendar-range="mandatory-removals" data-calendar-edge="end"
               value={dateTo}
               min={dateFrom || undefined}
               onChange={(e) => setDateTo(e.target.value)}

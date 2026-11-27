@@ -19,6 +19,10 @@ Academic services keeps the illustrated portal sidebar and theme. Academic servi
 
 My advisor uses the illustrated contact layout and office drawing. The sidebar, refreshes, and older advisor-assignment bookmarks all open the same page. Keep the current advisor's name and email, loading, unassigned, and error states within that layout. Existing Portal screens should have one renderer per workflow. Connect live data inside the approved screen, and route older bookmarks to that renderer. When changing this route, run the browser test that checks the illustration, real contact data, and older links.
 
+The shared Calendar opens from date fields, including inside embedded services. Its heading switches between days and a month/year chooser. Apply updates the original fields, and Cancel discards the selection. Paired filters share a range picker, while academic term dates remain individual fields.
+
+The empty Notifications page uses the coffee cup, desk bell and letter. The steam rises briefly when the illustration appears and stays still with reduced motion.
+
 ## Surface, type and composition
 
 Normal and advising students see a centered greeting above the illustrated teaching week, with schedule actions next to the timetable heading. Coming up reuses the Schedule preferences course emblems and takes its next two classes from the teaching week in Cairo time. Home groups up to three unread notifications in one inbox panel with a timetable ivory header that expands one message at a time. The toolbar bell shows a red unread count across the portal. Home is a direct navigation link. The browser scrolls the page, and the sticky desktop sidebar reveals its scrollbar on hover or keyboard focus. The academic calendar puts Calendar sync in its heading and gives upcoming deadlines their own dated rows. Coordinators see assignments and requests, advisors see advising work, and administrators see academic setup in the work queue.
