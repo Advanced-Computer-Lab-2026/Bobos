@@ -49,11 +49,18 @@ test("probation allowance is 75 percent rounded up and never receives extra hour
   assert.deepEqual(policy.approvedExtraCourses, []);
 });
 
-test("GPA alone does not mark a student as on probation", () => {
-  const policy = calculateDraftCreditPolicy({ currentSemester: 5, academicStanding: "goodAcademicStanding", advisingReason: "failedCourses", gpa: 3.9 }, [activatedRequest()]);
-  assert.equal(policy.probation, false);
-  assert.equal(policy.baseAllowance, 30);
-  assert.equal(policy.maximumCreditHours, 33);
+test("the GPA threshold applies independently of standing or advising reason", () => {
+  const student = { currentSemester: 5, academicStanding: "goodAcademicStanding", advisingReason: "failedCourses" };
+  const belowThreshold = calculateDraftCreditPolicy({ ...student, gpa: 3.69 }, [activatedRequest()]);
+  const atThreshold = calculateDraftCreditPolicy({ ...student, gpa: 3.70 }, [activatedRequest()]);
+
+  assert.equal(belowThreshold.probation, false);
+  assert.equal(belowThreshold.baseAllowance, 30);
+  assert.equal(belowThreshold.maximumCreditHours, 33);
+  assert.equal(atThreshold.probation, true);
+  assert.equal(atThreshold.baseAllowance, 23);
+  assert.equal(atThreshold.maximumCreditHours, 23);
+  assert.deepEqual(atThreshold.approvedExtraCourses, []);
 });
 
 test("approved hours activate only after paid or deferred settlement", () => {

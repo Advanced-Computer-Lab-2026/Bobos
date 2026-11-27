@@ -1,0 +1,212 @@
+.concertina-turn > svg {
+  clip-path:inset(-150px 0 -2px);
+  overflow:visible;
+  fill:none;
+  stroke-linejoin:round;
+}
+.concertina-turn .bound-stock {
+  fill:var(--leaf-stock);
+  stroke:color-mix(in srgb,var(--leaf-stock) 62%,#57534a);
+  stroke-width:.8;
+  vector-effect:non-scaling-stroke;
+}
+.concertina-turn .bound-stock.verso {fill:color-mix(in srgb,var(--leaf-stock) 93%,#a99a82)}
+.concertina-turn .binder-roll {
+  fill:color-mix(in srgb,var(--leaf-stock) 83%,#ab9e89);
+  stroke:#a49c8e;stroke-width:.75;vector-effect:non-scaling-stroke;
+}
+.concertina-turn .binder-grain {stroke:#b6ac9b;stroke-width:.85;vector-effect:non-scaling-stroke}
+.concertina-turn .leaf-face {background:transparent}
+.binder-punches {z-index:1}
+.binder-row[hidden] {display:none!important}
+.binder-row {display:none}
+[data-concertina=true] .binder-row {
+  display:block;position:absolute;inset:-32px 0 auto;height:42px;pointer-events:none;
+}
+.binder-wires {z-index:2}
+[data-concertina=true] .calendar-feature .binder-feet {top:auto;bottom:-10px}
+.teaching-pad .binder-feet > svg {animation:none}
+
+.binder-row > svg {position:absolute;top:0;width:20px;height:42px;transform:translateX(-50%);overflow:visible}
+.teaching-pad[data-concertina=true] .calendar-feature::after {display:none}
+
+
+.teaching-pad[data-concertina=true] .calendar-feature {
+  isolation:isolate;
+  overflow:hidden;
+  margin-inline:0;
+  border-bottom-left-radius:0;
+  border-bottom-right-radius:0;
+}
+.teaching-pad[data-concertina=true] .folio-stack {
+  box-shadow:none;
+}
+.teaching-pad[data-concertina=true] .calendar-heading{margin-bottom:49px}
+.teaching-pad .calendar-feature .cloth-needle{position:absolute;left:0;bottom:0;width:100%;height:16px;max-width:none;animation:none}
+
+/* The binding, paper stock, and ruling are paired for each edition. The
+   material travels with the leaf when it is lifted. */
+.teaching-pad:has(.material-binding) .calendar-feature {
+  background:var(--cover);border-radius:var(--cover-radius,4px 5px 0 1px);
+}
+.teaching-pad:has(.material-binding) .calendar-feature::before,
+.teaching-pad:has(.material-binding) .calendar-feature::after{display:none!important}
+.teaching-pad .calendar-feature .material-binding{
+  position:absolute;inset:0;width:100%;max-width:none;height:100%;animation:none;
+}
+
+/* A month changes the print. The stock and cloth belong to the same binder. */
+.teaching-pad[data-calendar-style=bellows]{
+  --sheet:var(--console-ivory,#f0eee6);
+  --binding:#a8a7b7;
+  --printing:#363830;--pencil:#626157;
+}
+.teaching-pad[data-calendar-style=bellows] .calendar-feature{background-color:var(--binding)}
+/* Orthographic three-quarter camera from the binder study. Keeping the whole
+   object in this coordinate space aligns the printed face with the turn. */
+.teaching-pad[data-concertina=true] .binder-body {
+  --binder-depth: 10px;
+  display: flow-root;
+  position: relative;
+  isolation: auto;
+  margin-top:12px;
+  transform: rotateX(14.9deg) rotateY(11.5deg);
+  transform-style: preserve-3d;
+}
+/* Every role uses the face-on binder and the original sheet turn. */
+.teaching-pad[data-concertina=true][data-face-on] .binder-body {
+  --binder-plane:none;
+  margin:24px 5% 28px 3%;
+  transform:var(--binder-plane);
+}
+.teaching-pad[data-concertina=true] .binder-body > .calendar-feature { margin-top:0; }
+.teaching-pad[data-concertina=true] .binder-body.binder-measuring {
+  transform: none;
+}
+.teaching-pad[data-concertina=true] .binder-body::before,
+.teaching-pad[data-concertina=true] .binder-body::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+}
+.teaching-pad[data-concertina=true] .binder-body::before {
+  inset: 0 auto 0 0;
+  width: var(--binder-depth);
+  transform-origin: left center;
+  transform: rotateY(90deg);
+  background: linear-gradient(to right,#b3aca1 0 19%,#d2ccbf 19% 37%,#898584 37% 52%,#777581 52%);
+}
+.teaching-pad[data-concertina=true] .binder-body::after {
+  inset: 100% 0 auto;
+  height: var(--binder-depth);
+  transform-origin: center top;
+  transform: rotateX(-90deg);
+  background: linear-gradient(#d0cabc 0 18%,#b9b1a5 18% 29%,#ddd7cb 29% 43%,#8d8990 43% 55%,#777581 55%);
+}
+
+/* The motion layer aligns its front sheet with the real, interactive calendar. */
+.teaching-pad .binder-motion-layer {
+  position: absolute;
+  inset: auto -12% 0;
+  width: 124%;
+  height: 230%;
+  visibility: hidden;
+}
+.teaching-pad .binder-transition {
+  clip-path: inset(-135% -40px -3px -12%);
+}
+.teaching-pad .binder-waiting-sheet {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+/* Keep the front halves of the physical rings over the turning leaf. */
+.teaching-pad[data-concertina=true] .binder-wires { z-index: 5; }
+.teaching-pad .binder-motion-layer[data-ready]:not([data-flat]) {
+  visibility: visible;
+}
+
+@media (max-width: 899px) {
+  .teaching-pad .binder-transition { clip-path: inset(-135% -14px -3px -14px); }
+}
+
+/* The DOM holds the date controls. The paper, board and closed loops all use
+   the same camera; the right edge of the backing remains visible at rest. */
+.teaching-pad[data-concertina=true] .binder-body {
+  margin:24px 5% 28px 3%;
+  --binder-plane:rotateX(14.9deg) rotateY(-17.2deg);
+  --note-rest-angle:0deg;
+  transform:var(--binder-plane);
+}
+.teaching-pad[data-concertina=true] .binder-body.binder-measuring {transform:none}
+.teaching-pad[data-concertina=true] .binder-body::before,
+.teaching-pad[data-concertina=true] .binder-body::after,
+.teaching-pad[data-concertina=true] .binder-row {display:none}
+.teaching-pad[data-calendar-style=bellows] .calendar-feature {height:0;padding:0;min-height:0}
+.teaching-pad .binder-scene {
+  display:block;position:absolute;left:-12%;bottom:-10%;width:124%;height:240%;
+  z-index:4;pointer-events:none;max-width:none;
+}
+.teaching-pad .binder-ready .marked:is(:hover,:focus,[aria-pressed=true]) {z-index:6}
+.teaching-pad .binder-waiting-sheet {opacity:0;pointer-events:none}
+.teaching-pad[data-concertina=true] .folio-days {grid-template-rows:auto repeat(6,21px)}
+.teaching-pad .binder-scene {left:-24%;width:148%}
+/* The transparent drawing surface includes the full arc on both sides.
+   Its unused margin must not enlarge the mobile page's scrollable width. */
+@media(max-width:899px){
+  .workspace:has(.binder-scene){overflow-x:clip}
+}
+
+.desk-calendar:has(.deadline-note:popover-open) :is(.binder-scene,.folio-paper,.calendar-feature) {
+  filter:brightness(.68);
+}
+.deadline-note {
+  position:fixed;inset:auto;margin:0;padding:0;border:0;
+  width:min(174px,calc(100vw - 24px));background:transparent;overflow:visible;
+  color:#253a49;text-align:left;white-space:normal;cursor:default;
+  transform:var(--binder-plane,none);
+  transform-style:preserve-3d;
+}
+.deadline-slip {
+  position:relative;box-sizing:border-box;min-height:133px;
+  display:grid;align-content:start;gap:12px;padding:19px 16px 21px;
+  background:linear-gradient(to bottom,#c1d9e5 0,#c9dfe9 15px,#d6e8ef 23px,#d7e9ef 90%,#cee2ea);
+  clip-path:polygon(0 0,100% 0,100% 93%,94% 100%,0 100%);
+  transform-origin:50% 50%;
+  --raised-note:translateZ(38px) scale(1.075);
+  transform:var(--raised-note);
+  box-shadow:inset 0 1px #eff7fa,inset 0 -1px #aec7d1;
+}
+.deadline-shadow {
+  position:absolute;inset:0;z-index:5;overflow:hidden;pointer-events:none;
+}
+.deadline-shadow::before {
+  content:'';position:absolute;left:var(--shadow-x);top:var(--shadow-y);
+  width:var(--shadow-width);height:var(--shadow-height);
+  background:#182430;opacity:.34;filter:blur(8px);
+  --cast-note:translate(-50%,-50%) translate(9px,13px) scale(.97);
+  transform:var(--cast-note);
+}
+.deadline-slip::after {
+  content:'';position:absolute;right:0;bottom:0;width:11px;height:10px;
+  background:#aac6d3;clip-path:polygon(0 0,100% 0,0 100%);
+}
+.deadline-slip time {font:500 11px/1.4 Styrene,system-ui,sans-serif;color:#415e72}
+.deadline-entry {display:grid;gap:4px}
+.deadline-entry strong {font:500 17px/1.17 Tiempos,Georgia,serif;color:#22394b}
+.deadline-entry small {font:400 12px/1.4 Styrene,system-ui,sans-serif;color:#455e70}
+@media(prefers-reduced-motion:no-preference){
+  .deadline-note:popover-open .deadline-slip {animation:deadline-lift 150ms steps(1,end)}
+  .deadline-shadow::before {animation:deadline-cast 150ms steps(1,end)}
+  /* The final hold uses the resting styles, including the paper silhouette. */
+  @keyframes deadline-lift {
+    0% {transform:translateZ(22px) scale(1.045)}
+    30% {transform:translateZ(32px) scale(1.063)}
+    60%,100% {transform:var(--raised-note)}
+  }
+  @keyframes deadline-cast {
+    0% {transform:translate(-50%,-50%) translate(6px,9px) scale(.97);filter:blur(6px)}
+    30% {transform:translate(-50%,-50%) translate(8px,12px) scale(.97);filter:blur(7px)}
+    60%,100% {transform:var(--cast-note);filter:blur(8px)}
+  }
+}

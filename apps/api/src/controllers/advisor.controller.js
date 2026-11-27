@@ -3,15 +3,15 @@ import {
   StudentProfile,
   User,
   AdvisorAssignment,
-  StudentWorkflowState,
-  StudentSchedule,
   SlotChangeRequest,
   ExtraHoursRequest,
   MandatoryCourseRemovalRequest,
   WholeScheduleSwapRequest,
 } from '../models/index.js';
 import { AcademicTerm } from '../models/catalogue.js';
+import { loadStudentWorkflows } from '../services/student-workflow-status.js';
 import { WORKFLOW_STATUSES } from '../models/shared.js';
+import { notifyAdvisorOfAssignment } from '../services/advisor-notifications.js';
 
 const { Types } = mongoose;
 const ADVISING_REASONS = ['probation', 'failedCourses', 'unattendedCourses', 'undeclaredMajor', 'transfer'];
@@ -104,19 +104,27 @@ export const assignAdvisor = async (req, res) => {
         .populate('assignedAdvisor', 'fullName email');
       return res.json(unchanged);
     }
+    const assignedAt = new Date();
     if (existing) {
-      existing.endedAt = new Date();
+      existing.endedAt = assignedAt;
       existing.endedBy = actorId;
       await existing.save(sessionOpt);
     }
 
-    await AdvisorAssignment.create(
-      [{ student: profileId, advisor: advisorId, assignedBy: actorId }],
+    const [assignment] = await AdvisorAssignment.create(
+      [{ student: profileId, advisor: advisorId, assignedBy: actorId, createdAt: assignedAt }],
       sessionOpt,
     );
 
     profile.assignedAdvisor = advisorId;
     await profile.save(sessionOpt);
+    try {
+      await notifyAdvisorOfAssignment(assignment, profile, session);
+    } catch (error) {
+      if (session) throw error;
+      // The advisor's inbox can recover the event from the saved assignment.
+      console.error('Could not write advisor assignment notification:', error.name);
+    }
 
     if (session?.inTransaction()) await session.commitTransaction();
 
@@ -237,58 +245,6 @@ export const listAdvisingStudents = async (req, res) => {
       });
     }
 
-    pipeline.push(
-      {
-        $lookup: {
-          from: StudentWorkflowState.collection.name,
-          let: { sid: '$_id' },
-          pipeline: [
-            {
-              $match: {
-                $expr: {
-                  $and: [
-                    { $eq: ['$student', '$$sid'] },
-                    { $eq: ['$term', activeTerm?._id ?? null] },
-                  ],
-                },
-              },
-            },
-            { $sort: { lastActivityAt: -1 } },
-            { $limit: 1 },
-          ],
-          as: 'workflowDocs',
-        },
-      },
-      {
-        $addFields: { workflowState: { $arrayElemAt: ['$workflowDocs', 0] } },
-      },
-      {
-        $lookup: {
-          from: StudentSchedule.collection.name,
-          let: { sid: '$_id' },
-          pipeline: [
-            { $match: { $expr: { $and: [
-              { $eq: ['$student', '$$sid'] },
-              { $eq: ['$term', activeTerm?._id ?? null] },
-              { $eq: ['$scheduleType', pendingRequestType === 'scheduleSwap' ? 'normal' : 'advising'] },
-            ] } } },
-            { $sort: { updatedAt: -1 } },
-            { $limit: 1 },
-          ],
-          as: 'scheduleDocs',
-        },
-      },
-      { $addFields: { currentSchedule: { $arrayElemAt: ['$scheduleDocs', 0] } } },
-      { $addFields: { effectiveWorkflowStatus: { $ifNull: [
-        '$workflowState.status',
-        { $ifNull: ['$currentSchedule.status', activeTerm ? 'notStarted' : null] },
-      ] } } },
-    );
-
-    if (scheduleStatus) {
-      pipeline.push({ $match: { effectiveWorkflowStatus: scheduleStatus } });
-    }
-
     if (pendingRequestType) {
       const { getCollection, statusField, statusValue } = PENDING_REQUEST_MAP[pendingRequestType];
       pipeline.push(
@@ -353,29 +309,44 @@ export const listAdvisingStudents = async (req, res) => {
             else: null,
           },
         },
-        workflowStatus: '$effectiveWorkflowStatus',
-        blockingStep: '$workflowState.blockingStep',
-        lastActivityAt: { $ifNull: ['$workflowState.lastActivityAt', '$currentSchedule.updatedAt'] },
       },
     };
 
-    const [countResult, students] = await Promise.all([
-      StudentProfile.aggregate([...pipeline, { $count: 'total' }]),
-      StudentProfile.aggregate([
-        ...pipeline,
-        { $skip: skip },
-        { $limit: limitNum },
-        projectStage,
-      ]),
-    ]);
+    const sortedProfiles = [...pipeline, { $sort: { studentId: 1, _id: 1 } }];
+    let students, workflows, total;
+    if (scheduleStatus) {
+      const matches = await StudentProfile.aggregate([...sortedProfiles, projectStage]);
+      workflows = await loadStudentWorkflows(matches, activeTerm?._id);
+      const filtered = matches.filter((student) => workflows.get(String(student._id))?.status === scheduleStatus);
+      total = filtered.length;
+      students = filtered.slice(skip, skip + limitNum);
+    } else {
+      const [count, profiles] = await Promise.all([
+        StudentProfile.aggregate([...pipeline, { $count: 'total' }]),
+        StudentProfile.aggregate([...sortedProfiles, { $skip: skip }, { $limit: limitNum }, projectStage]),
+      ]);
+      total = count[0]?.total ?? 0;
+      students = profiles;
+      workflows = await loadStudentWorkflows(students, activeTerm?._id);
+    }
 
-    const total = countResult[0]?.total ?? 0;
-
+    const majors = await StudentProfile.distinct("major", { studentType: baseMatch.studentType });
     return res.json({
       currentUserId: String(req.user._id),
       currentUserRole: req.user.role,
       activeTerm: Boolean(activeTerm),
-      data: students,
+      majors: majors.filter(Boolean).sort((a, b) => a.localeCompare(b)),
+      scheduleStatuses: WORKFLOW_STATUSES.filter((status) => {
+        const normalStatus = status === 'scheduleAssigned' || status.startsWith('swap');
+        return normalStatus === (pendingRequestType === 'scheduleSwap');
+      }),
+      data: students.map(student => {
+        const workflow = workflows.get(String(student._id));
+        return {
+          ...student, workflowStatus: workflow?.status ?? null, blockingStep: workflow?.blockingStep ?? null,
+          lastActivityAt: workflow?.lastUpdatedAt ?? null,
+        };
+      }),
       pagination: {
         total,
         page: pageNum,
@@ -410,14 +381,8 @@ export const getAdvisingStudent = async (req, res) => {
       .sort({ termStart: -1 })
       .select('_id')
       .lean();
-    const [workflowState, schedule, assignmentHistory] = await Promise.all([
-      activeTerm
-        ? StudentWorkflowState.findOne({ student: profileId, term: activeTerm._id }).lean()
-        : null,
-      activeTerm
-        ? StudentSchedule.findOne({ student: profileId, term: activeTerm._id, scheduleType: 'advising' })
-          .select('status updatedAt').lean()
-        : null,
+    const [workflows, assignmentHistory] = await Promise.all([
+      loadStudentWorkflows([profile], activeTerm?._id),
       AdvisorAssignment.find({ student: profileId })
         .sort({ createdAt: -1 })
         .populate('advisor', 'fullName email')
@@ -425,14 +390,12 @@ export const getAdvisingStudent = async (req, res) => {
         .populate('endedBy', 'fullName email'),
     ]);
 
+    const workflow = workflows.get(String(profile._id));
     return res.json({
       profile,
-      workflowState: workflowState ?? (activeTerm ? {
-        status: schedule?.status ?? 'notStarted',
-        blockingStep: schedule?.status === 'draft' ? 'Complete draft schedule' :
-          schedule ? null : 'Create advising schedule',
-        lastActivityAt: schedule?.updatedAt ?? null,
-      } : null),
+      workflowState: workflow ? {
+        status: workflow.status, blockingStep: workflow.blockingStep, lastActivityAt: workflow.lastUpdatedAt,
+      } : null,
       activeTerm: Boolean(activeTerm),
       assignmentHistory,
     });

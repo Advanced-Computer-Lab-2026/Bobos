@@ -12,6 +12,7 @@ const STANDARD_ALLOWANCES = new Map([
 
 const ACTIVATED_SETTLEMENTS = new Set(["paid", "deferred"]);
 const MAXIMUM_TOTAL_HOURS = 34;
+const PROBATION_GPA = 3.70;
 const HOUR_TOLERANCE = 1e-9;
 
 export function standardCreditAllowance(semester) {
@@ -20,7 +21,8 @@ export function standardCreditAllowance(semester) {
 
 function isProbationStudent(student) {
   return student.academicStanding === "probation" ||
-    student.advisingReason === "probation";
+    student.advisingReason === "probation" ||
+    student.gpa >= PROBATION_GPA;
 }
 
 function isUsableApprovedRequest(request, standardAllowance) {

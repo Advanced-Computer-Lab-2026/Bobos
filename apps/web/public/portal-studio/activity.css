@@ -1,0 +1,347 @@
+/* Each impression keeps its timestamp and author with the object that changed. */
+[data-edition="teaching"] .module-activity {
+  container: recent-activity / inline-size;
+  width: 100%;
+}
+.activity-impressions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(14px, 2vw, 36px);
+  list-style: none;
+  margin: 0;
+  padding: 6px 0 0;
+}
+.activity-impressions li { min-width: 0; }
+.dashboard-edition .activity-impression:any-link {
+  display: flex;
+  align-items: center;
+  gap: clamp(9px, 1vw, 17px);
+  min-height: 84px;
+  color: var(--ink);
+  text-decoration: none;
+  border-radius: 4px;
+}
+.activity-impression:focus-visible { outline: 2px solid currentColor; outline-offset: 4px; }
+.impression-copy { display: grid; gap: 3px; min-width: 0; }
+.impression-copy time, .impression-byline { color: var(--muted); font: 400 12px/1.4 Styrene, system-ui, sans-serif; }
+.impression-copy time { font-variant-numeric: tabular-nums; }
+.impression-copy time span { padding-inline: 1px; }
+.impression-copy strong { font: 400 clamp(19px, 1.5vw, 26px)/1.16 Tiempos, Georgia, serif; letter-spacing: -.035em; }
+.activity-impression:is(:hover, :focus-visible) strong { text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+.activity-stamp {
+  flex: none;
+  width: clamp(53px, 5vw, 78px);
+  height: auto;
+  overflow: visible;
+  --stamp-stock: #bfcdb5;
+  --stamp-ink: #364d40;
+  --stamp-angle: -5deg;
+}
+.stamp-pen { --stamp-stock: #d6bdca; --stamp-ink: #624153; --stamp-angle: 3deg; }
+.stamp-press { --stamp-stock: #e2b294; --stamp-ink: #71452f; --stamp-angle: -3deg; }
+.stamp-face { transform: rotate(var(--stamp-angle)); transform-origin: center; }
+.stamp-edge { fill: var(--stamp-stock); }
+.stamp-perfs { fill: none; stroke: var(--canvas); stroke-linecap: round; stroke-dasharray: .2 8; stroke-width: 4.3; }
+.stamp-frame, .stamp-cut { fill: none; stroke: var(--stamp-ink); stroke-linejoin: round; stroke-linecap: round; }
+.stamp-frame { stroke-width: 1.1; }
+.stamp-cut { stroke-width: 1.7; }
+@container recent-activity (max-width: 780px) {
+  .activity-impressions { grid-template-columns: 1fr; gap: 5px; }
+  .dashboard-edition .activity-impression:any-link { gap: 16px; min-height: 82px; }
+  .activity-stamp { width: 65px; }
+  .impression-copy strong { font-size: 22px; }
+}
+.activity-log .activity-day:not(:has(li:not([hidden]))) { display: none; }
+.activity-log [data-search-row][hidden] { display: none; }
+
+.dashboard-edition .activity-heading {flex-wrap:wrap;row-gap:8px}
+.activity-stamp {--stamp-shade:color-mix(in srgb,var(--stamp-stock) 70%,var(--stamp-ink));--stamp-paper:color-mix(in srgb,var(--stamp-stock) 22%,#f1e9d9)}
+.impression-cel {display:none}
+.impression-cel:first-child {display:inline}
+.activity-edition .activity-impression,.activity-edition .activity-impression *{transition:none}
+@media (prefers-reduced-motion:no-preference){
+  .activity-impression:is(:hover,:focus-visible) .impression-cel {
+    display:inline;animation:activity-ink 1150ms var(--delay) steps(1,end) infinite
+  }
+  @keyframes activity-ink{0%{visibility:visible}10%,100%{visibility:hidden}}
+}
+
+/* A carbon form keeps the registration mark, time and signature on one slip. */
+[data-activity-style=copies] .activity-impressions{gap:20px;padding:10px 5px 9px 0}
+[data-activity-style=copies] .activity-impression:any-link{
+  position:relative;isolation:isolate;align-items:flex-start;gap:10px;padding:14px 14px 13px;
+  color:#393e49;background:#e3e5df;border-radius:2px;box-shadow:2px 3px #8d9caa,4px 5px #657883
+}
+[data-activity-style=copies] li:nth-child(2) .activity-impression{background:#e7e1d3}
+[data-activity-style=copies] li:nth-child(3) .activity-impression{background:#e6e4d8}
+[data-activity-style=copies] .activity-stamp{width:49px;margin-top:3px}
+[data-activity-style=copies] time,[data-activity-style=copies] .impression-byline{color:#545a61;font:11px/1.45 'Courier New',monospace}
+[data-activity-style=copies] .impression-copy{gap:7px}
+[data-activity-style=copies] .impression-copy strong{font:600 17px/1.24 Styrene,system-ui,sans-serif;letter-spacing:-.03em}
+
+/* The daybook groups the same records by their actual dates. */
+.activity-daybook{display:grid;grid-template-columns:78px minmax(0,1fr);gap:16px;align-items:start}
+.activity-daybook+.activity-daybook{margin-top:12px}
+.dashboard-edition .activity-daybook h3{font:italic 19px/1.2 Tiempos,Georgia,serif;margin:16px 0 0;color:var(--muted)}
+.activity-daybook .activity-impressions{display:block;padding:0}
+.activity-daybook .activity-impression:any-link{min-height:50px;display:grid;grid-template-columns:40px 1fr;gap:11px;border-bottom:1px solid var(--line);border-radius:0}
+.activity-daybook .activity-stamp{width:40px}
+.activity-daybook .impression-copy{display:grid;grid-template-columns:44px minmax(150px,.9fr) minmax(100px,1fr);align-items:baseline;gap:12px}
+.activity-daybook .impression-copy strong{font-size:19px}
+.activity-daybook .stamp-cut{stroke:var(--stamp-ink);stroke-width:2}
+
+/* A continuous strip of film, with sprocket holes on both long edges. */
+[data-activity-style=film] .activity-impressions{
+  position:relative;gap:0;padding:20px 10px;border-radius:3px;isolation:isolate;
+  background:#373c40;color:#f3efe3
+}
+[data-activity-style=film] .activity-impressions::before,[data-activity-style=film] .activity-impressions::after{
+  content:"";position:absolute;left:9px;right:9px;height:5px;
+  background:repeating-linear-gradient(90deg,var(--canvas) 0 7px,transparent 7px 19px)
+}
+[data-activity-style=film] .activity-impressions::before{top:6px}
+[data-activity-style=film] .activity-impressions::after{bottom:6px}
+[data-activity-style=film] .activity-impression:any-link{align-items:center;gap:10px;min-height:77px;padding:0 12px;color:inherit}
+[data-activity-style=film] li+li{border-left:1px solid #787974}
+[data-activity-style=film] .activity-stamp{width:62px}
+[data-activity-style=film] time,[data-activity-style=film] .impression-byline{color:#d1cfc5}
+[data-activity-style=film] .impression-copy strong{font:500 17px/1.23 Styrene,system-ui,sans-serif}
+
+[data-activity-style=tabs] .activity-impressions{border-top:2px solid var(--line);padding:0;gap:23px}
+[data-activity-style=tabs] .activity-impression:any-link{align-items:flex-start;gap:9px}
+[data-activity-style=tabs] .activity-stamp{width:67px;margin-top:-2px}
+[data-activity-style=tabs] .stamp-face,[data-activity-style=film] .stamp-face{transform:none}
+[data-activity-style=tabs] .impression-copy{padding-top:16px}
+[data-activity-style=tabs] .impression-byline{margin-top:3px}
+
+[data-activity-style=specimens] .activity-impressions{grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+[data-activity-style=specimens] .activity-impression:any-link{display:grid;grid-template-columns:auto 1fr;align-items:end;gap:0 10px}
+[data-activity-style=specimens] .activity-stamp{width:87px;grid-row:1;grid-column:1}
+[data-activity-style=specimens] .impression-copy{display:contents}
+[data-activity-style=specimens] .impression-copy time{grid-row:1;grid-column:2;align-self:center;font:12px/1.3 'Courier New',monospace}
+[data-activity-style=specimens] .impression-copy strong{grid-column:1 / -1;padding:8px 0 0}
+[data-activity-style=specimens] .impression-byline{grid-column:1 / -1}
+
+@container recent-activity (max-width:780px){
+  [data-activity-style=film] li+li{border-left:0;border-top:1px solid #575b5c}
+  [data-activity-style=tabs] .activity-impressions{border-top:0;gap:4px}
+  [data-activity-style=tabs] .activity-stamp{margin-top:5px;width:60px}
+  [data-activity-style=specimens] .activity-impressions{grid-template-columns:1fr;gap:12px}
+  [data-activity-style=specimens] .activity-impression:any-link{grid-template-columns:76px 1fr;align-items:center;gap:3px 13px}
+  [data-activity-style=specimens] .activity-stamp{width:76px;grid-row:1 / span 3}
+  [data-activity-style=specimens] .impression-copy strong,[data-activity-style=specimens] .impression-byline{grid-column:2;padding:0}
+  .activity-daybook{grid-template-columns:52px minmax(0,1fr);gap:5px}
+  .activity-daybook .impression-copy{display:flex;flex-wrap:wrap;align-items:baseline;gap:3px 7px}
+  .activity-daybook .impression-byline{flex-basis:100%}
+  .activity-daybook .activity-impression:any-link{min-height:70px}
+}
+@container recent-activity (max-width:420px){
+  .activity-heading select{max-width:125px;font-size:12px}
+}
+
+.activity-ink-pass{visibility:hidden}
+.activity-ink-pass:first-child{visibility:visible}
+.published-imprint{visibility:hidden}
+.stamp-press{--press-time:1200ms}
+@media(prefers-reduced-motion:no-preference){
+  .activity-impression:is(:hover,:focus-visible) .activity-ink-pass{
+    animation:activity-ink-pass 540ms steps(1,end) var(--ink-delay) infinite
+  }
+  .activity-impression:is(:hover,:focus-visible) .preferences-insert{
+    animation:preferences-settle 440ms steps(1,end) both
+  }
+  .activity-impression:is(:hover,:focus-visible) .stamp-descent{
+    animation:publish-press var(--press-time) steps(1,end) both
+  }
+  .activity-impression:is(:hover,:focus-visible) .stamp-rubber{
+    animation:publish-contact var(--press-time) steps(1,end) both
+  }
+  .activity-impression:is(:hover,:focus-visible) .published-imprint{
+    animation:publish-transfer var(--press-time) steps(1,end) both
+  }
+  @keyframes activity-ink-pass{0%{visibility:visible}25%,100%{visibility:hidden}}
+  @keyframes preferences-settle{
+    0%,12%{transform:translateY(0)}
+    24%{transform:translateY(.35px)}38%{transform:translateY(1px)}
+    51%{transform:translateY(1.9px)}67%{transform:translateY(2.55px)}
+    85%,100%{transform:translateY(2.8px)}
+  }
+  /* The low edge touches first. Pressure levels the foot, then one edge
+     peels free. The last drawing holds while the ink passes keep cycling. */
+  @keyframes publish-press{
+    0%,7%,100%{transform:translateY(0)}
+    15%{transform:translateY(.4px)}
+    22%{transform:translateY(1.15px)}
+    27%{transform:translateY(2.15px)}
+    32%{transform:translateY(3.1px)}
+    37%,62%{transform:translateY(3.8px)}
+    68%{transform:translateY(3.4px)}
+    74%{transform:translateY(2.65px)}
+    81%{transform:translateY(1.4px)}
+    88%{transform:translateY(.55px)}
+    95%{transform:translateY(0)}
+  }
+  .activity-impression:is(:hover,:focus-visible) .stamp-grip{
+    transform-origin:30px 33px;
+    animation:publish-grip var(--press-time) steps(1,end) both
+  }
+  @keyframes publish-grip{
+    0%,22%,100%{transform:rotate(0)}
+    27%{transform:rotate(.6deg)}32%{transform:rotate(1.6deg)}
+    37%,62%{transform:rotate(2.8deg)}
+    68%{transform:rotate(2deg)}74%{transform:rotate(.9deg)}
+    81%{transform:rotate(.3deg)}88%{transform:rotate(0)}
+  }
+  @keyframes publish-contact{
+    0%,27%{transform:scale(1)}
+    32%{transform:scale(1.01,.88)}
+    37%,62%{transform:scale(1.035,.72)}
+    68%{transform:scale(1.015,.85)}
+    74%,100%{transform:scale(1)}
+  }
+  @keyframes publish-transfer{0%{visibility:hidden}37%,100%{visibility:visible}}
+}
+@media(prefers-reduced-motion:reduce){
+  .published-imprint{visibility:visible}
+  .preferences-insert{transform:translateY(2.8px)}
+}
+
+/* Keep the production header in view as the dashboard scrolls. */
+.live-preview #design-controls { display: none; }
+.portal-studio.live-preview[data-workspace=claude-study]:not(.auth-screen) {
+  grid-template-rows: minmax(0, 1fr);
+}
+.portal-studio.live-preview[data-workspace=claude-study] .topbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+.portal-studio.live-preview #account-menu { inset: 54px 16px auto auto; }
+
+.dashboard-edition .module-activity { container: recent-activity / inline-size; min-width: 0; }
+.dashboard-edition .activity-heading { gap: 8px 12px; }
+.dashboard-edition .activity-impressions { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+.dashboard-edition .activity-impression:any-link {
+  min-height: 76px;
+  gap: clamp(10px, 3cqi, 18px);
+  padding: 5px 8px;
+  align-items: center;
+}
+.dashboard-edition .activity-impression:hover { background: var(--raised); }
+.dashboard-edition .impression-copy strong { font-size: clamp(17px, 4.5cqi, 22px); }
+.dashboard-edition .activity-stamp { width: clamp(68px, 19cqi, 86px); }
+
+/* Daybook gives each date its own heading and lets the illustrations carry the row. */
+.dashboard-edition .activity-daybook { display: block; }
+.dashboard-edition .activity-daybook h3 {
+  margin: 14px 0 4px;
+  padding: 0 0 6px 8px;
+  border-bottom: 1px solid var(--rule);
+  max-width: 16ch;
+}
+.dashboard-edition .activity-daybook .activity-impression:any-link { display: flex; border: 0; border-radius: 5px; }
+.dashboard-edition .activity-daybook .impression-copy {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0,1fr) auto;
+  gap: 4px 8px;
+}
+.dashboard-edition .activity-daybook strong { grid-area: 1 / 1; }
+.dashboard-edition .activity-daybook .impression-copy time { grid-area: 1 / 2; }
+.dashboard-edition .activity-daybook .impression-byline { grid-column: 1 / -1; }
+
+/* Correspondence uses a row of stamped records, with the metadata stacked beside the art. */
+.dashboard-edition [data-activity-style=postage] .activity-impression { border-bottom: 1px solid var(--rule); }
+.dashboard-edition [data-activity-style=postage] li:last-child .activity-impression { border-bottom-color: transparent; }
+
+/* File tags hang from a drawn rail with the record name and actor to the right. */
+.dashboard-edition [data-activity-style=specimens] .activity-impressions { position: relative; gap: 6px; }
+.dashboard-edition [data-activity-style=specimens] .activity-impressions::before {
+  position: absolute;
+  inset: 14px auto 24px 17px;
+  border-left: 1px dashed var(--control);
+  content: '';
+  pointer-events: none;
+}
+.dashboard-edition [data-activity-style=specimens] .activity-impression:any-link { position: relative; display: flex; }
+.dashboard-edition [data-activity-style=specimens] .impression-copy { display: grid; }
+.dashboard-edition [data-activity-style=specimens] .impression-copy > * { grid-area: auto; padding: 0; }
+
+@container recent-activity (max-width: 340px) {
+  .dashboard-edition .activity-daybook .impression-copy { grid-template-columns: minmax(0,1fr); }
+  .dashboard-edition .activity-daybook .impression-copy time { grid-area: auto; }
+}
+
+.portal-studio[data-workspace=claude-study] .dashboard-edition[data-edition=teaching] .work-grid {
+  gap: clamp(22px, 2.8vw, 38px);
+}
+.dashboard-edition[data-edition=teaching] .module-activity { max-width: 560px; }
+/* Leave a little space inside the target for the loose sheet to rise. */
+.dashboard-edition[data-edition=teaching] .draft-index {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(12px, 1.5vw, 23px) clamp(10px, 1.4vw, 22px);
+  padding-block: 11px 6px;
+}
+.dashboard-edition[data-edition=teaching] .draft-file {
+  min-height: 95px;
+  justify-content: center;
+  border-radius: 6px;
+  padding: 8px 5px;
+}
+.dashboard-edition[data-edition=teaching] .draft-file:is(:hover,:focus-visible) { background: var(--raised); }
+.dashboard-edition[data-edition=teaching] .desktop-folder {
+  width: clamp(78px, 7.1vw, 110px);
+  max-width: 100%;
+}
+@media (min-width: 1150px) {
+  .dashboard-edition[data-edition=teaching] .draft-file {
+    display: grid;
+    grid-template-columns: clamp(82px, 6.9vw, 108px) minmax(0, 1fr);
+    gap: 3px 12px;
+    align-content: center;
+    align-items: end;
+    justify-content: stretch;
+    text-align: left;
+  }
+  .dashboard-edition[data-edition=teaching] .desktop-folder { grid-row: span 2; align-self: center; width: 100%; }
+  .dashboard-edition[data-edition=teaching] .draft-file small { align-self: start; }
+}
+@media (max-width: 899px) {
+  .dashboard-edition[data-edition=teaching] .module-activity { max-width: none; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-paper-reveal=folder] { --folder-tip: -5deg; }
+  [data-paper-reveal=folder]:nth-child(even) { --folder-tip: 4deg; }
+  [data-paper-reveal=folder] .desktop-folder {
+    transform-origin: 55% 86%;
+    animation: folder-shelve var(--folder-duration, 590ms) steps(1, end) both;
+  }
+  [data-paper-reveal=folder]:not(:hover,:focus-visible) .folder-sheet {
+    animation: folder-sheet-seat var(--folder-duration, 590ms) steps(1, end) both;
+  }
+  [data-paper-reveal=folder] :is(strong, small) { animation: folder-name-arrival var(--folder-duration, 590ms) steps(1, end) both; }
+
+  @keyframes folder-shelve {
+    0% { clip-path: inset(74% 0 0); transform: translateY(15px) rotate(var(--folder-tip)); }
+    12% { clip-path: inset(61% 0 0); transform: translateY(13px) rotate(var(--folder-tip)); }
+    25% { clip-path: inset(21% 0 0); transform: translateY(7px) rotate(calc(var(--folder-tip) * .8)); }
+    42% { clip-path: inset(-12% -15%); transform: translateY(-4px) rotate(calc(var(--folder-tip) * -.35)); }
+    55% { clip-path: inset(-12% -15%); transform: translateY(3px) rotate(calc(var(--folder-tip) * .22)) scaleY(.96); }
+    69% { clip-path: inset(-12% -15%); transform: translateY(-1px) rotate(calc(var(--folder-tip) * -.13)); }
+    81%, 100% { clip-path: inset(-12% -15%); transform: none; }
+  }
+  @keyframes folder-sheet-seat {
+    0%, 25% { transform: translateY(3px); }
+    42% { transform: translateY(-5px) rotate(-1deg); }
+    55% { transform: translateY(-3px) rotate(.7deg); }
+    69% { transform: translateY(1px); }
+    81%, 100% { transform: none; }
+  }
+  @keyframes folder-name-arrival {
+    0%, 44% { clip-path: inset(0 100% 0 0); }
+    55% { clip-path: inset(0 63% 0 0); transform: translateY(2px); }
+    69% { clip-path: inset(0 12% 0 0); transform: translateY(-1px); }
+    81%, 100% { clip-path: inset(0); transform: none; }
+  }
+}

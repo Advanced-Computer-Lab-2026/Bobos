@@ -169,19 +169,24 @@ test("transcript separates all five seasons, academic years and orphan term refe
   const seasons = ["winter", "spring", "summer", "firstMakeup", "secondMakeup"];
   const course = await Course.findOne();
   for (const [index, season] of seasons.entries()) {
-    const term = await AcademicTerm.create({ ...existing, _id: new mongoose.Types.ObjectId(), code: `EDGE-${season}`, academicYear: "2024/2025", season });
+    const term = await AcademicTerm.create({ ...existing, _id: new mongoose.Types.ObjectId(), code: `EDGE-${season}`, academicYear: season === "summer" ? "2024-2025" : "2024/2025", season });
     await CourseAttempt.create({ student: edge.profile._id, course: course._id, term: term._id, attendance: "attended", result: "passed", grade: "A", attemptNumber: index + 1 });
   }
   const absentCourse = await Course.create({ code: 'EDGE-ABS', name: 'Unattended course', creditHours: 3, courseType: 'core' });
   await CourseAttempt.create({ student: edge.profile._id, course: absentCourse._id, term: new mongoose.Types.ObjectId(), attendance: "unattended", result: "failed", grade: "F", attemptNumber: 7 });
   const transcript = await (await edge.get("transcript?year=2024/2025")).json();
   for (const season of seasons) assert.equal(transcript.terms[season].length, 1);
+  assert.deepEqual((await (await edge.get("transcript?year=2024-2025")).json()).terms, transcript.terms);
+  const pdf = await edge.get("transcript/download?year=2024-2025");
+  assert.equal(pdf.status, 200);
+  assert.match(pdf.headers.get("content-disposition"), /2024-2025\.pdf/);
+  assert.equal(Buffer.from(await pdf.arrayBuffer()).subarray(0, 5).toString(), "%PDF-");
   assert.equal((await edge.get("transcript?year=2025/2026")).status, 404);
   const failed = await (await staffRequest("failed-courses", edge.profile._id)).json();
   assert.equal(failed.length, 1);
   assert.equal(failed[0].term, null);
   assert.deepEqual((await (await edge.get('transcript/years')).json()).academicYears, ['2024/2025']);
-  for (const suffix of ["", "?year=bad", "?year=2024&year=2025", "?year[$ne]=x", "?year=%0D%0Aevil"]) {
+  for (const suffix of ["", "?year=bad", "?year=2024&year=2025", "?year[$ne]=x", "?year=%0D%0Aevil", "?year=2024-2025%0A", "?year=2024-25"]) {
     for (const path of ["transcript", "transcript/download"]) assert.equal((await edge.get(path + suffix)).status, 400);
   }
 });

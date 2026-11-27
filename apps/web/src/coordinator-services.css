@@ -1,0 +1,653 @@
+.service-surface[data-staff-presentation] {
+--coordinator-filter-border:var(--control);
+.record-secondary { display:block; color:var(--muted); font-size:12px; line-height:1.5; overflow-wrap:anywhere; }
+.record-amount { white-space:nowrap; overflow-wrap:normal; font-variant-numeric:tabular-nums; }
+.record-actions { display:inline-flex; }
+.record-more { font-size:12px; letter-spacing:2px; }
+.record-menu { margin:5px 0 0; inset:auto; position-area:bottom span-left; justify-self:end; position-try-fallbacks: flip-block, flip-inline; padding:6px; background:var(--paper); color:var(--ink); border:1px solid var(--line); border-radius:10px; box-shadow:0 6px 24px #0002; min-width:158px; }
+.record-menu:popover-open { display:grid; }
+.record-menu > button { padding:10px 12px; color:inherit; font:inherit; text-align:start; border:0; background:none; cursor:pointer; border-radius:5px; }
+.record-menu > button:is(:hover,:focus-visible) { background:var(--raised); }
+.floating-filters { position:relative; }
+& .floating-filters .filter-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(210px,100%),1fr)); gap:14px; }
+& .floating-filters .filter-bar { justify-content:flex-start; align-items:end; }
+& .floating-filters .filter-search { flex:1 1 230px; max-width:460px; }
+.floating-filters .filter-bar .text-button { min-height:40px; padding:8px 10px; color:var(--ink); }
+.register-empty, & .graduation-review-page .graduation-empty, & .extra-hours-page .extra-hours-empty { display:grid; justify-items:center; align-content:center; text-align:center; min-height:265px; padding:30px 16px; gap:8px; border:0; background:transparent; }
+.register-empty img,& .graduation-review-page .graduation-empty img,& .extra-hours-page .extra-empty-art { width:148px; height:110px; object-fit:contain; margin:0 0 8px; }
+.register-empty h3, & .extra-hours-page .extra-hours-empty h3, & .graduation-review-page .graduation-empty h2 { margin:0; font:500 20px/1.35 Styrene,system-ui,sans-serif; }
+.register-empty p { margin:0; max-width:45ch; color:var(--muted); }
+& .academic-services-embedded :is(.directory-results,.ledger-results) .results-heading { margin-block-end:12px; }
+& .academic-services-embedded :is(.directory-results,.ledger-results) .results-heading h2 { font-size:20px; }
+& .academic-services-embedded :is(.directory-results,.ledger-results) .result-count { font-size:13px; }
+.workflow-entry p { margin:0; }
+.workflow-entry small { display:block; color:var(--muted); font-size:12px; line-height:1.5; }
+& .pending-workspace { gap:24px; container-type:inline-size; }
+.pending-load-error { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px 16px; }
+.pending-workspace .workflow-options { display:flex; flex-wrap:wrap; align-items:end; gap:14px 20px; }
+.workflow-options .workflow-grouping { flex:none; }
+.workflow-grouping > span,.workflow-options .field > span { display:block; color:var(--muted); font-size:13px; font-weight:500; line-height:1.4; }
+.workflow-grouping > div { display:flex; align-items:center; background:var(--raised); border-radius:8px; padding:3px; }
+.workflow-grouping > span { margin-bottom:6px; }
+.workflow-grouping button { border:1px solid transparent; color:var(--muted); background:none; border-radius:6px; padding:7px 12px; min-height:36px; cursor:pointer; font:500 14px/1.35 Styrene,system-ui,sans-serif; }
+.workflow-grouping button[aria-pressed="true"] { color:var(--ink); background:var(--paper); border-color:var(--line); }
+.workflow-options .workflow-search { flex:1 1 235px; }
+.workflow-options .workflow-filter { flex:0 1 220px; }
+& .pending-workspace .workflow-options .field { min-width:0; gap:6px; margin:0; }
+& .pending-workspace .workflow-options .field :is(select,input) { min-height:42px; width:100%; font-size:14px; }
+.workflow-groups { display:grid; gap:24px; min-width:0; }
+.workflow-group { display:grid; gap:8px; min-width:0; }
+.workflow-group-heading { display:flex; align-items:baseline; flex-wrap:wrap; gap:6px 11px; }
+.workflow-group-heading > span { font:400 13px/1.4 Styrene,system-ui,sans-serif; color:var(--muted); }
+.workflow-group-heading h2 { margin:0; overflow-wrap:anywhere; font:600 19px/1.3 Styrene,system-ui,sans-serif; letter-spacing:-.025em; }
+.workflow-advisors { display:grid; gap:10px; }
+.workflow-advisor { min-width:0; }
+.workflow-advisor > summary {
+  display:grid; grid-template-columns:minmax(0,1fr) auto auto auto; align-items:center; gap:10px 12px;
+  min-height:58px; padding:10px 14px; border:1px solid var(--line); border-radius:8px;
+  color:var(--ink); background:var(--paper); cursor:pointer; list-style:none;
+}
+.workflow-advisor > summary::-webkit-details-marker { display:none; }
+.workflow-advisor > summary:hover { border-color:var(--control); }
+.workflow-advisor[open] > summary { margin-bottom:8px; background:var(--raised); }
+.workflow-advisor-name { font:600 15px/1.35 Styrene,system-ui,sans-serif; overflow-wrap:anywhere; }
+.workflow-advisor-count { color:var(--muted); font:400 13px/1.4 Styrene,system-ui,sans-serif; }
+.workflow-advisor-avatars { display:flex; align-items:center; }
+.workflow-advisor-avatars > :is(.portal-person-avatar,.workflow-advisor-overflow) {
+  display:grid; place-items:center; width:30px; min-width:30px; height:30px; flex:0 0 30px;
+  border:2px solid var(--paper); border-radius:50%; font:600 10px/1 Styrene,system-ui,sans-serif;
+}
+.workflow-advisor[open] .workflow-advisor-avatars > span { border-color:var(--raised); }
+.workflow-advisor-avatars > span + span { margin-inline-start:-7px; }
+.workflow-advisor-overflow { color:var(--muted); background:var(--canvas); }
+.workflow-advisor-chevron { width:16px; height:16px; color:var(--muted); }
+.workflow-advisor[open] .workflow-advisor-chevron { transform:rotate(180deg); }
+& .workflow-register > table { table-layout:fixed; }
+& .workflow-register > table > thead > tr > th:nth-child(1) { width:29%; }
+& .workflow-register > table > thead > tr > th:nth-child(2) { width:21%; }
+& .workflow-register > table > thead > tr > th:nth-child(3) { width:30%; }
+& .workflow-register > table > thead > tr > th:nth-child(4) { width:20%; }
+& .workflow-register.student-register.table-scroll > table > thead > tr > th { font-size:13px; }
+& .workflow-register.student-register.table-scroll > table > tbody > tr > td { font-size:14px; line-height:1.45; overflow-wrap:anywhere; }
+& .workflow-register .register-person { gap:12px; align-items:center; }
+& .workflow-register .register-person strong { font-size:16px; line-height:1.35; }
+& .workflow-register .register-person small { display:block; margin-top:3px; color:var(--muted); font-size:13px; line-height:1.4; }
+& .workflow-register .register-person .portal-person-avatar { width:39px; height:39px; flex-basis:39px; }
+& .workflow-register .workflow-student {
+  display:inline-flex; align-items:center; min-height:44px; max-width:100%; margin-inline-start:-4px; padding:2px 6px;
+  border:0; border-radius:6px; color:inherit; background:none; text-align:start; cursor:pointer;
+}
+& .workflow-register .workflow-student:is(:hover,:focus-visible) { background:var(--raised); }
+.workflow-student:is(:hover,:focus-visible) strong { text-decoration:underline; text-underline-offset:3px; }
+& .pending-workspace .workflow-action { min-height:36px; max-width:100%; padding:6px 11px; border:1px solid var(--line); background:var(--paper); text-decoration:none; white-space:normal; font:500 14px/1.35 Styrene,system-ui,sans-serif; }
+& .pending-workspace .workflow-action:hover { background:var(--raised); border-color:var(--muted); }
+.workflow-request-link {
+  display:inline-flex; align-items:center; gap:8px; min-height:44px; max-width:calc(100% + 6px);
+  padding:2px 6px; margin-inline-start:-6px; border:0; border-radius:6px;
+  color:var(--ink); background:transparent; cursor:pointer; text-align:start;
+  font:500 13px/1.35 Styrene,system-ui,sans-serif;
+}
+.pending-request-art { flex:none; }
+.workflow-request-link:hover { background:var(--raised); }
+.workflow-none { color:var(--muted); }
+.pending-file { display:grid; gap:20px; }
+.pending-file h3,.pending-file p,.pending-facts,.pending-facts dd,.pending-file-requests { margin:0; }
+.pending-file-identity,.pending-facts dt,.pending-file-requests p { color:var(--muted); font-size:14px; line-height:1.5; }
+.pending-file h3 { font-size:18px; font-weight:500; }
+.pending-facts { display:grid; grid-template-columns:1fr 1fr; gap:12px 24px; }
+.pending-facts dd { font-size:16px; line-height:1.5; }
+.pending-file-requests { display:grid; gap:20px; padding:0; list-style:none; }
+.pending-file-requests li { min-width:0; }
+.pending-file-request-head { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.pending-file-request-head strong { display:flex; align-items:center; gap:8px; min-width:0; font-size:17px; }
+.pending-file-request-head a { flex:none; font-size:14px; }
+.pending-course { display:flex; align-items:center; gap:8px; margin-block:5px; font-size:15px; overflow-wrap:anywhere; }
+.pending-course .offering-course-emblem { width:28px; height:28px; flex:none; }
+.pending-course .offering-course-emblem :is(img,svg) { width:20px; height:20px; }
+@container (max-width:820px) {
+  .workflow-options .workflow-grouping { flex-basis:100%; }
+  .workflow-options .workflow-search { flex:1 1 250px; }
+  .workflow-grouping > div { width:fit-content; }
+}
+@container (max-width:640px) {
+  .pending-workspace .workflow-options { gap:12px; }
+  .workflow-options .workflow-search { flex:1 1 min(100%,190px); }
+  .workflow-options .workflow-filter { flex:1 1 min(100%,140px); }
+  .workflow-grouping button { min-height:40px; }
+  & .pending-workspace .workflow-action { min-height:44px; padding:6px 8px; }
+}
+@container (max-width:790px) {
+  & .academic-services-embedded .workflow-register.student-register > table > tbody > .workflow-record > td:first-child { padding-inline-start:0; }
+  & .workflow-register.student-register > table > tbody > .workflow-record > td:last-child { grid-column:auto; }
+  .workflow-record > td:last-child::before { content:var(--column-4); display:block; margin-bottom:2px; color:var(--muted); font:400 12px/1.4 Styrene,system-ui,sans-serif; }
+}
+@container (max-width:520px) {
+  & .workflow-register.student-register > table > tbody > .workflow-record { grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr); }
+  & .workflow-register.student-register > table > tbody > .workflow-record > td:last-child { grid-column:1 / -1; }
+}
+@container (max-width:420px) {
+  .workflow-advisor > summary { grid-template-columns:minmax(0,1fr) auto auto; row-gap:2px; }
+  .workflow-advisor-count { grid-area:2 / 1; }
+  .workflow-advisor-avatars,.workflow-advisor-chevron { grid-row:1 / span 2; }
+  .workflow-advisor-avatars { grid-column:2; }
+  .workflow-advisor-chevron { grid-column:3; }
+}
+@container (max-width:340px) {
+  .workflow-grouping button { padding-inline:8px; white-space:nowrap; }
+}
+@media (max-width:540px) {
+  .pending-facts { gap:10px 15px; }
+  .pending-file-request-head { flex-wrap:wrap; gap:1px 12px; }
+}
+&[data-service="advising"] .academic-services-embedded .panel.directory-filters { border-block-end: 0; padding-block-end: 0; }
+& .register-panel { padding:0; border:0; background:transparent; }
+& .register-heading { display:flex; justify-content:space-between; align-items:center; gap:14px; margin-bottom:14px; }
+.register-heading h2 { margin:0; }
+.register-heading > span { color:var(--muted); font-size:13px; }
+@media (max-width:600px) {
+ .register-person { gap:8px; }
+ & .floating-filters .filter-bar { gap:6px; }
+ & .floating-filters .filter-search { flex-basis:100%; max-width:none; }
+}
+&:is([data-service="graduation-plans"],[data-service="graduation-review"]) .graduation-review-page .workspace-header > div:first-child { position:relative; min-height:64px; padding-inline-start:94px; display:flex; align-items:center; }
+&:is([data-service="graduation-plans"],[data-service="graduation-review"]) .graduation-review-page .workspace-header > div:first-child::before { content:""; position:absolute; inset-inline-start:0; top:50%; transform:translateY(-50%); width:78px; height:64px; background:url("/portal-studio/images/graduation-cap.svg") center / contain no-repeat; }
+& .academic-services-embedded .graduation-register.table-scroll:not(:where(.student-register)) > table :is(th,td):first-child { padding-inline-start:16px; }
+& .academic-services-embedded .graduation-register.table-scroll > table td { border-block-end:0; }
+& .academic-services-embedded .graduation-register.table-scroll > table tbody tr:hover { background:transparent; }
+& .graduation-register .register-person { min-width:130px; }
+& .extra-hours-page .extra-filters { padding:0; background:transparent; border:0; }
+& :is(.extra-filters,.advising-filter-section) .field > span { font-weight:600; }
+& :is(.extra-filters,.advising-filter-section) .field :is(input, select) {
+  min-height:42px;
+  padding:8px 10px;
+  border:1px solid var(--coordinator-filter-border);
+  border-radius:6px;
+  background-color:var(--raised);
+  font:400 12px/1.5 Styrene,system-ui,sans-serif;
+}
+& :is(.extra-filters,.advising-filter-section) .field select { padding-inline-end:36px; }
+@supports (appearance:base-select) {
+  & :is(.extra-filters,.advising-filter-section) .field select { padding-inline-end:12px; }
+}
+& :is(.extra-filters,.advising-filter-section) .filter-toggle {
+  min-height:38px;
+  gap:9px;
+  padding:0 13px;
+  font:600 12px/1.4 Styrene,system-ui,sans-serif;
+}
+&:is([data-service="financial-records"],[data-service="directory"],[data-service="advising"],[data-service="extra-hours"]) .floating-filters { container-type:inline-size; }
+& .floating-filters .ledger-filter-grid { grid-template-columns:repeat(6,minmax(0,1fr)); }
+.ledger-date-range { display:grid; grid-template-columns:subgrid; grid-column:span 2; }
+&[data-service="directory"] .floating-filters .filter-grid { grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px 14px; max-width:870px; }
+&[data-service="directory"] .floating-filters .filter-panel-actions { justify-content:start; margin-top:0; }
+&[data-service="directory"] .floating-filters > .filter-panel { row-gap:12px; }
+@container (max-width:990px) {
+  & .floating-filters .ledger-filter-grid { grid-template-columns:repeat(4,minmax(0,1fr)); }
+}
+@container (max-width:650px) {
+  & .floating-filters .ledger-filter-grid,
+  &[data-service="directory"] .floating-filters .filter-grid,
+  & :is(.extra-filters,.advising-filter-section) .floating-filters .filter-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  & .advising-filter-section .filter-grid > :last-child { grid-column:1 / -1; }
+}
+.extra-request-subject strong { display:block; font-size:15px; font-weight:500; }
+.extra-request-subject small,.ledger-transaction small { display:block; font-size:12px; line-height:1.5; color:var(--muted); margin-top:3px; }
+.request-provenance { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin:0 0 20px; }
+.request-provenance dt { font-size:12px; color:var(--muted); }
+.request-provenance dd { margin:3px 0 0; overflow-wrap:anywhere; }
+& .extra-hours-page .extra-record-desk { padding-block:12px 20px; }
+@media (max-width:700px) {
+ &:is([data-service="directory"],[data-service="financial-records"],[data-service="schedule-activity"]) .academic-services-embedded :is(.workspace-header,.page-title-row) {
+   flex-direction:row; align-items:center; gap:12px;
+ }
+ &:is([data-service="directory"],[data-service="financial-records"],[data-service="schedule-activity"]) .academic-services-embedded :is(.workspace-header,.page-title-row) > div:first-child { padding-inline-start:63px; }
+ &:is([data-service="directory"],[data-service="financial-records"],[data-service="schedule-activity"]) .academic-services-embedded :is(.workspace-header,.page-title-row) > div:first-child::before { width:55px; }
+ &:is([data-service="directory"],[data-service="financial-records"],[data-service="schedule-activity"]) .academic-services-embedded :is(.workspace-header,.page-title-row) > .outline-button { flex:none; align-self:center; min-height:44px; padding-inline:10px; white-space:nowrap; }
+}
+
+}
+
+/* Match the Graduation review frame across the academic and extra-hours workspaces. */
+.service-surface:is([data-staff-presentation],[data-service="group-assignments"],[data-service="directory"]) :is(.academic-services-embedded,.extra-hours-page) .student-register {
+  border: 1px solid color-mix(in srgb,var(--line) 80%,var(--muted));
+  border-radius: 10px;
+  container-type: inline-size;
+  width: 100%;
+  overflow: clip;
+}
+.service-surface:is([data-staff-presentation],[data-service="group-assignments"],[data-service="directory"]) :is(.academic-services-embedded,.extra-hours-page) .student-register > table {
+  width: 100%;
+  min-width: 0;
+}
+.service-surface:is([data-staff-presentation],[data-service="group-assignments"],[data-service="directory"]) .student-register.table-scroll > table > thead > tr > th {
+  padding: 13px 16px;
+  border: 0;
+  background: color-mix(in srgb,var(--raised) 60%,var(--canvas));
+  color: var(--muted);
+  font: 500 12px/1.5 Styrene,system-ui,sans-serif;
+}
+.service-surface:is([data-staff-presentation],[data-service="group-assignments"],[data-service="directory"]) .student-register.table-scroll > table > tbody > tr > td {
+  padding: 13px 16px;
+  border: 0;
+  vertical-align: middle;
+  font-size: 13px;
+}
+.extra-register .register-person .portal-person-avatar { flex-basis: 36px; width: 36px; height: 36px; }
+.student-register .student-register-meta { margin: 0; }
+.student-register :is(.student-register-meta, .request-row-status, .request-row-context, .request-row-course) small {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.student-register :is(.student-register-actions,.request-row-actions,.request-row-actions > div,.ledger-actions,.roster-actions) {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+}
+.student-register .request-row-actions { flex-direction: column; }
+:is(.academic-services-embedded,.extra-hours-page) .student-register .portal-person-cell { min-width: 0; }
+.student-register .offering-course-emblem { flex: 0 0 32px; width: 32px; height: 32px; }
+.student-register .offering-course-emblem :is(img,svg) { width: 26px; height: 26px; }
+.student-register .request-row-context strong { font-weight: 500; }
+.student-register .slot-preference-excerpt {
+  display: block;
+  width: 18ch;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 15px;
+  line-height: 1.5;
+}
+.extra-register .extra-request-summary { display:flex; align-items:start; flex-direction:column; gap:3px; text-align:start; }
+.extra-register .extra-request-price { order:-1; }
+.extra-register .extra-request-price dt { display: none; }
+.extra-register .extra-request-price dd { margin: 0; font: 500 14px/1.4 Styrene,system-ui,sans-serif; }
+.extra-payment-state { color:var(--muted); font-size:12px; line-height:1.4; }
+.extra-payment-state[data-tone="good"] { color:var(--success-ink); }
+.extra-payment-state[data-tone="warning"] { color:var(--draft-ink); }
+.extra-payment-state[data-tone="danger"] { color:var(--danger-ink); }
+.finance-register {
+  --column-2: "Transaction";
+  --column-3: "Amount";
+  --column-4: "Payment status";
+  --ledger-currency-width: 27px;
+  --ledger-currency-gap: 8px;
+}
+.service-surface[data-staff-presentation] .academic-services-embedded .ledger-results .results-heading {
+  justify-content:start;
+  align-items:baseline;
+  gap:12px;
+}
+.service-surface[data-staff-presentation] .academic-services-embedded .ledger-results .result-count {
+  color:var(--ink);
+  font-size:14px;
+  font-weight:500;
+  font-variant-numeric:tabular-nums;
+}
+.academic-services-embedded .finance-register > table :is(th,td).ledger-balance { text-align:end; }
+.finance-register .ledger-amount-heading { margin-inline-end:calc(var(--ledger-currency-width) + var(--ledger-currency-gap)); }
+.finance-register .ledger-value {
+  display:grid;
+  grid-template-columns:minmax(0,1fr) var(--ledger-currency-width);
+  align-items:baseline;
+  column-gap:var(--ledger-currency-gap);
+}
+.finance-register .ledger-value .record-amount {
+  font-size:16px;
+  font-weight:550;
+  line-height:1.4;
+  text-align:end;
+  white-space:normal;
+  overflow-wrap:anywhere;
+}
+.finance-register .ledger-currency { color:var(--muted); font-size:12px; text-align:start; }
+.finance-page .finance-register .ledger-actions { display:flex; justify-content:start; gap:8px; }
+.finance-register .ledger-actions > button { min-height:38px; padding-inline:10px; }
+.finance-register .ledger-reversal { width:136px; }
+.schedule-register { --column-2: "Type"; --column-3: "Programme"; --column-4: "Schedule status"; }
+.schedule-register .schedule-student-type { text-transform:capitalize; }
+.service-surface[data-staff-presentation] .schedule-register .roster-actions {
+  justify-content:start;
+  gap:var(--schedule-action-gap);
+}
+.service-surface[data-staff-presentation] .schedule-register .roster-actions > .outline-button {
+  min-inline-size:132px;
+  padding-inline:9px;
+}
+.service-surface[data-staff-presentation] .schedule-register :is(.roster-actions > button,.roster-actions > .record-actions > button) { min-height:38px; }
+.student-register.slot-register .request-review-action { margin-inline:0; }
+.student-register.removal-register .request-row-actions {
+  display:grid;
+  gap:6px;
+  width:min(100%, 160px);
+  margin-inline:auto;
+}
+.student-register.removal-register .request-row-actions .outline-button {
+  min-width:0;
+  min-height:38px;
+  padding-inline:6px;
+  white-space:nowrap;
+}
+.student-register.removal-register .removal-view-action {
+  width:100%;
+  background:var(--raised);
+}
+@container (max-width: 790px) {
+  .student-register.removal-register .request-row-actions { margin-inline:0; }
+  .student-register.removal-register .request-row-actions .outline-button { min-height:44px; }
+}
+.service-surface[data-staff-presentation] :is(.academic-services-embedded,.extra-hours-page) .register-with-actions.table-scroll > table > :is(thead,tbody) > tr > :is(th,td):last-child:not([colspan]) {
+  text-align:center; vertical-align:middle;
+}
+.service-surface[data-staff-presentation] .academic-services-embedded :is(.schedule-register,.finance-register).register-with-actions.table-scroll > table > :is(thead,tbody) > tr > :is(th,td):last-child {
+  text-align:start;
+}
+.slot-register-days { display:grid; gap:20px; }
+.slot-register-day { min-width:0; }
+.slot-register-day h3 { margin:0 0 8px; color:var(--ink); font:550 16px/1.4 Styrene,system-ui,sans-serif; }
+.activity-register .activity-entry { line-height:1.4; overflow-wrap:anywhere; }
+.activity-register :is(.activity-staff,.status-pill small) { display:block; }
+.activity-register small { color:var(--muted); font-size:12px; line-height:1.35; }
+.activity-register :is(.activity-staff > small,.status-pill small) { margin-block-start:2px; }
+.activity-register .activity-staff strong { display:block; font-size:15px; font-weight:550; }
+.activity-register .activity-staff > span { display:block; color:var(--muted); font-size:13px; }
+.service-surface[data-staff-presentation] .academic-services-embedded .group-roster > table td:not(:first-child,:last-child) {
+  font-size:15px;
+  font-variant-numeric:tabular-nums;
+}
+.activity-register .activity-entry time { font-variant-numeric:tabular-nums; }
+.activity-register .activity-reason { text-wrap:pretty; }
+.assignment-unavailable { display:inline-flex; position:relative; }
+.service-surface[data-staff-presentation] .group-roster .assignment-unavailable > button[aria-disabled="true"] {
+  border-color:var(--line); color:var(--muted); background:transparent; cursor:not-allowed;
+}
+.assignment-unavailable > [role="tooltip"] {
+  position:absolute; z-index:3; inset-block-end:100%; inset-inline-start:50%; translate:-50% 0;
+  width:max-content; max-width:min(206px,75cqi); padding:8px 10px; border:1px solid var(--control); border-radius:6px;
+  color:var(--ink); background:var(--paper); text-align:start; font:500 12px/1.4 Styrene,system-ui,sans-serif; visibility:hidden;
+}
+.assignment-unavailable:focus-within > [role="tooltip"]:not([hidden]) { visibility:visible; }
+@media (hover:hover) {
+  .assignment-unavailable:hover > [role="tooltip"]:not([hidden]) { visibility:visible; }
+}
+.removal-register .request-row-context strong { display:block; }
+.removal-register .request-row-context { max-width:29ch; font-size:14px; line-height:1.4; }
+.removal-register .request-row-context small { margin-top:5px; }
+.service-surface .removal-register .register-person { min-width:0; }
+.removal-register .register-person .offering-course-emblem { flex:0 0 34px; width:34px; height:34px; }
+.student-register.removal-register .register-person small { margin:0; line-height:1.35; }
+
+@container (width > 790px) {
+  .student-register:is(.directory-register,.finance-register,.schedule-register,.slot-register,.activity-register,.removal-register) > table { table-layout:fixed; }
+  .directory-register th:nth-child(1) { width:27%; }
+  .directory-register th:nth-child(2) { width:26%; }
+  .directory-register th:nth-child(3) { width:29%; }
+  .service-surface[data-staff-presentation] .academic-services-embedded .directory-register.table-scroll > table :is(th,td):first-child { padding-inline-start:24px; }
+  .finance-register th:nth-child(1) { width:21%; }
+  .finance-register th:nth-child(2) { width:21%; }
+  .finance-register th:nth-child(3) { width:13%; }
+  .finance-register th:nth-child(4) { width:17%; }
+  .schedule-register th:nth-child(1) { width:22%; }
+  .schedule-register th:nth-child(2) { width:10%; }
+  .schedule-register th:nth-child(3) { width:15%; }
+  .schedule-register th:last-child { width:226px; }
+  .slot-register th:nth-child(1) { width:20%; }
+  .slot-register th:nth-child(2) { width:26%; }
+  .slot-register th:nth-child(3) { width:22%; }
+  .slot-register th:nth-child(4) { width:15%; }
+  .activity-register th:nth-child(1) { width:22%; }
+  .activity-register th:nth-child(2) { width:18%; }
+  .activity-register th:nth-child(3) { width:23%; }
+  .activity-register th:nth-child(4) { width:18%; }
+  .removal-register th:nth-child(1) { width:20%; }
+  .removal-register th:nth-child(2) { width:25%; }
+  .removal-register th:nth-child(3) { width:24%; }
+  .removal-register th:last-child { width:176px; }
+}
+
+@container (max-width: 790px) {
+  .service-surface:is([data-staff-presentation],[data-service="group-assignments"],[data-service="directory"]) :is(.academic-services-embedded,.extra-hours-page) .student-register > table,
+  .student-register > table > tbody { display: block; }
+  .student-register > table > thead { position: absolute; width: 1px; height: 1px; clip-path: inset(50%); overflow: hidden; }
+  .student-register > table > tbody > tr {
+    display: grid;
+    grid-template-columns: repeat(3,minmax(0,1fr));
+    align-items: start;
+    gap: 8px 16px;
+    padding: 14px 16px 20px;
+  }
+  .service-surface:is([data-staff-presentation],[data-service="group-assignments"],[data-service="directory"]) :is(.academic-services-embedded,.extra-hours-page) .student-register > table > tbody > tr > td {
+    display: block;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    text-align: start;
+    overflow-wrap: anywhere;
+  }
+  .student-register > table > tbody > tr > td:first-child { grid-column: 1 / -1; }
+  .student-register > table > tbody > tr > td:last-child { grid-column: 1 / -1; }
+  .student-register > table > tbody > tr > td:not(:first-child,:last-child)::before,
+  .activity-register > table > tbody > tr > td:last-child::before {
+    display: block;
+    margin-bottom: 2px;
+    color: var(--muted);
+    font: 400 12px/1.4 Styrene,system-ui,sans-serif;
+  }
+  .student-register > table > tbody > tr > td:not(:last-child):nth-child(2)::before { content: var(--column-2); }
+  .student-register > table > tbody > tr > td:not(:last-child):nth-child(3)::before { content: var(--column-3); }
+  .student-register > table > tbody > tr > td:not(:last-child):nth-child(4)::before { content: var(--column-4); }
+  .student-register > table > tbody > tr > td:not(:last-child):nth-child(5)::before { content: var(--column-5); }
+  .activity-register > table > tbody > tr > td:last-child::before { content:var(--column-5); }
+  .finance-register > table > tbody > tr > td.ledger-balance::before {
+    margin-inline-end:calc(var(--ledger-currency-width) + var(--ledger-currency-gap));
+    text-align:end;
+  }
+}
+@container (max-width: 470px) {
+  .student-register > table > tbody > tr { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .activity-register > table > tbody > tr { grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr); }
+  .activity-register > table > tbody > tr > td:nth-child(4) { grid-column:1 / -1; }
+  .schedule-register > table > tbody > tr > td:nth-child(4) { grid-column:1 / -1; }
+  .student-register :is(.outline-button,.text-button) { min-height: 44px; }
+  .service-surface[data-staff-presentation] .schedule-register :is(.roster-actions > button,.roster-actions > .record-actions > button) { min-height:44px; }
+  .extra-register .register-person .portal-person-avatar { flex-basis: 32px; width: 32px; height: 32px; }
+}
+
+.service-surface[data-staff-presentation] .advising-roster .register-heading {
+  justify-content:start;
+  align-items:baseline;
+}
+.advising-register .advising-student-row time { font-variant-numeric:tabular-nums; }
+.student-register .advising-student-row .student-register-actions { justify-content:start; gap:8px; }
+.service-surface[data-staff-presentation] .academic-services-embedded .advising-register.register-with-actions.table-scroll > table > thead > tr > th:last-child:not([colspan]) {
+  text-align:start;
+}
+.advising-detail-person { margin-block:4px 18px; }
+.advising-detail-person .register-person strong { font-size:17px; }
+.advising-summary-dialog .section-heading { margin:18px 0 10px; font-size:16px; }
+.advising-workflow-summary, .advising-detail-facts {
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,145px),1fr)); gap:12px 18px; margin:0;
+}
+.advising-workflow-summary { padding:13px 15px; border-radius:8px; background:var(--raised); }
+.advising-workflow-summary > div, .advising-detail-facts > div { display:grid; align-content:start; gap:4px; }
+.advising-workflow-summary :is(span,dt), .advising-detail-facts dt { font-size:13px; color:var(--muted); }
+.advising-workflow-summary strong, .advising-detail-facts dd { margin:0; font-size:14px; font-weight:500; }
+
+@container (width > 790px) {
+  .advising-register > table { table-layout:fixed; }
+  .advising-register th:nth-child(1) { width:25%; }
+  .advising-register th:nth-child(2) { width:20%; }
+  .advising-register th:nth-child(4) { width:16%; }
+  .advising-register th:last-child { width:244px; }
+  .graduation-plan-register > table { table-layout:auto; }
+  .graduation-plan-register th:last-child { width:1%; white-space:nowrap; }
+  .graduation-plan-register .student-register-actions > button { white-space:nowrap; }
+}
+
+.service-surface[data-staff-presentation] :is(.roster-actions,.student-register-actions) {
+  &:has(.record-burst .record-menu:popover-open) > .outline-button { translate:var(--action-travel,-12px) 0; }
+  &:has(.record-burst[data-pointer-motion] .record-menu:popover-open) > .outline-button {
+    animation:row-action-skid 290ms both;
+  }
+}
+.service-surface[data-staff-presentation] .record-burst > .record-more { min-inline-size:44px; padding-inline:10px; }
+.record-more > span, .record-dots { display:block; }
+.advising-register .record-burst:has(.record-menu:popover-open) .record-dots circle:nth-child(2) { translate:0 -3px; }
+@media (prefers-reduced-motion:no-preference) {
+  .advising-register .record-burst[data-pointer-motion] .record-dots circle { transition:translate 150ms ease-out; }
+}
+.record-burst[data-pointer-motion]:has(.record-menu:popover-open) > .record-more > span {
+  animation:row-action-impulse 220ms both;
+}
+.service-surface[data-staff-presentation] .record-burst .record-menu {
+  position-area:block-end span-inline-start;
+  position-try-fallbacks:flip-block,flip-inline;
+  margin:8px 0 0;
+  padding:0;
+  inline-size:max-content;
+  max-inline-size:calc(100vw - 32px);
+  min-width:0;
+  overflow:visible;
+  border:0;
+  background:transparent;
+  box-shadow:none;
+}
+.service-surface[data-staff-presentation] .record-burst .record-menu:popover-open { gap:6px; }
+.service-surface[data-staff-presentation] .record-burst .record-menu > button {
+  min-height:40px;
+  padding:8px 11px;
+  border:1px solid var(--control);
+  border-radius:8px;
+  background:var(--paper);
+  color:var(--ink);
+  box-shadow:0 3px 12px #0003;
+  cursor:pointer;
+}
+.service-surface[data-staff-presentation] .record-burst .record-menu > button:is(:hover,:focus-visible) { background:var(--raised); }
+.record-burst[data-pointer-motion] .record-menu:popover-open > button {
+  transform-origin:100% 50%;
+  animation:row-action-release 230ms cubic-bezier(.23,1,.32,1) both;
+}
+.record-burst[data-pointer-motion] .record-menu > button:nth-child(2) { animation-delay:16ms; }
+.record-burst[data-pointer-motion] .record-menu > button:nth-child(3) { animation-delay:32ms; }
+.record-burst[data-pointer-motion] .record-menu > button:nth-child(4) { animation-delay:48ms; }
+.service-surface[data-staff-presentation] .advising-register .record-burst .record-menu {
+  min-inline-size:min(218px,calc(100vw - 32px));
+  padding:6px;
+  border:1px solid var(--line);
+  border-radius:11px;
+  background:var(--paper);
+  box-shadow:0 5px 18px #0002;
+  overflow:clip;
+}
+.service-surface[data-staff-presentation] .advising-register .record-burst .record-menu:popover-open { gap:2px; }
+.service-surface[data-staff-presentation] .advising-register .record-burst .record-menu > button {
+  --release-x:7px;
+  --release-y:-3px;
+  min-height:38px;
+  border-color:transparent;
+  background:transparent;
+  border-radius:6px;
+  box-shadow:none;
+}
+@container (max-width:470px) {
+  .service-surface[data-staff-presentation] .advising-register .record-burst .record-menu > button { min-height:44px; }
+}
+.advising-register .record-burst:has(.record-menu:popover-open) > .record-more { background:var(--raised); }
+@media (prefers-reduced-motion:no-preference) {
+  .advising-register .record-burst[data-pointer-motion] .record-menu:popover-open {
+    transform-origin:top right;
+    animation:advising-actions-unfold 210ms cubic-bezier(.2,.78,.2,1) both;
+  }
+}
+@keyframes advising-actions-unfold {
+  from { scale:.9 .84; }
+}
+
+@media (max-width:600px) {
+  .service-surface[data-staff-presentation] .advising-register .record-burst .record-menu {
+    position-area:block-end span-all;
+    justify-self:center;
+  }
+}
+
+.schedule-register .roster-actions {
+  --action-travel:-7px;
+  --schedule-action-width:132px;
+  --schedule-action-height:38px;
+  --schedule-action-gap:8px;
+  --schedule-more-width:44px;
+  --schedule-side-gap:5px;
+}
+.service-surface[data-staff-presentation] .schedule-register .record-burst > .record-more { inline-size:var(--schedule-more-width); }
+.schedule-register .record-burst:has(.record-menu:popover-open) > .record-more { background:var(--raised); }
+.service-surface[data-staff-presentation] .schedule-register .roster-actions > .outline-button {
+  inline-size:var(--schedule-action-width);
+}
+.service-surface[data-staff-presentation] .schedule-register .record-burst .record-menu {
+  position-try-fallbacks:none;
+  inline-size:var(--schedule-action-width);
+  margin:7px 0 0;
+}
+.service-surface[data-staff-presentation]:not([data-portal-role="administrator"]) .schedule-register .roster-actions:has(.record-menu:popover-open:not([data-side-release])) {
+  padding-block-end:calc(var(--schedule-action-height) + var(--schedule-action-gap));
+}
+.service-surface[data-staff-presentation]:not([data-portal-role="administrator"]) .schedule-register .record-burst .record-menu {
+  margin:0;
+  margin-block-start:var(--schedule-action-gap);
+  margin-inline-end:calc(var(--schedule-more-width) + var(--schedule-action-gap) - var(--action-travel));
+}
+.service-surface[data-staff-presentation] .schedule-register .record-burst .record-menu > button {
+  min-height:var(--schedule-action-height);
+  padding:0 9px;
+  text-align:center;
+}
+.service-surface[data-staff-presentation] .schedule-register .record-burst .record-menu[data-side-release] {
+  position-area:inline-start center;
+  align-self:anchor-center;
+  margin:0;
+  margin-inline-end:calc(var(--schedule-action-width) + var(--schedule-action-gap) + var(--schedule-side-gap) - var(--action-travel));
+}
+.schedule-register .record-menu[data-side-release] > button { --release-x:52px; }
+@container (width < 1080px) {
+  .service-surface[data-portal-role="administrator"] .schedule-register .roster-actions:has(.record-menu:popover-open) { padding-block-end:51px; }
+  .service-surface[data-portal-role="administrator"] .schedule-register .record-burst .record-menu > button { min-height:44px; }
+}
+@container (width >= 1080px) {
+  .service-surface[data-staff-presentation][data-portal-role="administrator"] .schedule-register .record-burst .record-menu {
+    position-area:inline-start center;
+    align-self:anchor-center;
+    margin:0 155px 0 0;
+  }
+  .service-surface[data-portal-role="administrator"] .schedule-register .record-burst .record-menu > button { --release-x:52px; }
+}
+@container (max-width:470px) {
+  .schedule-register .roster-actions { --schedule-action-height:44px; }
+}
+
+@keyframes row-action-skid {
+  0%, 13% { translate:0 0; rotate:0deg; }
+  52% { translate:calc(var(--action-travel,-12px) - 9px) -4px; rotate:-3deg; }
+  75% { translate:calc(var(--action-travel,-12px) + 3px) 1px; rotate:1deg; }
+  100% { translate:var(--action-travel,-12px) 0; rotate:0deg; }
+}
+@keyframes row-action-impulse {
+  0% { transform:scale(.72,1.18); }
+  48% { transform:translateX(3px) scale(1.09,.94); }
+  100% { transform:scale(1); }
+}
+@keyframes row-action-release {
+  0% { opacity:0; transform:translate(var(--release-x,28px),var(--release-y,-8px)) scale(.55,.9) rotate(4deg); }
+  60% { opacity:1; transform:translate(-5px,1px) scale(1.02,1) rotate(-1.6deg); }
+  100% { opacity:1; transform:translate(0) scale(1) rotate(0); }
+}
+@media (prefers-reduced-motion:reduce) {
+  .service-surface[data-staff-presentation] :is(.roster-actions,.student-register-actions):has(.record-burst[data-pointer-motion] .record-menu:popover-open) > .outline-button,
+  .record-burst[data-pointer-motion] .record-menu:popover-open > button,
+  .record-burst[data-pointer-motion]:has(.record-menu:popover-open) > .record-more > span { animation:none; }
+}

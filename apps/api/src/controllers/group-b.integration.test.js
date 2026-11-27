@@ -8,7 +8,7 @@ import { AdvisorAssignment, StudentProfile, User } from '../models/index.js';
 import { AcademicTerm, Course } from '../models/catalogue.js';
 import { StudentSchedule, StudentWorkflowState } from '../models/academics.js';
 import { ExtraHoursRequest, MandatoryCourseRemovalRequest, SlotChangeRequest, WholeScheduleSwapRequest } from '../models/requests.js';
-import { ScheduleActivity } from '../models/communications.js';
+import { Notification, ScheduleActivity } from '../models/communications.js';
 import { generateToken } from '../middleware/auth.middleware.js';
 
 let database;
@@ -25,7 +25,7 @@ before(async () => {
   await Promise.all([
     User.init(), StudentProfile.init(), AdvisorAssignment.init(), AcademicTerm.init(),
     StudentSchedule.init(), StudentWorkflowState.init(), WholeScheduleSwapRequest.init(), SlotChangeRequest.init(),
-    ScheduleActivity.init(), MandatoryCourseRemovalRequest.init(), ExtraHoursRequest.init(), Course.init(),
+    ScheduleActivity.init(), MandatoryCourseRemovalRequest.init(), ExtraHoursRequest.init(), Course.init(), Notification.init(),
   ]);
   server = app.listen(0, '127.0.0.1');
   await new Promise((resolve) => server.once('listening', resolve));
@@ -411,4 +411,94 @@ test('Group B directory and advisor APIs enforce roles, filters, and assignment 
   assert.equal((await call(`/admin/users/${users.normalStudent._id}/status`, {
     role: 'coordinator', method: 'PATCH', body: { isActive: true },
   })).status, 403);
+});
+
+test('Req 119 delivers assignment and slot-change alerts to the advisor assigned at each event', async (t) => {
+  const accounts = [
+    ['coordinator', 'coordinator'],
+    ['firstAdvisor', 'advisor'], ['secondAdvisor', 'advisor'], ['otherAdvisor', 'advisor'],
+    ['firstStudent', 'advisingStudent'], ['otherStudent', 'advisingStudent'],
+  ];
+  users = Object.fromEntries(await Promise.all(accounts.map(async ([key, role]) => {
+    const domain = role === 'advisingStudent' ? 'student.guc.edu.eg' : 'guc.edu.eg';
+    const account = await User.create({
+      email: `req119-${key}@${domain}`, fullName: key, role, passwordHash: 'test-hash', isAdvisorInSystem: role === 'advisor',
+    });
+    return [key, account];
+  })));
+  const advising = {
+    studentType: 'advising', advisingReason: 'failedCourses', currentSemester: 4, gpa: 2.5, academicStanding: 'goodAcademicStanding',
+  };
+  const [student, legacyStudent] = await StudentProfile.create([
+    { ...advising, user: users.firstStudent._id, studentId: '64-11901' },
+    { ...advising, user: users.otherStudent._id, studentId: '64-11902', assignedAdvisor: users.otherAdvisor._id },
+  ]);
+  const assign = (target, role = 'coordinator') => call(`/advisor/students/${student._id}/advisor`, {
+    role, method: 'PATCH', body: { advisorId: String(users[target]._id) },
+  });
+  const inbox = async (role) => {
+    const response = await call('/notifications', { role });
+    assert.equal(response.status, 200, response.body.message);
+    return response.body.notifications;
+  };
+  const mailCount = mailMessages.length;
+  assert.equal((await assign('firstAdvisor', 'firstAdvisor')).status, 403);
+  assert.equal((await assign('firstAdvisor')).status, 200);
+  const original = await AdvisorAssignment.findOne({ student: student._id, endedAt: null });
+  const assignmentNotice = await Notification.findOne({ relatedModel: 'AdvisorAssignment', relatedId: String(original._id) });
+  assert.equal(String(assignmentNotice.recipient), String(users.firstAdvisor._id));
+  assert.deepEqual(assignmentNotice.channels, ['inApp']);
+
+  const course = await Course.create({ code: 'REQ119', name: 'Notification Test Course', courseType: 'core', creditHours: 3 });
+  const slotFields = {
+    term: new mongoose.Types.ObjectId(), schedule: new mongoose.Types.ObjectId(), course: course._id,
+    componentType: 'lecture', currentOffering: new mongoose.Types.ObjectId(), currentSlotGroupId: new mongoose.Types.ObjectId(),
+    preferenceNote: 'Private preference for the request details',
+  };
+  const [request] = await SlotChangeRequest.create([
+    { ...slotFields, student: student._id, createdAt: original.createdAt },
+    { ...slotFields, student: student._id, createdAt: original.createdAt, updatedAt: original.createdAt, status: 'withdrawn' },
+    { ...slotFields, student: legacyStudent._id, createdAt: legacyStudent.updatedAt },
+  ]);
+
+  const write = t.mock.method(Notification, 'bulkWrite', async () => { throw new Error('Notification write failed'); });
+  const failed = await assign('secondAdvisor');
+  write.mock.restore();
+  assert.equal(failed.status, 500);
+  assert.equal(String((await StudentProfile.findById(student._id)).assignedAdvisor), String(users.firstAdvisor._id));
+  assert.equal((await AdvisorAssignment.findById(original._id)).endedAt, null);
+  assert.equal(await Notification.countDocuments({ recipient: users.secondAdvisor._id }), 0);
+
+  assert.equal((await assign('secondAdvisor')).status, 200);
+  const current = await AdvisorAssignment.findOne({ student: student._id, endedAt: null });
+  assert.deepEqual((await AdvisorAssignment.findById(original._id)).endedAt, current.createdAt);
+  await SlotChangeRequest.updateOne({ _id: request._id }, { $set: { status: 'withdrawn', withdrawnAt: current.createdAt } });
+  assert.equal((await assign('secondAdvisor')).status, 200);
+  assert.equal(await AdvisorAssignment.countDocuments({ student: student._id }), 2);
+
+  const [first, firstAgain, second, other] = await Promise.all([
+    inbox('firstAdvisor'), inbox('firstAdvisor'), inbox('secondAdvisor'), inbox('otherAdvisor'),
+  ]);
+  const types = (alerts) => alerts.map(item => item.type).sort();
+  assert.deepEqual(types(first), ['advisorAssigned', 'slotChangeSubmitted', 'slotChangeSubmitted', 'slotChangeWithdrawn']);
+  assert.deepEqual(firstAgain.map(item => item._id).sort(), first.map(item => item._id).sort());
+  assert.deepEqual(types(second), ['advisorAssigned', 'slotChangeWithdrawn']);
+  assert.deepEqual(types(other), ['slotChangeSubmitted']);
+  assert.match(other[0].message, /64-11902.*REQ119/);
+  assert.deepEqual(await inbox('firstStudent'), []);
+  assert.deepEqual(await inbox('coordinator'), []);
+  for (const alert of [...first, ...second]) {
+    assert.match(alert.message, /64-11901/);
+    assert.doesNotMatch(alert.message, /Private preference/);
+    assert.equal(alert.deliveryStatus, 'sent');
+  }
+
+  const withdrawal = second.find(item => item.type === 'slotChangeWithdrawn');
+  const read = (role) => call(`/notifications/${withdrawal._id}/read`, { role, method: 'PATCH' });
+  assert.equal((await read('firstAdvisor')).status, 403);
+  assert.equal((await read('secondAdvisor')).status, 200);
+  const refreshed = await inbox('secondAdvisor');
+  assert.deepEqual(types(refreshed), types(second));
+  assert.equal(refreshed.find(item => item._id === withdrawal._id).isRead, true);
+  assert.equal(mailMessages.length, mailCount);
 });

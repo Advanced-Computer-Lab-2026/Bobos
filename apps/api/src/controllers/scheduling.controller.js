@@ -1,8 +1,12 @@
+import { DAYS_OF_WEEK } from "../models/shared.js";
 import mongoose from "mongoose";
 import { AcademicTerm, Course, CourseOffering } from "../models/catalogue.js";
 import { StudentProfile, User } from "../models/identity.js";
-import { CourseAttempt, ScheduleTemplate, SchedulingPreference, StudentSchedule } from "../models/academics.js";
-import { ExtraHoursRequest, MandatoryCourseRemovalRequest, WholeScheduleSwapRequest } from "../models/requests.js";
+import { CourseAttempt, ScheduleTemplate, SchedulingPreference, StudentSchedule, StudentWorkflowState } from "../models/academics.js";
+import { ExtraHoursRequest, MandatoryCourseRemovalRequest, SlotChangeRequest, WholeScheduleSwapRequest } from "../models/requests.js";
+import { ScheduleActivity } from "../models/communications.js";
+import { loadStudentWorkflows } from "../services/student-workflow-status.js";
+import { notifyStudents } from "../services/student-notifications.js";
 import { calculateDraftCreditPolicy } from "../utils/credit-allowance.js";
 import { majorMatches } from "../utils/major.js";
 import { buildWeeklyCalendar } from "../../../../server/src/utils/weeklyCalendar.js";
@@ -11,7 +15,6 @@ import { buildRegisteredCourses } from "../../../../server/src/utils/registeredC
 import { buildCourseDetails, findCourseEntry } from "../../../../server/src/utils/courseDetails.js";
 import { buildPdfModel, renderSchedulePdf } from "../../../../server/src/utils/schedulePdf.js";
 
-const TEACHING_DAYS = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"];
 const STUDENT_ROLES = ["normalStudent", "advisingStudent"];
 const STAFF_ROLES = ["advisor", "coordinator", "administrator"];
 const NO_VISIBLE_SCHEDULE = "No schedule is available to view yet.";
@@ -28,7 +31,7 @@ const escapedRegex = (value) => [...value].map((character) =>
     : character
 ).join("");
 
-async function resolveTerm(termId) {
+export async function resolveTerm(termId) {
   if (termId) {
     if (typeof termId !== "string" || !termId.trim()) return { error: { status: 400, message: "Invalid termId" } };
     const identifier = termId.trim();
@@ -56,6 +59,7 @@ function termView(term) {
     season: term.season,
     isActive: term.isActive,
     swapDeadline: term.wholeScheduleSwapDeadline || null,
+    advisingDeadline: term.advisingDeadline || null,
   };
 }
 
@@ -81,11 +85,11 @@ function studentView(student, schedule = null) {
   };
 }
 
-function slotView(slot, courseCode) {
+export function slotView(slot, courseCode) {
   if (!Number.isInteger(slot.startMinute) || !Number.isInteger(slot.endMinute) || slot.endMinute <= slot.startMinute) {
     return { error: `A schedule slot for ${courseCode} has invalid meeting times.` };
   }
-  if (!TEACHING_DAYS.includes(slot.day)) return { error: `A schedule slot for ${courseCode} uses an unsupported teaching day.` };
+  if (!DAYS_OF_WEEK.includes(slot.day)) return { error: `A schedule slot for ${courseCode} uses an unsupported teaching day.` };
   return {
     slotId: slot._id,
     type: slot.componentType,
@@ -223,20 +227,31 @@ function scheduleCourses(resolvedEntries) {
   }));
 }
 
-async function resolveStoredSchedule(schedule) {
+async function resolveStoredSchedules(schedules, session = null) {
   const offeringIds = new Set();
   const courseIds = new Set();
-  for (const scheduledCourse of schedule.courses || []) {
-    if (scheduledCourse.course) courseIds.add(idOf(scheduledCourse.course));
-    for (const slot of scheduledCourse.slots || []) if (slot.courseOffering) offeringIds.add(idOf(slot.courseOffering));
-    if (scheduledCourse.courseOffering) offeringIds.add(idOf(scheduledCourse.courseOffering));
+  for (const schedule of schedules) {
+    for (const scheduledCourse of schedule.courses || []) {
+      if (scheduledCourse.course) courseIds.add(idOf(scheduledCourse.course));
+      for (const slot of scheduledCourse.slots || []) if (slot.courseOffering) offeringIds.add(idOf(slot.courseOffering));
+      if (scheduledCourse.courseOffering) offeringIds.add(idOf(scheduledCourse.courseOffering));
+    }
   }
-  const [offerings, courses] = await Promise.all([
-    CourseOffering.find({ _id: { $in: [...offeringIds] } }).lean(),
-    Course.find({ _id: { $in: [...courseIds] } }).lean(),
-  ]);
+  const offeringQuery = CourseOffering.find({ _id: { $in: [...offeringIds] } }).lean();
+  const courseQuery = Course.find({ _id: { $in: [...courseIds] } }).lean();
+  const [offerings, courses] = session
+    ? [await offeringQuery.session(session), await courseQuery.session(session)]
+    : await Promise.all([offeringQuery, courseQuery]);
   const offeringById = new Map(offerings.map((offering) => [idOf(offering._id), offering]));
   const courseById = new Map(courses.map((course) => [idOf(course._id), course]));
+  return new Map(schedules.map(schedule => [idOf(schedule), resolveStoredEntries(schedule, offeringById, courseById)]));
+}
+
+export async function resolveStoredSchedule(schedule, session = null) {
+  return (await resolveStoredSchedules([schedule], session)).get(idOf(schedule));
+}
+
+function resolveStoredEntries(schedule, offeringById, courseById) {
   const entries = [];
   for (const scheduledCourse of schedule.courses || []) {
     const course = courseById.get(idOf(scheduledCourse.course));
@@ -267,6 +282,165 @@ async function resolveStoredSchedule(schedule) {
   return { entries };
 }
 
+export async function revalidateScheduleForProcessing(student, term, current, session = null) {
+  if (!current.courses?.length) {
+    throw draftError(400, "Cannot process an empty schedule.");
+  }
+
+  const { availableOfferingRecords, storedSchedule, ...data } = await loadDraftData(student, term, session);
+  const selections = data.schedule?.courses || [];
+  const availableIds = new Set(selections.map((selection) => selection.courseOffering));
+
+  for (const entry of current.courses) {
+    if (!availableIds.has(idOf(entry.courseOffering))) {
+      throw draftError(400, "Cannot process schedule: a scheduled course offering is unpublished, unavailable, or ineligible.");
+    }
+  }
+
+  const { courses, issues } = validateDraftSelections(
+    { ...data, availableOfferingRecords, storedSchedule },
+    selections,
+  );
+  const resolvedSlots = collectSlotRefs(courses);
+  const storedSlots = collectSlotRefs(current.courses);
+  if (storedSlots.size !== resolvedSlots.size || [...resolvedSlots].some(([key, ref]) => storedSlots.get(key)?.count !== ref.count)) {
+    throw draftError(400, "Cannot process schedule: a selected group is missing a required meeting.");
+  }
+  for (const entry of current.courses) {
+    for (const [key] of collectSlotRefs([entry])) {
+      if (!resolvedSlots.has(key)) {
+        throw draftError(400, "Cannot process schedule: a scheduled slot is no longer available.");
+      }
+    }
+  }
+
+  const blockingIssue = issues.find(
+    (issue) => !(issue.code === "capacity" && /inconsistent reservation count/i.test(issue.message)),
+  );
+  if (blockingIssue) {
+    throw draftError(400, blockingIssue.message);
+  }
+
+  const approvedExtraHours = new Map(
+    data.creditPolicy.approvedExtraCourses.map(({ courseId, hours }) => [courseId, hours]),
+  );
+  const totalSnapshotHours = current.courses.reduce(
+    (sum, entry) => sum + Number(entry.creditHoursSnapshot || 0),
+    0,
+  );
+  if (totalSnapshotHours <= 0) {
+    throw draftError(400, "Cannot process schedule: total credit hours must be greater than zero.");
+  }
+  const snapshotCreditIssue = creditLimitProblem(current.courses, data.creditPolicy, approvedExtraHours);
+  if (snapshotCreditIssue) {
+    throw draftError(400, snapshotCreditIssue);
+  }
+}
+
+async function changeAdvisingScheduleStatus(req, res, reopening) {
+  if (!isId(req.params.studentId)) return res.status(400).json({ message: "Invalid student ID" });
+  const reason = typeof req.body?.reason === "string" ? req.body.reason.trim() : "";
+  if (reopening && (!reason || reason.length > 2000)) return res.status(400).json({ message: "Provide a reopening reason of at most 2,000 characters" });
+  const student = await StudentProfile.findById(req.params.studentId).select(
+    "_id studentType assignedAdvisor major currentSemester studyGroup gpa academicStanding advisingReason enrollmentStatus",
+  );
+  if (!student || student.studentType !== "advising") return res.status(404).json({ message: "Advising student not found" });
+  const verb = reopening ? "reopen" : "process";
+  if (req.user.role === "advisor" && idOf(student.assignedAdvisor) !== idOf(req.user._id)) {
+    return res.status(403).json({ message: `You may only ${verb} schedules for your assigned students` });
+  }
+  const { term, error } = await resolveTerm(req.body?.termId);
+  if (error) return res.status(error.status).json({ message: error.message });
+
+  const action = reopening ? "reopened" : "processed";
+  const expectedStatus = reopening ? "processed" : "readyForStudentReview";
+  const isSingle = mongoose.connection.client?.topology?.description?.type === "Single";
+  const withSession = (query, session) => (session ? query.session(session) : query);
+
+  const executeStatusChange = async (session) => {
+    const sessOpt = session ? { session } : {};
+    const current = await withSession(
+      StudentSchedule.findOne({
+        student: student._id, term: term._id, scheduleType: "advising",
+        status: expectedStatus,
+      }),
+      session,
+    );
+    if (!current) return null;
+
+    if (!reopening) {
+      if (await withSession(SlotChangeRequest.exists({ student: student._id, term: term._id, status: "pending" }), session)) {
+        throw draftError(400, "Cannot process: Student has a pending slot-change request");
+      }
+      if (await withSession(ExtraHoursRequest.exists({ student: student._id, term: term._id, $or: [{ decisionStatus: "pending" }, { settlementStatus: "awaitingChoice" }] }), session)) {
+        throw draftError(400, "Cannot process: Student has an unresolved extra-hours approval or payment choice");
+      }
+      const pending = await withSession(
+        MandatoryCourseRemovalRequest.findOne({
+          student: current.student,
+          status: { $regex: /^pending$/i },
+        }),
+        session,
+      );
+      if (pending) {
+        throw draftError(400, "Cannot process schedule while mandatory course removal requests remain pending.");
+      }
+      await revalidateScheduleForProcessing(student, term, current, session);
+    }
+
+    const updated = await StudentSchedule.findOneAndUpdate(
+      { _id: current._id, status: expectedStatus },
+      {
+        $set: {
+          status: reopening ? "draft" : "processed",
+          processedBy: reopening ? null : req.user._id,
+          processedAt: reopening ? null : new Date(),
+        },
+        ...(reopening ? { $inc: { version: 1 } } : {}),
+      },
+      { returnDocument: "after", ...sessOpt },
+    );
+    if (!updated) return null;
+
+    await ScheduleActivity.create([{
+      student: student._id, term: term._id, schedule: updated._id, action, scheduleVersion: updated.version,
+      actor: req.user._id, actorName: req.user.fullName, actorEmail: req.user.email, actorRole: req.user.role,
+      reason: reopening ? reason : undefined,
+    }], sessOpt);
+    await StudentWorkflowState.findOneAndUpdate({ student: student._id, term: term._id }, {
+      $set: { status: updated.status, studentType: "advising", lastActivityAt: new Date(), calculatedAt: new Date() },
+    }, { upsert: true, ...sessOpt });
+    await notifyStudents({ _id: student._id, studentType: "advising" }, {
+      type: reopening ? "scheduleReopened" : "scheduleProcessed",
+      title: `Advising schedule ${action}`,
+      message: reopening ? `Your advising schedule for ${term.code} was reopened. ${reason}`
+        : `Your advising schedule for ${term.code} was processed. You can now download it from My schedule.`,
+      relatedModel: "StudentSchedule", relatedId: updated._id,
+    }, session);
+    return updated;
+  };
+
+  const schedule = isSingle
+    ? await executeStatusChange(undefined)
+    : await mongoose.connection.transaction(executeStatusChange);
+  if (!schedule) {
+    return res.status(409).json({ message: reopening ? "Only a processed advising schedule can be reopened"
+      : "Only a schedule ready for student review can be processed" });
+  }
+  res.json({ message: `Advising schedule ${action}`, schedule });
+}
+
+export function processAdvisingSchedule(req, res) {
+  return changeAdvisingScheduleStatus(req, res, false).catch((error) => {
+    if (error.status) return res.status(error.status).json({ message: error.message });
+    throw error;
+  });
+}
+
+export function reopenAdvisingSchedule(req, res) {
+  return changeAdvisingScheduleStatus(req, res, true);
+}
+
 function accessToSchedule(viewer, student, schedule) {
   if (STUDENT_ROLES.includes(viewer.role)) {
     if (idOf(student.user) !== idOf(viewer._id)) return { status: 403, message: "Students may only view their own schedule." };
@@ -290,7 +464,7 @@ function accessToSchedule(viewer, student, schedule) {
 
 async function findStudentSchedule(student, term) {
   const scheduleType = student.studentType === "advising" ? "advising" : "normal";
-  return StudentSchedule.findOne({ student: student._id, term: term._id, scheduleType }).populate("template", "studyGroup major semester");
+  return StudentSchedule.findOne({ student: student._id, term: term._id, scheduleType }).populate("template", "studyGroup major semester term isPublished");
 }
 
 async function sendSchedule(req, res, student, term) {
@@ -370,7 +544,10 @@ export async function listNormalStudents(req, res, next) {
     const schedules = await StudentSchedule.find({ term: term._id, scheduleType: "normal", student: { $in: students.map((student) => student._id) } })
       .select("student template status processedAt courses").populate("template", "studyGroup").lean();
     const schedulesByStudent = new Map(schedules.map((schedule) => [idOf(schedule.student), schedule]));
-    let rows = students.map((student) => studentView(student, schedulesByStudent.get(idOf(student._id))));
+    let rows = students.map((student) => ({
+      ...studentView(student, schedulesByStudent.get(idOf(student._id))),
+      enrollmentStatus: student.enrollmentStatus,
+    }));
     if (req.query.assigned === "true") rows = rows.filter((row) => row.assignment);
     if (req.query.assigned === "false") rows = rows.filter((row) => !row.assignment);
     if (req.query.assigned && !["true", "false"].includes(req.query.assigned)) return res.status(400).json({ message: "assigned must be true or false" });
@@ -471,7 +648,7 @@ function groupDraftOffering(offering, preferenceGroups, reservedSlots) {
       assignedStudentCount: slot.assignedStudentCount || 0,
       remainingCapacity,
     });
-    if (!TEACHING_DAYS.includes(slot.day) || !Number.isInteger(slot.startMinute) || !Number.isInteger(slot.endMinute) || slot.endMinute <= slot.startMinute) group.valid = false;
+    if (!DAYS_OF_WEEK.includes(slot.day) || !Number.isInteger(slot.startMinute) || !Number.isInteger(slot.endMinute) || slot.endMinute <= slot.startMinute) group.valid = false;
     group.availableSeats = Math.min(group.availableSeats, remainingCapacity);
     byComponent.set(key, group);
   }
@@ -523,7 +700,7 @@ async function loadDraftData(student, term, session = null) {
   const queries = [
     SchedulingPreference.findOne({ student: student._id, term: term._id }).populate("preferredGroups.course", "code name").lean(),
     StudentSchedule.findOne({ student: student._id, term: term._id, scheduleType: "advising" }).lean(),
-    CourseOffering.find({ term: term._id, isPublished: true }).populate({ path: "course", match: { isActive: true }, select: "code name creditHours courseType facultyMajors prerequisites isActive", populate: { path: "prerequisites", select: "code name" } }).lean(),
+    CourseOffering.find({ term: term._id, isPublished: true }).populate({ path: "course", match: { isActive: true }, select: "code name creditHours courseType facultyMajors prerequisites offeringSeasons isActive", populate: { path: "prerequisites", select: "code name" } }).lean(),
     CourseAttempt.distinct("course", { student: student._id, result: "passed" }),
     CourseAttempt.distinct("course", { student: student._id, $or: [{ result: "failed" }, { attendance: "unattended" }] }),
     MandatoryCourseRemovalRequest.distinct("course", { student: student._id, term: term._id, status: "approved" }),
@@ -588,13 +765,16 @@ async function loadDraftData(student, term, session = null) {
     offerings,
     availableOfferingRecords,
     storedSchedule: schedule,
-    mandatoryCourses,
+    mandatoryCourses: mandatoryCourses.map((course) => ({ ...course, inDraft: (schedule?.courses || []).some((entry) => idOf(entry.course) === idOf(course._id)) })),
+    creditHours: creditHoursSummary(schedule?.courses || [], creditPolicy, mandatoryIds),
+    mandatorySummary: mandatoryHoursSummary((schedule?.courses || []).map((entry) => ({ ...entry, isMandatory: mandatoryIds.includes(idOf(entry.course)) })), creditPolicy),
     passedCourseIds: [...passed],
     schedule: schedule ? {
       _id: schedule._id,
       status: schedule.status,
       version: schedule.version,
       updatedAt: schedule.updatedAt,
+      bachelorProject: schedule.bachelorProject || null,
       totalCreditHours: (schedule.courses || []).reduce((total, course) => total + Number(course.creditHoursSnapshot || 0), 0),
       staleCourseCount,
       courses: currentSelections,
@@ -681,6 +861,8 @@ function validateDraftSelections(data, selections) {
     });
   }
 
+  if (data.storedSchedule?.bachelorProject) applyBachelorProjectRules(courses, data, approvedExtraHours, addIssue);
+
   const missingMandatory = data.mandatoryCourses.filter((course) => !selectedCourseIds.has(idOf(course._id)));
   const includesElective = courses.some((course) => !course.isMandatory);
   for (const course of missingMandatory) {
@@ -696,16 +878,47 @@ function validateDraftSelections(data, selections) {
       }
     }
   }
+  const creditProblem = creditLimitProblem(courses, data.creditPolicy, approvedExtraHours);
+  if (creditProblem) addIssue("creditHours", creditProblem);
+  return { courses, issues };
+}
+
+function creditLimitProblem(courses, policy, approvedExtraHours) {
   const total = courses.reduce((sum, course) => sum + course.creditHoursSnapshot, 0);
-  const { baseAllowance, maximumCreditHours, probation } = data.creditPolicy;
+  const { baseAllowance, maximumCreditHours, probation } = policy;
   const selectedApprovedExtraHours = courses.reduce((sum, course) => sum + Math.min(approvedExtraHours.get(idOf(course.course)) || 0, course.creditHoursSnapshot), 0);
   const extraNeeded = total - (baseAllowance ?? 34);
   if (total > maximumCreditHours + 1e-9) {
-    addIssue("creditHours", `The draft totals ${total} credit hours, above the allowed ${maximumCreditHours}${probation ? " probation" : ""} hours for this student. Only approved and activated extra hours count.`);
-  } else if (extraNeeded > selectedApprovedExtraHours + 1e-9) {
-    addIssue("creditHours", `The draft exceeds the standard ${baseAllowance}-hour allowance. Include the student's approved extra-hours courses after they are paid or deferred; approval alone does not activate them.`);
+    return `The draft totals ${total} credit hours, above the allowed ${maximumCreditHours}${probation ? " probation" : ""} hours for this student. Only approved and activated extra hours count.`;
   }
-  return { courses, issues };
+  if (extraNeeded > selectedApprovedExtraHours + 1e-9) {
+    return `The draft exceeds the standard ${baseAllowance}-hour allowance. Include the student's approved extra-hours courses after they are paid or deferred; approval alone does not activate them.`;
+  }
+  return null;
+}
+
+// Req. 60: with the bachelor project a student takes at most four courses: two core and two humanities.
+const HUMANITIES_NAME = /german|seminar|management/i;
+const isHumanitiesCourse = (course) => course.courseType === "huma" || HUMANITIES_NAME.test(course.name || "");
+const BACHELOR_PROJECT_LIMITS = { total: 4, core: 2, humanities: 2 };
+
+function applyBachelorProjectRules(courses, data, approvedExtraHours, addIssue) {
+  const byId = new Map(data.availableOfferingRecords.map((offering) => [idOf(offering.course), offering.course]));
+  const humanities = courses.filter((entry) => isHumanitiesCourse(byId.get(idOf(entry.course)) || {}));
+  const core = courses.filter((entry) => {
+    const course = byId.get(idOf(entry.course)) || {};
+    return course.courseType === "core" && !isHumanitiesCourse(course);
+  });
+  if (courses.length > BACHELOR_PROJECT_LIMITS.total) addIssue("bachelorProjectLimit", `With the bachelor project a student may take at most ${BACHELOR_PROJECT_LIMITS.total} courses; ${courses.length} are selected.`);
+  if (core.length > BACHELOR_PROJECT_LIMITS.core) addIssue("bachelorProjectLimit", `With the bachelor project a student may take at most ${BACHELOR_PROJECT_LIMITS.core} core courses; ${core.length} are selected.`);
+  if (humanities.length > BACHELOR_PROJECT_LIMITS.humanities) addIssue("bachelorProjectLimit", `With the bachelor project a student may take at most ${BACHELOR_PROJECT_LIMITS.humanities} humanities courses; ${humanities.length} are selected.`);
+  for (const entry of courses) {
+    entry.isExtraHours = true;
+    if (!approvedExtraHours.has(idOf(entry.course))) {
+      const course = byId.get(idOf(entry.course));
+      addIssue("bachelorProjectExtraHours", `${course?.code || "A companion course"} is taken with the bachelor project, so it counts as extra hours and needs an approved, paid or deferred extra-hours request.`, false);
+    }
+  }
 }
 
 function draftError(status, message, validationIssues) {
@@ -718,10 +931,7 @@ function sendDraftError(error, res, next) {
   return res.status(error.status).json({ message: error.message, validationIssues: error.validationIssues });
 }
 
-export async function getAdvisingDraft(req, res, next) {
-  try {
-    const context = await resolveDraftContext(req, res);
-    if (!context) return;
+async function buildDraftResponse(context) {
     const { availableOfferingRecords, storedSchedule, ...data } = await loadDraftData(context.student, context.term);
     const selections = data.schedule?.courses || [];
     const { courses, issues } = validateDraftSelections({ ...data, availableOfferingRecords, storedSchedule }, selections);
@@ -738,7 +948,280 @@ export async function getAdvisingDraft(req, res, next) {
         }
       }
     }
-    res.json({ term: termView(context.term), student: studentView(context.student), ...data, validationIssues: issues, editable: !data.schedule || data.schedule.status === "draft" });
+    return { term: termView(context.term), student: studentView(context.student), ...data, validationIssues: issues, editable: !data.schedule || data.schedule.status === "draft" };
+}
+
+export async function getAdvisingDraft(req, res, next) {
+  try {
+    const context = await resolveDraftContext(req, res);
+    if (!context) return;
+    res.json(await buildDraftResponse(context));
+  } catch (error) { sendDraftError(error, res, next); }
+}
+
+// Req. 62: create an empty open draft; the response shows the student's submitted preferences (optional).
+export async function createAdvisingDraft(req, res, next) {
+  try {
+    if (req.body && Object.keys(req.body).length) throw draftError(400, "Do not send a body when creating a draft; add courses afterwards.");
+    const context = await resolveDraftContext(req, res);
+    if (!context) return;
+    const { student, term } = context;
+    const existing = await StudentSchedule.findOne({ student: student._id, term: term._id, scheduleType: "advising" }).select("status").lean();
+    if (existing) throw draftError(409, existing.status === "draft" ? "An open draft already exists for this student and term. Edit it instead." : "A schedule already exists for this student and term and is no longer an open draft.");
+    await StudentSchedule.create({ student: student._id, term: term._id, scheduleType: "advising", status: "draft", createdBy: req.user._id });
+    res.status(201).json({ message: "Open draft schedule created.", ...await buildDraftResponse(context) });
+  } catch (error) { sendDraftError(error, res, next); }
+}
+
+// Req. 63: choose which failed/unattended (mandatory) courses go into the draft. They are picked before other
+// courses and use up the student's credit hours. New entries carry no slots yet; slots are assigned later.
+function mandatoryHoursSummary(entries, policy) {
+  const mandatoryHours = entries.filter((entry) => entry.isMandatory).reduce((sum, entry) => sum + Number(entry.creditHoursSnapshot || 0), 0);
+  const remainingAfterMandatory = (policy.baseAllowance ?? policy.maximumCreditHours) - mandatoryHours;
+  return {
+    mandatoryHours,
+    allowedHours: policy.baseAllowance,
+    approvedExtraHours: policy.approvedExtraHours,
+    maximumCreditHours: policy.maximumCreditHours,
+    remainingAllowedHours: remainingAfterMandatory,
+    remainingWithApprovedExtra: policy.maximumCreditHours - mandatoryHours,
+    otherCoursesAllowed: policy.maximumCreditHours - mandatoryHours > 1e-9,
+    otherCoursesNeedExtraHours: remainingAfterMandatory <= 1e-9 && policy.maximumCreditHours - mandatoryHours > 1e-9,
+  };
+}
+
+export async function selectMandatoryCourses(req, res, next) {
+  try {
+    if (!Array.isArray(req.body?.courses) || req.body.courses.length > 100 || req.body.courses.some((id) => !isId(id))) {
+      throw draftError(400, "courses must be an array of course ids.");
+    }
+    if (Object.keys(req.body).some((key) => key !== "courses")) throw draftError(400, "Send only courses in the mandatory courses request.");
+    const context = await resolveDraftContext(req, res);
+    if (!context) return;
+    const { student, term } = context;
+    const wanted = [...new Set(req.body.courses.map((id) => id.toLowerCase()))];
+    const data = await loadDraftData(student, term);
+    const existing = data.storedSchedule;
+    if (existing && existing.status !== "draft") throw draftError(409, "Mandatory courses can only be changed while the schedule is an open draft.");
+
+    const candidates = new Map(data.mandatoryCourses.map((course) => [idOf(course._id), course]));
+    for (const id of wanted) {
+      const candidate = candidates.get(id);
+      if (!candidate) throw draftError(400, `Course ${id} is not a mandatory course for this student and term.`);
+      if (!candidate.availableForTerm) throw draftError(409, `${candidate.code} has no eligible published offering this term, so it cannot be added yet.`);
+    }
+    const offeringByCourse = new Map(data.availableOfferingRecords.map((offering) => [idOf(offering.course), offering]));
+    const current = (existing?.courses || []).map((entry) => ({ ...entry }));
+    const kept = [];
+    for (const entry of current) {
+      const courseId = idOf(entry.course);
+      if (wanted.includes(courseId)) { entry.isMandatory = true; kept.push(entry); continue; }
+      if (entry.isMandatory) {
+        if (entry.slots?.length) throw draftError(409, `${candidates.get(courseId)?.code || "A mandatory course"} has assigned slots. Remove its slots before taking it out of the draft.`);
+        continue;
+      }
+      kept.push(entry);
+    }
+    const present = new Set(kept.map((entry) => idOf(entry.course)));
+    for (const id of wanted) {
+      if (present.has(id)) continue;
+      const offering = offeringByCourse.get(id);
+      kept.push({ course: offering.course._id, courseOffering: offering._id, slots: [], isMandatory: true, isExtraHours: false, creditHoursSnapshot: offering.course.creditHours });
+    }
+    if (kept.some(entry => !candidates.has(idOf(entry.course))) && data.mandatoryCourses.some(course => !wanted.includes(idOf(course._id)))) {
+      throw draftError(409, "Remove other courses before deselecting a mandatory course. Mandatory courses must be selected first.");
+    }
+    const summary = mandatoryHoursSummary(kept, data.creditPolicy);
+    if (summary.mandatoryHours > data.creditPolicy.maximumCreditHours + 1e-9) {
+      throw draftError(409, `The selected mandatory courses total ${summary.mandatoryHours} credit hours, above the ${data.creditPolicy.maximumCreditHours} hours this student may take.`);
+    }
+    const total = kept.reduce((sum, entry) => sum + Number(entry.creditHoursSnapshot || 0), 0);
+    if (total > data.creditPolicy.maximumCreditHours + 1e-9) throw draftError(409, `The draft would total ${total} credit hours, above the ${data.creditPolicy.maximumCreditHours} allowed. Remove other courses first.`);
+
+    const schedule = existing
+      ? await StudentSchedule.findOneAndUpdate({ _id: existing._id, version: existing.version, status: "draft" }, { $set: { courses: kept }, $inc: { version: 1 } }, { returnDocument: "after" })
+      : await StudentSchedule.create({ student: student._id, term: term._id, scheduleType: "advising", status: "draft", createdBy: req.user._id, courses: kept });
+    if (!schedule) throw draftError(409, "The draft changed while it was being updated. Reload it and try again.");
+    const selected = data.mandatoryCourses.filter((course) => wanted.includes(idOf(course._id))).map((course) => ({ _id: course._id, code: course.code, name: course.name, creditHours: course.creditHours }));
+    const notSelected = data.mandatoryCourses.filter((course) => !wanted.includes(idOf(course._id))).map((course) => ({ _id: course._id, code: course.code, name: course.name, creditHours: course.creditHours, availableForTerm: course.availableForTerm }));
+    res.status(existing ? 200 : 201).json({
+      message: wanted.length ? "Mandatory courses saved in the draft." : "No mandatory courses are selected in the draft.",
+      schedule: { _id: schedule._id, status: schedule.status, version: schedule.version },
+      selectedMandatoryCourses: selected,
+      unselectedMandatoryCourses: notSelected,
+      creditHours: summary,
+    });
+  } catch (error) { sendDraftError(error, res, next); }
+}
+
+// Req. 73: selected, allowed, extra and remaining credit hours for a draft.
+function creditHoursSummary(entries, policy, mandatoryIds = []) {
+  const mandatory = new Set(mandatoryIds.map(String));
+  const hoursOf = (entry) => Number(entry.creditHoursSnapshot || 0);
+  const selected = entries.reduce((sum, entry) => sum + hoursOf(entry), 0);
+  const allowed = policy.baseAllowance ?? policy.maximumCreditHours;
+  const flaggedExtra = entries.filter((entry) => entry.isExtraHours).reduce((sum, entry) => sum + hoursOf(entry), 0);
+  const extraSelected = Math.max(Math.max(0, selected - allowed), flaggedExtra);
+  return {
+    selectedHours: selected,
+    mandatoryHours: entries.filter((entry) => mandatory.has(idOf(entry.course))).reduce((sum, entry) => sum + hoursOf(entry), 0),
+    otherHours: entries.filter((entry) => !mandatory.has(idOf(entry.course))).reduce((sum, entry) => sum + hoursOf(entry), 0),
+    allowedHours: allowed,
+    probation: policy.probation,
+    approvedExtraHours: policy.approvedExtraHours,
+    extraSelectedHours: extraSelected,
+    maximumCreditHours: policy.maximumCreditHours,
+    remainingAllowedHours: Math.max(0, allowed - selected),
+    remainingHours: Math.max(0, policy.maximumCreditHours - selected),
+    overLimitBy: Math.max(0, selected - policy.maximumCreditHours),
+    courseCount: entries.length,
+  };
+}
+
+// Req. 70: other (non-mandatory) courses the student may take this term.
+function computeEligibleCourses(data, term) {
+  const mandatory = new Set(data.mandatoryCourses.map((course) => idOf(course._id)));
+  const passed = new Set(data.passedCourseIds);
+  const inDraft = new Set((data.storedSchedule?.courses || []).map((entry) => idOf(entry.course)));
+  const eligible = [];
+  const excluded = [];
+  for (const offering of data.availableOfferingRecords) {
+    const course = offering.course;
+    const courseId = idOf(course);
+    if (mandatory.has(courseId)) continue;
+    const brief = { _id: course._id, code: course.code, name: course.name, creditHours: course.creditHours, courseType: course.courseType };
+    if (passed.has(courseId)) { excluded.push({ ...brief, reason: "alreadyCompleted", message: `${course.code} has already been completed.` }); continue; }
+    const seasons = course.offeringSeasons || [];
+    if (seasons.length && !seasons.includes(term.season)) { excluded.push({ ...brief, reason: "notOfferedInSeason", message: `${course.code} is not offered in the ${term.season} season.` }); continue; }
+    const missing = (course.prerequisites || []).filter((item) => !passed.has(idOf(item)));
+    if (missing.length) { excluded.push({ ...brief, reason: "unmetPrerequisites", missingPrerequisites: missing.map(item => ({ code: item.code, name: item.name })), message: `${course.code} requires ${missing.map((item) => item.code).join(", ")}.` }); continue; }
+    eligible.push({
+      courseOffering: offering._id,
+      course: { ...brief, prerequisites: (course.prerequisites || []).map((item) => ({ _id: item._id, code: item.code, name: item.name })) },
+      components: [...new Set((offering.slots || []).map((slot) => slot.componentType))],
+      inDraft: inDraft.has(courseId),
+    });
+  }
+  const byCode = (a, b) => (a.course?.code || a.code).localeCompare(b.course?.code || b.code);
+  return { eligible: eligible.sort(byCode), excluded: excluded.sort(byCode) };
+}
+
+export async function getEligibleCourses(req, res, next) {
+  try {
+    const context = await resolveDraftContext(req, res);
+    if (!context) return;
+    const data = await loadDraftData(context.student, context.term);
+    const { eligible, excluded } = computeEligibleCourses(data, context.term);
+    const search = typeof req.query.search === "string" ? req.query.search.trim().toLowerCase() : "";
+    const matches = (entry) => !search || `${entry.course.code} ${entry.course.name}`.toLowerCase().includes(search);
+    res.json({
+      term: termView(context.term), student: studentView(context.student),
+      courses: eligible.filter(matches), count: eligible.filter(matches).length, excluded,
+      creditHours: data.creditHours,
+    });
+  } catch (error) { sendDraftError(error, res, next); }
+}
+
+export async function getDraftCreditHours(req, res, next) {
+  try {
+    const context = await resolveDraftContext(req, res);
+    if (!context) return;
+    const data = await loadDraftData(context.student, context.term);
+    res.json({ term: termView(context.term), student: studentView(context.student), draftStatus: data.schedule?.status || null, creditHours: data.creditHours });
+  } catch (error) { sendDraftError(error, res, next); }
+}
+
+// Req. 71: add an eligible non-mandatory course to the open draft (slots are assigned afterwards).
+export async function addDraftCourse(req, res, next) {
+  try {
+    if (!isId(req.body?.courseOffering) || Object.keys(req.body).some((key) => key !== "courseOffering")) {
+      throw draftError(400, "Send only a valid courseOffering id.");
+    }
+    const context = await resolveDraftContext(req, res);
+    if (!context) return;
+    const { student, term } = context;
+    const data = await loadDraftData(student, term);
+    const existing = data.storedSchedule;
+    if (existing && existing.status !== "draft") throw draftError(409, "Courses can only be added while the schedule is an open draft.");
+    const offeringId = req.body.courseOffering.toLowerCase();
+    const offering = data.availableOfferingRecords.find((record) => idOf(record) === offeringId);
+    if (!offering) throw draftError(400, "That offering is unpublished, unavailable, or ineligible for this student and term.");
+    const courseId = idOf(offering.course);
+    if (data.mandatoryCourses.some((course) => idOf(course._id) === courseId)) {
+      throw draftError(400, `${offering.course.code} is a mandatory course. Select it with the mandatory courses instead.`);
+    }
+    const { eligible, excluded } = computeEligibleCourses(data, term);
+    if (!eligible.some((entry) => idOf(entry.courseOffering) === offeringId)) {
+      throw draftError(409, excluded.find((entry) => idOf(entry._id) === courseId)?.message || `${offering.course.code} is not eligible this term.`);
+    }
+    const entries = (existing?.courses || []).map((entry) => ({ ...entry }));
+    if (entries.some((entry) => idOf(entry.course) === courseId)) throw draftError(409, `${offering.course.code} is already in the draft.`);
+    const inDraft = new Set(entries.map((entry) => idOf(entry.course)));
+    const missingMandatory = data.mandatoryCourses.filter((course) => !inDraft.has(idOf(course._id)));
+    if (missingMandatory.length) {
+      throw draftError(409, `Select the mandatory courses before adding other courses: ${missingMandatory.map((course) => course.code).join(", ")} ${missingMandatory.length > 1 ? "are" : "is"} missing.`);
+    }
+    const approvedExtraHours = new Map(data.creditPolicy.approvedExtraCourses.map(({ courseId: id, hours }) => [id, hours]));
+    entries.push({ course: offering.course._id, courseOffering: offering._id, slots: [], isMandatory: false, isExtraHours: approvedExtraHours.has(courseId), creditHoursSnapshot: offering.course.creditHours });
+    const creditProblem = creditLimitProblem(entries, data.creditPolicy, approvedExtraHours);
+    if (creditProblem) throw draftError(409, `${offering.course.code} cannot be added. ${creditProblem}`);
+    if (existing?.bachelorProject) {
+      const blocking = [];
+      const byOffering = { ...data, availableOfferingRecords: data.availableOfferingRecords };
+      applyBachelorProjectRules(entries, byOffering, approvedExtraHours, (code, message) => { if (code === "bachelorProjectLimit") blocking.push(message); });
+      if (blocking.length) throw draftError(409, blocking[0]);
+    }
+    const schedule = existing
+      ? await StudentSchedule.findOneAndUpdate({ _id: existing._id, version: existing.version, status: "draft" }, { $set: { courses: entries }, $inc: { version: 1 } }, { returnDocument: "after" })
+      : await StudentSchedule.create({ student: student._id, term: term._id, scheduleType: "advising", status: "draft", createdBy: req.user._id, courses: entries });
+    if (!schedule) throw draftError(409, "The draft changed while it was being updated. Reload it and try again.");
+    const mandatoryIds = data.mandatoryCourses.map((course) => idOf(course._id));
+    res.status(201).json({
+      message: `${offering.course.code} added to the draft.`,
+      schedule: { _id: schedule._id, status: schedule.status, version: schedule.version },
+      creditHours: creditHoursSummary(schedule.courses, data.creditPolicy, mandatoryIds),
+    });
+  } catch (error) { sendDraftError(error, res, next); }
+}
+
+// Req. 72: remove a non-mandatory course from the open draft, releasing any seats it held.
+export async function removeDraftCourse(req, res, next) {
+  try {
+    if (!isId(req.params.courseOffering)) throw draftError(400, "courseOffering must be a valid id.");
+    const context = await resolveDraftContext(req, res);
+    if (!context) return;
+    const { student, term } = context;
+    const data = await loadDraftData(student, term);
+    const existing = data.storedSchedule;
+    if (!existing) throw draftError(404, "No draft exists for this student and term.");
+    if (existing.status !== "draft") throw draftError(409, "Courses can only be removed while the schedule is an open draft.");
+    const target = existing.courses.find((entry) => idOf(entry.courseOffering) === req.params.courseOffering.toLowerCase());
+    if (!target) throw draftError(404, "That course is not in the draft.");
+    const mandatoryIds = data.mandatoryCourses.map((course) => idOf(course._id));
+    if (target.isMandatory || mandatoryIds.includes(idOf(target.course))) {
+      throw draftError(409, "This is a mandatory course. Change it through the mandatory courses, or request its removal with a reason.");
+    }
+    const remaining = existing.courses.filter((entry) => entry !== target);
+    const holdsSeats = existing.seatsReserved && target.slots?.length > 0;
+    const apply = (session) => StudentSchedule.findOneAndUpdate(
+      { _id: existing._id, version: existing.version, status: "draft" },
+      { $set: { courses: remaining }, $inc: { version: 1 } },
+      { returnDocument: "after", ...(session ? { session } : {}) },
+    );
+    const schedule = holdsSeats
+      ? await mongoose.connection.transaction(async (session) => {
+        await updateDraftReservations(existing, remaining, session);
+        const updated = await apply(session);
+        if (!updated) throw draftError(409, "The draft changed while it was being updated. Reload it and try again.");
+        return updated;
+      })
+      : await apply();
+    if (!schedule) throw draftError(409, "The draft changed while it was being updated. Reload it and try again.");
+    res.json({
+      message: "Course removed from the draft.",
+      schedule: { _id: schedule._id, status: schedule.status, version: schedule.version },
+      creditHours: creditHoursSummary(schedule.courses, data.creditPolicy, mandatoryIds),
+    });
   } catch (error) { sendDraftError(error, res, next); }
 }
 
@@ -772,7 +1255,8 @@ export async function saveAdvisingDraft(req, res, next) {
     if (!context) return;
     const { student, term } = context;
     const status = submitForReview ? "readyForStudentReview" : "draft";
-    const { schedule, created } = await mongoose.connection.transaction(async (session) => {
+    const isSingle = mongoose.connection.client?.topology?.description?.type === 'Single';
+    const executeSave = async (session) => {
       const data = await loadDraftData(student, term, session);
       const existing = data.storedSchedule;
       if (existing && existing.status !== "draft") {
@@ -785,20 +1269,66 @@ export async function saveAdvisingDraft(req, res, next) {
 
       await updateDraftReservations(existing, courses, session);
       const changes = { courses, status, seatsReserved: true };
+      const sessOpt = session ? { session } : {};
       if (!existing) {
         const [schedule] = await StudentSchedule.create([{
           student: student._id, term: term._id, scheduleType: "advising", createdBy: req.user._id, ...changes,
-        }], { session });
+        }], sessOpt);
+        if (submitForReview) {
+          await StudentWorkflowState.findOneAndUpdate(
+            { student: student._id, term: term._id },
+            {
+              $set: {
+                status: "readyForStudentReview",
+                studentType: student.studentType || "advising",
+                lastActivityAt: new Date(),
+                calculatedAt: new Date(),
+              },
+            },
+            { upsert: true, ...sessOpt },
+          );
+        }
+      if (submitForReview) {
+        await notifyStudents({ _id: student._id, studentType: "advising" }, {
+          type: "scheduleReadyForReview", title: "Advising schedule ready for review",
+          message: `Your advising schedule for ${term.code} is ready. Open My schedule to review it.`,
+          relatedModel: "StudentSchedule", relatedId: schedule._id,
+        }, session);
+      }
         return { schedule, created: true };
       }
       const schedule = await StudentSchedule.findOneAndUpdate(
         { _id: existing._id, version, status: "draft" },
         { $set: changes, $inc: { version: 1 } },
-        { session, returnDocument: "after", runValidators: true },
+        { returnDocument: "after", runValidators: true, ...sessOpt },
       );
       if (!schedule) throw draftError(409, "This draft changed while it was being saved. Reload it and try again.");
+      if (submitForReview) {
+        await StudentWorkflowState.findOneAndUpdate(
+          { student: student._id, term: term._id },
+          {
+            $set: {
+              status: "readyForStudentReview",
+              studentType: student.studentType || "advising",
+              lastActivityAt: new Date(),
+              calculatedAt: new Date(),
+            },
+          },
+          { upsert: true, ...sessOpt },
+        );
+      }
+      if (submitForReview) {
+        await notifyStudents({ _id: student._id, studentType: "advising" }, {
+          type: "scheduleReadyForReview", title: "Advising schedule ready for review",
+          message: `Your advising schedule for ${term.code} is ready. Open My schedule to review it.`,
+          relatedModel: "StudentSchedule", relatedId: schedule._id,
+        }, session);
+      }
       return { schedule, created: false };
-    });
+    };
+    const { schedule, created } = isSingle
+      ? await executeSave(null)
+      : await mongoose.connection.transaction(executeSave);
     const message = submitForReview ? "Schedule saved and sent for student review." : created ? "Draft schedule created." : "Draft schedule updated.";
     res.status(created ? 201 : 200).json({ message, schedule });
   } catch (error) { sendDraftError(error, res, next); }
@@ -816,7 +1346,7 @@ async function updateDraftReservations(existing, courses, session) {
     const result = await CourseOffering.updateOne(
       { _id: offeringId, ...(newRef ? { isPublished: true } : {}), "slots._id": slotId },
       { $inc: { __v: 1, ...(delta ? { "slots.$.assignedStudentCount": delta } : {}) } },
-      { session },
+      session ? { session } : {},
     );
     // A retained slot still gets a write so a concurrent change to the
     // offering invalidates the snapshot used for timetable/capacity validation.
@@ -824,13 +1354,14 @@ async function updateDraftReservations(existing, courses, session) {
       throw draftError(409, "A selected slot changed while saving. Reload the draft and try again.");
     }
     if (delta < 0 && result.matchedCount) {
-      const invalid = await CourseOffering.exists({ _id: offeringId, slots: { $elemMatch: { _id: slotId, assignedStudentCount: { $lt: 0 } } } }).session(session);
+      const existsQuery = CourseOffering.exists({ _id: offeringId, slots: { $elemMatch: { _id: slotId, assignedStudentCount: { $lt: 0 } } } });
+      const invalid = await (session ? existsQuery.session(session) : existsQuery);
       if (invalid) throw draftError(409, "A previous slot has an inconsistent seat count. Contact an administrator.");
     }
   }
 }
 
-function collectSlotRefs(courses) {
+export function collectSlotRefs(courses) {
   const refs = new Map();
   for (const course of courses || []) {
     for (const slot of course.slots || []) {
@@ -846,7 +1377,7 @@ function collectSlotRefs(courses) {
   return refs;
 }
 
-async function changeSlotCount({ offeringId, slotId, delta, capacity = Number.MAX_SAFE_INTEGER }) {
+export async function changeSlotCount({ offeringId, slotId, delta, capacity = Number.MAX_SAFE_INTEGER }, session = null) {
   if (!delta) return true;
   const bounds = delta > 0
     ? { $gte: 0, $lte: capacity - delta }
@@ -854,6 +1385,7 @@ async function changeSlotCount({ offeringId, slotId, delta, capacity = Number.MA
   const result = await CourseOffering.updateOne(
     { _id: offeringId, slots: { $elemMatch: { _id: slotId, assignedStudentCount: bounds } } },
     { $inc: { "slots.$.assignedStudentCount": delta, __v: 1 } },
+    { session },
   );
   return result.modifiedCount === 1;
 }
@@ -1202,10 +1734,18 @@ function sendSwapFailure(error, res, next) {
   return error.status ? res.status(error.status).json({ message: error.message }) : next(error);
 }
 
-function assertSwapDeadline(term) {
-  if (!term?.wholeScheduleSwapDeadline || Date.now() > new Date(term.wholeScheduleSwapDeadline).getTime()) {
+function swapDeadlinePassed(term, now) {
+  return !term?.wholeScheduleSwapDeadline || term.wholeScheduleSwapDeadline <= now;
+}
+
+function assertSwapDeadline(term, now = new Date()) {
+  if (swapDeadlinePassed(term, now)) {
     throw swapFailure(409, "The whole-schedule swap deadline has passed.");
   }
+}
+
+function swapRequestExpired(request, term, now) {
+  return !request.expiresAt || request.expiresAt <= now || swapDeadlinePassed(term, now);
 }
 
 async function ownNormalSwapContext(req) {
@@ -1221,13 +1761,56 @@ async function ownNormalSwapContext(req) {
   return { student, term, schedule, resolved };
 }
 
-async function ownSwapHistoryContext(req) {
+async function ownSwapHistoryStudent(req) {
   if (req.user.role !== "normalStudent") throw swapFailure(403, "Only normal students can view swap requests.");
   const student = await StudentProfile.findOne({ user: req.user._id }).lean();
   if (!student) throw swapFailure(404, "No student record is linked to this account.");
-  const { term, error } = await resolveTerm(req.query.termId);
-  if (error) throw swapFailure(error.status, error.message);
-  return { student, term };
+  return student;
+}
+
+function processedSwapGroup(schedule, termId) {
+  const template = schedule?.template;
+  if (schedule?.scheduleType !== "normal" || schedule.status !== "processed" ||
+      !template?.isPublished || idOf(template.term) !== idOf(termId)) return null;
+  return template.studyGroup || null;
+}
+
+function canSwapStoredCourses(resolved, expectedCodes) {
+  return !resolved.error && resolved.entries.length > 0 &&
+    resolved.entries.every(entry => entry.slots.length > 0) &&
+    matchingCourseCodes(resolved.entries.map(entry => entry.courseCode), expectedCodes);
+}
+
+async function notifyOpenSwapStudents(request, requester, term, session) {
+  const requesterSchedule = await StudentSchedule.findById(request.currentSchedule)
+    .session(session).populate("template", "studyGroup term isPublished").lean();
+  if (processedSwapGroup(requesterSchedule, term._id) !== request.currentGroup) return;
+
+  const templates = await ScheduleTemplate.find({
+    term: term._id, major: requester.major, semester: requester.currentSemester, isPublished: true,
+    studyGroup: { $in: request.desiredGroups, $ne: request.currentGroup },
+  }).select("_id").session(session).lean();
+  const schedules = await StudentSchedule.find({
+    student: { $ne: requester._id }, term: term._id, scheduleType: "normal", status: "processed",
+    template: { $in: templates.map(template => template._id) },
+  }).session(session).lean();
+  if (!schedules.length) return;
+
+  const resolved = await resolveStoredSchedules([requesterSchedule, ...schedules], session);
+  if (!canSwapStoredCourses(resolved.get(idOf(requesterSchedule)), request.courseCodesSnapshot)) return;
+  const studentIds = schedules
+    .filter(schedule => canSwapStoredCourses(resolved.get(idOf(schedule)), request.courseCodesSnapshot))
+    .map(schedule => schedule.student);
+  if (!studentIds.length) return;
+
+  await notifyStudents({
+    _id: { $in: studentIds }, studentType: "normal", major: requester.major, currentSemester: requester.currentSemester,
+  }, {
+    type: "scheduleSwapOpened",
+    title: "Eligible schedule swap available",
+    message: `A whole-schedule swap for ${term.code} is available with Group ${request.currentGroup}. Open Eligible swap groups to view it.`,
+    relatedModel: "WholeScheduleSwapRequest", relatedId: request._id,
+  }, session);
 }
 
 export async function createSwapRequest(req, res, next) {
@@ -1244,18 +1827,29 @@ export async function createSwapRequest(req, res, next) {
     if (selected.some(group => !candidates.some(candidate => candidate.studyGroup === group))) {
       throw swapFailure(409, "A selected group is no longer eligible. Refresh the available groups.");
     }
-    await WholeScheduleSwapRequest.updateMany({ student: student._id, term: term._id, status: "open", expiresAt: { $lte: new Date() } }, { $set: { status: "expired" } });
-    if (await WholeScheduleSwapRequest.exists({ student: student._id, term: term._id, status: "open" })) {
-      throw swapFailure(409, "You already have an open swap request. Withdraw it before creating another.");
+    const existing = await WholeScheduleSwapRequest.findOne({ student: student._id, status: "open" })
+      .populate("term", "wholeScheduleSwapDeadline").lean();
+    const now = new Date();
+    assertSwapDeadline(term, now);
+    if (existing) {
+      if (!swapRequestExpired(existing, existing.term, now)) {
+        throw swapFailure(409, "You already have an open swap request. Withdraw it before creating another.");
+      }
+      await WholeScheduleSwapRequest.updateOne({ _id: existing._id, status: "open" }, { $set: { status: "expired" } });
     }
-    const request = await WholeScheduleSwapRequest.create({
-      student: student._id,
-      term: term._id,
-      currentSchedule: schedule._id,
-      currentGroup: schedule.template?.studyGroup || student.studyGroup,
-      desiredGroups: selected,
-      courseCodesSnapshot: currentCourseCodes,
-      expiresAt: term.wholeScheduleSwapDeadline,
+    const request = await mongoose.connection.transaction(async (session) => {
+      assertSwapDeadline(term);
+      const [opened] = await WholeScheduleSwapRequest.create([{
+        student: student._id,
+        term: term._id,
+        currentSchedule: schedule._id,
+        currentGroup: schedule.template?.studyGroup || student.studyGroup,
+        desiredGroups: selected,
+        courseCodesSnapshot: currentCourseCodes,
+        expiresAt: term.wholeScheduleSwapDeadline,
+      }], { session });
+      await notifyOpenSwapStudents(opened, student, term, session);
+      return opened;
     });
     res.status(201).json({ request: { _id: request._id, status: request.status, currentGroup: request.currentGroup, desiredGroups: request.desiredGroups }, message: "Swap request submitted. A student in one of your selected groups can complete the exchange." });
   } catch (error) {
@@ -1266,38 +1860,93 @@ export async function createSwapRequest(req, res, next) {
 
 export async function getMySwapRequests(req, res, next) {
   try {
-    const { student, term } = await ownSwapHistoryContext(req);
-    const requests = await WholeScheduleSwapRequest.find({ student: student._id, term: term._id }).sort({ createdAt: -1 }).lean();
-    res.json({ requests: requests.map(request => ({
-      _id: request._id,
-      currentGroup: request.currentGroup,
-      desiredGroups: request.desiredGroups,
-      status: request.status === "open" && request.expiresAt < new Date() ? "expired" : request.status,
-      createdAt: request.createdAt,
-      completedAt: request.completedAt,
-    })) });
+    const student = await ownSwapHistoryStudent(req);
+    const filter = { $or: [{ student: student._id }, { completedWith: student._id, status: "completed" }] };
+    if (req.query.termId !== undefined) {
+      const { term, error } = await resolveTerm(req.query.termId);
+      if (error) throw swapFailure(error.status, error.message);
+      filter.term = term._id;
+    }
+    const requests = await WholeScheduleSwapRequest.find(filter)
+      .populate("term", "code wholeScheduleSwapDeadline").sort({ createdAt: -1 }).lean();
+    const now = new Date();
+    res.json({ requests: requests.map(request => {
+      const isRequester = idOf(request.student) === idOf(student._id);
+      const completed = request.status === "completed";
+      const accepterGroup = request.completedFromGroup ?? (request.desiredGroups.length === 1 ? request.desiredGroups[0] : null);
+      return {
+        _id: request._id,
+        term: request.term ? { _id: request.term._id, code: request.term.code } : null,
+        currentGroup: request.currentGroup,
+        desiredGroups: request.desiredGroups,
+        role: isRequester ? "requester" : "accepter",
+        fromGroup: isRequester ? request.currentGroup : accepterGroup,
+        toGroup: completed ? (isRequester ? accepterGroup : request.currentGroup) : null,
+        status: request.status === "open" && swapRequestExpired(request, request.term, now) ? "expired" : request.status,
+        createdAt: request.createdAt,
+        completedAt: request.completedAt,
+        withdrawnAt: request.withdrawnAt,
+      };
+    }) });
   } catch (error) { return sendSwapFailure(error, res, next); }
 }
 
 export async function getOpenSwapRequests(req, res, next) {
   try {
     const { student, term, schedule, resolved } = await ownNormalSwapContext(req);
-    const currentGroup = schedule.template?.studyGroup || student.studyGroup;
-    const requests = await WholeScheduleSwapRequest.find({
-      term: term._id, status: "open", expiresAt: { $gt: new Date() },
-      student: { $ne: student._id }, desiredGroups: currentGroup,
-    }).lean();
+    const now = new Date();
+    const currentGroup = processedSwapGroup(schedule, term._id);
+    if (!currentGroup || swapDeadlinePassed(term, now)) {
+      return res.json({ requests: [] });
+    }
+
     const courseCodes = resolved.entries.map(entry => entry.courseCode);
+    const requests = await WholeScheduleSwapRequest.find({
+      term: term._id,
+      status: "open",
+      expiresAt: { $gt: now },
+      student: { $ne: student._id },
+      currentGroup: { $ne: currentGroup },
+      desiredGroups: currentGroup,
+    }).select("student currentSchedule currentGroup desiredGroups courseCodesSnapshot").sort({ createdAt: -1 }).lean();
+    const candidates = requests.filter(request => matchingCourseCodes(request.courseCodesSnapshot, courseCodes));
+    if (!candidates.length) return res.json({ requests: [] });
+
+    const [requesters, schedules] = await Promise.all([
+      StudentProfile.find({
+        _id: { $in: candidates.map(request => request.student) },
+        studentType: "normal",
+        major: student.major,
+        currentSemester: student.currentSemester,
+      }).select("_id").lean(),
+      StudentSchedule.find({
+        _id: { $in: candidates.map(request => request.currentSchedule) },
+        term: term._id,
+        scheduleType: "normal",
+        status: "processed",
+      }).populate("template", "studyGroup term isPublished").lean(),
+    ]);
+    const requesterIds = new Set(requesters.map(idOf));
+    const schedulesById = new Map(schedules.map(schedule => [idOf(schedule), schedule]));
     const available = [];
-    for (const request of requests) {
-      if (!matchingCourseCodes(request.courseCodesSnapshot, courseCodes)) continue;
-      const requesterSchedule = await StudentSchedule.findById(request.currentSchedule).populate("template", "studyGroup");
-      if (!requesterSchedule || requesterSchedule.status !== "processed" || idOf(requesterSchedule.student) !== idOf(request.student) ||
-          requesterSchedule.template?.studyGroup !== request.currentGroup) continue;
+
+    for (const request of candidates) {
+      const requesterId = idOf(request.student);
+      const requesterSchedule = schedulesById.get(idOf(request.currentSchedule));
+      if (!requesterIds.has(requesterId) || idOf(requesterSchedule?.student) !== requesterId ||
+          processedSwapGroup(requesterSchedule, term._id) !== request.currentGroup) continue;
+
       const requesterResolved = await resolveStoredSchedule(requesterSchedule);
       if (requesterResolved.error || !matchingCourseCodes(requesterResolved.entries.map(entry => entry.courseCode), courseCodes)) continue;
       const calendar = buildWeeklyCalendar(requesterResolved.entries);
-      available.push({ _id: request._id, currentGroup: request.currentGroup, desiredGroups: request.desiredGroups, courseCodes: request.courseCodesSnapshot, week: calendar.week, daysOff: calendar.daysOff });
+      available.push({
+        _id: request._id,
+        currentGroup: request.currentGroup,
+        desiredGroups: request.desiredGroups,
+        courseCodes: request.courseCodesSnapshot,
+        week: calendar.week,
+        daysOff: calendar.daysOff,
+      });
     }
     res.json({ requests: available });
   } catch (error) { return sendSwapFailure(error, res, next); }
@@ -1305,35 +1954,61 @@ export async function getOpenSwapRequests(req, res, next) {
 
 export async function withdrawSwapRequest(req, res, next) {
   try {
-    const { student, term } = await ownSwapHistoryContext(req);
+    const student = await ownSwapHistoryStudent(req);
     if (!isId(req.params.id)) throw swapFailure(400, "Invalid swap request ID.");
-    const request = await WholeScheduleSwapRequest.findOneAndUpdate(
-      { _id: req.params.id, student: student._id, term: term._id, status: "open" },
-      { $set: { status: "withdrawn", withdrawnAt: new Date() } },
-      { new: true },
-    );
+    const ownedOpenRequest = { _id: req.params.id, student: student._id, status: "open" };
+    if (req.query.termId !== undefined) {
+      const { term, error } = await resolveTerm(req.query.termId);
+      if (error) throw swapFailure(error.status, error.message);
+      ownedOpenRequest.term = term._id;
+    }
+    const request = await WholeScheduleSwapRequest.findOne(ownedOpenRequest)
+      .populate("term", "wholeScheduleSwapDeadline").lean();
     if (!request) throw swapFailure(409, "Only your open swap request can be withdrawn.");
+    const now = new Date();
+    if (swapRequestExpired(request, request.term, now)) throw swapFailure(409, "This swap request has expired.");
+
+    const withdrawn = await WholeScheduleSwapRequest.updateOne(
+      { ...ownedOpenRequest, term: request.term._id, expiresAt: { $gt: now } },
+      { $set: { status: "withdrawn", withdrawnAt: now } },
+    );
+    if (withdrawn.modifiedCount !== 1) throw swapFailure(409, "Only your open swap request can be withdrawn.");
     res.json({ message: "Swap request withdrawn." });
   } catch (error) { return sendSwapFailure(error, res, next); }
 }
 
+function coursesWithSwappedSlots(ownCourses, otherCourses) {
+  const otherCoursesById = new Map(otherCourses.map(course => [idOf(course.course), course]));
+  return ownCourses.map(course => {
+    const other = otherCoursesById.get(idOf(course.course));
+    if (!other) throw swapFailure(409, "The registered course sets no longer match.");
+    return { ...course, courseOffering: other.courseOffering, slots: other.slots };
+  });
+}
+
 export async function completeSwapRequest(req, res, next) {
   if (!isId(req.params.id)) return res.status(400).json({ message: "Invalid swap request ID." });
+  if (req.user.role !== "normalStudent") return res.status(403).json({ message: "Only normal students can complete swaps." });
   const session = await mongoose.startSession();
   try {
     let result;
     await session.withTransaction(async () => {
-      if (req.user.role !== "normalStudent") throw swapFailure(403, "Only normal students can complete swaps.");
       const viewer = await StudentProfile.findOne({ user: req.user._id }).session(session).lean();
       const request = await WholeScheduleSwapRequest.findById(req.params.id).session(session).lean();
-      if (!viewer || !request || request.status !== "open" || idOf(request.student) === idOf(viewer._id)) throw swapFailure(409, "This swap request is no longer available.");
+      if (viewer?.studentType !== "normal" || !request || request.status !== "open" || idOf(request.student) === idOf(viewer._id)) {
+        throw swapFailure(409, "This swap request is no longer available.");
+      }
       const term = await AcademicTerm.findById(request.term).session(session).lean();
-      assertSwapDeadline(term);
-      if (new Date(request.expiresAt) < new Date()) throw swapFailure(409, "This swap request has expired.");
+      const startedAt = new Date();
+      assertSwapDeadline(term, startedAt);
+      if (swapRequestExpired(request, term, startedAt)) throw swapFailure(409, "This swap request has expired.");
       const requester = await StudentProfile.findById(request.student).session(session).lean();
       const viewerSchedule = await StudentSchedule.findOne({ student: viewer._id, term: term._id, scheduleType: "normal", status: "processed" }).session(session).lean();
       const requesterSchedule = await StudentSchedule.findOne({ _id: request.currentSchedule, student: request.student, term: term._id, scheduleType: "normal", status: "processed" }).session(session).lean();
-      if (!requester || !viewerSchedule || !requesterSchedule || viewer.major !== requester.major || Number(viewer.currentSemester) !== Number(requester.currentSemester)) throw swapFailure(409, "The students or processed schedules are no longer eligible.");
+      if (requester?.studentType !== "normal" || !viewerSchedule || !requesterSchedule ||
+          viewer.major !== requester.major || Number(viewer.currentSemester) !== Number(requester.currentSemester)) {
+        throw swapFailure(409, "The students or processed schedules are no longer eligible.");
+      }
       const viewerTemplate = await ScheduleTemplate.findById(viewerSchedule.template).session(session).lean();
       const requesterTemplate = await ScheduleTemplate.findById(requesterSchedule.template).session(session).lean();
       if (!viewerTemplate?.isPublished || !requesterTemplate?.isPublished ||
@@ -1343,31 +2018,178 @@ export async function completeSwapRequest(req, res, next) {
           idOf(viewerTemplate.term) !== idOf(term._id) || idOf(requesterTemplate.term) !== idOf(term._id)) {
         throw swapFailure(409, "The requested groups have changed. Refresh the swap page.");
       }
-      const allIds = [...new Set([...viewerSchedule.courses, ...requesterSchedule.courses].map(entry => idOf(entry.course)))];
-      const courses = await Course.find({ _id: { $in: allIds } }, { code: 1 }).session(session).lean();
-      const codeById = new Map(courses.map(course => [idOf(course._id), course.code]));
-      const viewerCodes = viewerSchedule.courses.map(entry => codeById.get(idOf(entry.course)));
-      const requesterCodes = requesterSchedule.courses.map(entry => codeById.get(idOf(entry.course)));
-      if (viewerCodes.some(code => !code) || requesterCodes.some(code => !code) ||
-          !matchingCourseCodes(viewerCodes, requesterCodes) || !matchingCourseCodes(requesterCodes, request.courseCodesSnapshot)) {
+      const viewerResolved = await resolveStoredSchedule(viewerSchedule, session);
+      const requesterResolved = await resolveStoredSchedule(requesterSchedule, session);
+      if (viewerResolved.error || requesterResolved.error || !viewerResolved.entries.length ||
+          [...viewerResolved.entries, ...requesterResolved.entries].some(entry => !entry.slots.length)) {
+        throw swapFailure(409, "The processed schedules no longer have valid slot assignments.");
+      }
+      const viewerCodes = viewerResolved.entries.map(entry => entry.courseCode);
+      const requesterCodes = requesterResolved.entries.map(entry => entry.courseCode);
+      if (!matchingCourseCodes(viewerCodes, requesterCodes) || !matchingCourseCodes(requesterCodes, request.courseCodesSnapshot)) {
         throw swapFailure(409, "The registered course sets no longer match.");
       }
+      for (const [own, other, incomingTemplate] of [
+        [viewerSchedule, requesterSchedule, requesterTemplate],
+        [requesterSchedule, viewerSchedule, viewerTemplate],
+      ]) {
+        const courses = coursesWithSwappedSlots(own.courses, other.courses);
+        const updated = await StudentSchedule.updateOne(
+          { _id: own._id, status: "processed", version: own.version },
+          { $set: { template: incomingTemplate._id, courses }, $inc: { version: 1 } },
+          { session },
+        );
+        if (updated.modifiedCount !== 1) throw swapFailure(409, "A schedule changed during the swap. Please refresh and try again.");
+        if (term.isActive) {
+          await StudentProfile.updateOne({ _id: own.student }, { $set: { studyGroup: incomingTemplate.studyGroup } }, { session });
+        }
+      }
       const now = new Date();
-      const viewerUpdate = await StudentSchedule.updateOne({ _id: viewerSchedule._id, status: "processed", version: viewerSchedule.version },
-        { $set: { template: requesterTemplate._id, courses: requesterSchedule.courses }, $inc: { version: 1 } }, { session });
-      const requesterUpdate = await StudentSchedule.updateOne({ _id: requesterSchedule._id, status: "processed", version: requesterSchedule.version },
-        { $set: { template: viewerTemplate._id, courses: viewerSchedule.courses }, $inc: { version: 1 } }, { session });
-      if (viewerUpdate.modifiedCount !== 1 || requesterUpdate.modifiedCount !== 1) throw swapFailure(409, "A schedule changed during the swap. Please refresh and try again.");
-      await StudentProfile.updateOne({ _id: viewer._id }, { $set: { studyGroup: requesterTemplate.studyGroup } }, { session });
-      await StudentProfile.updateOne({ _id: requester._id }, { $set: { studyGroup: viewerTemplate.studyGroup } }, { session });
-      const completed = await WholeScheduleSwapRequest.updateOne({ _id: request._id, status: "open" },
-        { $set: { status: "completed", completedWith: viewer._id, completedAt: now } }, { session });
+      assertSwapDeadline(term, now);
+      if (swapRequestExpired(request, term, now)) throw swapFailure(409, "This swap request has expired.");
+      const completed = await WholeScheduleSwapRequest.updateOne(
+        { _id: request._id, status: "open", expiresAt: { $gt: now } },
+        { $set: { status: "completed", completedWith: viewer._id, completedFromGroup: viewerTemplate.studyGroup, completedAt: now } },
+        { session },
+      );
       if (completed.modifiedCount !== 1) throw swapFailure(409, "Another student completed this request first.");
       await WholeScheduleSwapRequest.updateMany({ _id: { $ne: request._id }, term: term._id, status: "open", student: { $in: [viewer._id, requester._id] } },
         { $set: { status: "expired" } }, { session });
+      await notifyStudents({ _id: { $in: [viewer._id, requester._id] }, studentType: "normal" }, {
+        type: "scheduleSwapCompleted",
+        title: "Schedule swap completed",
+        message: `Your whole-schedule swap for ${term.code} was completed. Open My schedule to see your updated timetable.`,
+        relatedModel: "WholeScheduleSwapRequest", relatedId: request._id,
+      }, session);
       result = { message: `Swap completed. You are now in Group ${requesterTemplate.studyGroup}.`, studyGroup: requesterTemplate.studyGroup };
     });
     res.json(result);
   } catch (error) { return sendSwapFailure(error, res, next); }
   finally { await session.endSession(); }
+}
+
+// Req. 59: advising reason, credit-hour allowance, schedule status and bachelor-project eligibility.
+const ENGLISH_COURSE_CODE = /^(AS|SM|CPS|RPW)\d/;
+const BACHELOR_PROJECT_SEMESTERS = 6;
+
+function bachelorProjectEligibility(courses, passedIds, failedIds) {
+  const unpassed = (course) => !passedIds.has(idOf(course._id));
+  const english = courses.filter((course) => ENGLISH_COURSE_CODE.test(course.code));
+  const missingEnglish = english.filter(unpassed);
+  const missingCore = courses
+    .filter((course) => !ENGLISH_COURSE_CODE.test(course.code) && course.recommendedSemester >= 1 && course.recommendedSemester <= BACHELOR_PROJECT_SEMESTERS)
+    .filter(unpassed);
+  const onlyFailed = missingCore.length > 0 && missingCore.length <= 2 && missingCore.every((course) => failedIds.has(idOf(course._id)));
+  const reasons = [];
+  if (missingEnglish.length) reasons.push(`English courses not completed: ${missingEnglish.map((course) => course.code).join(", ")}.`);
+  if (missingCore.length && !onlyFailed) {
+    reasons.push(`Semester 1-${BACHELOR_PROJECT_SEMESTERS} courses not completed: ${missingCore.map((course) => course.code).join(", ")}.`);
+  }
+  const brief = (course) => ({ _id: course._id, code: course.code, name: course.name, recommendedSemester: course.recommendedSemester ?? null });
+  return {
+    eligible: reasons.length === 0,
+    reasons,
+    outstandingEnglishCourses: missingEnglish.map(brief),
+    outstandingCourses: missingCore.map(brief),
+    eligibleWithFailedCourses: reasons.length === 0 && missingCore.length > 0,
+  };
+}
+
+export async function getAdvisingOverview(req, res, next) {
+  try {
+    const student = await resolveStudent(req.params.studentId);
+    if (!student) return res.status(404).json({ message: "Student not found." });
+    if (student.studentType !== "advising") return res.status(400).json({ message: "Advising overview is only available for advising students." });
+    if (req.user.role === "advisor" && idOf(student.assignedAdvisor) !== idOf(req.user._id)) {
+      return res.status(403).json({ message: "Advisors may view only their assigned advising students." });
+    }
+    const termResult = await resolveTerm(req.query.termId);
+    if (termResult.error) return res.status(termResult.error.status).json({ message: termResult.error.message });
+    const { term } = termResult;
+
+    const [workflows, schedule, extraHoursRequests, bachelor] = await Promise.all([
+      loadStudentWorkflows([student], term._id),
+      StudentSchedule.findOne({ student: student._id, term: term._id, scheduleType: "advising" }).select("status courses.creditHoursSnapshot updatedAt bachelorProject").lean(),
+      ExtraHoursRequest.find({ student: student._id, term: term._id, decisionStatus: "approved", settlementStatus: { $in: ["paid", "deferred"] } })
+        .populate("courses.course", "code creditHours").lean(),
+      loadBachelorEligibility(student),
+    ]);
+    const workflow = workflows.get(String(student._id));
+    const policy = calculateDraftCreditPolicy(student, extraHoursRequests);
+    const selectedHours = (schedule?.courses || []).reduce((total, course) => total + Number(course.creditHoursSnapshot || 0), 0);
+
+    const standard = policy.standardAllowance;
+    res.json({
+      term: termView(term),
+      student: studentView(student),
+      advisingReason: student.advisingReason,
+      academicStanding: student.academicStanding,
+      scheduleStatus: workflow?.status || "notStarted",
+      blockingStep: workflow?.blockingStep ?? null,
+      creditHours: {
+        semester: policy.semester,
+        policyConfigured: policy.policyConfigured,
+        standardAllowance: standard,
+        probation: policy.probation,
+        reductionForProbation: policy.probation && standard != null ? standard - policy.baseAllowance : 0,
+        allowedHours: policy.baseAllowance,
+        approvedExtraHours: policy.approvedExtraHours,
+        maximumCreditHours: policy.maximumCreditHours,
+        selectedHours,
+        remainingHours: policy.maximumCreditHours - selectedHours,
+        extraHoursAllowed: !policy.probation,
+      },
+      bachelorProject: { ...bachelor, selection: schedule?.bachelorProject || null },
+    });
+  } catch (error) { next(error); }
+}
+
+async function loadBachelorEligibility(student) {
+  const [attempts, catalogue] = await Promise.all([
+    CourseAttempt.find({ student: student._id }).select("course result attendance").lean(),
+    Course.find({ isActive: true }).select("code name recommendedSemester facultyMajors courseType").lean(),
+  ]);
+  const passedIds = new Set(attempts.filter((attempt) => attempt.result === "passed").map((attempt) => idOf(attempt.course)));
+  const failedIds = new Set(attempts.filter((attempt) => attempt.result === "failed").map((attempt) => idOf(attempt.course)));
+  const relevant = catalogue.filter((course) => !course.facultyMajors?.length || course.facultyMajors.some((major) => majorMatches(major, student.major)));
+  return bachelorProjectEligibility(relevant, passedIds, failedIds);
+}
+
+// Req. 60: add the bachelor project (Winter or Spring) to an eligible student's open draft, or remove it.
+export async function setBachelorProject(req, res, next) {
+  try {
+    const season = typeof req.body?.season === "string" ? req.body.season.trim().toLowerCase() : "";
+    if (!["winter", "spring"].includes(season)) throw draftError(400, "season must be \"winter\" or \"spring\".");
+    if (Object.keys(req.body).some((key) => key !== "season")) throw draftError(400, "Send only season in the bachelor project request.");
+    const context = await resolveDraftContext(req, res);
+    if (!context) return;
+    const { student, term } = context;
+    const eligibility = await loadBachelorEligibility(student);
+    if (!eligibility.eligible) {
+      throw draftError(409, "This student is not eligible for the bachelor project.", eligibility.reasons.map((message) => ({ code: "bachelorProjectIneligible", message, blocksSave: true })));
+    }
+    const project = { season, addedBy: req.user._id, addedAt: new Date() };
+    const existing = await StudentSchedule.findOne({ student: student._id, term: term._id, scheduleType: "advising" }).select("status").lean();
+    if (existing && existing.status !== "draft") throw draftError(409, "The bachelor project can only be changed while the schedule is an open draft.");
+    const schedule = existing
+      ? await StudentSchedule.findOneAndUpdate({ _id: existing._id, status: "draft" }, { $set: { bachelorProject: project }, $inc: { version: 1 } }, { returnDocument: "after" })
+      : await StudentSchedule.create({ student: student._id, term: term._id, scheduleType: "advising", status: "draft", createdBy: req.user._id, bachelorProject: project });
+    if (!schedule) throw draftError(409, "The draft changed while it was being updated. Reload it and try again.");
+    res.status(existing ? 200 : 201).json({ message: `Bachelor project added for ${season}.`, schedule: { _id: schedule._id, status: schedule.status, version: schedule.version, bachelorProject: schedule.bachelorProject } });
+  } catch (error) { sendDraftError(error, res, next); }
+}
+
+export async function removeBachelorProject(req, res, next) {
+  try {
+    const context = await resolveDraftContext(req, res);
+    if (!context) return;
+    const { student, term } = context;
+    const schedule = await StudentSchedule.findOneAndUpdate(
+      { student: student._id, term: term._id, scheduleType: "advising", status: "draft", bachelorProject: { $ne: null } },
+      { $set: { bachelorProject: null }, $inc: { version: 1 } },
+      { returnDocument: "after" },
+    );
+    if (!schedule) throw draftError(404, "No bachelor project is set on an open draft for this student and term.");
+    res.json({ message: "Bachelor project removed.", schedule: { _id: schedule._id, status: schedule.status, version: schedule.version, bachelorProject: null } });
+  } catch (error) { sendDraftError(error, res, next); }
 }

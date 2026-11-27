@@ -124,7 +124,6 @@ export async function duplicateOfferings(req, res, next) {
         try {
           const copy = await CourseOffering.create({
             course: offering.course._id,
-            academicYear: target.academicYear,
             term: target._id,
             isPublished: false,
             instructors: offering.instructors.map(({ fullName, email }) => ({ fullName, email })),
@@ -133,7 +132,7 @@ export async function duplicateOfferings(req, res, next) {
               componentType, groupNumber, day, startMinute, endMinute, room, capacity,
             })),
           });
-          created.push({ ...copy.toJSON(), courseCode });
+          created.push({ ...copy.toJSON(), academicYear: target.academicYear, courseCode });
           continue;
         } catch (error) {
           if (error.code !== 11000) throw error;
@@ -164,8 +163,8 @@ export async function duplicateOfferings(req, res, next) {
   } catch (error) { next(error); }
 }
 
-async function findOfferingSlotConflict(candidateOffering, candidateSlot, skipSlotId) {
-  const termOfferings = await CourseOffering.find({ term: candidateOffering.term });
+async function findOfferingSlotConflict(candidateOffering, candidateSlot, skipSlotId, session = null) {
+  const termOfferings = await CourseOffering.find({ term: candidateOffering.term }).session(session);
   for (const otherOffering of termOfferings) {
     for (const otherSlot of otherOffering.slots) {
       if (skipSlotId && String(otherSlot._id) === String(skipSlotId)) continue;
@@ -200,24 +199,18 @@ async function hasOfferingReferences(offering) {
   return { template: Boolean(template), schedule: Boolean(schedule), slotChange: Boolean(slotChange), graduationPlan: Boolean(graduationPlan) };
 }
 
-async function hasSlotReferences(offeringId, slotId) {
-  const [template, schedule, slotChange] = await Promise.all([
-    ScheduleTemplate.exists({
-      courses: { $elemMatch: {
-        courseOffering: offeringId,
-        slots: { $elemMatch: { slotGroupId: slotId } },
-      } },
-    }),
-    StudentSchedule.exists({
-      courses: { $elemMatch: {
-        slots: { $elemMatch: { courseOffering: offeringId, slotGroupId: slotId } },
-      } },
-    }),
+async function hasSlotReferences(offeringId, slotId, session = null) {
+  const queries = [
+    ScheduleTemplate.exists({ "courses.slots.slotGroupId": slotId }),
+    StudentSchedule.exists({ "courses.slots.slotGroupId": slotId }),
     SlotChangeRequest.exists({ status: { $in: ['pending', 'approved'] }, $or: [
       { currentOffering: offeringId, currentSlotGroupId: slotId },
       { replacementOffering: offeringId, replacementSlotGroupId: slotId },
     ] }),
-  ]);
+  ];
+  const [template, schedule, slotChange] = session
+    ? [await queries[0].session(session), await queries[1].session(session), await queries[2].session(session)]
+    : await Promise.all(queries);
   return { template: Boolean(template), schedule: Boolean(schedule), slotChange: Boolean(slotChange) };
 }
 
@@ -456,6 +449,9 @@ export const createOffering = async (req, res) => {
     if (!existingTerm) {
       return res.status(404).json({ message: 'Academic term not found' });
     }
+    if (academicYear !== undefined && academicYear.trim() !== existingTerm.academicYear) {
+      return res.status(400).json({ message: 'Academic year is inherited from the selected term. Change it in Academic terms.' });
+    }
 
     // --- Prevent duplicate offering (same course + same term) ---
     const duplicate = await CourseOffering.findOne({ course, term: existingTerm._id });
@@ -479,7 +475,6 @@ export const createOffering = async (req, res) => {
 
     const newOffering = new CourseOffering({
       course,
-      academicYear: academicYear?.trim() || existingTerm.academicYear || '2026/2027',
       term: existingTerm._id,
       instructors: instructors || [],
       eligibleGroups: eligibleGroups || [],
@@ -606,13 +601,19 @@ export const updateOffering = async (req, res) => {
       return res.status(400).json({ message: 'Change publication state through the dedicated publish endpoint.' });
     }
     if (academicYear !== undefined && (typeof academicYear !== 'string' || !academicYear.trim())) return res.status(400).json({ message: 'academicYear must be a non-empty string.' });
+    if (academicYear !== undefined) {
+      const term = await AcademicTerm.findById(offering.term).select('academicYear');
+      if (!term) return res.status(409).json({ message: 'The offering academic term no longer exists.' });
+      if (academicYear.trim() !== term.academicYear) {
+        return res.status(400).json({ message: 'Academic year is inherited from the selected term. Change it in Academic terms.' });
+      }
+    }
     if (instructors !== undefined && !Array.isArray(instructors)) return res.status(400).json({ message: 'instructors must be an array.' });
     if (eligibleGroups !== undefined && !Array.isArray(eligibleGroups)) return res.status(400).json({ message: 'eligibleGroups must be an array.' });
 
     // Update top-level offering fields (not slots — slots have their own endpoint)
     if (instructors !== undefined) offering.instructors = instructors;
     if (eligibleGroups !== undefined) offering.eligibleGroups = eligibleGroups;
-    if (academicYear !== undefined) offering.academicYear = academicYear.trim();
 
     for (const slot of offering.slots) {
       const conflict = await findOfferingSlotConflict(offering, slot, slot._id);
@@ -638,83 +639,120 @@ export const updateOffering = async (req, res) => {
   }
 };
 
+async function hasAssignedTimetableClash(slotId, candidate, session) {
+  const filter = { "courses.slots.slotGroupId": slotId };
+  const schedules = await StudentSchedule.find(filter).select("courses.slots courses.courseOffering").session(session).lean();
+  const templates = await ScheduleTemplate.find(filter).select("courses.slots courses.courseOffering").session(session).lean();
+  const references = [...schedules, ...templates].flatMap(({ courses }) => courses.flatMap(course =>
+    course.slots.filter(slot => !slotId.equals(slot.slotGroupId)).map(slot => ({
+      offering: slot.courseOffering || course.courseOffering, slotId: slot.slotGroupId,
+    })),
+  ));
+  if (!references.length) return false;
+  const offerings = await CourseOffering.find({ _id: { $in: references.map(ref => ref.offering) } }).select("slots").session(session).lean();
+  const offeringsById = new Map(offerings.map(offering => [String(offering._id), offering]));
+  return references.some(ref => {
+    const other = offeringsById.get(String(ref.offering))?.slots.find(slot => slot._id.equals(ref.slotId));
+    return other && overlaps(candidate, other);
+  });
+}
+
 // ─── Req 25: Update a specific slot within a course offering ───
 export const updateOfferingSlot = async (req, res) => {
   try {
     if (!mongoose.isValidObjectId(req.params.id) || !mongoose.isValidObjectId(req.params.slotId)) {
       return res.status(400).json({ message: 'Invalid offering or slot ID format.' });
     }
-    const offering = await CourseOffering.findById(req.params.id);
-    if (!offering) {
-      return res.status(404).json({ message: 'Course offering not found' });
-    }
+    const outcome = await mongoose.connection.transaction(async (session) => {
+      const offering = await CourseOffering.findById(req.params.id).session(session);
+      if (!offering) {
+        return { status: 404, body: { message: 'Course offering not found' } };
+      }
 
-    const slot = offering.slots.id(req.params.slotId);
-    if (!slot) {
-      return res.status(404).json({ message: 'Slot not found in this offering' });
-    }
+      // Serialize edits in the same term so they validate against committed slots.
+      const lock = await AcademicTerm.updateOne({ _id: offering.term }, { $inc: { __v: 1 } }, { session, timestamps: false });
+      if (!lock.matchedCount) return { status: 409, body: { message: 'The offering academic term no longer exists.' } };
 
-    const { componentType, groupNumber, day, startMinute, endMinute, room, capacity } = req.body || {};
+      const slot = offering.slots.id(req.params.slotId);
+      if (!slot) {
+        return { status: 404, body: { message: 'Slot not found in this offering' } };
+      }
 
-    // --- Validate capacity is not reduced below assigned students ---
-    if (capacity !== undefined && (!Number.isInteger(capacity) || capacity < 0)) {
-      return res.status(400).json({ message: 'Capacity must be a non-negative integer.' });
-    }
-    if (capacity !== undefined && capacity < slot.assignedStudentCount) {
-      return res.status(400).json({
-        message: `Cannot reduce capacity to ${capacity}. There are already ${slot.assignedStudentCount} students assigned to this slot`,
-      });
-    }
+      const { componentType, groupNumber, day, startMinute, endMinute, room, capacity } = req.body || {};
 
-    // --- Validate time logic ---
-    const newStart = startMinute !== undefined ? startMinute : slot.startMinute;
-    const newEnd = endMinute !== undefined ? endMinute : slot.endMinute;
-    if (!Number.isInteger(newStart) || !Number.isInteger(newEnd)) {
-      return res.status(400).json({ message: 'Slot times must be integer minutes.' });
-    }
-    if (newEnd <= newStart) {
-      return res.status(400).json({ message: 'Slot end time must be after start time' });
-    }
+      // --- Validate capacity is not reduced below assigned students ---
+      if (capacity !== undefined && (!Number.isInteger(capacity) || capacity < 0)) {
+        return { status: 400, body: { message: 'Capacity must be a non-negative integer.' } };
+      }
+      if (capacity !== undefined && capacity < slot.assignedStudentCount) {
+        return { status: 400, body: {
+          message: `Cannot reduce capacity to ${capacity}. There are already ${slot.assignedStudentCount} students assigned to this slot`,
+        } };
+      }
 
-    const candidateSlot = {
-      ...slot.toObject(),
-      componentType: componentType ?? slot.componentType,
-      groupNumber: groupNumber ?? slot.groupNumber,
-      day: day ?? slot.day,
-      startMinute: newStart,
-      endMinute: newEnd,
-      room: room ?? slot.room,
-      capacity: capacity ?? slot.capacity,
-    };
-    const candidateSlots = offering.slots.map((existing) => existing._id.equals(slot._id) ? candidateSlot : existing);
-    const duplicateGroup = duplicateGroupNumber(candidateSlots);
-    if (duplicateGroup) {
-      return res.status(409).json({ message: `Group number ${duplicateGroup} is already used for this component in the offering.` });
-    }
-    if (typeof candidateSlot.room !== 'string' || !candidateSlot.room.trim()) {
-      return res.status(400).json({ message: 'Room is required.' });
-    }
+      // --- Validate time logic ---
+      const newStart = startMinute !== undefined ? startMinute : slot.startMinute;
+      const newEnd = endMinute !== undefined ? endMinute : slot.endMinute;
+      if (!Number.isInteger(newStart) || !Number.isInteger(newEnd)) {
+        return { status: 400, body: { message: 'Slot times must be integer minutes.' } };
+      }
+      if (newEnd <= newStart) {
+        return { status: 400, body: { message: 'Slot end time must be after start time' } };
+      }
 
-    const conflict = await findOfferingSlotConflict(offering, candidateSlot, slot._id);
-    if (conflict) return res.status(409).json({ message: `Timetable conflict: ${conflict}` });
+      const candidateSlot = {
+        ...slot.toObject(),
+        componentType: componentType ?? slot.componentType,
+        groupNumber: groupNumber ?? slot.groupNumber,
+        day: day ?? slot.day,
+        startMinute: newStart,
+        endMinute: newEnd,
+        room: room ?? slot.room,
+        capacity: capacity ?? slot.capacity,
+      };
+      const candidateSlots = offering.slots.map((existing) => existing._id.equals(slot._id) ? candidateSlot : existing);
+      const duplicateGroup = duplicateGroupNumber(candidateSlots);
+      if (duplicateGroup) {
+        return { status: 409, body: { message: `Group number ${duplicateGroup} is already used for this component in the offering.` } };
+      }
+      if (!validSlotInput(candidateSlot)) {
+        return { status: 400, body: { message: 'Enter a valid component, group number, day, times, room and capacity.' } };
+      }
+      if (candidateSlot.componentType !== slot.componentType || candidateSlot.groupNumber.trim() !== slot.groupNumber) {
+        const references = await hasSlotReferences(offering._id, slot._id, session);
+        if (slot.assignedStudentCount > 0 || references.schedule || references.template || references.slotChange) {
+          return { status: 409, body: { message: 'Move or remove existing assignments and requests before changing the slot type or group.' } };
+        }
+      }
 
-    // --- Apply updates ---
-    if (componentType !== undefined) slot.componentType = componentType;
-    if (groupNumber !== undefined) slot.groupNumber = groupNumber;
-    if (day !== undefined) slot.day = day;
-    if (startMinute !== undefined) slot.startMinute = startMinute;
-    if (endMinute !== undefined) slot.endMinute = endMinute;
-    if (room !== undefined) slot.room = room;
-    if (capacity !== undefined) slot.capacity = capacity;
+      const conflict = await findOfferingSlotConflict(offering, candidateSlot, slot._id, session);
+      if (conflict) return { status: 409, body: { message: `Timetable conflict: ${conflict}` } };
+      const moved = candidateSlot.day !== slot.day || candidateSlot.startMinute !== slot.startMinute || candidateSlot.endMinute !== slot.endMinute;
+      if (moved && await hasAssignedTimetableClash(slot._id, candidateSlot, session)) {
+        return { status: 409, body: { message: 'This change overlaps another meeting in an assigned schedule or template.' } };
+      }
 
-    await offering.save();
+      // --- Apply updates ---
+      if (componentType !== undefined) slot.componentType = componentType;
+      if (groupNumber !== undefined) slot.groupNumber = groupNumber;
+      if (day !== undefined) slot.day = day;
+      if (startMinute !== undefined) slot.startMinute = startMinute;
+      if (endMinute !== undefined) slot.endMinute = endMinute;
+      if (room !== undefined) slot.room = room;
+      if (capacity !== undefined) slot.capacity = capacity;
 
-    const populated = await CourseOffering.findById(offering._id)
+      offering.increment();
+      await offering.save({ session });
+      return { id: offering._id };
+    });
+    if (outcome.status) return res.status(outcome.status).json(outcome.body);
+    const populated = await CourseOffering.findById(outcome.id)
       .populate('course', 'code name creditHours courseType facultyMajors')
       .populate('term', 'code academicYear season');
 
     res.json(populated.toObject({ virtuals: true }));
   } catch (error) {
+    if (error.name === 'VersionError') return res.status(409).json({ message: 'This offering changed. Reload it and try again.' });
     if (error.name === 'ValidationError') {
       const messages = Object.values(error.errors).map((e) => e.message);
       return res.status(400).json({ message: 'Validation failed', errors: messages });
@@ -920,18 +958,25 @@ export const togglePublishOffering = async (req, res) => {
       }
     }
 
+    const wasPublished = offering.isPublished;
     offering.isPublished = isPublished;
-    await offering.save();
+    await offering.validate();
 
-    const populated = await CourseOffering.findById(offering._id)
+    const populated = await CourseOffering.findOneAndUpdate(
+      { _id: offering._id, __v: offering.__v, isPublished: wasPublished },
+      { $set: { isPublished }, $inc: { __v: 1 } },
+      { returnDocument: 'after' },
+    )
       .populate('course', 'code name creditHours courseType facultyMajors')
       .populate('term', 'code academicYear season');
 
+    if (!populated) return res.status(409).json({ message: 'This offering changed. Reload it and try again.' });
     res.json({
       message: `${offering.course.code} is now ${isPublished ? 'published' : 'unpublished'}`,
       offering: populated,
     });
   } catch (error) {
+    if (error.name === 'ValidationError') return res.status(400).json({ message: error.message });
     if (error.name === 'CastError') {
       return res.status(400).json({ message: 'Invalid offering ID format' });
     }

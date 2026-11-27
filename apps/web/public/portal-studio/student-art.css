@@ -1,0 +1,97 @@
+/* The paper, enamel and ink belong to the desk objects in both color modes. */
+.student-desk-art {
+  --object-paper:#efe2c8;
+  --object-sage:#a3b7a6;
+  --object-blue:#99b4c7;
+  --object-coral:#d88b6d;
+  --object-gold:#deba78;
+  --object-ink:#453c36;
+  display:block;
+  flex:none;
+  width:clamp(76px,8vw,114px);
+  height:auto;
+  aspect-ratio:110/92;
+  overflow:visible;
+  fill:none;
+  stroke:var(--object-ink);
+  stroke-width:1.65;
+  stroke-linejoin:round;
+  stroke-linecap:round;
+  pointer-events:none;
+  user-select:none;
+}
+.student-desk-art .sa-paper {fill:var(--object-paper)}
+.student-desk-art .sa-sage {fill:var(--object-sage)}
+.student-desk-art .sa-blue {fill:var(--object-blue)}
+.student-desk-art .sa-coral {fill:var(--object-coral)}
+.student-desk-art .sa-gold {fill:var(--object-gold)}
+.student-desk-art .sa-ground {stroke:var(--muted);opacity:.68;stroke-width:1.3}
+.page-head > .student-object-host {
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr);
+  align-content:center;
+  align-items:center;
+  column-gap:clamp(12px,1.6vw,23px);
+  min-width:0;
+}
+.page-head > .student-object-host > .student-desk-art {
+  grid-column:1;
+  grid-row:1 / span 3;
+}
+.page-head > .student-object-host > :not(.student-desk-art) {grid-column:2}
+[data-screen=graduation-plans] .page-head > .student-object-host > [data-object=graduationCap] {
+  grid-row:1;
+  width:clamp(44px,5vw,60px);
+  aspect-ratio:65/45;
+}
+.student-object-summary {display:flex;align-items:center;gap:clamp(12px,2.4vw,35px);margin-bottom:24px}
+[data-workspace] .student-object-summary > dl {margin:0;min-width:0}
+.student-object-host.person-title > .student-desk-art {order:3;margin-inline-start:auto}
+.student-object-host:is(.panel,.preference-block,.advisor-callout,.calendar-file,.module-queue) {display:flow-root}
+.student-object-host:is(.panel,.preference-block,.advisor-callout,.calendar-file,.module-queue) > .student-desk-art {
+  float:right;
+  width:clamp(74px,7.8vw,106px);
+  margin:0 0 6px 14px;
+}
+.student-object-host.module-queue > .student-desk-art {width:clamp(85px,9vw,126px)}
+.student-object-host.advisor-callout > .student-desk-art {width:clamp(70px,6.5vw,90px)}
+.student-object-host.preference-block > .student-desk-art {width:67px}
+.student-object-host.preference-block .preference-day-grid {clear:both}
+@media (max-width:680px) {
+  .student-desk-art {width:68px}
+  .student-object-summary {align-items:flex-start;gap:9px}
+  .student-object-summary > .student-desk-art {width:58px}
+  .student-object-host:is(.panel,.advisor-callout,.calendar-file,.module-queue) > .student-desk-art {width:67px}
+  .student-object-host.preference-block > .student-desk-art {width:54px;margin-inline-start:7px}
+  .page-head > .student-object-host {column-gap:10px}
+}
+@media (prefers-reduced-motion:no-preference) {
+  .sa-pendulum,.sa-pen,.sa-lift,.sa-receipt {transform-box:fill-box;transform-origin:50% 15%}
+  .sa-pendulum {animation:student-pendulum .78s ease-out both}
+  .sa-pen {animation:student-pencil .85s ease-out both}
+  .sa-lift {animation:student-file .56s ease-out both}
+  .sa-receipt {animation:student-feed .7s ease-out both;transform-origin:50% 100%}
+  .sa-exchange-front {animation:student-exchange .68s ease-out both}
+  .sa-exchange-back {animation:student-exchange .68s ease-out reverse}
+  .sa-signal {animation:student-transfer .8s ease-out both}
+  .student-object-host:focus-within .sa-pen {transform:rotate(-7deg);animation:none}
+  @keyframes student-pendulum {0%{transform:rotate(-10deg)}42%{transform:rotate(4deg)}75%{transform:rotate(-2deg)}}
+  @keyframes student-pencil {0%{transform:translate(4px,-4px) rotate(7deg)}55%{transform:translate(-2px,1px) rotate(-2deg)}}
+  @keyframes student-file {0%{transform:translateY(6px)}62%{transform:translateY(-1.5px)}}
+  @keyframes student-feed {from{transform:scaleY(.33) skewX(7deg)}80%{transform:scaleY(1.05)}}
+  @keyframes student-exchange {0%{transform:translate(-8px,-4px)}65%{transform:translate(1px,0)}}
+  @keyframes student-transfer {0%{stroke-dasharray:46;stroke-dashoffset:46}100%{stroke-dasharray:46;stroke-dashoffset:0}}
+}
+.student-desk-art .sa-initials {font:700 10px/1 Georgia,serif;fill:var(--object-ink);stroke:none}
+.student-desk-art .sa-week-rule {stroke-width:.8;opacity:.65}
+.student-desk-art .sa-day-check path {stroke:#995237;stroke-width:2;opacity:0}
+.preference-block:has(.dayoff[value="Sunday"]:checked) .sa-day-check path:nth-child(1),
+.preference-block:has(.dayoff[value="Monday"]:checked) .sa-day-check path:nth-child(2),
+.preference-block:has(.dayoff[value="Tuesday"]:checked) .sa-day-check path:nth-child(3),
+.preference-block:has(.dayoff[value="Wednesday"]:checked) .sa-day-check path:nth-child(4),
+.preference-block:has(.dayoff[value="Thursday"]:checked) .sa-day-check path:nth-child(5) {opacity:1}
+.student-desk-art.sa-disconnected .sa-signal path {stroke-dasharray:2 5;opacity:.42}
+[data-screen="directory"]:has(.filters input:focus) .sa-lift {animation:none;transform:translateY(-4px)}
+@media (prefers-reduced-motion:no-preference) {
+  .student-desk-art .sa-day-check path {transition:opacity .14s ease-out}
+}

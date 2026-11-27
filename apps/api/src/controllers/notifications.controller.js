@@ -1,5 +1,54 @@
 import mongoose from "mongoose";
 import { Notification } from "../models/communications.js";
+import { syncAdvisorNotifications } from "../services/advisor-notifications.js";
+import { syncCoordinatorNotifications } from "../services/coordinator-notifications.js";
+import { syncAdvisingNotifications } from "../services/student-notifications.js";
+import { AdvisorAssignment, StudentProfile } from "../models/identity.js";
+import { StudentSchedule } from "../models/academics.js";
+import { ExitExamRequest, ExtraHoursRequest, GraduationPlan, MandatoryCourseRemovalRequest, SlotChangeRequest } from "../models/requests.js";
+import { FinancialReversalRequest } from "../models/finance.js";
+
+// Staff events whose producer records a single student as their subject.
+const studentSources = new Map([
+  ["advisorAssigned", AdvisorAssignment], ["slotChangeSubmitted", SlotChangeRequest],
+  ["slotChangeWithdrawn", SlotChangeRequest], ["advisingDeadlineReminder", StudentSchedule],
+  ["graduationPlanSubmitted", GraduationPlan], ["exitExamRequested", ExitExamRequest],
+  ["mandatoryCourseRemovalRequested", MandatoryCourseRemovalRequest],
+  ["financialReversalRequested", FinancialReversalRequest], ["extraHoursRequested", ExtraHoursRequest],
+]);
+
+function formatNotification(n) {
+  return {
+    _id: n._id, recipient: n.recipient, type: n.type, title: n.title, message: n.message,
+    channels: n.channels, deliveryStatus: n.deliveryStatus, readAt: n.readAt,
+    isRead: Boolean(n.readAt), createdAt: n.createdAt, updatedAt: n.updatedAt,
+  };
+}
+
+async function attachStudentSubjects(notifications, items) {
+  const batches = new Map();
+  for (const n of notifications) {
+    const model = studentSources.get(n.type);
+    if (!model || model.modelName !== n.relatedModel || !mongoose.isObjectIdOrHexString(n.relatedId)) continue;
+    if (!batches.has(model)) batches.set(model, new Set());
+    batches.get(model).add(n.relatedId);
+  }
+  const recordStudents = new Map();
+  await Promise.all([...batches].map(async ([model, ids]) => {
+    const records = await model.find({ _id: { $in: [...ids] } }).select("student").lean();
+    for (const record of records) recordStudents.set(`${model.modelName}:${record._id}`, String(record.student));
+  }));
+  if (!recordStudents.size) return;
+  const students = await StudentProfile.find({ _id: { $in: [...new Set(recordStudents.values())] } })
+    .select("studentId user").populate("user", "fullName").lean();
+  const identities = new Map(students.filter(student => student.user?.fullName).map(student =>
+    [String(student._id), { fullName: student.user.fullName, studentId: student.studentId }]));
+  notifications.forEach((n, i) => {
+    if (studentSources.get(n.type)?.modelName !== n.relatedModel) return;
+    const subject = identities.get(recordStudents.get(`${n.relatedModel}:${n.relatedId}`));
+    if (subject) items[i].subjectStudent = subject;
+  });
+}
 
 /**
  * Requirement 5: Retrieve currently authenticated user's in-app notifications.
@@ -18,27 +67,20 @@ export const getMyNotifications = async (req, res) => {
       });
     }
 
+    if (user.role === "advisingStudent") await syncAdvisingNotifications(user._id);
+    if (user.role === "advisor") await syncAdvisorNotifications(user._id);
+    if (user.role === "coordinator") await syncCoordinatorNotifications(user._id);
+
     // Explicitly query ONLY for the authenticated user's notifications.
     const notifications = await Notification.find({
       recipient: user._id,
     }).sort({ createdAt: -1 });
 
-    const formatted = notifications.map((n) => {
-      const doc = n.toObject ? n.toObject() : { ...n };
-      return {
-        _id: doc._id,
-        recipient: doc.recipient,
-        type: doc.type,
-        title: doc.title,
-        message: doc.message,
-        channels: doc.channels,
-        deliveryStatus: doc.deliveryStatus,
-        readAt: doc.readAt,
-        isRead: Boolean(doc.readAt),
-        createdAt: doc.createdAt,
-        updatedAt: doc.updatedAt,
-      };
-    });
+    const formatted = notifications.map(formatNotification);
+    if (["coordinator", "advisor", "administrator"].includes(user.role)) {
+      try { await attachStudentSubjects(notifications, formatted); }
+      catch (error) { console.warn("Notification student portraits unavailable:", error.message); }
+    }
 
     return res.status(200).json({
       success: true,
@@ -134,24 +176,10 @@ export const markNotificationAsRead = async (req, res) => {
       if (!notification) return res.status(404).json({ success: false, message: "Notification not found." });
     }
 
-    const doc = notification.toObject ? notification.toObject() : { ...notification };
-
     return res.status(200).json({
       success: true,
       message: "Notification marked as read.",
-      notification: {
-        _id: doc._id,
-        recipient: doc.recipient,
-        type: doc.type,
-        title: doc.title,
-        message: doc.message,
-        channels: doc.channels,
-        deliveryStatus: doc.deliveryStatus,
-        readAt: doc.readAt,
-        isRead: true,
-        createdAt: doc.createdAt,
-        updatedAt: doc.updatedAt,
-      },
+      notification: formatNotification(notification),
     });
   } catch (error) {
     return res.status(500).json({

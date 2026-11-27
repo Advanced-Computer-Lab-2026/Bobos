@@ -23,14 +23,15 @@ const wholeScheduleSwapSchema = withTimestamps({
   courseCodesSnapshot: { type: [String], required: true },
   status: { type: String, required: true, enum: ["open", "completed", "withdrawn", "expired"], default: "open" },
   completedWith: ref("StudentProfile", { default: null }),
+  completedFromGroup: { type: String, trim: true, default: null },
   completedAt: { type: Date, default: null },
   withdrawnAt: { type: Date, default: null },
   expiresAt: { type: Date, required: true },
 });
 
 wholeScheduleSwapSchema.index(
-  { student: 1, term: 1 },
-  { unique: true, partialFilterExpression: { status: "open" } },
+  { student: 1 },
+  { name: "one_open_swap_per_student", unique: true, partialFilterExpression: { status: "open" } },
 );
 wholeScheduleSwapSchema.index({ term: 1, status: 1, createdAt: -1 });
 
@@ -45,6 +46,8 @@ const slotChangeRequestSchema = withTimestamps({
   componentType: { type: String, required: true, enum: ["lecture", "tutorial", "lab"] },
   currentOffering: ref("CourseOffering", { required: true }),
   currentSlotGroupId: { type: Schema.Types.ObjectId, required: true },
+  currentSlotLabel: String,
+  replacementSlotLabel: String,
   preferenceNote: { type: String, trim: true, maxlength: 1000 },
   status: { type: String, required: true, enum: ["pending", "approved", "rejected", "withdrawn"], default: "pending" },
   replacementOffering: ref("CourseOffering", { default: null }),
@@ -75,6 +78,7 @@ const mandatoryCourseRemovalRequestSchema = withTimestamps({
     required: true,
     enum: ["incorrectMandatoryDesignation", "makeupEligibility", "completedHours", "restrictedCoursePair", "other"],
   },
+  makeupAttempt: { type: Number, enum: [1, 2] },
   explanation: { type: String, required: true, trim: true, maxlength: 2000 },
   status: { type: String, required: true, enum: ["pending", "approved", "rejected"], default: "pending" },
   decidedBy: ref("User", { default: null }),
@@ -105,6 +109,16 @@ const extraHoursCourseSchema = new Schema(
   },
   { _id: false },
 );
+
+const extraHoursHistorySchema = new Schema({
+  action: { type: String, required: true, enum: ["submitted", "approved", "rejected", "withdrawn", "paymentChoice", "paymentAttempt", "paid", "deferred", "cancelled", "refunded"] },
+  actor: ref("User", { default: null }),
+  note: { type: String, trim: true, maxlength: 1000 },
+  settlementOption: { type: String, enum: ["wallet", "gateway", "deferred", null], default: null },
+  settlementStatus: { type: String, enum: ["none", "awaitingChoice", "paid", "deferred", "failed", "cancelled", "refunded", null], default: null },
+  amount: { type: Number, min: 0 },
+  occurredAt: { type: Date, default: Date.now },
+}, { _id: true });
 
 const extraHoursRequestSchema = withTimestamps({
   student: ref("StudentProfile", { required: true }),
@@ -141,6 +155,7 @@ const extraHoursRequestSchema = withTimestamps({
     default: "none",
   },
   settlementOption: { type: String, enum: ["wallet", "gateway", "deferred", null], default: null },
+  history: { type: [extraHoursHistorySchema], default: [] },
 });
 
 extraHoursRequestSchema.index({ term: 1, decisionStatus: 1, settlementStatus: 1, createdAt: -1 });
@@ -214,5 +229,9 @@ const exitExamRequestSchema = withTimestamps({
 });
 
 exitExamRequestSchema.index({ status: 1, createdAt: -1 });
+exitExamRequestSchema.index({ student: 1, course: 1 }, {
+  unique: true,
+  partialFilterExpression: { status: { $in: ["pending", "approved"] } },
+});
 
 export const ExitExamRequest = registerModel("ExitExamRequest", exitExamRequestSchema);

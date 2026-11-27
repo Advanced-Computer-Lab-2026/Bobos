@@ -1,13 +1,16 @@
+import { loadStudentWorkflows } from "../services/student-workflow-status.js";
 import mongoose from "mongoose";
-import nodemailer from "nodemailer";
-import { StudentSchedule } from "../models/academics.js";
-import { Notification, ScheduleActivity } from "../models/communications.js";
+import { isSmtpConfigured, sendEmail } from "../services/smtp-email.js";
+import { Notification } from "../models/communications.js";
 import { AcademicTerm } from "../models/catalogue.js";
 import { ACADEMIC_STANDINGS, STUDENT_TYPES, WORKFLOW_STATUSES } from "../models/shared.js";
 import { AdvisorAssignment, StudentProfile, User } from "../models/identity.js";
+import { FinancialReversalRequest } from "../models/finance.js";
 import { canonicalMajor } from "../utils/major.js";
 import {
   ExtraHoursRequest,
+  ExitExamRequest,
+  GraduationPlan,
   MandatoryCourseRemovalRequest,
   SlotChangeRequest,
   WholeScheduleSwapRequest,
@@ -133,7 +136,7 @@ export async function getStudents(req, res) {
 
     const [profiles, advisors] = await Promise.all([
       StudentProfile.find(profileFilter)
-        .select("user studentId studentType major currentSemester academicStanding assignedAdvisor")
+        .select("user studentId studentType major currentSemester academicStanding assignedAdvisor updatedAt")
         .populate("user", "fullName email isActive")
         .populate("assignedAdvisor", "fullName email")
         .sort({ studentId: 1 })
@@ -144,149 +147,7 @@ export async function getStudents(req, res) {
         .lean(),
     ]);
 
-    const studentIds = profiles.map((profile) => profile._id);
-    const [schedules, swapRequests, scheduleActivities, slotChanges, removalRequests, extraHourRequests] = activeTerm && studentIds.length
-      ? await Promise.all([
-          StudentSchedule.find({ term: activeTerm._id, student: { $in: studentIds } })
-            .select("_id student scheduleType status version updatedAt processedAt createdAt")
-            .lean(),
-          WholeScheduleSwapRequest.find({ term: activeTerm._id, student: { $in: studentIds } })
-            .select("student status expiresAt updatedAt")
-            .sort({ updatedAt: -1 })
-            .lean(),
-          ScheduleActivity.find({ term: activeTerm._id, student: { $in: studentIds } })
-            .select("student schedule action scheduleVersion occurredAt")
-            .sort({ occurredAt: -1 })
-            .lean(),
-          SlotChangeRequest.find({ term: activeTerm._id, student: { $in: studentIds } })
-            .select("student status updatedAt")
-            .lean(),
-          MandatoryCourseRemovalRequest.find({ term: activeTerm._id, student: { $in: studentIds } })
-            .select("student status updatedAt")
-            .lean(),
-          ExtraHoursRequest.find({ term: activeTerm._id, student: { $in: studentIds } })
-            .select("student decisionStatus settlementStatus updatedAt")
-            .lean(),
-        ])
-      : [[], [], [], [], [], []];
-    const workflowByStudent = new Map();
-    const scheduleCycleStartedAtByStudent = new Map();
-    const applyWorkflow = (student, status, blockingStep, updatedAt, priority) => {
-      const id = String(student);
-      const current = workflowByStudent.get(id);
-      const time = updatedAt ? new Date(updatedAt) : null;
-      const lastUpdatedAt = !current?.lastUpdatedAt || time > current.lastUpdatedAt
-        ? time
-        : current.lastUpdatedAt;
-      if (!current || priority > current.priority ||
-        (priority === current.priority && time && (!current.statusUpdatedAt || time >= current.statusUpdatedAt))) {
-        workflowByStudent.set(id, { status, blockingStep, lastUpdatedAt, statusUpdatedAt: time, priority });
-      } else {
-        current.lastUpdatedAt = lastUpdatedAt;
-      }
-    };
-    const latestActivityBySchedule = new Map();
-    for (const activity of scheduleActivities) {
-      const key = String(activity.schedule);
-      if (!latestActivityBySchedule.has(key)) latestActivityBySchedule.set(key, activity);
-    }
-    for (const schedule of schedules) {
-      const latestActivity = latestActivityBySchedule.get(String(schedule._id));
-      if (schedule.scheduleType === "advising") {
-        scheduleCycleStartedAtByStudent.set(
-          String(schedule.student),
-          latestActivity?.action === "reopened" && latestActivity.scheduleVersion === schedule.version
-            ? latestActivity.occurredAt
-            : schedule.createdAt,
-        );
-      }
-      const reopened = schedule.scheduleType === "advising" && schedule.status === "draft" &&
-        latestActivity?.action === "reopened" && latestActivity.scheduleVersion === schedule.version;
-      const status = schedule.scheduleType === "advising"
-        ? reopened ? "reopened" : schedule.status
-        : schedule.status === "processed" ? "scheduleAssigned" : null;
-      if (status) {
-        const scheduleUpdatedAt = schedule.updatedAt ?? schedule.processedAt ?? schedule.createdAt ?? null;
-        const lastUpdatedAt = latestActivity?.occurredAt &&
-          (!scheduleUpdatedAt || latestActivity.occurredAt > scheduleUpdatedAt)
-          ? latestActivity.occurredAt
-          : scheduleUpdatedAt;
-        applyWorkflow(schedule.student, status, {
-          draft: "Complete draft schedule",
-          reopened: "Complete reopened schedule",
-        }[status] ?? null,
-        lastUpdatedAt, schedule.scheduleType === "normal" ? 2 : 1);
-      }
-    }
-    if (activeTerm) {
-      for (const profile of profiles) {
-        if (workflowByStudent.has(String(profile._id))) continue;
-        if (profile.studentType === "advising") {
-          applyWorkflow(profile._id, "notStarted", "Create advising schedule", null, 1);
-        } else {
-          applyWorkflow(profile._id, "notStarted", "Assign standard schedule", null, 1);
-        }
-      }
-    }
-    const resolvedWorkflowByStudent = new Map();
-    const markResolved = (request) => {
-      const id = String(request.student);
-      const updatedAt = request.updatedAt;
-      if (!resolvedWorkflowByStudent.has(id) || updatedAt > resolvedWorkflowByStudent.get(id)) {
-        resolvedWorkflowByStudent.set(id, updatedAt);
-      }
-    };
-    const now = new Date();
-    for (const request of swapRequests) {
-      const expired = request.status === "open" && request.expiresAt <= now;
-      const status = expired ? "swapExpired" : {
-        open: "swapRequestOpen",
-        completed: "swapCompleted",
-        withdrawn: "swapWithdrawn",
-        expired: "swapExpired",
-      }[request.status];
-      if (status) {
-        applyWorkflow(request.student, status, null, expired ? request.expiresAt : request.updatedAt, 2);
-      }
-    }
-    for (const request of slotChanges) {
-      if (request.status === "pending") {
-        applyWorkflow(request.student, "changeRequestPending", "Resolve pending slot-change requests", request.updatedAt, 3);
-      } else {
-        markResolved(request);
-      }
-    }
-    for (const request of removalRequests) {
-      if (request.status === "pending") {
-        applyWorkflow(request.student, "pendingApproval", "Resolve pending coordinator approval", request.updatedAt, 4);
-      } else {
-        markResolved(request);
-      }
-    }
-    for (const request of extraHourRequests) {
-      const status = request.decisionStatus === "pending"
-        ? "pendingApproval"
-        : request.decisionStatus === "approved" && ["none", "awaitingChoice", "failed", "cancelled"].includes(request.settlementStatus)
-          ? "awaitingPaymentChoice"
-          : request.decisionStatus === "approved" && request.settlementStatus === "deferred" ? "deferredToNextInstallment" : null;
-      if (status) {
-        applyWorkflow(request.student, status, {
-          pendingApproval: "Resolve pending coordinator approval",
-          awaitingPaymentChoice: "Choose payment option",
-        }[status] ?? null, request.updatedAt, status === "pendingApproval" ? 4 : 3);
-      } else {
-        markResolved(request);
-      }
-    }
-    for (const profile of profiles) {
-      const workflow = workflowByStudent.get(String(profile._id));
-      const resolvedAt = resolvedWorkflowByStudent.get(String(profile._id));
-      const cycleStartedAt = scheduleCycleStartedAtByStudent.get(String(profile._id));
-      if (profile.studentType === "advising" && workflow?.status === "readyForStudentReview" &&
-        resolvedAt && cycleStartedAt && resolvedAt >= cycleStartedAt) {
-        applyWorkflow(profile._id, "readyToProcess", null, resolvedAt, 2);
-      }
-    }
+    const workflowByStudent = await loadStudentWorkflows(profiles, activeTerm?._id);
     const blockingSteps = [...new Set([...workflowByStudent.values()].map((workflow) => workflow.blockingStep).filter(Boolean))].sort();
     const visibleProfiles = profiles.filter((profile) => {
       const workflow = workflowByStudent.get(String(profile._id));
@@ -338,6 +199,106 @@ export async function getStudents(req, res) {
   }
 }
 
+// Dashboard data reuses the directory's derived workflow states so staff never edit statuses by hand.
+export async function getPendingWork(req, res) {
+  let directoryResponse;
+  const proxy = {
+    status(code) { this.code = code; return this; },
+    json(body) { directoryResponse = { code: this.code || 200, body }; return this; },
+  };
+  await getStudents({ ...req, query: {} }, proxy);
+  if (!directoryResponse || directoryResponse.code !== 200) {
+    return res.status(directoryResponse?.code || 500).json(directoryResponse?.body || { message: "Unable to load workflow dashboard" });
+  }
+  const students = directoryResponse.body.students;
+  const ids = students.map((student) => student.id);
+  const normalStudentIds = students.filter((student) => student.studentType === "normal").map((student) => student.id);
+  const term = directoryResponse.body.term;
+  let termId = null;
+  if (term) termId = await AcademicTerm.findOne({ isActive: true }).sort({ termStart: -1 }).select("_id").lean().then((value) => value?._id);
+  const currentTermRequests = ids.length ? await Promise.all([
+    termId && normalStudentIds.length ? WholeScheduleSwapRequest.find({ term: termId, student: { $in: normalStudentIds }, $or: [{ status: "completed" }, { status: "open", expiresAt: { $gt: new Date() } }] })
+      .select("student status expiresAt updatedAt").lean().then((rows) => rows.map((row) => ({ ...row, type: "wholeScheduleSwap" }))) : [],
+    termId ? SlotChangeRequest.find({ term: termId, student: { $in: ids }, status: "pending" })
+      .select("student status updatedAt course componentType").populate("course", "code name").lean()
+      .then((rows) => rows.map((row) => ({ ...row, type: "slotChange" }))) : [],
+    termId ? MandatoryCourseRemovalRequest.find({ term: termId, student: { $in: ids }, status: "pending" })
+      .select("student status updatedAt course").populate("course", "code name").lean()
+      .then((rows) => rows.map((row) => ({ ...row, type: "mandatoryCourseRemoval" }))) : [],
+    termId ? ExtraHoursRequest.find({ term: termId, student: { $in: ids } })
+      .select("_id student decisionStatus settlementStatus updatedAt courses.course requestedHours").populate("courses.course", "code name").lean() : [],
+    GraduationPlan.find({ student: { $in: ids }, status: "submitted" })
+      .select("student status submittedAt updatedAt").lean().then((rows) => rows.map((row) => ({ ...row, updatedAt: row.updatedAt || row.submittedAt, type: "graduationPlan" }))),
+    ExitExamRequest.find({ student: { $in: ids }, status: "pending" })
+      .select("student status updatedAt course").populate("course", "code name").lean()
+      .then((rows) => rows.map((row) => ({ ...row, type: "exitExam" }))),
+  ]) : [[], [], [], [], [], []];
+  const [swapRequests, slotChanges, removalRequests, extraHours, graduationPlans, exitExams] = currentTermRequests;
+  const actionableExtraHours = extraHours.filter((request) => request.decisionStatus === "pending" ||
+    (request.decisionStatus === "approved" && ["none", "awaitingChoice", "failed", "deferred"].includes(request.settlementStatus)))
+    .map((row) => ({ ...row, type: "extraHours" }));
+  const financialReversals = ids.length ? await FinancialReversalRequest.find({
+    student: { $in: ids }, status: "pending",
+  }).select("student extraHoursRequest reversalType status updatedAt").lean()
+    .then((rows) => rows.map((row) => ({ ...row, type: "financialReversal" }))) : [];
+  const requests = [...swapRequests, ...slotChanges, ...removalRequests, ...actionableExtraHours, ...graduationPlans, ...exitExams, ...financialReversals];
+  const requestsByStudent = new Map();
+  for (const request of requests) {
+    const id = String(request.student);
+    const list = requestsByStudent.get(id) || [];
+    const status = request.type === "extraHours"
+      ? `${request.decisionStatus}${request.settlementStatus && request.settlementStatus !== "none" ? `:${request.settlementStatus}` : ""}`
+      : request.status;
+    const courses = request.courses?.map((line) => line.course) || [request.course];
+    list.push({
+      id: String(request._id), type: request.type, status, updatedAt: request.updatedAt || null,
+      courses: courses.filter(Boolean).map(({ code, name }) => ({ code, name })),
+      componentType: request.componentType, requestedHours: request.requestedHours,
+    });
+    requestsByStudent.set(id, list);
+  }
+  const approvalBlockers = {
+    mandatoryCourseRemoval: "Resolve pending coordinator approval",
+    extraHours: "Resolve pending coordinator approval",
+    graduationPlan: "Review submitted graduation plan",
+    exitExam: "Review exit-exam request",
+    financialReversal: "Process financial reversal",
+  };
+  const rows = students.map((student) => {
+    const studentRequests = (requestsByStudent.get(student.id) || []).sort((left, right) =>
+      new Date(right.updatedAt || 0) - new Date(left.updatedAt || 0));
+    const newestCoordinatorApproval = studentRequests.find((request) => approvalBlockers[request.type] &&
+      (request.type !== "extraHours" || request.status === "pending") &&
+      (request.type !== "mandatoryCourseRemoval" || request.status === "pending"));
+    const baseLastUpdated = student.lastUpdatedAt ? new Date(student.lastUpdatedAt) : null;
+    const requestLastUpdated = studentRequests.reduce((latest, request) => {
+      const updatedAt = request.updatedAt ? new Date(request.updatedAt) : null;
+      return updatedAt && (!latest || updatedAt > latest) ? updatedAt : latest;
+    }, null);
+    const lastUpdatedAt = !baseLastUpdated || (requestLastUpdated && requestLastUpdated > baseLastUpdated)
+      ? requestLastUpdated : baseLastUpdated;
+    return {
+      ...student,
+      workflowStatus: newestCoordinatorApproval ? "pendingApproval" : student.workflowStatus || "notStarted",
+      blockingStep: newestCoordinatorApproval ? approvalBlockers[newestCoordinatorApproval.type] : student.blockingStep,
+      lastUpdatedAt,
+      requests: studentRequests,
+    };
+  });
+  const countBy = (key) => Object.fromEntries([...new Set(rows.map((row) => key(row) || "unassigned"))]
+    .sort().map((value) => [value, rows.filter((row) => (key(row) || "unassigned") === value).length]));
+  res.json({
+    term: directoryResponse.body.term,
+    students: rows,
+    groups: {
+      studentType: countBy((row) => row.studentType),
+      advisor: countBy((row) => row.assignedAdvisor?.fullName),
+      requestType: Object.fromEntries(["wholeScheduleSwap", "slotChange", "mandatoryCourseRemoval", "extraHours", "graduationPlan", "exitExam", "financialReversal"]
+        .map((type) => [type, requests.filter((request) => request.type === type).length])),
+    },
+  });
+}
+
 export async function getStudentDetails(req, res) {
   if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ message: "Invalid student ID" });
   const student = await StudentProfile.findById(req.params.id)
@@ -381,23 +342,9 @@ export async function lookupAdvisor(req, res) {
 
 async function emailAdvisor(advisor, type, title, message) {
   const notification = await Notification.create({ recipient: advisor._id, type, title, message, channels: ["email"], deliveryStatus: "pending" });
-  if (!process.env.SMTP_HOST || !process.env.SMTP_FROM) return notification;
+  if (!isSmtpConfigured()) return notification;
   try {
-    const port = Number(process.env.SMTP_PORT || 587);
-    const secure = process.env.SMTP_SECURE === undefined ? port === 465 : process.env.SMTP_SECURE === "true";
-    const transport = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port,
-      secure,
-      requireTLS: !secure && process.env.SMTP_REQUIRE_TLS !== "false",
-      auth: process.env.SMTP_USER ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS } : undefined,
-      connectionTimeout: 10000,
-      greetingTimeout: 10000,
-      socketTimeout: 10000,
-      disableFileAccess: true,
-      disableUrlAccess: true,
-    });
-    await transport.sendMail({ from: process.env.SMTP_FROM, to: advisor.email, subject: title, text: message });
+    await sendEmail({ to: advisor.email, subject: title, text: message });
     notification.deliveryStatus = "sent";
     notification.sentAt = new Date();
   } catch {

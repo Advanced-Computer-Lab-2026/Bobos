@@ -1,0 +1,113 @@
+:where(:has(> .portal-focus-ring[data-service-ink])) { position:relative; }
+/* The shared Portal contour replaces the native edge during pointer and keyboard interaction. */
+.service-surface[data-staff-presentation] {
+  &[data-service="pending-work"] { --empty-art: url("/portal-studio/images/extra-hours-inbox.svg"); }
+  &[data-service="schedule-activity"] { --empty-art: url("/portal-studio/images/student-schedules-calendar.png"); }
+  :is(.outline-button, .primary-button, .text-button, .filter-toggle, .small-button) {
+    transform: none;
+    box-shadow: none;
+  }
+  :is(.outline-button, .filter-toggle):enabled:hover {
+    background-color: var(--raised);
+    border-color: var(--muted);
+    border-radius: 7px 8px 7px 6px;
+    color: var(--ink);
+    transform: none;
+  }
+  .outline-button.request-review-action {
+    color:var(--ready-ink);
+    background:var(--paper);
+    border-color:color-mix(in srgb, var(--ready-ink) 46%, var(--line));
+  }
+  .outline-button.request-review-action:hover:not(:disabled) {
+    color:var(--ready-ink);
+    background:color-mix(in srgb, var(--ready-bg) 54%, var(--paper));
+    border-color:var(--ready-ink);
+  }
+  .academic-services-embedded :is(.field, .search-control) :is(input,select,textarea):focus:not(:focus-visible) {
+    outline: none;
+    border-color: var(--muted);
+  }
+  :is(a,button,input,select,textarea,summary,[tabindex="0"]):focus-visible {
+    outline: 2px solid var(--ink) !important;
+    outline-offset: -2px !important;
+    box-shadow: none;
+  }
+  .primary-button:focus-visible { outline: 2px solid var(--canvas) !important; outline-offset: -4px !important; }
+  @media (forced-colors:none) {
+    :is([data-service-ink-hover], [data-service-ink-focus]):is(button, input, select, textarea, a[href]) {
+      border-color: transparent !important;
+      transition-property: background-color;
+      outline: none !important;
+      box-shadow: none !important;
+    }
+    .primary-button:is([data-service-ink-hover], [data-service-ink-focus]) {
+      background: var(--raised);
+      color: var(--ink);
+    }
+  }
+  .filter-toggle[aria-expanded="true"] { background: var(--raised); color: var(--ink); }
+  .filter-count { background: var(--raised); color: var(--ink); }
+  @supports (position-anchor: --service-control) {
+    [data-service-ink-hover] { anchor-name: --service-hover; }
+    [data-service-ink-focus] { anchor-name: --service-focus; }
+    .portal-focus-ring[data-service-ink="hover"] { position-anchor: --service-hover; }
+    .portal-focus-ring[data-service-ink="focus"] { position-anchor: --service-focus; }
+    .portal-focus-ring {
+      left:anchor(left); top:anchor(top); width:anchor-size(width); height:anchor-size(height);
+      position-visibility:anchors-visible;
+    }
+  }
+  .portal-focus-ring {
+    position: absolute;
+    color:var(--ink);
+    z-index: 4;
+    pointer-events: none;
+  }
+  .portal-focus-ring svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+  }
+  .portal-focus-ring[data-service-ink="hover"] svg { stroke-width: 1.4; }
+  .portal-focus-ring path:not(:first-child) { opacity: 0; }
+  @media (prefers-reduced-motion:no-preference) {
+    .filter-toggle > svg { transition:transform 160ms ease-out; }
+    .filter-toggle:active > svg { transform:scale(.92); }
+    .portal-focus-ring path { animation: service-ink-exposure .51s steps(1,end) infinite; }
+    .portal-focus-ring path:nth-child(2) { animation-delay: -.17s; }
+    .portal-focus-ring path:nth-child(3) { animation-delay: -.34s; }
+  }
+
+  .pagination-bar { gap: 10px; padding-top: 12px; font-variant-numeric: tabular-nums; }
+  .pagination-bar button { min-height: 34px; padding: 6px 10px; }
+  .workspace-empty-icon, .empty-state > span:first-child:not([role]) {
+    width: 82px; height: 64px; margin: 0 auto 9px; border: 0;
+    background: transparent var(--empty-art, url("/portal-studio/images/extra-hours-folder.svg")) center / contain no-repeat;
+    color: transparent; font-size: 0;
+  }
+  .workspace-empty-icon > svg { display: none; }
+  .workspace-empty, .empty-state { min-height: 0; padding-block: 22px; }
+  :is(.loading-state,.app-loading) { min-height: 72px; }
+  @media (forced-colors:active) {
+    :is(a,button,input,select,textarea,summary,[tabindex="0"]):focus-visible { outline-color: Highlight !important; }
+    .portal-focus-ring { visibility: hidden; }
+  }
+  @media (prefers-reduced-motion:reduce) {
+    .loader { animation: none; border-style: dotted; }
+  }
+}
+@keyframes service-ink-exposure { 0% { opacity: 1; } 33.333%, 100% { opacity: 0; } }
+@supports (appearance:base-select) {
+  .service-surface[data-staff-presentation] select:not([multiple]):is(:not([size]),[size="1"]) {
+    appearance: base-select; background-image: none; padding-inline-end: 12px;
+  }
+  .service-surface[data-staff-presentation] select::picker(select) {
+    appearance: base-select; color: var(--ink); background: var(--paper); border: 1px solid var(--muted); outline: none;
+    border-radius: 8px; padding: 4px;
+  }
+  .service-surface[data-staff-presentation] select option::checkmark { background: currentColor; }
+}

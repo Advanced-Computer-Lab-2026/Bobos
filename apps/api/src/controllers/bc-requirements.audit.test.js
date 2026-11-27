@@ -1,0 +1,812 @@
+import assert from "node:assert/strict";
+import test, { before, after, beforeEach } from "node:test";
+import mongoose from "mongoose";
+import { MongoMemoryReplSet } from "mongodb-memory-server";
+import app from "../app.js";
+import {
+  User, StudentProfile, AcademicTerm, Course, CourseOffering, StudentSchedule,
+  CourseAttempt, ScheduleActivity, CalendarConnection, SlotChangeRequest,
+  MandatoryCourseRemovalRequest, ExtraHoursRequest, FinancialTransaction, WholeScheduleSwapRequest,
+  FinancialReversalRequest, UniversityInstallment, GraduationPlan, ExitExamRequest, StudentWorkflowState,
+} from "../models/index.js";
+import { generateToken } from "../middleware/auth.middleware.js";
+import { getWallet } from "../models/academics.js";
+import { startCalendarWorker } from "../services/calendar-worker.js";
+import { setTimeout as delay } from "node:timers/promises";
+import { EventEmitter } from "node:events";
+
+let database, server, base, users, student, other, normal, term, course, offering;
+const realFetch = globalThis.fetch;
+const oid = () => new mongoose.Types.ObjectId();
+
+before(async () => {
+  database = await MongoMemoryReplSet.create({ replSet: { count: 1 } });
+  await mongoose.connect(database.getUri());
+  await Promise.all(Object.values(mongoose.models).map((model) => model.init()));
+  server = app.listen(0, "127.0.0.1");
+  await new Promise((resolve) => server.once("listening", resolve));
+  base = `http://127.0.0.1:${server.address().port}/api`;
+});
+after(async () => {
+  globalThis.fetch = realFetch;
+  if (server) await new Promise((resolve) => server.close(resolve));
+  await mongoose.disconnect();
+  if (database) await database.stop();
+});
+beforeEach(async () => {
+  globalThis.fetch = realFetch;
+  for (const model of Object.values(mongoose.models)) await model.deleteMany({});
+  users = {};
+  for (const role of ["advisor", "coordinator", "administrator", "advisingStudent", "normalStudent"]) {
+    users[role] = await User.create({ fullName: `${role} Audit`, email: `${role}@${role.endsWith("Student") ? "student.guc.edu.eg" : "guc.edu.eg"}`,
+      role, passwordHash: "audit-not-a-login-password", isActive: true, isAdvisorInSystem: role === "advisor" });
+  }
+  student = await StudentProfile.create({ user: users.advisingStudent._id, studentId: "70-00001", studentType: "advising", major: "CS", currentSemester: 5,
+    gpa: 2, academicStanding: "goodAcademicStanding", advisingReason: "unattendedCourses", assignedAdvisor: users.advisor._id });
+  const extraUser = await User.create({ role: "advisingStudent", fullName: "Other student", email: "other@student.guc.edu.eg", passwordHash: "unused" });
+  other = await StudentProfile.create({ user: extraUser._id, studentId: "70-00002", studentType: "advising", major: "CS", currentSemester: 5,
+    gpa: 2, academicStanding: "goodAcademicStanding", advisingReason: "unattendedCourses", assignedAdvisor: users.advisor._id });
+  normal = await StudentProfile.create({ user: users.normalStudent._id, studentId: "70-00003", studentType: "normal", major: "CS", currentSemester: 5,
+    gpa: 2, academicStanding: "goodAcademicStanding" });
+  term = await AcademicTerm.create({ code: "AUD26", academicYear: "2026/2027", season: "winter", termStart: new Date("2026-10-01"), termEnd: new Date("2027-03-01"),
+    teachingStart: new Date("2026-10-05"), teachingEnd: new Date("2027-01-20"), registrationStart: new Date("2026-09-01"), registrationEnd: new Date("2026-10-10"),
+    advisingDeadline: new Date(Date.now() + 86400000), wholeScheduleSwapDeadline: new Date(Date.now() + 86400000), isActive: true });
+  course = await Course.create({ code: "CSEN 501", name: "Audit systems", creditHours: 4, courseType: "core", facultyMajors: ["CS"], recommendedSemester: 5 });
+  offering = await CourseOffering.create({ course: course._id, term: term._id, academicYear: term.academicYear, isPublished: true,
+    instructors: [{ fullName: "Dr Audit", email: "audit@guc.edu.eg" }], eligibleGroups: [{ major: "CS", semester: 5, studyGroup: "1" }],
+    slots: ["lecture", "tutorial", "lab"].flatMap((componentType, index) => [1, 2].map((group) => ({ componentType, groupNumber: String(group), day: ["Monday", "Tuesday", "Wednesday"][index],
+      startMinute: 540 + group * 120, endMinute: 600 + group * 120, room: `A${index}${group}`, capacity: 2, assignedStudentCount: 0 }))) });
+});
+
+async function call(path, { role = "coordinator", method = "GET", body } = {}) {
+  const headers = role ? { Authorization: `Bearer ${generateToken(users[role])}` } : {};
+  if (body !== undefined) headers["Content-Type"] = "application/json";
+  const res = await realFetch(`${base}${path}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body), redirect: "manual" });
+  const text = await res.text();
+  return { status: res.status, headers: res.headers, body: res.headers.get("content-type")?.includes("json") && text ? JSON.parse(text) : text };
+}
+const schedulePath = () => `/schedules/advising/${student._id}`;
+async function schedule(profile = student, status = "readyForStudentReview", reserved = true) {
+  const slots = offering.slots.filter((slot) => slot.groupNumber === "1");
+  return StudentSchedule.create({ student: profile._id, term: term._id, scheduleType: "advising", status, seatsReserved: reserved, createdBy: users.advisor._id,
+    courses: [{ course: course._id, courseOffering: offering._id, creditHoursSnapshot: 4, slots: slots.map((slot) => ({ componentType: slot.componentType, courseOffering: offering._id, slotGroupId: slot._id })) }] });
+}
+async function extraRequest(overrides = {}) {
+  return ExtraHoursRequest.create({ student: student._id, advisor: users.advisor._id, term: term._id,
+    courses: [{ course: course._id, hours: 4, isRepeated: false, pricePerHour: 800, subtotal: 3200 }], requestedHours: 4, totalCost: 3200,
+    eligibilitySnapshot: { standardAllowance: 30, hoursBeforeRequest: 30, hoursAfterRequest: 34, isProbation: false, graduatingWithinOneYear: true },
+    decisionStatus: "approved", settlementStatus: "paid", ...overrides });
+}
+async function activity(profile, action, occurredAt, actorName = "Dr Audit", actorEmail = "audit@guc.edu.eg") {
+  return ScheduleActivity.create({ student: profile._id, term: term._id, schedule: oid(), action, scheduleVersion: 2,
+    actor: users.advisor._id, actorName, actorEmail, actorRole: "advisor", occurredAt: new Date(occurredAt), ...(action === "reopened" ? { reason: "Correct timetable" } : {}) });
+}
+
+test("Req 128: catalogue import reports physical CSV rows and creates or updates by course code", async () => {
+  const header = "Course Code,Course Name,Credit Hours,Course Type,Faculty/Major,Recommended Semester,Offering Season,Prerequisites";
+  const first = 'AUD101,"Intro\nto Auditing",3,core,CS,3,winter,';
+  const second = "AUD102,Advanced Auditing,4,core,CS,4,spring,AUD101";
+  const upload = (csvText, role = "administrator") => call("/catalogue/courses/import", { method: "POST", role, body: { csvText } });
+
+  const invalid = await upload([header, first, "", second.replace(",4,core", ",bad,core")].join("\r\n"));
+  assert.equal(invalid.status, 400);
+  assert.ok(invalid.body.errors.some(error => error.row === 5 && error.field === "creditHours"));
+  assert.equal(await Course.countDocuments({ code: /^AUD10/ }), 0);
+  assert.equal((await upload([header, first, second].join("\n"), "coordinator")).status, 403);
+
+  const created = await upload([header, first, second].join("\n"));
+  assert.equal(created.status, 200, JSON.stringify(created.body));
+  assert.equal(created.body.created, 2);
+  const prerequisite = await Course.findOne({ code: "AUD101" });
+  const updated = await upload([header, first, second.replace("Advanced Auditing", "Auditing Practice")].join("\n"));
+  assert.equal(updated.status, 200);
+  assert.equal(updated.body.updated, 2);
+  assert.equal(await Course.countDocuments({ code: /^AUD10/ }), 2);
+  const advanced = await Course.findOne({ code: "AUD102" });
+  assert.equal(advanced.name, "Auditing Practice");
+  assert.deepEqual(advanced.prerequisites.map(String), [String(prerequisite._id)]);
+});
+
+test("Req 128: a write error rolls back the full CSV import", async (t) => {
+  const bulkWrite = Course.bulkWrite.bind(Course);
+  t.mock.method(Course, "bulkWrite", async (operations, options) => {
+    await bulkWrite(operations.slice(0, 1), options);
+    throw Object.assign(new Error("Simulated duplicate key"), { code: 11000 });
+  });
+  const csvText = "Course Code,Course Name,Credit Hours,Course Type,Faculty/Major,Recommended Semester,Offering Season,Prerequisites\n"
+    + "AUD101,Intro to Auditing,3,core,CS,3,winter,\nAUD102,Advanced Auditing,4,core,CS,4,spring,AUD101";
+  const result = await call("/catalogue/courses/import", { method: "POST", role: "administrator", body: { csvText } });
+  assert.equal(result.status, 409);
+  assert.equal(await Course.countDocuments({ code: /^AUD10/ }), 0);
+});
+
+test("B1 Req 116: OAuth requires student auth/config; invalid state cannot create a connection", async () => {
+  assert.equal((await call("/calendar/connect", { role: null })).status, 401);
+  assert.equal((await call("/calendar/connect", { role: "advisor" })).status, 403);
+  process.env.GOOGLE_CLIENT_ID = "test-client";
+  process.env.GOOGLE_CLIENT_SECRET = "test-secret";
+  process.env.GOOGLE_REDIRECT_URI = "http://localhost/calendar/callback";
+  process.env.CALENDAR_TOKEN_ENCRYPTION_KEY = "42".repeat(32);
+  const connect = await call("/calendar/connect", { role: "advisingStudent" });
+  assert.equal(connect.status, 200);
+  const url = new URL(connect.body.authorizationUrl);
+  assert.equal(url.origin, "https://accounts.google.com");
+  assert.match(url.searchParams.get("scope"), /calendar.events/);
+  assert.equal(url.searchParams.get("prompt"), "select_account consent");
+  assert.equal(url.searchParams.get("client_secret"), null);
+  const failed = await call("/calendar/oauth/callback?state=invalid&code=bad", { role: null });
+  assert.equal(failed.status, 302);
+  assert.match(failed.headers.get("location"), /calendar=error/);
+  assert.equal(await CalendarConnection.countDocuments(), 0);
+});
+
+test("B1 Req 116: OAuth encrypts tokens; recurring sync includes all slot types, refreshes tokens and deletes stale events", async () => {
+  process.env.GOOGLE_CLIENT_ID = "test-client";
+  process.env.GOOGLE_CLIENT_SECRET = "test-secret";
+  process.env.GOOGLE_REDIRECT_URI = "http://localhost/calendar/callback";
+  process.env.CALENDAR_TOKEN_ENCRYPTION_KEY = "42".repeat(32);
+  process.env.UNIVERSITY_TIMEZONE = "Africa/Cairo";
+  const events = [], removals = [], requests = [];
+  globalThis.fetch = async (url, options = {}) => {
+    const address = String(url); requests.push({ address, options });
+    if (address.includes("oauth2.googleapis.com/token")) return Response.json({ access_token: "secret-access", refresh_token: "secret-refresh", expires_in: 3600, scope: "https://www.googleapis.com/auth/calendar.events" });
+    if (address.includes("userinfo")) return Response.json({ email: "calendar@example.com" });
+    if (address.includes("/events")) {
+      if (options.method === "PUT") return new Response("missing", { status: 404 });
+      if (options.method === "DELETE") { removals.push(address); return new Response(null, { status: 204 }); }
+      const event = JSON.parse(options.body); events.push(event); return Response.json({ id: event.id });
+    }
+    if (address.includes("/revoke")) return new Response(null, { status: 200 });
+    throw new Error(`Unexpected external request ${address}`);
+  };
+  try {
+    const start = await call("/calendar/connect", { role: "advisingStudent" });
+    const state = new URL(start.body.authorizationUrl).searchParams.get("state");
+    const callback = await call(`/calendar/oauth/callback?state=${encodeURIComponent(state)}&code=valid`, { role: null });
+    assert.match(callback.headers.get("location"), /calendar=connected/);
+    const stored = await CalendarConnection.findOne().select("+encryptedAccessToken +encryptedRefreshToken").lean();
+    assert.ok(stored.encryptedAccessToken && !stored.encryptedAccessToken.includes("secret-access"));
+    assert.ok(stored.encryptedRefreshToken && !stored.encryptedRefreshToken.includes("secret-refresh"));
+    const publicConnection = await call("/calendar/connection", { role: "advisingStudent" });
+    assert.equal(publicConnection.body.encryptedAccessToken, undefined);
+    assert.equal((await call("/calendar/connection", { role: "normalStudent" })).body.connected, false);
+    assert.equal((await call("/calendar/sync", { role: "advisingStudent", method: "POST" })).status, 409);
+    const saved = await schedule(student, "processed");
+    const sync = await call("/calendar/sync", { role: "advisingStudent", method: "POST" });
+    assert.equal(sync.status, 200, JSON.stringify(sync.body));
+    assert.equal(sync.body.synced, 3);
+    assert.equal(events.length, 3);
+    for (const event of events) {
+      assert.match(event.summary, /CSEN 501.*Audit systems/);
+      assert.match(event.description, /Type: (lecture|tutorial|lab)/);
+      assert.match(event.description, /Dr Audit/);
+      assert.ok(event.location);
+      assert.equal(event.start.timeZone, "Africa/Cairo");
+      assert.match(event.recurrence[0], /FREQ=WEEKLY;BYDAY=.+;COUNT=/);
+      assert.ok(event.start.dateTime >= "2026-10-05");
+    }
+    assert.equal(new Set(events.map((event) => event.id)).size, 3);
+    await CalendarConnection.updateOne({ _id: stored._id }, { tokenExpiresAt: new Date(0) });
+    await StudentSchedule.updateOne({ _id: saved._id }, { $set: { "courses.0.slots": saved.courses[0].slots.slice(0, 1) } });
+    const again = await call("/calendar/sync", { role: "advisingStudent", method: "POST" });
+    assert.equal(again.status, 200);
+    assert.equal(again.body.synced, 1);
+    assert.equal(removals.length, 2);
+    assert.ok(events.slice(0, 3).some(event => event.id === events[3].id), "event IDs remain stable across resyncs regardless of event order");
+    assert.ok(requests.some(({ options }) => String(options.body).includes("grant_type=refresh_token")));
+    assert.equal((await call("/calendar/connection", { role: "advisingStudent", method: "DELETE" })).status, 200);
+    assert.equal(await CalendarConnection.countDocuments(), 0);
+  } finally { globalThis.fetch = realFetch; }
+});
+
+test("B1 Req 122: dashboard derives states, includes both student types and groups requests/advisors", async () => {
+  assert.equal((await call("/admin/pending-work", { role: null })).status, 401);
+  for (const role of ["advisor", "administrator", "normalStudent", "advisingStudent"]) assert.equal((await call("/admin/pending-work", { role })).status, 403);
+  const saved = await schedule(student, "draft");
+  await SlotChangeRequest.create({ student: student._id, schedule: saved._id, term: term._id, course: course._id,
+    componentType: "lecture", currentOffering: offering._id, currentSlotGroupId: offering.slots[0]._id });
+  const response = await call("/admin/pending-work");
+  assert.equal(response.status, 200, JSON.stringify(response.body));
+  assert.equal(response.body.students.length, 3);
+  assert.equal(response.body.groups.studentType.advising, 2);
+  assert.equal(response.body.groups.studentType.normal, 1);
+  assert.equal(response.body.groups.requestType.slotChange, 1);
+  const row = response.body.students.find((item) => item.id === String(student._id));
+  assert.equal(row.workflowStatus ?? row.workflow?.status ?? row.status, "changeRequestPending");
+  assert.equal(row.requests[0].type, "slotChange");
+});
+
+test("B1 Req 122: approved extra hours without a payment choice stay visible in pending work", async () => {
+  const request = await extraRequest({ settlementStatus: "none" });
+  const result = await call("/admin/pending-work");
+  assert.equal(result.status, 200);
+  const row = result.body.students.find((item) => item.id === String(student._id));
+  assert.equal(row.workflowStatus, "awaitingPaymentChoice");
+  assert.ok(row.requests.some((item) => item.id === String(request._id) && item.type === "extraHours"));
+  assert.equal(result.body.groups.requestType.extraHours, 1);
+});
+
+test("B1 Req 122: submitted future-term graduation plans remain in the coordinator queue", async () => {
+  const futureTerm = await AcademicTerm.create({ code: "FUT27", academicYear: "2027/2028", season: "winter",
+    termStart: new Date("2027-10-01"), termEnd: new Date("2028-03-01"), teachingStart: new Date("2027-10-05"), teachingEnd: new Date("2028-01-20"),
+    registrationStart: new Date("2027-09-01"), registrationEnd: new Date("2027-10-10"), advisingDeadline: new Date("2027-10-10"), wholeScheduleSwapDeadline: new Date("2027-10-10") });
+  const plan = await GraduationPlan.create({ student: student._id, advisor: users.advisor._id,
+    termPlans: [{ term: futureTerm._id, courses: [course._id] }], status: "submitted" });
+  const result = await call("/admin/pending-work");
+  assert.equal(result.status, 200);
+  const row = result.body.students.find((item) => item.id === String(student._id));
+  assert.ok(row.requests.some((item) => item.id === String(plan._id) && item.type === "graduationPlan"));
+  assert.equal(row.blockingStep, "Review submitted graduation plan");
+  assert.equal(result.body.groups.requestType.graduationPlan, 1);
+});
+
+test("B1 Req 123: history supports global and student scopes and preserves actor snapshots", async () => {
+  await activity(student, "processed", "2026-11-01T10:00:00Z");
+  await activity(other, "reopened", "2026-11-02T10:00:00Z");
+  await User.updateOne({ _id: users.advisor._id }, { fullName: "Renamed advisor" });
+  assert.equal((await call("/admin/schedule-activity", { role: null })).status, 401);
+  assert.equal((await call("/admin/schedule-activity", { role: "advisor" })).status, 403);
+  const all = await call("/admin/schedule-activity", { role: "administrator" });
+  assert.equal(all.body.total, 2);
+  const single = await call(`/admin/students/${student._id}/schedule-activity`);
+  assert.equal(single.body.total, 1);
+  const event = single.body.activities[0];
+  assert.equal(event.studentId, student.studentId);
+  assert.equal(event.staffName, "Dr Audit");
+  assert.equal(event.staffEmail, "audit@guc.edu.eg");
+  assert.equal(event.staffRole, "advisor");
+  assert.equal(event.scheduleVersion, 2);
+  assert.ok(event.occurredAt);
+  assert.equal((await call(`/admin/students/${normal._id}/schedule-activity`)).status, 404);
+  assert.equal((await call("/admin/students/bad/schedule-activity")).status, 400);
+});
+
+test("B1 Req 124: action/date filters compose and reject malformed or reversed ranges", async () => {
+  await activity(student, "processed", "2026-11-01T23:59:59.999Z");
+  await activity(student, "reopened", "2026-11-02T00:00:00Z");
+  const filtered = await call("/admin/schedule-activity?action=processed&from=2026-11-01&to=2026-11-01");
+  assert.equal(filtered.body.total, 1);
+  for (const query of ["action=delete", "from=2026-02-30", "from=2026-11-02&to=2026-11-01", "termId=bad"]) {
+    assert.equal((await call(`/admin/schedule-activity?${query}`)).status, 400, query);
+  }
+});
+
+test("B1 Req 125: literal search matches student IDs, staff name and email without regex injection", async () => {
+  await activity(student, "processed", "2026-11-01", "Dr [Audit]", "audit@guc.edu.eg");
+  await activity(other, "reopened", "2026-11-02", "Dr Other", "other@guc.edu.eg");
+  for (const search of [student.studentId, "[Audit]", "audit@guc.edu.eg"]) {
+    const result = await call(`/admin/schedule-activity?search=${encodeURIComponent(search)}`);
+    assert.equal(result.body.total, 1, search);
+    assert.equal(result.body.activities[0].studentId, student.studentId);
+  }
+  assert.equal((await call("/admin/schedule-activity?search=.%2A")).body.total, 0);
+});
+
+test("B1 Req 125: student ID search accepts surrounding spaces, compact IDs and copied dashes", async () => {
+  await activity(student, "processed", "2026-11-01T10:00:00Z");
+  await activity(other, "processed", "2026-11-01T10:00:00Z");
+  for (const search of [" 70-00001 ", "7000001", "70–00001", "70 - 00001"]) {
+    const result = await call(`/admin/schedule-activity?search=${encodeURIComponent(search)}`);
+    assert.equal(result.status, 200);
+    assert.equal(result.body.total, 1, search);
+    assert.equal(result.body.activities[0].studentId, "70-00001");
+  }
+  const csv = await call("/admin/schedule-activity/export?search=%2070%E2%80%9300001%20");
+  assert.equal(csv.status, 200);
+  assert.match(csv.body, /70-00001/);
+  assert.doesNotMatch(csv.body, /70-00002/);
+});
+
+test("B1 Req 125: student names are excluded while student IDs remain searchable", async () => {
+  await User.updateOne({ _id: users.advisingStudent._id }, { fullName: "Mariam Hassan" });
+  await activity(student, "processed", "2026-11-01T10:00:00Z");
+  assert.equal((await call("/admin/schedule-activity?search=Mariam")).body.total, 0);
+  assert.equal((await call("/admin/schedule-activity?search=70-00001")).body.total, 1);
+});
+
+test("B1 Req 126: CSV exports every matching page, excludes other actions and protects spreadsheet cells", async () => {
+  const rows = Array.from({ length: 105 }, () => ({ student: student._id, term: term._id, schedule: oid(), action: "processed", scheduleVersion: 1,
+    actor: users.advisor._id, actorName: '=HYPERLINK("bad")', actorEmail: "audit@guc.edu.eg", actorRole: "advisor", occurredAt: new Date("2026-11-01") }));
+  await ScheduleActivity.insertMany(rows);
+  await activity(other, "reopened", "2026-11-02");
+  const csv = await call("/admin/schedule-activity/export?action=processed", { role: "administrator" });
+  assert.equal(csv.status, 200);
+  assert.match(csv.headers.get("content-type"), /text\/csv/);
+  assert.match(csv.headers.get("content-disposition"), /attachment/);
+  assert.equal(csv.body.trim().split(/\r?\n/).length, 106);
+  assert.match(csv.body, /'=HYPERLINK/);
+  assert.ok(!csv.body.includes(other.studentId));
+});
+
+test("B2 Req 97-101,127: request/reference searches and combined filters preserve student ownership in details and exports", async () => {
+  const request = await extraRequest();
+  const owned = await FinancialTransaction.create({ student: student._id, extraHoursRequest: request._id, kind: "deferredCharge", amount: 3200, status: "pending",
+    settlementOption: "deferred", deferredChargeReference: "DEFER-AUDIT", occurredAt: new Date("2026-11-01T23:59:59.999Z") });
+  await FinancialTransaction.create({ student: other._id, kind: "gatewayPayment", amount: 999, status: "succeeded", settlementOption: "gateway", transactionReference: "OTHER-REF" });
+  for (const search of [student.studentId, String(request._id), "DEFER-AUDIT"]) {
+    const result = await call(`/finance/records?search=${encodeURIComponent(search)}`, { role: "administrator" });
+    assert.equal(result.body.total, 1, search);
+    assert.equal(result.body.records[0]._id, String(owned._id));
+  }
+  const query = "settlementOption=deferred&status=pending&startDate=2026-11-01&endDate=2026-11-01";
+  const filtered = await call(`/finance/records?${query}`);
+  assert.equal(filtered.body.total, 1);
+  assert.equal((await call("/finance/records?search=OTHER-REF", { role: "advisingStudent" })).body.total, 0);
+  assert.equal((await call("/finance/records/export", { role: "advisingStudent" })).status, 403);
+  const csv = await call(`/finance/export?${query}`);
+  assert.equal(csv.status, 200);
+  assert.ok(csv.body.includes(student.studentId));
+  assert.ok(!csv.body.includes(other.studentId));
+});
+
+test("C3 Req 40-42,46-48: tutorial and lab requests preserve other components, withdrawal and exact replacement response", async () => {
+  await schedule();
+  await CourseOffering.updateOne({ _id: offering._id }, { $set: { "slots.$[slot].assignedStudentCount": 1 } }, { arrayFilters: [{ "slot.groupNumber": "1" }] });
+  for (const componentType of ["tutorial", "lab"]) {
+    const current = offering.slots.find((slot) => slot.componentType === componentType && slot.groupNumber === "1");
+    const next = offering.slots.find((slot) => slot.componentType === componentType && slot.groupNumber === "2");
+    const created = await call("/slot-changes", { role: "advisingStudent", method: "POST", body: { courseId: String(course._id), slotId: String(current._id), preferenceNote: "Later group" } });
+    assert.equal(created.status, 201, JSON.stringify(created.body));
+    const id = created.body.request._id;
+    assert.equal((await call(`/slot-changes/${id}`)).status, 200);
+    const decided = await call(`/slot-changes/${id}/decision`, { method: "POST", body: { decision: "approved", replacementSlotId: String(next._id), responseNote: "Changed exactly this component" } });
+    assert.equal(decided.status, 200, JSON.stringify(decided.body));
+    assert.equal((await call(`/slot-changes/${id}/withdraw`, { role: "advisingStudent", method: "POST" })).status, 409);
+    const own = await call("/slot-changes/me", { role: "advisingStudent" });
+    const row = own.body.requests.find((item) => item._id === id);
+    assert.equal(row.status, "approved");
+    assert.equal(String(row.replacementSlotGroupId), String(next._id));
+    assert.match(row.responseNote, /Changed exactly/);
+    const live = await CourseOffering.findById(offering._id);
+    assert.equal(live.slots.id(current._id).assignedStudentCount, 0);
+    assert.equal(live.slots.id(next._id).assignedStudentCount, 1);
+  }
+  const saved = await StudentSchedule.findOne({ student: student._id });
+  assert.equal(saved.status, "readyForStudentReview");
+  assert.equal(String(saved.courses[0].slots.find((slot) => slot.componentType === "lecture").slotGroupId), String(offering.slots[0]._id));
+});
+
+test("C2 Req 74-78: resume all component choices, change a tutorial and remove a lab with exact reservation deltas", async () => {
+  const endpoint = `${schedulePath()}/draft`;
+  const selections = ["lecture", "tutorial", "lab"].map((componentType) => ({ componentType, groupNumber: "1" }));
+  const save = (version, groups) => call(endpoint, { method: "PUT", body: { version, courses: [{ courseOffering: String(offering._id), groups }] } });
+  const first = await save(0, selections);
+  assert.equal(first.status, 201, JSON.stringify(first.body));
+  const resumed = await call(endpoint);
+  assert.equal(resumed.status, 200);
+  assert.equal(resumed.body.schedule.courses[0].groups.length, 3);
+  for (const componentType of ["lecture", "tutorial", "lab"]) {
+    const group = resumed.body.offerings[0].groups.find((item) => item.componentType === componentType && item.groupNumber === "1");
+    assert.ok(group && group.slots.length, `Req 75 available ${componentType} slots`);
+  }
+  const changed = await save(first.body.schedule.version, selections.map((pick) => pick.componentType === "tutorial" ? { ...pick, groupNumber: "2" } : pick));
+  assert.equal(changed.status, 200, JSON.stringify(changed.body));
+  const removed = await save(changed.body.schedule.version, [{ componentType: "lecture", groupNumber: "1" }, { componentType: "tutorial", groupNumber: "2" }]);
+  assert.equal(removed.status, 200);
+  const live = await CourseOffering.findById(offering._id);
+  const count = (type, group) => live.slots.find((slot) => slot.componentType === type && slot.groupNumber === group).assignedStudentCount;
+  assert.equal(count("lecture", "1"), 1);
+  assert.equal(count("tutorial", "1"), 0);
+  assert.equal(count("tutorial", "2"), 1);
+  assert.equal(count("lab", "1"), 0);
+  assert.equal((await StudentSchedule.findOne({ student: student._id })).status, "draft");
+  const incomplete = await call(endpoint);
+  assert.ok(incomplete.body.validationIssues.some((issue) => /lab/i.test(issue.message)), "incomplete draft still exposes its missing lab");
+});
+
+test("B3 Req 82: reopen hides the schedule from its owner and automatically records a reason", async () => {
+  await schedule(student, "processed");
+  assert.equal((await call("/schedules/me", { role: "advisingStudent" })).status, 200);
+  assert.equal((await call(`${schedulePath()}/reopen`, { method: "POST", body: { reason: "   " } })).status, 400);
+  const reopened = await call(`${schedulePath()}/reopen`, { method: "POST", body: { reason: "Correct lab selection" } });
+  assert.equal(reopened.status, 200);
+  assert.equal(reopened.body.schedule.status, "draft");
+  assert.equal((await call("/schedules/me", { role: "advisingStudent" })).status, 404);
+  const history = await call(`/admin/students/${student._id}/schedule-activity`);
+  assert.equal(history.body.activities[0].reason, "Correct lab selection");
+});
+
+test("B3 Req 65-68: removal search and combined advisor/status/date filters include the full final day", async () => {
+  const baseRequest = { student: student._id, advisor: users.advisor._id, course: course._id, term: term._id, reason: "other", explanation: "Audit request" };
+  const first = await MandatoryCourseRemovalRequest.create({ ...baseRequest, createdAt: new Date("2026-11-01T00:00:00Z") });
+  const last = await MandatoryCourseRemovalRequest.create({ ...baseRequest, createdAt: new Date("2026-11-01T23:59:59.999Z") });
+  await MandatoryCourseRemovalRequest.create({ ...baseRequest, createdAt: new Date("2026-11-02T00:00:00Z") });
+  await MandatoryCourseRemovalRequest.create({ ...baseRequest, status: "rejected", createdAt: new Date("2026-11-01T12:00:00Z") });
+  const filters = `advisor=${users.advisor._id}&status=pending&dateFrom=2026-11-01&dateTo=2026-11-01`;
+  for (const search of [student.studentId, course.code, users.advisor.fullName, users.advisor.email]) {
+    const result = await call(`/mandatory-removals?${filters}&search=${encodeURIComponent(search)}`);
+    assert.equal(result.status, 200);
+    assert.deepEqual(result.body.map((item) => item._id).sort(), [String(first._id), String(last._id)].sort());
+  }
+  assert.equal((await call(`/mandatory-removals/${last._id}`)).body._id, String(last._id));
+});
+
+test("B2 Req 102: an active, uncancelled extra-hours request cannot be refunded", async () => {
+  const request = await extraRequest();
+  const payment = await FinancialTransaction.create({ student: student._id, extraHoursRequest: request._id, kind: "gatewayPayment", amount: 3200, status: "succeeded", settlementOption: "gateway" });
+  const res = await call(`/finance/${payment._id}/refund`, { method: "POST", body: {} });
+  assert.ok([400, 409].includes(res.status), `active request was refunded: ${res.status}`);
+  assert.equal(await FinancialTransaction.countDocuments({ kind: "refund" }), 0);
+});
+
+test("B2 Req 102: cancelling an outstanding installment restores eligibility state without wallet credit", async () => {
+  const request = await extraRequest({ settlementStatus: "deferred", settlementOption: "deferred" });
+  const charge = await FinancialTransaction.create({ student: student._id, extraHoursRequest: request._id, kind: "deferredCharge", amount: 3200, status: "pending", settlementOption: "deferred", deferredChargeReference: "D-102", installment: "Next installment" });
+  await FinancialReversalRequest.create({ student: student._id, extraHoursRequest: request._id, originalTransaction: charge._id, requestedBy: users.advisor._id, reversalType: "cancelDeferredCharge" });
+  const record = await call(`/finance/records/${charge._id}`);
+  assert.equal(record.body.availableReversal, "cancelDeferredCharge");
+  const before = (await getWallet(student._id)).balance;
+  const res = await call(`/finance/${charge._id}/refund`, { method: "POST", body: {} });
+  assert.equal(res.status, 200);
+  assert.equal((await getWallet(student._id)).balance, before, "unpaid deferred debt must not become wallet credit");
+  const cancelledCharge = await FinancialTransaction.findById(charge._id);
+  assert.equal(cancelledCharge.status, "cancelled");
+  const reversal = await FinancialTransaction.findOne({ kind: "deferredChargeCancellation" });
+  assert.equal(reversal.installment, "Next installment");
+  assert.ok(cancelledCharge.installmentId, "an older charge gains its installment link when cancelled");
+  assert.equal(String(reversal.installmentId), String(cancelledCharge.installmentId));
+  assert.equal(String((await UniversityInstallment.findById(reversal.installmentId)).term), String(term._id));
+  assert.equal(reversal.deferredChargeReference, "D-102");
+  const cancelledRequest = await ExtraHoursRequest.findById(request._id);
+  assert.equal(cancelledRequest.settlementStatus, "cancelled");
+  assert.equal(cancelledRequest.history.at(-1).action, "cancelled");
+  const retry = await call(`/extra-hours/${request._id}/settlement`, { role: "advisingStudent", method: "POST", body: { option: "now", method: "gateway" } });
+  assert.equal(retry.status, 409);
+  const dashboard = await call("/admin/pending-work");
+  const row = dashboard.body.students.find(item => item.id === String(student._id));
+  assert.notEqual(row.workflowStatus, "awaitingPaymentChoice");
+  assert.ok(!row.requests.some(item => item.id === String(request._id)));
+});
+
+test("B2 Req 102: refund revokes hours and releases seats from unprocessed additions", async () => {
+  const request = await extraRequest({ decisionStatus: "withdrawn" });
+  const payment = await FinancialTransaction.create({ student: student._id, extraHoursRequest: request._id, kind: "gatewayPayment", amount: 3200, status: "succeeded", settlementOption: "gateway" });
+  await FinancialReversalRequest.create({ student: student._id, extraHoursRequest: request._id, originalTransaction: payment._id, requestedBy: users.advisor._id, reversalType: "refundToWallet" });
+  const before = await schedule(student, "readyForStudentReview");
+  await StudentWorkflowState.create({ student: student._id, studentType: "advising", term: term._id, status: "readyForStudentReview" });
+  await CourseOffering.updateOne({ _id: offering._id }, { $set: { "slots.$[slot].assignedStudentCount": 1 } }, { arrayFilters: [{ "slot.groupNumber": "1" }] });
+  const res = await call(`/finance/${payment._id}/refund`, { method: "POST", body: {} });
+  assert.equal(res.status, 200);
+  assert.ok(["refunded", "cancelled"].includes((await ExtraHoursRequest.findById(request._id)).settlementStatus));
+  const after = await StudentSchedule.findById(before._id);
+  assert.equal(after.status, "draft");
+  assert.equal(after.courses.length, 0);
+  assert.equal(after.version, before.version + 1);
+  assert.ok((await CourseOffering.findById(offering._id)).slots.every(slot => slot.assignedStudentCount === 0));
+  const profile = await call("/identity/profile", { role: "advisingStudent" });
+  assert.equal(profile.body.profile.scheduleStatus, "draft");
+});
+
+test("B2 Req 102: simultaneous refund requests produce only one credit", async () => {
+  const request = await extraRequest({ decisionStatus: "withdrawn" });
+  const payment = await FinancialTransaction.create({ student: student._id, extraHoursRequest: request._id, kind: "gatewayPayment", amount: 3200, status: "succeeded" });
+  const responses = await Promise.all(Array.from({ length: 8 }, () => call(`/finance/${payment._id}/refund`, { method: "POST", body: {} })));
+  assert.equal(responses.filter((res) => res.status === 200).length, 1);
+  assert.equal(await FinancialTransaction.countDocuments({ relatedTransaction: payment._id, kind: "refund" }), 1);
+});
+
+test("B2 Req 89,102: a legacy wallet debit is counted and its refund restores the balance once", async () => {
+  const request = await extraRequest({ decisionStatus: "withdrawn" });
+  await FinancialTransaction.create({ student: student._id, kind: "walletTopUp", amount: 5000, status: "succeeded" });
+  const payment = await FinancialTransaction.create({ student: student._id, extraHoursRequest: request._id, kind: "extraHoursWalletPayment", amount: 3200, status: "COMPLETED", settlementOption: "wallet" });
+  assert.equal((await getWallet(student._id)).balance, 1800);
+  assert.equal((await call("/extra-hours/mine/wallet", { role: "advisingStudent" })).body.balance, 1800);
+  const partial = await call(`/finance/${payment._id}/refund`, { method: "POST", body: { amount: 100 } });
+  assert.equal(partial.status, 400);
+  const result = await call(`/finance/${payment._id}/refund`, { method: "POST", body: {} });
+  assert.equal(result.status, 200);
+  assert.equal((await getWallet(student._id)).balance, 5000, "refund must reverse a 3200 debit exactly once");
+});
+
+test("C1 Req 59: GPA 3.70 independently applies the probation credit reduction", async () => {
+  await StudentProfile.updateOne({ _id: student._id }, { gpa: 3.70 });
+  const response = await call(`${schedulePath()}/overview`);
+  assert.equal(response.body.creditHours.allowedHours, 23);
+  assert.equal(response.body.creditHours.extraHoursAllowed, false);
+});
+
+test("C1 Req 60: every course taken with the bachelor project requires extra-hours activation", async () => {
+  // With only one catalogue course, an earlier failed course is a permitted bachelor exception.
+  await CourseAttempt.create({ student: student._id, course: course._id, term: term._id, attendance: "attended", result: "failed", grade: "F" });
+  assert.equal((await call(`${schedulePath()}/bachelor-project`, { method: "PUT", body: { season: "winter" } })).status, 201);
+  const picks = [{ courseOffering: String(offering._id), groups: ["lecture", "tutorial", "lab"].map((componentType) => ({ componentType, groupNumber: "1" })) }];
+  const response = await call(`${schedulePath()}/draft/validate`, { method: "POST", body: { courses: picks } });
+  assert.equal(response.status, 200);
+  assert.ok(response.body.validationIssues.some((issue) => issue.code === "bachelorProjectExtraHours"), "core companion course bypassed extra-hours flow");
+});
+
+test("B3 Req 64: completed-hours deferral requires more than 157 completed hours", async () => {
+  await CourseAttempt.create({ student: student._id, course: course._id, term: term._id, result: "failed", attendance: "attended", grade: "F" });
+  const response = await call("/mandatory-removals", { role: "advisor", method: "POST", body: { studentProfileId: String(student._id), courseId: String(course._id), termId: String(term._id), reason: "completedHours", explanation: "Defer this course" } });
+  assert.ok([400, 409, 422].includes(response.status), "student with zero completed hours qualified for >157 hour deferral");
+});
+
+test("B3 Req 69: concurrent removal decisions return review schedules to draft and release seats once", async () => {
+  const before = await schedule(student, "readyForStudentReview");
+  await CourseOffering.updateOne({ _id: offering._id }, { $set: { "slots.$[slot].assignedStudentCount": 1 } }, { arrayFilters: [{ "slot.groupNumber": "1" }] });
+  const request = await MandatoryCourseRemovalRequest.create({ student: student._id, advisor: users.advisor._id, course: course._id, term: term._id, reason: "other", explanation: "Audit concurrent decision" });
+  const decisions = await Promise.all(Array.from({ length: 8 }, () => call(`/mandatory-removals/${request._id}/decision`, { method: "PATCH", body: { decision: "approved", responseNote: "Approved removal" } })));
+  assert.equal(decisions.filter((result) => result.status === 200).length, 1, "only one decision may win");
+  const live = await CourseOffering.findById(offering._id);
+  assert.ok(live.slots.every((slot) => slot.assignedStudentCount === 0), "capacity must not go negative");
+  const after = await StudentSchedule.findById(before._id);
+  assert.equal(after.status, "draft");
+  assert.equal(after.version, before.version + 1);
+  assert.equal(after.courses.length, 0);
+});
+
+test("B3 Req 81: a pending mandatory-removal approval blocks final processing", async () => {
+  await schedule();
+  await MandatoryCourseRemovalRequest.create({ student: student._id, advisor: users.advisor._id, course: course._id, term: term._id, reason: "other", explanation: "Awaiting approval" });
+  const result = await call(`${schedulePath()}/process`, { method: "POST", body: {} });
+  assert.ok([400, 409].includes(result.status), "required coordinator approval is unresolved");
+});
+
+test("B3 Req 81: processing revalidates current published offerings and required slots", async () => {
+  await schedule();
+  await CourseOffering.updateOne({ _id: offering._id }, { isPublished: false });
+  const response = await call(`${schedulePath()}/process`, { method: "POST", body: {} });
+  assert.ok([400, 409, 422].includes(response.status), `unpublished offering was finalized: ${response.status}`);
+  assert.equal((await StudentSchedule.findOne({ student: student._id })).status, "readyForStudentReview");
+});
+
+test("B3 Req 81,123: two staff processing simultaneously finalize and log exactly once", async () => {
+  await schedule();
+  const responses = await Promise.all(Array.from({ length: 8 }, () => call(`${schedulePath()}/process`, { method: "POST", body: {} })));
+  assert.equal(responses.filter((res) => res.status === 200).length, 1);
+  assert.equal(await ScheduleActivity.countDocuments({ action: "processed" }), 1);
+});
+
+test("C1 Req 59: overview shows the current draft when the workflow projection is stale", async () => {
+  await StudentWorkflowState.create({ student: student._id, term: term._id, studentType: "advising", status: "processed" });
+  assert.equal((await call(`${schedulePath()}/draft`, { method: "POST" })).status, 201);
+  const overview = await call(`${schedulePath()}/overview`);
+  assert.equal(overview.body.scheduleStatus, "draft");
+});
+
+test("B1 Req 122: dashboard includes graduation, exit-exam and financial reversal action requests", async () => {
+  await GraduationPlan.create({ student: student._id, advisor: users.advisor._id, termPlans: [{ term: term._id, courses: [course._id] }], status: "submitted" });
+  await ExitExamRequest.create({ student: student._id, advisor: users.advisor._id, course: course._id, reason: "Final failed course" });
+  const request = await extraRequest();
+  const payment = await FinancialTransaction.create({ student: student._id, extraHoursRequest: request._id, kind: "gatewayPayment", amount: 3200, status: "succeeded" });
+  await FinancialReversalRequest.create({ student: student._id, extraHoursRequest: request._id, originalTransaction: payment._id, requestedBy: users.advisor._id, reversalType: "refundToWallet" });
+  const result = await call("/admin/pending-work");
+  const row = result.body.students.find((item) => item.id === String(student._id));
+  for (const type of ["graduationPlan", "exitExam", "financialReversal"]) assert.ok(row.requests.some((item) => item.type === type), `missing ${type}`);
+});
+
+
+async function eventually(check, message) {
+  const deadline = Date.now() + 7000;
+  while (!await check()) {
+    if (Date.now() > deadline) assert.fail(message);
+    await delay(30);
+  }
+}
+
+async function calendarFixture() {
+  process.env.GOOGLE_CLIENT_ID = "fixture-client";
+  process.env.GOOGLE_CLIENT_SECRET = "fixture-secret";
+  process.env.GOOGLE_REDIRECT_URI = "http://localhost/callback";
+  process.env.CALENDAR_TOKEN_ENCRYPTION_KEY = "42".repeat(32);
+  const events = new Map();
+  const state = { writes: 0, failNextWrite: false, refreshRevoked: false, refreshes: 0 };
+  globalThis.fetch = async (url, options = {}) => {
+    const address = String(url);
+    if (address.endsWith("/token")) {
+      if (String(options.body).includes("grant_type=refresh_token")) {
+        state.refreshes++;
+        if (state.refreshRevoked) return Response.json({ error: "invalid_grant" }, { status: 400 });
+      }
+      return Response.json({ access_token: "test-access", refresh_token: "test-refresh", expires_in: 3600, scope: "https://www.googleapis.com/auth/calendar.events" });
+    }
+    if (address.endsWith("/userinfo")) return Response.json({ email: "real-protocol-fixture@example.test" });
+    assert.match(address, /googleapis.com\/calendar\/v3\/calendars\/primary\/events/);
+    const id = address.split("/").at(-1);
+    if (options.method === "DELETE") {
+      if (!events.has(id)) return new Response(null, { status: 410 });
+      events.delete(id);
+      return new Response(null, { status: 204 });
+    }
+    if (options.method === "PUT" && !events.has(id)) return new Response(null, { status: 404 });
+    if (state.failNextWrite) {
+      state.failNextWrite = false;
+      return new Response(null, { status: 503 });
+    }
+    const event = JSON.parse(options.body);
+    events.set(event.id, event);
+    state.writes++;
+    return Response.json({ id: event.id });
+  };
+  const connect = await call("/calendar/connect", { role: "advisingStudent" });
+  const oauthState = new URL(connect.body.authorizationUrl).searchParams.get("state");
+  const callback = await call(`/calendar/oauth/callback?state=${encodeURIComponent(oauthState)}&code=fixture`, { role: null });
+  assert.match(callback.headers.get("location"), /portal-studio\/index\.html\?page=calendar-sync&role=advisingStudent&preview=live&calendar=connected/);
+  return { events, state };
+}
+
+test("B1 Req 116: real MongoDB change streams sync processed changes without an open browser", async () => {
+  const { events, state } = await calendarFixture();
+  const saved = await schedule(student, "draft");
+  const stop = startCalendarWorker();
+  try {
+    await delay(200);
+    assert.equal(events.size, 0, "draft schedules must never reach Google");
+    await StudentSchedule.updateOne({ _id: saved._id }, { $set: { status: "processed" } });
+    await eventually(() => events.size === 3, "processing did not trigger automatic sync");
+    const original = [...events.values()].find(event => event.description.startsWith("Type: lecture"));
+    assert.equal(original.start.timeZone, "Africa/Cairo");
+    assert.match(original.recurrence[0], /COUNT=/);
+    await CourseOffering.updateOne({ _id: offering._id }, { $set: { "slots.0.room": "LIVE-ROOM" } });
+    await eventually(() => events.get(original.id)?.location === "LIVE-ROOM", "offering room changes did not update the same event");
+    assert.equal(events.size, 3, "room changes must not create duplicate classes");
+    await eventually(async () => Boolean((await CalendarConnection.findOne().select("+syncFingerprint"))?.syncFingerprint), "fingerprint was not committed");
+    const count = state.writes;
+    await StudentSchedule.updateOne({ _id: saved._id }, { $inc: { version: 1 } });
+    await delay(250);
+    assert.equal(state.writes, count, "unrelated metadata must not rewrite Google events");
+    await StudentSchedule.updateOne({ _id: saved._id }, { $set: { courses: [] } });
+    await eventually(() => events.size === 0, "removed classes remained in Google");
+    const publicState = await call("/calendar/connection", { role: "advisingStudent" });
+    assert.equal(publicState.body.connected, true);
+    assert.ok(publicState.body.lastSyncedAt);
+    assert.equal(publicState.body.syncFingerprint, undefined);
+    assert.equal(publicState.body.encryptedAccessToken, undefined);
+  } finally { await stop(); }
+});
+
+test("B1 Req 116: reconciliation recovers missed changes and Google errors; revoked refresh requires reconnect", async t => {
+  const { events, state } = await calendarFixture();
+  const saved = await schedule(student, "processed");
+  state.failNextWrite = true;
+  const silentStream = new EventEmitter();
+  silentStream.close = async () => silentStream.emit("close");
+  t.mock.method(mongoose.connection.db, "watch", () => silentStream);
+  const stop = startCalendarWorker({ recoveryIntervalMs: 100 });
+  try {
+    await eventually(() => events.size === 3, "automatic retry did not recover from Google 503");
+    await StudentSchedule.updateOne({ _id: saved._id }, { $set: { "courses.0.slots": saved.courses[0].slots.slice(0, 1) } });
+    await eventually(() => events.size === 1, "fallback poll did not recover a missed database event");
+    await CalendarConnection.updateOne({}, { $set: { tokenExpiresAt: new Date(0), syncFingerprint: "" } });
+    state.refreshRevoked = true;
+    await eventually(async () => (await CalendarConnection.findOne())?.syncEnabled === false, "revoked credentials were not disabled");
+    const response = await call("/calendar/connection", { role: "advisingStudent" });
+    assert.equal(response.body.connected, false);
+    assert.ok(state.refreshes >= 1);
+  } finally { await stop(); }
+});
+
+test("Req 31, 81–82: Administrators read schedules but cannot process or reopen them", async () => {
+  const draft = await schedule();
+  const payload = { termId: String(term._id) };
+  const admin = { method: "POST", role: "administrator" };
+  const studentSchedule = `/schedules/student/${student._id}?termId=${term._id}`;
+  assert.equal((await call(studentSchedule, { role: "administrator" })).body.readOnly, true);
+  assert.equal((await call(schedulePath() + "/process", { ...admin, body: payload })).status, 403);
+  assert.equal((await StudentSchedule.findById(draft._id)).status, "readyForStudentReview");
+  assert.equal((await call(schedulePath() + "/process", { method: "POST", role: "advisor", body: payload })).status, 200);
+  const reopen = { ...payload, reason: "Correct the schedule" };
+  assert.equal((await call(schedulePath() + "/reopen", { ...admin, body: reopen })).status, 403);
+  assert.equal((await StudentSchedule.findById(draft._id)).status, "processed");
+  assert.equal((await call(schedulePath() + "/reopen", { method: "POST", body: reopen })).status, 200);
+  assert.equal((await StudentSchedule.findById(draft._id)).status, "draft");
+});
+
+test("Req 22, 25, 31: Friday offerings remain usable and assigned slot edits protect the timetable", async () => {
+  const meeting = { componentType: "lecture", groupNumber: "A", day: "Friday", startMinute: 480, endMinute: 555, room: "F1", capacity: 12 };
+  const fridayCourse = await Course.create({ code: "FRIDAY31", name: "Friday lab", creditHours: 3, courseType: "core" });
+  const admin = { role: "administrator" };
+  const created = await call("/catalogue/offerings", { ...admin, method: "POST", body: {
+    course: String(fridayCourse._id), term: String(term._id), instructors: [{ fullName: "Friday Instructor" }],
+    eligibleGroups: [{ major: "DMET", semester: 5 }], slots: [meeting],
+  } });
+  assert.equal(created.status, 201);
+  assert.equal((await call(`/catalogue/offerings/${created.body._id}/publish`, { ...admin, method: "PATCH", body: { isPublished: true } })).status, 200);
+
+  await schedule(student, "processed");
+  const [lecture, , tutorial] = offering.slots;
+  const slot = `/catalogue/offerings/${offering._id}/slots/${lecture._id}`;
+  const edit = (body) => call(slot, { ...admin, method: "PUT", body });
+  assert.equal((await edit({ componentType: "lab", groupNumber: "New group" })).status, 409);
+  assert.equal((await edit({ day: tutorial.day, startMinute: tutorial.startMinute, endMinute: tutorial.endMinute })).status, 409);
+  assert.equal((await edit({ day: "Friday" })).status, 200);
+
+  const scheduleUrl = `/schedules/me?termId=${term._id}`;
+  const weekly = await call(scheduleUrl, { role: "advisingStudent" });
+  assert.equal(weekly.status, 200);
+  assert.equal(weekly.body.schedule.week.Friday[0].groupNumber, lecture.groupNumber);
+  assert.ok(!weekly.body.schedule.daysOff.includes("Friday"));
+  const pdf = await call(`/schedules/me/download?termId=${term._id}`, { role: "advisingStudent" });
+  assert.equal(pdf.status, 200);
+  assert.match(pdf.body, /^%PDF-/);
+});
+
+test("Req 50, 52, 82: a settled deferral does not hide processing or reopening in the roster", async () => {
+  await schedule(student);
+  await extraRequest({ settlementStatus: "deferred", settlementOption: "deferred" });
+  const rosterStatus = async status => {
+    const matches = await call(`/advisor/students?scheduleStatus=${status}`, { role: "advisor" });
+    return matches.body.data.some(row => row._id === String(student._id));
+  };
+  assert.ok(await rosterStatus("deferredToNextInstallment"));
+  const termId = String(term._id);
+  assert.equal((await call(schedulePath() + "/process", { method: "POST", body: { termId } })).status, 200);
+  assert.ok(await rosterStatus("processed"));
+  assert.ok(!await rosterStatus("deferredToNextInstallment"));
+  assert.equal((await call(schedulePath() + "/reopen", { method: "POST", body: { termId, reason: "Review new information" } })).status, 200);
+  assert.ok(await rosterStatus("reopened"));
+  assert.ok(!await rosterStatus("deferredToNextInstallment"));
+  assert.equal((await call(`/advisor/students/${student._id}`, { role: "advisor" })).body.workflowState.status, "reopened");
+});
+
+test("Req 25, 27: simultaneous edits cannot double-book a room and incomplete drafts cannot publish", async () => {
+  const admin = { role: "administrator" };
+  const otherCourse = await Course.create({ code: "RACE25", name: "Audit capacity", creditHours: 3, courseType: "core" });
+  const slot = { componentType: "lecture", groupNumber: "A", day: "Friday", startMinute: 480, endMinute: 555, room: "F1", capacity: 12 };
+  const created = await call("/catalogue/offerings", { ...admin, method: "POST", body: {
+    course: String(otherCourse._id), term: String(term._id), instructors: [],
+    eligibleGroups: [{ major: "DMET" }], slots: [slot],
+  } });
+  assert.equal(created.status, 201);
+  const draft = await CourseOffering.findById(created.body._id);
+  const publish = () => call(`/catalogue/offerings/${draft._id}/publish`, { ...admin, method: "PATCH", body: { isPublished: true } });
+  assert.equal((await publish()).status, 400);
+  assert.equal((await CourseOffering.findById(draft._id)).isPublished, false);
+  draft.instructors.push({ fullName: "Different Instructor" });
+  await draft.save();
+  assert.equal((await publish()).status, 200);
+  const results = await Promise.all([offering, draft].map(row => call(
+    `/catalogue/offerings/${row._id}/slots/${row.slots[0]._id}`, { ...admin, method: "PUT", body: {
+      day: "Sunday", startMinute: 540, endMinute: 600, room: "Shared Hall",
+    } },
+  )));
+  assert.deepEqual(results.map(result => result.status).sort(), [200, 409]);
+});
+
+test("Req 122: expired open swaps disappear from pending work before the student visits swap history", async () => {
+  const normalSchedule = await StudentSchedule.create({
+    student: normal._id, term: term._id, scheduleType: "normal", status: "processed", createdBy: users.coordinator._id,
+    createdAt: new Date(Date.now() - 120000),
+  });
+  await WholeScheduleSwapRequest.create({
+    student: normal._id, term: term._id, currentSchedule: normalSchedule._id, currentGroup: "1",
+    desiredGroups: ["2"], courseCodesSnapshot: [course.code], status: "open", expiresAt: new Date(Date.now() - 60000),
+  });
+  const dashboard = await call("/admin/pending-work");
+  assert.equal(dashboard.status, 200);
+  const row = dashboard.body.students.find(item => item.id === String(normal._id));
+  assert.equal(row.workflowStatus, "swapExpired");
+  assert.equal(row.requests.some(request => request.type === "wholeScheduleSwap"), false);
+  assert.equal(dashboard.body.groups.requestType.wholeScheduleSwap, 0);
+});
+
+test("Req 64: the second makeup is available only after the first and with at most two failed courses", async () => {
+  const firstMakeup = await AcademicTerm.create({
+    ...term.toObject(), _id: undefined, code: "AUD-MAKEUP", season: "firstMakeup", isActive: false,
+    termStart: "2026-03-01", termEnd: "2026-04-01", teachingStart: "2026-03-05", teachingEnd: "2026-03-22",
+    registrationStart: "2026-02-20", registrationEnd: "2026-03-02",
+    advisingDeadline: "2026-03-07", wholeScheduleSwapDeadline: "2026-03-09",
+  });
+  const others = await Course.create([{ code: "MAKE640", name: "Another failure", creditHours: 3, courseType: "core" },
+    { code: "MAKE641", name: "Third failure", creditHours: 3, courseType: "core" }]);
+  const record = courses => CourseAttempt.create(courses.map(entry => ({
+    student: student._id, course: entry._id, term: firstMakeup._id, attendance: "attended", result: "failed", grade: "F",
+  })));
+  await record([course, others[0]]);
+  const create = makeupAttempt => call("/mandatory-removals", { role: "advisor", method: "POST", body: {
+    studentProfileId: String(student._id), courseId: String(course._id), termId: String(term._id), reason: "makeupEligibility",
+    explanation: "The student passed the original attendance requirement.", makeupAttempt,
+  } });
+  assert.equal((await create(1)).status, 400);
+  const result = await create(2);
+  assert.equal(result.status, 201);
+  assert.equal(result.body.makeupAttempt, 2);
+  await record([others[1]]);
+  const decide = decision => call(`/mandatory-removals/${result.body._id}/decision`, { method: "PATCH", body: {
+    decision, responseNote: "Checked the latest results.",
+  } });
+  assert.equal((await decide("approved")).status, 409);
+  assert.equal((await decide("rejected")).status, 200);
+  assert.equal((await create(2)).status, 400);
+  assert.equal((await create()).status, 400, "legacy request must not bypass the second-makeup limit");
+});

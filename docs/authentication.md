@@ -68,7 +68,7 @@ The endpoint identifies the user only through the authenticated token; request-b
 
 The pre-existing `POST /api/identity/seed-demo` endpoint is disabled by default. For an empty development database only, explicitly set `ALLOW_DEMO_SEED=true` to enable it. It resets the demo accounts to their shared development password, so do not use it with accounts you need to preserve. It is always disabled in production.
 
-Authentication verification is limited to 30 requests per IP per 15 minutes; forgot-password is limited to 10. Excess requests return `429`. These IP counters use the process-local store; a deployment with multiple API processes needs a shared store. Account OTP expiry, cooldown and attempt limits are enforced by MongoDB and persist across restarts. Configure trusted proxies narrowly if hosting behind a reverse proxy.
+Authentication verification is limited to 30 unsuccessful requests per IP per minute. Successful sign-ins and resets are excluded. Forgot-password email requests have a separate limit of 10 per IP per 15 minutes. Excess requests return `429`. These IP counters use the process-local store; a deployment with multiple API processes needs a shared store. Account OTP expiry, cooldown and attempt limits are enforced by MongoDB and persist across restarts. Configure trusted proxies narrowly if hosting behind a reverse proxy.
 
 ## Verification
 

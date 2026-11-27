@@ -1,144 +1,90 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import StaffPreferences from "./StaffPreferences.jsx";
+import { parseDays, parseTimes, PREFERENCE_DAYS, PREFERENCE_TIME_SLOTS } from "../preference-inputs.js";
+import OfferingCourseIcon from "./OfferingCourseIcon.jsx";
+import { termLabel } from "../term-label.js";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { api, explainApiError } from "../api.js";
-import { greetingName } from "../greeting.js";
-import { findPreferenceConflict, preferenceConflictMessage, preferenceGroupOptions, preferenceMeetingLabel } from "../preference-groups.js";
+import { findPreferenceConflict, minutesToTime, preferenceConflictMessage, preferenceGroupOptions, preferenceMeetingLabel } from "../preference-groups.js";
 
-const roleTitle = (role = "") => ({ normalStudent: "Normal student", advisingStudent: "Advising student", advisor: "Advisor", coordinator: "Coordinator", administrator: "Administrator" }[role] || role);
 const humanize = (value = "") => String(value || "—").replace(/([a-z])([A-Z])/g, "$1 $2").replace(/^./, (letter) => letter.toUpperCase());
 const formatDate = (value) => value ? new Date(value).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "—";
 const formatDateTime = (value) => value ? new Date(value).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : null;
-const initials = (value = "") => value.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "B";
 
-export function OverviewPage({ profile, onOpen }) {
-  const isStudent = ["normalStudent", "advisingStudent"].includes(profile.role);
-  const stats = isStudent
-    ? [
-      { label: "Student ID", value: profile.studentId || "Not assigned", icon: "#" },
-      { label: "Current semester", value: profile.currentSemester || "—", icon: "◷" },
-      { label: "Academic standing", value: humanize(profile.academicStanding), icon: "↗" },
-      { label: "Schedule status", value: humanize(profile.scheduleStatus), icon: "▤" },
-    ]
-    : [
-      { label: "Your role", value: roleTitle(profile.role), icon: "◉" },
-      { label: "Account", value: "Active session", icon: "✓" },
-      { label: "Academic term", value: "Use Academic setup", icon: "◷" },
-      { label: "Notifications", value: "Check your inbox", icon: "◌" },
-    ];
+const recordTabs = { history: "History", transcript: "Transcript", failed: "Failed courses", wallet: "Wallet" };
 
-  return <div className="page-stack">
-    <section className="welcome-banner">
-      <div><p className="eyebrow">YOUR ACADEMIC WORKSPACE</p><h1>Good day, {greetingName(profile.fullName)}.</h1><p>Here’s a snapshot of your university workspace.</p></div>
-      <span className="welcome-orbit orbit-a" /><span className="welcome-orbit orbit-b" /><span className="welcome-seal">B</span>
-    </section>
-    <section className="stat-grid" aria-label="Account summary">
-      {stats.map((stat) => <article className="stat-card" key={stat.label}><span className="stat-icon">{stat.icon}</span><div><p>{stat.label}</p><strong>{stat.value}</strong></div></article>)}
-    </section>
-    <div className="content-grid overview-grid">
-      <section className="panel quick-panel"><div className="panel-heading"><div><p className="eyebrow">QUICK ACCESS</p><h2>Continue where you left off</h2></div><span className="panel-count">01</span></div>
-        <div className="quick-links">
-          <button type="button" onClick={() => onOpen("profile")}><span className="quick-icon teal">◉</span><span><strong>Review your profile</strong><small>Check your account and academic details</small></span><b>→</b></button>
-          <button type="button" onClick={() => onOpen("notifications")}><span className="quick-icon violet">◌</span><span><strong>Open notifications</strong><small>See the latest updates for your account</small></span><b>→</b></button>
-          {profile.role === "advisingStudent" && <button type="button" onClick={() => onOpen("records")}><span className="quick-icon amber">▤</span><span><strong>View academic records</strong><small>History, transcripts, and wallet activity</small></span><b>→</b></button>}
-          {!isStudent && ["coordinator", "administrator"].includes(profile.role) && <button type="button" onClick={() => onOpen("courses")}><span className="quick-icon amber">▦</span><span><strong>Manage academic setup</strong><small>Courses, terms, offerings, and templates</small></span><b>→</b></button>}
-        </div>
-      </section>
-      <section className="panel profile-summary"><p className="eyebrow">ACCOUNT</p><div className="summary-person"><span className="avatar avatar-large">{initials(profile.fullName)}</span><div><h2>{profile.fullName}</h2><p>{roleTitle(profile.role)}</p></div></div><dl className="summary-list"><div><dt>Email</dt><dd>{profile.email}</dd></div>{profile.major && <div><dt>Major</dt><dd>{profile.major}</dd></div>}{profile.assignedAdvisor && <div><dt>Advisor</dt><dd>{profile.assignedAdvisor.fullName}</dd></div>}</dl><button className="outline-button" type="button" onClick={() => onOpen("profile")}>View profile <span>→</span></button></section>
-    </div>
-    <p className="page-footnote">Bobos University Scheduling System <span>·</span> Development workspace</p>
-  </div>;
-}
-
-export function ProfilePage({ profile }) {
-  const student = ["normalStudent", "advisingStudent"].includes(profile.role);
-  return <div className="page-stack">
-    <PageTitle eyebrow="ACCOUNT DETAILS" title="My profile" description="Your identity and academic information from the university account." />
-    <section className="panel profile-hero"><span className="avatar avatar-xl">{initials(profile.fullName)}</span><div><h2>{profile.fullName}</h2><p>{profile.email}</p><span className="role-pill">{roleTitle(profile.role)}</span></div></section>
-    <section className="panel"><div className="panel-heading"><div><p className="eyebrow">PERSONAL INFORMATION</p><h2>Account details</h2></div></div><div className="detail-grid"><Detail label="Full name" value={profile.fullName} /><Detail label="GUC email" value={profile.email} /><Detail label="Role" value={roleTitle(profile.role)} />{student && <><Detail label="Student number" value={profile.studentId} /><Detail label="Student profile ID" value={profile.studentProfileId} /><Detail label="Student type" value={humanize(profile.studentType)} /><Detail label="Major" value={profile.major} /><Detail label="Current semester" value={profile.currentSemester} /><Detail label="Academic standing" value={humanize(profile.academicStanding)} /><Detail label="Schedule status" value={humanize(profile.scheduleStatus)} /></>}{profile.assignedAdvisor && <Detail label="Assigned advisor" value={`${profile.assignedAdvisor.fullName} · ${profile.assignedAdvisor.email}`} />}</div></section>
-    {student && !profile.studentProfileId && <div className="feedback warning">The current backend profile response does not include the student profile ID needed by the academic-record routes.</div>}
-  </div>;
-}
-
-export function NotificationsPage({ token, notify }) {
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [creatingTest, setCreatingTest] = useState(false);
-  const [error, setError] = useState("");
-  const load = async () => {
-    setLoading(true); setError("");
-    try {
-      const result = await api("/api/notifications", { token });
-      setItems(result.notifications || []);
-      return true;
-    } catch (requestError) { setError(explainApiError(requestError, "Notifications")); return false; }
-    finally { setLoading(false); }
-  };
-  useEffect(() => { load(); }, [token]);
-  const createTest = async () => {
-    setCreatingTest(true); setError("");
-    try {
-      await api("/api/notifications/test", { token, method: "POST", body: {} });
-      if (await load()) notify("success", "Test notification created. Check the newest item in your inbox.");
-    } catch (requestError) { setError(explainApiError(requestError, "Test notification")); }
-    finally { setCreatingTest(false); }
-  };
-  const markRead = async (item) => {
-    try {
-      await api(`/api/notifications/${item._id}/read`, { token, method: "PATCH", body: {} });
-      setItems((current) => current.map((entry) => entry._id === item._id ? { ...entry, isRead: true, readAt: new Date().toISOString() } : entry));
-    } catch (requestError) { notify("error", requestError.message); }
-  };
-
-  return <div className="page-stack"><PageTitle eyebrow="YOUR INBOX" title="Notifications" description="Updates and reminders sent to your university account." action={<div className="inline-controls"><button className="outline-button" type="button" onClick={load} disabled={loading}>↻ Refresh</button>{import.meta.env.DEV && <button className="primary-button" type="button" onClick={createTest} disabled={creatingTest || loading}>{creatingTest ? "Creating…" : "Create test notification"}</button>}</div>} />
-    {error && <div className="feedback error" role="alert">{error}</div>}
-    <section className="panel notification-panel" aria-busy={loading}>{loading ? <Loading /> : items.length === 0 ? <EmptyState title="You’re all caught up" text="New updates for your account will appear here." icon="◌" /> : items.map((item) => <article className={`notification-row ${item.isRead ? "read" : "unread"}`} key={item._id}><span className={`notification-symbol ${item.isRead ? "muted" : ""}`}>{item.isRead ? "✓" : "•"}</span><div className="notification-copy"><div className="notification-title"><h3>{item.title}</h3>{!item.isRead && <span className="new-pill">New</span>}</div><p>{item.message}</p><small>{formatDate(item.createdAt)} · {item.title === "Test notification" ? "Test" : humanize(item.type)}</small></div>{!item.isRead && <button className="text-button" type="button" onClick={() => markRead(item)}>Mark read</button>}</article>)}</section>
-  </div>;
-}
-
-export function StudentRecordsPage({ token, profile, profileId: targetProfileId, viewerRole, subjectName, onClose, notify }) {
+export function StudentRecordsPage({ token, profile, profileId: targetProfileId, notify }) {
   const [tab, setTab] = useState("history");
   const [year, setYear] = useState("");
   const [academicYears, setAcademicYears] = useState([]);
   const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [yearsLoading, setYearsLoading] = useState(true);
+  const [yearsError, setYearsError] = useState("");
+  const request = useRef(null);
+  const tabsId = useId();
   const profileId = targetProfileId || profile.studentProfileId;
-  const role = viewerRole || profile.role;
-  const isStaffViewer = ["advisor", "coordinator"].includes(role);
+  const isStaffViewer = ["advisor", "coordinator"].includes(profile.role);
   const tabs = isStaffViewer ? ["history", "transcript", "failed"] : ["history", "transcript", "failed", "wallet"];
 
-  const load = async (selectedTab = tab, selectedYear = year) => {
-    if (!profileId) { setError("The API profile response is missing the student profile ID required by this records endpoint."); return; }
+  const load = useCallback(async (selectedTab, selectedYear = "") => {
+    request.current?.abort();
+    if (!profileId) {
+      setLoading(false);
+      setError("The student profile needed to load these records is unavailable.");
+      return;
+    }
+    const controller = new AbortController();
+    request.current = controller;
     setLoading(true); setError(""); setData(null);
     try {
       const base = `/api/identity/students/${encodeURIComponent(profileId)}`;
-      let result;
-      if (selectedTab === "history") result = await api(`${base}/history`, { token });
-      if (selectedTab === "transcript") {
-        if (!selectedYear.trim()) throw new Error("Select an attended academic year.");
-        result = await api(`${base}/transcript?year=${encodeURIComponent(selectedYear.trim())}`, { token });
-      }
-      if (selectedTab === "failed") result = await api(`${base}/failed-courses`, { token });
-      if (selectedTab === "wallet") result = await api(`${base}/wallet`, { token });
-      setData(result);
-    } catch (requestError) { setError(explainApiError(requestError, "Academic records")); }
-    finally { setLoading(false); }
-  };
+      const path = { history: "history", transcript: `transcript?year=${encodeURIComponent(selectedYear)}`, failed: "failed-courses", wallet: "wallet" };
+      const result = await api(`${base}/${path[selectedTab]}`, { token, signal: controller.signal });
+      if (!controller.signal.aborted) setData(result);
+    } catch (requestError) {
+      if (!controller.signal.aborted) setError(explainApiError(requestError, "Academic records"));
+    } finally {
+      if (!controller.signal.aborted) setLoading(false);
+    }
+  }, [profileId, token]);
 
   useEffect(() => {
-    if (!profileId) return;
-    let active = true;
-    api(`/api/identity/students/${encodeURIComponent(profileId)}/transcript/years`, { token })
+    if (!profileId) { setYearsLoading(false); return; }
+    const controller = new AbortController();
+    setYearsLoading(true);
+    setYearsError("");
+    api(`/api/identity/students/${encodeURIComponent(profileId)}/transcript/years`, { token, signal: controller.signal })
       .then((result) => {
-        if (!active) return;
+        if (controller.signal.aborted) return;
         const years = result.academicYears || [];
         setAcademicYears(years);
         setYear((selected) => years.includes(selected) ? selected : years[0] || "");
       })
-      .catch((requestError) => { if (active) setError(explainApiError(requestError, "Academic years")); });
-    return () => { active = false; };
+      .catch((requestError) => { if (!controller.signal.aborted) setYearsError(explainApiError(requestError, "Academic years")); })
+      .finally(() => { if (!controller.signal.aborted) setYearsLoading(false); });
+    return () => controller.abort();
   }, [profileId, token]);
 
-  useEffect(() => { if (profileId && tab !== "transcript") load(tab, year); }, [tab, profileId]);
+  const transcriptYear = tab === "transcript" ? year : "";
+  useEffect(() => {
+    if (tab !== "transcript" || transcriptYear) load(tab, transcriptYear);
+    return () => request.current?.abort();
+  }, [tab, load, transcriptYear]);
+
+  function selectTab(item) {
+    if (item === tab) return;
+    request.current?.abort();
+    setData(null); setError(""); setLoading(item !== "transcript" || Boolean(year)); setTab(item);
+  }
+
+  function handleTabKey(event, index) {
+    const target = { ArrowLeft: (index - 1 + tabs.length) % tabs.length, ArrowRight: (index + 1) % tabs.length, Home: 0, End: tabs.length - 1 }[event.key];
+    if (target === undefined) return;
+    event.preventDefault();
+    event.currentTarget.parentElement.children[target].focus();
+    selectTab(tabs[target]);
+  }
 
   const download = async () => {
     if (!profileId || !year.trim()) { setError("Enter an academic year before downloading a transcript."); return; }
@@ -154,19 +100,27 @@ export function StudentRecordsPage({ token, profile, profileId: targetProfileId,
     } catch (requestError) { setError(explainApiError(requestError, "Transcript download")); }
   };
 
-  return <div className="page-stack"><PageTitle eyebrow={isStaffViewer ? "ADVISING STUDENT RECORD" : "STUDENT SERVICES"} title="Academic records" description={subjectName ? `Academic history, yearly transcripts, and failed courses for ${subjectName}.` : "Review your academic history, yearly transcripts, failed courses, and wallet."} action={onClose ? <button className="outline-button" type="button" onClick={onClose}>← Back to advising</button> : undefined} />
-    <div className="tab-bar" role="tablist" aria-label="Academic records">{tabs.map((item) => <button type="button" role="tab" aria-selected={tab === item} className={tab === item ? "selected" : ""} key={item} onClick={() => setTab(item)}>{({ history: "History", transcript: "Transcript", failed: "Failed courses", wallet: "Wallet" })[item]}</button>)}</div>
-    {tab === "transcript" && <div className="inline-controls"><label className="field compact-field"><span>Attended academic year</span><select value={year} onChange={(event) => { setYear(event.target.value); setData(null); setError(""); }}><option value="">{academicYears.length ? "Select a year" : "No attended years"}</option>{academicYears.map((item) => <option key={item} value={item}>{item}</option>)}</select></label><button className="primary-button" type="button" disabled={!year} onClick={() => load("transcript", year)}>View transcript</button><button className="outline-button" type="button" disabled={!year} onClick={download}>Download PDF ↓</button></div>}
-    {error && <div className="feedback error" role="alert">{error}</div>}
-    <section className="panel" aria-busy={loading}>{loading ? <Loading /> : data ? <RecordData data={data} tab={tab} /> : !error && <EmptyState title={tab === "transcript" ? "Select an academic year" : "Select a record"} text={tab === "transcript" ? "Choose an attended year, then view its transcript." : "Choose a record type to load your information."} icon="▤" />}</section>
+  return <div className="academic-records">
+    {!isStaffViewer && <div className="page-title-row"><h1>Academic records</h1></div>}
+    <div className="tabs" role="tablist" aria-label="Academic records">{tabs.map((item, index) =>
+      <button type="button" role="tab" id={`${tabsId}-${item}`} aria-controls={`${tabsId}-panel`} aria-selected={tab === item} tabIndex={tab === item ? 0 : -1} key={item} onClick={() => selectTab(item)} onKeyDown={(event) => handleTabKey(event, index)}>{recordTabs[item]}</button>)}</div>
+    <section className="records-panel" role="tabpanel" id={`${tabsId}-panel`} aria-labelledby={`${tabsId}-${tab}`} aria-busy={loading || (tab === "transcript" && yearsLoading)} tabIndex={0}>
+      {tab === "transcript" && academicYears.length > 0 && <div className="inline-controls records-transcript-controls">
+        <label className="field compact-field"><span>Academic year</span><select disabled={yearsLoading} value={year} onChange={(event) => { request.current?.abort(); setYear(event.target.value); setData(null); setError(""); setLoading(true); }}>{academicYears.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+        <button className="outline-button" type="button" disabled={!year || yearsLoading} onClick={download}>Download PDF</button>
+      </div>}
+      {(error || (tab === "transcript" && yearsError)) && <div className="feedback error" role="alert">{error || yearsError}</div>}
+      {loading || (tab === "transcript" && yearsLoading) ? <Loading /> : data ? <RecordData data={data} tab={tab} /> : tab === "transcript" && !error && !yearsError &&
+        <RecordsEmpty title="No transcript yet" description="Yearly transcripts appear after an academic year has course attempts." spacious />}
+    </section>
   </div>;
 }
 
-export function PreferencesPage({ token, profile, profileId: passedProfileId, studentTarget, notify, onOpenDraftSchedule }) {
-  const [selectedStudent, setSelectedStudent] = useState(studentTarget || (passedProfileId ? { _id: passedProfileId } : null));
-  const [studentSearch, setStudentSearch] = useState(studentTarget?.studentId || "");
-  const [studentMatches, setStudentMatches] = useState([]);
-  const [studentLookupLoading, setStudentLookupLoading] = useState(false);
+export function PreferencesPage(props) {
+  return props.profile.role === "advisingStudent" ? <StudentPreferencesPage {...props} /> : <StaffPreferences {...props} />;
+}
+
+function StudentPreferencesPage({ token, profile, profileId: passedProfileId, notify }) {
   const [termId, setTermId] = useState("");
   const [terms, setTerms] = useState([]);
   const [termsLoading, setTermsLoading] = useState(true);
@@ -179,6 +133,9 @@ export function PreferencesPage({ token, profile, profileId: passedProfileId, st
   const [groups, setGroups] = useState([]);
   const [offerings, setOfferings] = useState([]);
   const [currentCourseIds, setCurrentCourseIds] = useState([]);
+  const [refreshingGroups, setRefreshingGroups] = useState(false);
+  const [groupLoadMessage, setGroupLoadMessage] = useState("");
+  const [saveNotice, setSaveNotice] = useState("");
   const [preferencesLoaded, setPreferencesLoaded] = useState(false);
   const [hasSubmittedPreferences, setHasSubmittedPreferences] = useState(false);
   const [lastUpdatedAt, setLastUpdatedAt] = useState(null);
@@ -189,24 +146,24 @@ export function PreferencesPage({ token, profile, profileId: passedProfileId, st
   const conflictNoticeRef = useRef(null);
   const groupConflict = findPreferenceConflict(groups, offerings);
   const conflictMessage = selectionError || preferenceConflictMessage(groupConflict);
-  const isStudent = profile.role === "advisingStudent";
-  const selectedStudentProfileId = selectedStudent?._id || selectedStudent?.id || selectedStudent?.profileId || selectedStudent?.studentProfileId || "";
-  const effectiveId = isStudent
-    ? (passedProfileId || profile.studentProfileId || profile.studentProfile?._id || "")
-    : (selectedStudentProfileId || (!studentTarget ? passedProfileId : "") || "");
+  const effectiveId = passedProfileId || profile.studentProfileId || profile.studentProfile?._id || "";
 
+  const preferenceVersion = useRef(0);
   const resetLoadedPreferences = () => {
+    preferenceVersion.current++; setLoading(false);
     setPreferredDays(""); setAvoidedDays(""); setDaysOff(""); setPreferredTimes(""); setAvoidedTimes(""); setNote("");
-    setGroups([]); setOfferings([]); setCurrentCourseIds([]); setPreferencesLoaded(false); setHasSubmittedPreferences(false); setLastUpdatedAt(null); setSelectionError(""); setError("");
+    setGroupLoadMessage(""); setSaveNotice(""); setGroups([]); setOfferings([]); setCurrentCourseIds([]); setPreferencesLoaded(false); setHasSubmittedPreferences(false); setLastUpdatedAt(null); setSelectionError(""); setError("");
   };
 
   const termQuery = termId ? `?term=${encodeURIComponent(termId)}` : "";
-  const load = async (selectedTermId = termId) => {
-    if (!effectiveId) { setError(isStudent ? "Your student profile is not available." : "Find and select a student before loading preferences."); return; }
+  const load = useCallback(async (selectedTermId, studentId, signal) => {
+    if (!studentId) { setError("Your student profile is not available."); return; }
+    const version = ++preferenceVersion.current;
     setLoading(true); setError(""); setSelectionError("");
     try {
       const selectedTermQuery = selectedTermId ? `?term=${encodeURIComponent(selectedTermId)}` : "";
-      const result = await api(`/api/identity/students/${encodeURIComponent(effectiveId)}/preferences${selectedTermQuery}`, { token });
+      const result = await api(`/api/identity/students/${encodeURIComponent(studentId)}/preferences${selectedTermQuery}`, { token, signal });
+      if (version !== preferenceVersion.current) return;
       const current = result.preferences || {};
       const eligibleIds = new Set(result.eligibleCourseIds || []);
       setCurrentCourseIds([...eligibleIds]);
@@ -220,22 +177,29 @@ export function PreferencesPage({ token, profile, profileId: passedProfileId, st
       setAvoidedTimes((current.avoidedTimes || []).map((entry) => `${minutesToTime(entry.startMinute)}-${minutesToTime(entry.endMinute)}`).join(", "));
       setNote(current.note || "");
       const savedGroups = (current.preferredGroups || []).map((entry) => ({ course: String(entry.course?._id || entry.course), componentType: entry.componentType, groupNumber: entry.groupNumber }));
-      const visibleGroups = isStudent ? savedGroups.filter((entry) => eligibleIds.has(entry.course)) : savedGroups;
+      const visibleGroups = savedGroups.filter((entry) => eligibleIds.has(entry.course));
       setGroups(visibleGroups);
+      let groupCount = 0;
       if (selectedTermId) {
-        const available = await api(`/api/catalogue/offerings?termId=${encodeURIComponent(selectedTermId)}&publishedOnly=true`, { token });
-        setOfferings(isStudent ? (available.offerings || []).filter((offering) => eligibleIds.has(String(offering.course?._id || offering.course))) : available.offerings || []);
+        const available = await api(`/api/catalogue/offerings?termId=${encodeURIComponent(selectedTermId)}&publishedOnly=true`, { token, signal });
+        if (version !== preferenceVersion.current) return;
+        const visible = (available.offerings || []).filter((offering) => eligibleIds.has(String(offering.course?._id || offering.course)));
+        groupCount = visible.reduce((total, offering) => total + preferenceGroupOptions(offering).length, 0);
+        setOfferings(visible);
       } else setOfferings([]);
       setSelectionError(savedGroups.length > visibleGroups.length ? "Some saved group choices no longer belong to your current courses. Save to update your preferences." : "");
-    } catch (requestError) { setError(explainApiError(requestError, "Scheduling preferences")); }
-    finally { setLoading(false); }
+      return { groupCount };
+    } catch (requestError) { if (!signal?.aborted && version === preferenceVersion.current) setError(explainApiError(requestError, "Scheduling preferences")); }
+    finally { if (version === preferenceVersion.current) setLoading(false); }
+  }, [token]);
+  const refreshGroupChoices = async () => {
+    if (refreshingGroups || loading) return;
+    setRefreshingGroups(true); setGroupLoadMessage("");
+    try {
+      const [result] = await Promise.all([load(termId, effectiveId), new Promise(resolve => setTimeout(resolve, 1000))]);
+      if (result) setGroupLoadMessage(result.groupCount ? `${result.groupCount} class groups found.` : "No class groups found for this term.");
+    } finally { setRefreshingGroups(false); }
   };
-  useEffect(() => {
-    setSelectedStudent(studentTarget || (passedProfileId ? { _id: passedProfileId } : null));
-    setStudentSearch(studentTarget?.studentId || "");
-    setStudentMatches([]);
-    resetLoadedPreferences();
-  }, [passedProfileId, studentTarget]);
   useEffect(() => {
     if (conflictMessage) conflictNoticeRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }, [conflictMessage]);
@@ -256,9 +220,9 @@ export function PreferencesPage({ token, profile, profileId: passedProfileId, st
 
   const save = async (event) => {
     event.preventDefault();
-    if (!effectiveId) { setError(isStudent ? "Your student profile is not available." : "Find and select a student before saving preferences."); return; }
+    if (!effectiveId) { setError("Your student profile is not available."); return; }
     if (groupConflict) { setError(preferenceConflictMessage(groupConflict)); return; }
-    setSaving(true); setError("");
+    setSaving(true); setError(""); setSaveNotice("");
     try {
       const body = {
         preferredDays: parseDays(preferredDays), avoidedDays: parseDays(avoidedDays), desiredDaysOff: parseDays(daysOff),
@@ -270,6 +234,7 @@ export function PreferencesPage({ token, profile, profileId: passedProfileId, st
       setHasSubmittedPreferences(true);
       setLastUpdatedAt(result.lastUpdatedAt || new Date().toISOString());
       setSelectionError("");
+      setSaveNotice("Preferences saved. You can reopen this term to view them.");
       notify("success", `Preferences saved${result.lastUpdatedAt ? ` · ${new Date(result.lastUpdatedAt).toLocaleString()}` : ""}. These are scheduling hints only.`);
     } catch (requestError) { setError(explainApiError(requestError, "Scheduling preferences")); }
     finally { setSaving(false); }
@@ -295,67 +260,38 @@ export function PreferencesPage({ token, profile, profileId: passedProfileId, st
     setGroups((current) => [...current, entry]);
   };
 
-  const findStudent = async (event) => {
-    event?.preventDefault();
-    const query = studentSearch.trim();
-    if (!query) { setError("Enter a student ID, name, or email to search."); return; }
-    setStudentLookupLoading(true); setStudentMatches([]); setSelectedStudent(null); resetLoadedPreferences();
-    try {
-      const result = await api(`/api/advisor/students?search=${encodeURIComponent(query)}&limit=100`, { token });
-      const matches = result.data || [];
-      const exactIdMatch = matches.find((student) => String(student.studentId).toLowerCase() === query.toLowerCase());
-      if (exactIdMatch) {
-        setSelectedStudent(exactIdMatch);
-        setStudentSearch(exactIdMatch.studentId);
-      } else if (matches.length) {
-        setStudentMatches(matches);
-      } else {
-        setError(`No advising student matched “${query}”. Search by the student number shown on their profile, name, or email.`);
-      }
-    } catch (requestError) { setError(explainApiError(requestError, "Student lookup")); }
-    finally { setStudentLookupLoading(false); }
-  };
-
   const groupPriorityLabels = groups.map((group) => {
     const offering = offerings.find((item) => String(item.course?._id || item.course) === String(group.course));
     return `${offering?.course?.code || "Course"} · ${group.componentType} ${group.groupNumber}`;
   });
 
-  const canOpenDraftSchedule = ["advisor", "coordinator"].includes(profile.role) && selectedStudent?.studentType === "advising" && Boolean(termId);
-  const selectedTermCode = terms.find((term) => String(term._id) === String(termId))?.code || termId;
-  const draftStudent = selectedStudent ? { ...selectedStudent, fullName: selectedStudent.fullName || selectedStudent.user?.fullName || "Advising student" } : null;
-
-  return <div className="page-stack"><PageTitle eyebrow="SCHEDULING PREFERENCES" title={isStudent ? "Schedule preferences" : "Student preferences"} description={isStudent ? "Rank optional scheduling hints. Preferences are not guaranteed and cannot override mandatory courses, prerequisites, published offerings, capacity, timetable clashes, credit-hour limits, or approved extra-hour rules." : selectedStudent ? `View ${selectedStudent.user?.fullName || selectedStudent.studentId}’s latest submitted scheduling preferences.` : "Search for an advising student to view their latest submitted scheduling preferences."} action={canOpenDraftSchedule ? <button className="primary-button" type="button" onClick={() => onOpenDraftSchedule?.(draftStudent, selectedTermCode)}>Create or update draft schedule <span>→</span></button> : undefined} />
+  return <div className="page-stack schedule-preferences-page"><PageTitle eyebrow="SCHEDULING PREFERENCES" title="Schedule preferences" description="Share your preferred days, times and class groups. All preferences are optional and remain subject to academic and scheduling rules." />
     <section className="panel preference-toolbar">
-      {!isStudent && <>
-        <form className="preference-student-lookup" onSubmit={findStudent}>
-          <label className="field"><span>Find advising student</span><input value={studentSearch} onChange={(event) => { setStudentSearch(event.target.value); setSelectedStudent(null); setStudentMatches([]); resetLoadedPreferences(); }} placeholder="Student ID, name, or email" disabled={studentLookupLoading} /></label>
-          <button className="outline-button" type="submit" disabled={studentLookupLoading}>{studentLookupLoading ? "Searching…" : "Find student"}</button>
-        </form>
-        {selectedStudent && <div className="preference-student-selected" role="status"><strong>{selectedStudent.user?.fullName || "Selected student"}</strong><span>{selectedStudent.studentId || "Student profile"}{selectedStudent.user?.email ? ` · ${selectedStudent.user.email}` : ""}</span><button className="text-button" type="button" onClick={() => { setSelectedStudent(null); setStudentSearch(""); setStudentMatches([]); resetLoadedPreferences(); }}>Change</button></div>}
-        {studentMatches.length > 0 && <div className="preference-student-results" aria-label="Matching students">{studentMatches.map((student) => <button className="preference-student-result" key={student._id} type="button" onClick={() => { setSelectedStudent(student); setStudentSearch(student.studentId); setStudentMatches([]); resetLoadedPreferences(); }}><strong>{student.studentId} · {student.user?.fullName || "Student"}</strong><span>{student.user?.email || student.major || "Advising student"}</span></button>)}</div>}
-      </>}
-      <label className="field"><span>Academic term</span><select value={termId} onChange={(event) => { setTermId(event.target.value); resetLoadedPreferences(); }} disabled={termsLoading || terms.length === 0}><option value="">{termsLoading ? "Loading terms…" : "Select a term"}</option>{terms.map((term) => <option key={term._id} value={term._id}>{term.code} · {term.academicYear} · {humanize(term.season)}{term.isActive ? " (Active)" : ""}</option>)}</select></label>
-      <button type="button" className="outline-button" onClick={() => load()} disabled={loading || termsLoading}>{loading ? "Loading…" : termsLoading ? "Loading terms…" : "Load saved preferences"}</button>
+      <label className="field"><span>Academic term</span><select value={termId} onChange={(event) => { setTermId(event.target.value); resetLoadedPreferences(); }} disabled={termsLoading || terms.length === 0}><option value="">{termsLoading ? "Loading terms…" : "Select a term"}</option>{terms.map((term) => <option key={term._id} value={term._id}>{humanize(term.season)} {term.academicYear}{term.isActive ? " (Active)" : ""}</option>)}</select></label>
+      <button type="button" className="outline-button" onClick={() => load(termId, effectiveId)} disabled={loading || termsLoading}>{loading ? "Loading…" : termsLoading ? "Loading terms…" : "Load saved preferences"}</button>
     </section>
     {error && <div className="feedback error" role="alert">{error}</div>}
     {preferencesLoaded && <div className={`feedback ${hasSubmittedPreferences ? "info" : "warning"}`} role="status">{hasSubmittedPreferences ? `Latest submission${formatDateTime(lastUpdatedAt) ? ` · last updated ${formatDateTime(lastUpdatedAt)}` : ""}.` : "No preferences were submitted for this term. The student can still receive a schedule."}</div>}
-    <form onSubmit={isStudent ? save : (event) => event.preventDefault()} className="preference-grid">
-      <section className="panel"><div className="panel-heading"><div><p className="eyebrow">DAY PREFERENCES</p><h2>Ranked day hints</h2></div><span className="panel-count">01</span></div><p className="helper-text">{isStudent ? "Enter full weekday names separated by commas, then use the arrows to set priority. #1 is highest." : "Comma-separated values are shown in priority order."}</p><RankedTextPreference label="Preferred days" value={preferredDays} onChange={setPreferredDays} placeholder="Monday, Wednesday" readOnly={!isStudent} /><RankedTextPreference label="Days to avoid" value={avoidedDays} onChange={setAvoidedDays} placeholder="Friday" readOnly={!isStudent} /><RankedTextPreference label="Desired days off" value={daysOff} onChange={setDaysOff} placeholder="Thursday" readOnly={!isStudent} /></section>
-      <section className="panel"><div className="panel-heading"><div><p className="eyebrow">TIME PREFERENCES</p><h2>Preferred time ranges</h2></div><span className="panel-count">02</span></div><p className="helper-text">{isStudent ? "Use 24-hour times, such as 09:00-12:00. Separate ranges with commas, then rank them with the arrows." : "Ranges are shown in priority order (24-hour time)."}</p><RankedTextPreference label="Preferred times" value={preferredTimes} onChange={setPreferredTimes} placeholder="09:00-12:00, 13:00-15:00" readOnly={!isStudent} /><RankedTextPreference label="Times to avoid" value={avoidedTimes} onChange={setAvoidedTimes} placeholder="08:00-09:00" readOnly={!isStudent} /><label className="field"><span>Note for advising staff</span><textarea value={note} maxLength={1000} onChange={(event) => setNote(event.target.value)} rows={3} placeholder="Optional note (up to 1000 characters)" readOnly={!isStudent} /></label></section>
-      <section className="panel preference-groups"><div className="panel-heading"><div><p className="eyebrow">COURSE GROUPS</p><h2>Preferred groups</h2></div><span className="panel-count">03</span></div><p className="helper-text">{isStudent ? `${offerings.length ? `${offerings.length} subjects loaded. ` : ""}Choose a term above, then load groups for your current courses. Each option shows its meeting day, time, and room. Click groups to select them, then rank the selected groups below. Selections across different subjects cannot overlap.` : "Selected groups are listed in priority order with their meeting time and room when currently published."}</p>{isStudent && groups.length > 0 && <div className="selected-group-priorities"><h3>Selected group priorities</h3><p className="helper-text">#1 is your highest preference. Use the arrows to change the order.</p><PriorityList items={groupPriorityLabels} onMove={(index, direction) => setGroups((current) => moveRankedItem(current, index, direction))} /></div>}{conflictMessage && <div ref={conflictNoticeRef} className="feedback error preference-conflict-feedback" role="alert" aria-live="assertive">{conflictMessage}</div>}{isStudent ? (offerings.length === 0 ? <><p className="helper-text">{preferencesLoaded ? (currentCourseIds.length ? "None of your current courses has published groups for this term." : "No current courses are recorded for this term. Group preferences become available after courses are assigned.") : "Load your current courses and their published groups."}</p><button className="outline-button" type="button" onClick={() => load()} disabled={loading || !termId || !effectiveId}>{loading ? "Loading…" : "Refresh current courses"}</button></> : offerings.map((offering) => <div className="preference-offering" key={offering._id}><strong>{offering.course?.code} · {offering.course?.name}</strong><div className="group-chip-list">{preferenceGroupOptions(offering).map((option) => { const courseId = String(offering.course?._id || offering.course); const groupIndex = groups.findIndex((group) => String(group.course?._id || group.course) === courseId && group.componentType === option.componentType && group.groupNumber === option.groupNumber); const checked = groupIndex !== -1; return <button type="button" aria-pressed={checked} className={`group-chip ${checked ? "selected" : ""}`} key={`${option.componentType}-${option.groupNumber}`} onClick={() => toggleGroup(offering, option)}><strong>{option.componentType} {option.groupNumber}{checked && ` · #${groupIndex + 1}`}</strong><small>{option.sessions.map(preferenceMeetingLabel).join(" / ")}</small></button>; })}</div></div>)) : groups.length ? groups.map((group, index) => { const offering = offerings.find((item) => String(item.course?._id || item.course) === String(group.course)); const option = offering && preferenceGroupOptions(offering).find((item) => item.componentType === group.componentType && item.groupNumber === group.groupNumber); return <div className="preference-offering" key={`${group.course}-${group.componentType}-${group.groupNumber}`}><strong>Priority #{index + 1} · {offering?.course?.code || "Course"} {offering?.course?.name ? `· ${offering.course.name}` : ""}</strong><div className="group-chip-list"><span className="group-chip selected"><strong>{group.componentType} {group.groupNumber}</strong><small>{option?.sessions.map(preferenceMeetingLabel).join(" / ") || "This group is no longer published for the term."}</small></span></div></div>; }) : preferencesLoaded && <p className="helper-text">No preferred course groups were submitted.</p>}</section>
-      <div className="form-footer">{isStudent ? <><span className="helper-text">Submitting replaces this term’s saved preferences.</span><button className="primary-button" disabled={saving || Boolean(groupConflict)}>{saving ? "Saving…" : "Save preferences"}<span>→</span></button></> : <span className="helper-text">Advisor/coordinator view only. Students submit and update their own preferences.</span>}</div>
+    <form onSubmit={(event) => event.preventDefault()} onChangeCapture={() => setSaveNotice("")} onClickCapture={(event) => { if (event.target.closest("button")) setSaveNotice(""); }} onKeyDown={(event) => { if (event.key === "Enter" && event.target.tagName === "INPUT") event.preventDefault(); }} className="preference-grid">
+      <section className="panel preference-days"><PreferenceSectionHeading kind="days" title="Days that work for you" description="Preferred days, days to avoid and time off" /><p className="helper-text">Choose days from the dropdown, then use the arrows to rank them. #1 is highest.</p><RankedTextPreference label="Preferred days" value={preferredDays} onChange={setPreferredDays} placeholder="Monday, Wednesday" /><RankedTextPreference label="Days to avoid" value={avoidedDays} onChange={setAvoidedDays} placeholder="Friday" /><RankedTextPreference label="Desired days off" value={daysOff} onChange={setDaysOff} placeholder="Thursday" /></section>
+      <section className="panel preference-times"><PreferenceSectionHeading kind="times" title="Your preferred times" description="Time ranges to prefer or avoid" /><p className="helper-text">Choose from the five teaching slots, then rank your choices. #1 is highest.</p><RankedTextPreference label="Preferred times" choices={PREFERENCE_TIME_SLOTS} value={preferredTimes} onChange={setPreferredTimes} placeholder="09:00-12:00, 13:00-15:00" /><RankedTextPreference label="Times to avoid" choices={PREFERENCE_TIME_SLOTS} value={avoidedTimes} onChange={setAvoidedTimes} placeholder="08:00-09:00" /></section>
+      <section className="panel preference-groups"><PreferenceSectionHeading kind="groups" title="Preferred class groups" description="Choose meeting groups, then rank your choices" /><p className="helper-text">Select groups and rank your choices. Groups from different courses cannot overlap.</p>{groups.length > 0 && <div className="selected-group-priorities"><h3>Selected group priorities</h3><p className="helper-text">#1 is your highest preference. Use the arrows to change the order.</p><PriorityList items={groupPriorityLabels} onMove={(index, direction) => setGroups((current) => moveRankedItem(current, index, direction))} /></div>}{conflictMessage && <div ref={conflictNoticeRef} className="feedback error preference-conflict-feedback" role="alert" aria-live="assertive">{conflictMessage}</div>}{groupLoadMessage && <p className="preference-group-feedback" role="status">{groupLoadMessage}</p>}{offerings.length === 0 ? <><p className="helper-text">{preferencesLoaded ? (currentCourseIds.length ? "No published groups for your courses." : "Groups appear once courses are assigned.") : "Check for available class groups."}</p><button className="outline-button preference-refresh-groups" type="button" onClick={refreshGroupChoices} disabled={loading || refreshingGroups || !termId || !effectiveId} aria-busy={refreshingGroups}>{refreshingGroups && <span className="preference-button-spinner" aria-hidden="true" />}{refreshingGroups ? "Checking…" : "Refresh groups"}</button></> : offerings.map((offering) => <div className="preference-offering" key={offering._id}><div className="preference-course-identity"><OfferingCourseIcon code={offering.course?.code} /><div><small>{offering.course?.code}</small><strong>{offering.course?.name}</strong></div></div><div className="group-chip-list">{preferenceGroupOptions(offering).map((option) => { const courseId = String(offering.course?._id || offering.course); const groupIndex = groups.findIndex((group) => String(group.course?._id || group.course) === courseId && group.componentType === option.componentType && group.groupNumber === option.groupNumber); const checked = groupIndex !== -1; return <button type="button" aria-pressed={checked} className={`group-chip ${checked ? "selected" : ""}`} key={`${option.componentType}-${option.groupNumber}`} onClick={() => toggleGroup(offering, option)}><strong>{option.componentType} {option.groupNumber}{checked && ` · #${groupIndex + 1}`}</strong><small>{option.sessions.map(preferenceMeetingLabel).join(" / ")}</small></button>; })}</div></div>)}</section>
+      <section className="panel preference-note"><PreferenceSectionHeading kind="note" title="Anything else?" description="Optional note for your advising staff" /><label className="field"><span>Note for advising staff</span><textarea value={note} maxLength={1000} onChange={(event) => setNote(event.target.value)} rows={3} placeholder="Optional note (up to 1000 characters)" /></label></section>
+      <div className="form-footer"><span className={`helper-text ${saveNotice ? "preference-save-confirmation" : ""}`} role="status">{saveNotice || "Changes are saved only when you press Save preferences."}</span><button className="primary-button" type="button" onClick={save} disabled={saving || Boolean(groupConflict)}>{saving ? "Saving…" : "Save preferences"}<span>→</span></button></div>
     </form>
   </div>;
+}
+
+function PreferenceSectionHeading({ kind, title, description }) {
+  const paths = { days: <><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M8 3v5m8-5v5M4 11h16M8 15h2m4 0h2m-8 3h2"/></>, times: <><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></>, groups: <><rect x="3" y="4" width="7" height="7" rx="1"/><rect x="14" y="4" width="7" height="7" rx="1"/><rect x="3" y="15" width="7" height="6" rx="1"/><path d="M14 18h7m-3-3v6"/></>, note: <><path d="M5 3h11l3 3v15H5zM9 9h6m-6 4h6m-6 4h4"/></> };
+  return <div className="preference-section-heading"><span className={`preference-section-icon is-${kind}`} aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">{paths[kind]}</svg></span><div><h2>{title}</h2><p>{description}</p></div></div>;
 }
 
 function PageTitle({ eyebrow, title, description, action }) {
   return <div className="page-title-row"><div><p className="eyebrow">{eyebrow}</p><h1>{title}</h1><p className="page-description">{description}</p></div>{action}</div>;
 }
 
-function Detail({ label, value }) { return <div className="detail-item"><span>{label}</span><strong>{value ?? "—"}</strong></div>; }
 function Loading() { return <div className="loading-state"><span className="loader" />Loading…</div>; }
-function EmptyState({ title, text, icon = "◌" }) { return <div className="empty-state"><span>{icon}</span><h3>{title}</h3><p>{text}</p></div>; }
 
 function RecordData({ data, tab }) {
   if (tab === "wallet") {
@@ -382,39 +318,97 @@ function RecordData({ data, tab }) {
         </td>
         <td>{amountLabel(txn.resultingBalance)} {data.currency || "EGP"}</td>
       </tr>;
-    })}</tbody></table></div> : <EmptyState title="No transactions yet" text="Wallet activity will appear here." />}</>;
+    })}</tbody></table></div> : <p className="records-empty">Wallet transactions will appear here when you add or use funds.</p>}</>;
   }
   if (tab === "failed") {
     const records = Array.isArray(data) ? data : [];
-    return records.length ? <div className="table-scroll"><table><thead><tr><th>Course</th><th>Term</th><th>Attempt</th><th>Attendance</th><th>Result</th><th>Grade</th></tr></thead><tbody>{records.map((item) => <tr key={item._id}><td><strong>{item.course?.code || "—"}</strong><span className="secondary-text">{item.course?.name}</span></td><td>{item.term?.code || "—"}</td><td>{item.attemptNumber || "—"}</td><td>{humanize(item.attendance)}</td><td>{humanize(item.result)}</td><td>{item.grade || "—"}</td></tr>)}</tbody></table></div> : <EmptyState title="No failed or unattended courses" text={data.message || "There are no records to display."} icon="✓" />;
+    return records.length ? <CourseRecordGroup title="Failed or unattended courses" previewLength={records.length} items={records.map(item => ({
+      id: item._id, course: item.course,
+      details: { Term: termLabel(item.term), Attempt: item.attemptNumber, Attendance: humanize(item.attendance), Result: humanize(item.result), Grade: item.grade },
+    }))} /> : <RecordsEmpty title="No failed or unattended courses" description="Courses appear here when a failed or unattended attempt is recorded." art="course-removal-slip.svg" spacious />;
   }
   if (tab === "transcript") {
-    const terms = data.terms || {};
-    const courses = Object.entries(terms).flatMap(([name, rows]) => (rows || []).map((entry) => ({ ...entry, termLabel: humanize(name) })));
-    return <><div className="results-heading"><div><p className="eyebrow">ACADEMIC YEAR {data.year}</p><h2>Yearly transcript</h2></div><span>{courses.length} course attempts</span></div>{courses.length ? <div className="table-scroll"><table><thead><tr><th>Term</th><th>Course</th><th>Credits</th><th>Grade</th><th>Result</th><th>Attendance</th></tr></thead><tbody>{courses.map((row, index) => <tr key={row._id || `${row.termLabel}-${index}`}><td>{row.termLabel}</td><td><strong>{row.course?.code || "—"}</strong><span className="secondary-text">{row.course?.name}</span></td><td>{row.course?.creditHours ?? "—"}</td><td>{row.grade || "—"}</td><td>{humanize(row.result)}</td><td>{humanize(row.attendance)}</td></tr>)}</tbody></table></div> : <EmptyState title="No transcript courses for this year" text="Choose a different academic year to view another transcript." />}</>;
+    const terms = Object.entries(data.terms || {}).filter(([, rows]) => rows?.length);
+    return terms.length ? <div className="records-transcript">
+      <h2>Transcript for {data.year}</h2>
+      {terms.map(([name, rows]) => <CourseRecordGroup key={name} title={humanize(name)} previewLength={rows.length} items={rows.map((row, index) => ({
+        id: row._id || index, course: row.course,
+        details: { Grade: row.grade, Result: humanize(row.result), Attendance: humanize(row.attendance) },
+      }))} />)}
+    </div> : <RecordsEmpty title="No course attempts for this year" description="Select another academic year to view its transcript." spacious />;
   }
-  const completed = data.completedCourses || [];
-  const current = data.currentCourses || [];
-  const remaining = data.remainingCourses || [];
+  return <AcademicHistory data={data} />;
+}
+
+function AcademicHistory({ data }) {
   const summary = data.studentProfile || {};
-  const courseName = (course) => <><strong>{course?.code || "—"}</strong><span className="secondary-text">{course?.name || ""}</span></>;
-  const termName = (term) => term ? `${humanize(term.season)} ${term.academicYear || term.code || ""}` : "—";
-  return <div className="page-stack">
-    <div className="results-heading"><div><p className="eyebrow">STUDENT ID {summary.studentId || ""}</p><h2>Academic history</h2></div></div>
-    <div className="detail-grid">
-      <Detail label="Advisor" value={summary.advisor} />
-      <Detail label="Major" value={summary.major} />
-      <Detail label="GPA" value={summary.gpa} />
-      <Detail label="Completed hours" value={summary.completedHours ?? 0} />
-      <Detail label="Current semester" value={summary.currentSemester} />
+  const groups = [
+    {
+      title: "Current courses", empty: "Courses appear here once they’re recorded as in progress.",
+      items: (data.currentCourses || []).map((item) => ({
+        id: item._id, course: item.course, details: { Term: termLabel(item.term) },
+      })),
+    },
+    {
+      title: "Completed courses", empty: "No passing grades have been recorded yet.",
+      items: (data.completedCourses || []).map((item) => ({
+        id: item._id, course: item.course, details: { Term: termLabel(item.term), Grade: item.grade },
+      })),
+    },
+    {
+      title: "Remaining courses", empty: "The catalogue lists no remaining courses for this major.",
+      items: (data.remainingCourses || []).map((course) => ({
+        id: course._id, course, details: {
+          "Offering season": course.offeringSeasons?.map(humanize).join(", ") || "Not specified",
+          Prerequisites: course.prerequisites?.map((item) => [item.code, item.name].filter(Boolean).join(" · ")).join(", ") || "None",
+        },
+      })),
+    },
+  ];
+  return <div className="records-history">
+    <div className="records-summary">
+      <img src="/portal-studio/images/academic-transcript.svg" alt="" width="64" height="64" />
+      <div className="records-summary-copy"><h2>Academic history</h2>{summary.studentId && <p className="records-caption">Student ID {summary.studentId}</p>}</div>
+      <dl className="records-standing">
+        {Object.entries({ GPA: summary.gpa, "Completed credits": summary.completedHours ?? 0, "Current semester": summary.currentSemester }).map(([label, value]) =>
+          <div key={label}><dt>{label}</dt><dd>{value ?? "—"}</dd></div>)}
+      </dl>
+      <dl className="records-program">
+        <div><dt>Major</dt><dd>{summary.major || "—"}</dd></div>
+        <div><dt>Advisor</dt><dd>{summary.advisor || "Unassigned"}</dd></div>
+      </dl>
     </div>
-    <div><div className="results-heading"><h3>Completed courses</h3><span>{completed.length}</span></div>
-      {completed.length ? <div className="table-scroll"><table><thead><tr><th>Course</th><th>Term</th><th>Grade</th><th>Credit hours</th></tr></thead><tbody>{completed.map((item) => <tr key={item._id}><td>{courseName(item.course)}</td><td>{termName(item.term)}</td><td>{item.grade}</td><td>{item.course?.creditHours ?? "—"}</td></tr>)}</tbody></table></div> : <p className="helper-text">No completed courses recorded.</p>}</div>
-    <div><div className="results-heading"><h3>Current courses</h3><span>{current.length}</span></div>
-      {current.length ? <div className="table-scroll"><table><thead><tr><th>Course</th><th>Term</th><th>Credit hours</th></tr></thead><tbody>{current.map((item) => <tr key={item._id}><td>{courseName(item.course)}</td><td>{termName(item.term)}</td><td>{item.course?.creditHours ?? "—"}</td></tr>)}</tbody></table></div> : <p className="helper-text">No current courses recorded.</p>}</div>
-    <div><div className="results-heading"><h3>Remaining courses</h3><span>{remaining.length}</span></div>
-      {remaining.length ? <div className="table-scroll"><table><thead><tr><th>Course</th><th>Credit hours</th><th>Prerequisites</th><th>Offering season</th></tr></thead><tbody>{remaining.map((course) => <tr key={course._id}><td>{courseName(course)}</td><td>{course.creditHours ?? "—"}</td><td>{course.prerequisites?.length ? course.prerequisites.map((item) => item.name ? `${item.code} · ${item.name}` : item.code || "—").join(", ") : "None"}</td><td>{course.offeringSeasons?.length ? course.offeringSeasons.map(humanize).join(", ") : "Not specified"}</td></tr>)}</tbody></table></div> : <p className="helper-text">No remaining courses found in the catalogue for this major.</p>}</div>
+    {groups.map((group) => <CourseRecordGroup key={group.title} {...group} />)}
   </div>;
+}
+
+function RecordsEmpty({ title, description, art = "academic-transcript.svg", spacious = false }) {
+  return <div className={spacious ? "records-blank records-blank-tab" : "records-blank"}>
+    <img src={`/portal-studio/images/${art}`} alt="" width={spacious ? 148 : 44} height={spacious ? 124 : 44} />
+    <div><strong>{title}</strong>{description && <p>{description}</p>}</div>
+  </div>;
+}
+
+function CourseRecordGroup({ title, items, empty, previewLength = 4 }) {
+  const id = useId();
+  const [expanded, setExpanded] = useState(false);
+  const visibleItems = expanded ? items : items.slice(0, previewLength);
+  return <section className="records-course-group" aria-labelledby={id}>
+    <header className="records-course-heading">
+      <div><h3 id={id}>{title}</h3><span>{items.length}</span></div>
+      {items.length > previewLength && <button type="button" className="outline-button" aria-controls={`${id}-list`} aria-expanded={expanded} aria-label={`${expanded ? "Show fewer" : `Show all ${items.length}`} ${title.toLowerCase()}`} onClick={() => setExpanded(!expanded)}>{expanded ? "Show fewer" : `Show all ${items.length}`}</button>}
+    </header>
+    {items.length === 0 ? <RecordsEmpty title={`No ${title.toLowerCase()}`} description={empty} /> :
+      <ul className="records-courses" id={`${id}-list`} aria-labelledby={id} role="list">{visibleItems.map(({ id: key, course, details }) =>
+        <li key={key}>
+          <div className="records-course-identity">
+            <OfferingCourseIcon code={course?.code} />
+            <div><strong>{course?.name || "Course unavailable"}</strong><small>{[course?.code, course?.creditHours != null && `${course.creditHours} ${course.creditHours === 1 ? "credit" : "credits"}`].filter(Boolean).join(" · ") || "—"}</small></div>
+          </div>
+          <dl className="records-course-details">{Object.entries(details).map(([label, value]) =>
+            <div key={label}><dt>{label}</dt><dd>{value || "—"}</dd></div>)}</dl>
+        </li>)}</ul>}
+  </section>;
 }
 
 function moveRankedItem(items, index, direction) {
@@ -425,39 +419,27 @@ function moveRankedItem(items, index, direction) {
   return reordered;
 }
 
-function PriorityList({ items, onMove }) {
+function PriorityList({ items, onMove, onRemove }) {
   if (!items.length) return null;
   return <ol className="priority-list" aria-label="Priority order, highest first">
     {items.map((item, index) => <li key={`${item}-${index}`}>
       <span className="priority-number">#{index + 1}</span><span className="priority-item-label">{item}</span>
       {onMove && <span className="priority-actions"><button type="button" className="outline-button" disabled={index === 0} onClick={() => onMove(index, -1)} aria-label={`Move ${item} to higher priority`}>↑</button><button type="button" className="outline-button" disabled={index === items.length - 1} onClick={() => onMove(index, 1)} aria-label={`Move ${item} to lower priority`}>↓</button></span>}
+      {onRemove && <button type="button" className="preference-remove-choice" onClick={() => onRemove(index)} aria-label={`Remove ${item}`}>×</button>}
     </li>)}
   </ol>;
 }
 
-function RankedTextPreference({ label, value, onChange, placeholder, readOnly }) {
-  const items = value.split(",").map((item) => item.trim()).filter(Boolean);
+function RankedTextPreference({ label, value, onChange, choices = PREFERENCE_DAYS }) {
+  const items = value.split(",").map(item => item.trim()).filter(Boolean);
+  const available = choices.filter(choice => !items.includes(choice));
   const move = (index, direction) => onChange(moveRankedItem(items, index, direction).join(", "));
-  return <div className="ranked-preference-field"><label className="field"><span>{label}</span><input value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} readOnly={readOnly} /></label><PriorityList items={items} onMove={readOnly ? undefined : move} /></div>;
+  const remove = index => onChange(items.filter((_, position) => position !== index).join(", "));
+  return <div className="ranked-preference-field">
+    <label className="field"><span>{label}</span><select aria-label={`Add ${label.toLowerCase()}`} value="" disabled={!available.length} onChange={event => { if (event.target.value) onChange([...items, event.target.value].join(", ")); }}>
+      <option value="">{available.length ? choices === PREFERENCE_TIME_SLOTS ? "Choose a time slot…" : "Choose a day…" : "All options selected"}</option>
+      {available.map(choice => <option key={choice} value={choice}>{choice.replace("-", "–")}</option>)}
+    </select></label>
+    <PriorityList items={items} onMove={move} onRemove={remove} />
+  </div>;
 }
-
-function parseDays(value) {
-  const days = value.split(",").map((item) => item.trim()).filter(Boolean);
-  if (new Set(days).size !== days.length) throw new Error("Remove duplicate weekday entries.");
-  return days.map((day, index) => ({ day, priority: index + 1 }));
-}
-function parseTimes(value) {
-  return value.split(",").map((item) => item.trim()).filter(Boolean).map((range, index) => {
-    const parts = range.split("-").map((part) => part.trim());
-    if (parts.length !== 2) throw new Error("Use time ranges like 09:00-12:00.");
-    return { startMinute: timeToMinutes(parts[0]), endMinute: timeToMinutes(parts[1]), priority: index + 1 };
-  });
-}
-function timeToMinutes(value) {
-  const match = /^(\d{1,2}):(\d{2})$/.exec(value);
-  if (!match) throw new Error(`Invalid time: ${value}. Use HH:MM.`);
-  const hours = Number(match[1]); const minutes = Number(match[2]);
-  if (hours > 24 || minutes > 59 || (hours === 24 && minutes !== 0)) throw new Error(`Invalid time: ${value}.`);
-  return hours * 60 + minutes;
-}
-function minutesToTime(value) { return `${String(Math.floor(value / 60)).padStart(2, "0")}:${String(value % 60).padStart(2, "0")}`; }

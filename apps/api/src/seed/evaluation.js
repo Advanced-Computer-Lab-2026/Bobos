@@ -1,3 +1,4 @@
+import { evaluationStudents, evaluationAdvisors } from "./portal-names.js";
 import bcrypt from 'bcryptjs';
 import mongoose from 'mongoose';
 import { readFile } from 'node:fs/promises';
@@ -80,23 +81,7 @@ async function seedTerms() {
 async function seedCurriculum() {
   const csv = await readFile(CURRICULUM_URL, 'utf8');
   const { courses: curriculumCourses, mergedListings, skippedPlaceholders } = parseCurriculumCsv(csv);
-  const electives = Array.from({ length: 10 }, (_, index) => {
-    const number = index + 1;
-    return {
-      code: `ELEC${String(number).padStart(3, '0')}`,
-      name: [
-        'Artificial Intelligence Applications', 'Data Visualization', 'Human Computer Interaction',
-        'Cybersecurity Fundamentals', 'Digital Storytelling', 'Mobile Application Development',
-        'Machine Learning', 'Game Design', 'Cloud Computing', 'Media Production',
-      ][index],
-      creditHours: 4,
-      courseType: 'elective',
-      facultyMajors: ['CS', 'DMET'],
-      recommendedSemester: 9,
-      offeringSeasons: ['winter', 'spring'],
-      isActive: true,
-    };
-  });
+  const electives = []; // Only explicitly coded courses from the supplied curriculum.
   const allCourses = [...curriculumCourses, ...electives];
 
   for (const course of allCourses) {
@@ -161,7 +146,7 @@ async function seedAccounts(currentTerm, passwordHash) {
   for (let index = 1; index <= 5; index += 1) {
     const email = `evaluation.advisor${index}@guc.edu.eg`;
     advisors.push(await upsertUser(email, {
-      fullName: `Evaluation Advisor ${index}`, passwordHash, role: 'advisor', isActive: true, isAdvisorInSystem: true,
+      fullName: evaluationAdvisors[index - 1], passwordHash, role: 'advisor', isActive: true, isAdvisorInSystem: true,
     }));
   }
 
@@ -170,7 +155,7 @@ async function seedAccounts(currentTerm, passwordHash) {
   for (let index = 1; index <= 10; index += 1) {
     const email = `evaluation.student${index}@student.guc.edu.eg`;
     const user = await upsertUser(email, {
-      fullName: `Evaluation Advising Student ${index}`, passwordHash, role: 'advisingStudent', isActive: true,
+      fullName: evaluationStudents[index - 1], passwordHash, role: 'advisingStudent', isActive: true,
     });
     const onProbation = index === 2 || index === 5 || index === 8 || index === 10;
     const advisor = advisors[(index - 1) % advisors.length];
@@ -228,7 +213,7 @@ async function seedCurrentTermOfferings(term) {
       ],
     },
     {
-      courseCode: 'ELEC001', isPublished: true,
+      courseCode: 'CSEN901', isPublished: true,
       eligibleGroups: [{ major: 'CS', semester: 9 }],
       slots: [
         { componentType: 'lecture', groupNumber: '1', day: 'Thursday', startMinute: 540, endMinute: 600, room: 'C6.101', capacity: 45 },
@@ -269,7 +254,6 @@ async function seedCurrentTermOfferings(term) {
       { $setOnInsert: {
         course: course._id,
         term: term._id,
-        academicYear: term.academicYear,
         instructors: [{ fullName: 'Evaluation Faculty Member', email: 'evaluation.faculty@guc.edu.eg' }],
         ...fields,
       } },
@@ -295,7 +279,6 @@ async function seedCurrentTermOfferings(term) {
       { $setOnInsert: {
         course: course._id,
         term: term._id,
-        academicYear: term.academicYear,
         instructors: [{ fullName: 'Evaluation Faculty Member', email: 'evaluation.faculty@guc.edu.eg' }],
         eligibleGroups,
         isPublished: true,

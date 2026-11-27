@@ -1,4 +1,6 @@
+import { standardStudents, standardAdvisors } from "./portal-names.js";
 import mongoose from "mongoose";
+import bcrypt from "bcryptjs";
 import { User, StudentProfile } from "../models/identity.js";
 import { Course, AcademicTerm, CourseOffering } from "../models/catalogue.js";
 
@@ -6,6 +8,10 @@ const MONGODB_URI = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/bobos"
 
 async function seed() {
   try {
+    const enablePreviewAdmin = process.env.NODE_ENV !== "production" &&
+      process.env.BOBOS_PORTAL_DEMO === "standard" &&
+      ["localhost", "127.0.0.1", "[::1]"].includes(new URL(MONGODB_URI).hostname);
+    const adminPasswordHash = enablePreviewAdmin ? await bcrypt.hash("Password123!", 10) : "dummy_hash";
     await mongoose.connect(MONGODB_URI);
     console.log("Connected to MongoDB for seeding...");
 
@@ -22,7 +28,7 @@ async function seed() {
     const admin = await User.create({
       email: "admin@guc.edu.eg",
       fullName: "System Administrator",
-      passwordHash: "dummy_hash",
+      passwordHash: adminPasswordHash,
       role: "administrator"
     });
 
@@ -39,7 +45,7 @@ async function seed() {
     for (let i = 1; i <= 5; i++) {
       const advisor = await User.create({
         email: `advisor${i}@guc.edu.eg`,
-        fullName: `Advisor ${i}`,
+        fullName: standardAdvisors[i - 1],
         passwordHash: "dummy_hash",
         role: "advisor"
       });
@@ -55,7 +61,7 @@ async function seed() {
       
       const user = await User.create({
         email: `student${i}@student.guc.edu.eg`,
-        fullName: `Advising Student ${i}`,
+        fullName: standardStudents[i - 1],
         passwordHash: "dummy_hash",
         role: "advisingStudent"
       });
@@ -136,7 +142,6 @@ async function seed() {
     // 8. Sample Course Offerings with slots (Req 22 demo data)
     await CourseOffering.create({
       course: insertedCourses[0]._id, // CSEN102
-      academicYear: springTerm.academicYear,
       term: springTerm._id,
       instructors: [
         { fullName: "Dr. Slim Abdennadher", email: "slim.abdennadher@guc.edu.eg" },
@@ -158,7 +163,6 @@ async function seed() {
 
     await CourseOffering.create({
       course: insertedCourses[5]._id, // MATH103
-      academicYear: springTerm.academicYear,
       term: springTerm._id,
       instructors: [
         { fullName: "Dr. Ahmed ElSheikh", email: "ahmed.elsheikh@guc.edu.eg" },
@@ -179,7 +183,6 @@ async function seed() {
     // Unpublished offering: CSEN202 must NOT be schedulable this term
     await CourseOffering.create({
       course: insertedCourses[1]._id, // CSEN202
-      academicYear: springTerm.academicYear,
       term: springTerm._id,
       instructors: [
         { fullName: "Dr. Slim Abdennadher", email: "slim.abdennadher@guc.edu.eg" },
