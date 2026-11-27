@@ -227,6 +227,10 @@ test("Req 6–10: student directory finds the matching profile and changes the a
   await search.fill("does-not-exist");
   await search.press("Enter");
   await expect(page.getByRole("heading", { name: "No students to show" })).toBeVisible();
+  await page.route(url => url.pathname === "/api/admin/students" && url.searchParams.get("search") === "invalid response",
+    route => route.fulfill({ contentType: "application/json", body: "null" }));
+  await search.fill("invalid response");
+  await expect(page.getByRole("alert")).toContainText("The student directory could not load.");
   await search.fill("28-90001");
   await search.press("Enter");
   await student.click();

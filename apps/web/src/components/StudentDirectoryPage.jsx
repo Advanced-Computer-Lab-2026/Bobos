@@ -50,8 +50,14 @@ export default function StudentDirectoryPage({ token, role, notify }) {
   const loadStudents = useCallback(async (signal) => {
     setLoading(true); setError("");
     const params = new URLSearchParams(Object.entries(applied).filter(([, value]) => value));
-    try { setDirectory(await api(`/api/admin/students?${params.toString()}`, { token, signal })); }
-    catch (requestError) { if (requestError.name !== "AbortError") setError(explainApiError(requestError, "Student directory")); }
+    try {
+      const result = await api(`/api/admin/students?${params.toString()}`, { token, signal });
+      if (signal?.aborted) return;
+      if (!Array.isArray(result?.students)) throw new Error("The student directory could not load. Please try again.");
+      setDirectory(result);
+    } catch (requestError) {
+      if (!signal?.aborted && requestError.name !== "AbortError") setError(explainApiError(requestError, "Student directory"));
+    }
     finally { if (!signal?.aborted) setLoading(false); }
   }, [applied, token]);
 
