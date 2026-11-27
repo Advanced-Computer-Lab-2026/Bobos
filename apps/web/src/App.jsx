@@ -1,12 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "./api.js";
-import {
-  OverviewPage,
-  ProfilePage,
-  NotificationsPage,
-  StudentRecordsPage,
-  PreferencesPage,
-} from "./components/BasicPages.jsx";
+import { NotificationsPage, PreferencesPage, ProfilePage, StudentRecordsPage } from "./components/BasicPages.jsx";
 import StudentDirectoryPage from "./components/StudentDirectoryPage.jsx";
 import FinancialRecordsPage from "./components/FinancialRecordsPage.jsx";
 import AdvisingPage, { MyAdvisorPage } from "./components/AdvisingPage.jsx";
@@ -61,25 +55,6 @@ const navGroups = (role) => {
   ];
 };
 
-const studioPageByScreen = {
-  "calendar-sync": "calendar-sync",
-  "my-graduation": "graduation-plans",
-  "graduation-review": "graduation-plans",
-  "graduation-plans": "graduation-plans",
-};
-
-function illustratedUrl(screen, role, page = studioPageByScreen[screen] || "overview") {
-  const destination = new URL("/portal-studio/index.html", window.location.href);
-  const portalPage = screen === "graduation-review" && role === "advisor" ? "my-submitted-plans" : page;
-  destination.search = new URLSearchParams({ page: portalPage, role, preview: "live" });
-  if (page === "academic-services" && screen !== "overview") destination.searchParams.set("screen", screen);
-  if (page === "calendar-sync") {
-    const result = new URLSearchParams(window.location.search).get("calendar");
-    if (["connected", "error"].includes(result)) destination.searchParams.set("calendar", result);
-  }
-  return destination;
-}
-
 export default function App({ service }) {
   const workspaceParams = new URLSearchParams(service);
   const requestedScreen = workspaceParams.get("screen");
@@ -95,9 +70,10 @@ export default function App({ service }) {
   );
   const [profile, setProfile] = useState(null);
   const [profileLoading, setProfileLoading] = useState(Boolean(token));
-  const [activeScreen, setActiveScreen] = useState("overview");
+  const [activeScreen, setActiveScreen] = useState(null);
   const [embeddedProfileError, setEmbeddedProfileError] = useState("");
-  const [screenContext, setScreenContext] = useState(null);
+  const routeState = window.history.state;
+  const screenContext = routeState?.portalScreen === requestedScreen ? routeState.portalContext : null;
   useEffect(() => {
     if (!token) {
       setProfile(null);
@@ -131,26 +107,8 @@ export default function App({ service }) {
     return () => { alive = false; };
   }, [token, embeddedPage, requestedScreen]);
 
-  const groups = useMemo(() => navGroups(profile?.role), [profile?.role]);
-  const allNavItems = groups.flatMap((group) => group.items);
-
-  useEffect(() => {
-    if (activeScreen === "my-advisor" && profile?.role !== "advisingStudent") setActiveScreen("overview");
-  }, [activeScreen, profile?.role]);
-
   const openScreen = (screen, context = null) => {
-    if (profile && ((!embeddedServices && screen === "overview") || Object.hasOwn(studioPageByScreen, screen))) {
-      window.localStorage.setItem("portal-studio-preview-session", "1");
-      window.top.location.assign(illustratedUrl(screen, profile.role));
-      return;
-    }
-    const destination = new URL(window.location.href);
-    if (screen === "overview") destination.searchParams.delete("screen");
-    else destination.searchParams.set("screen", screen);
-    window.history.replaceState(window.history.state, "", destination);
-    setActiveScreen(screen);
-    setScreenContext(context);
-    window.scrollTo(0, 0);
+    document.dispatchEvent(new CustomEvent("portal:open-service", { detail: { screen, context } }));
   };
 
   if (profileLoading && embeddedExtraHours) return <div className="extra-hours-loading" aria-busy="true"><span className="sr-only">Loading extra-hours requests…</span></div>;
@@ -170,9 +128,9 @@ export default function App({ service }) {
       page: "login",
       role: workspaceParams.get("role") || "",
       preview: "live",
-      next: isSubmittedView ? "my-submitted-plans" : embeddedPage || "overview",
+      next: isSubmittedView ? "my-submitted-plans" : new URLSearchParams(window.location.search).get("page") || embeddedPage || "overview",
     });
-    if (embeddedServices && requestedScreen) signIn.searchParams.set("screen", requestedScreen);
+    if (signIn.searchParams.get("next") === "academic-services" && requestedScreen) signIn.searchParams.set("screen", requestedScreen);
     return <p className="feedback error">Your session has ended. <a href={signIn.href}>Sign in to Portal</a>.</p>;
   }
 
@@ -214,17 +172,16 @@ export default function App({ service }) {
 
   const workspaceContent = (
     <div className="page-content" id="workspace-content" tabIndex={-1}>
-      {activeScreen === "overview" && <OverviewPage token={token} profile={profile} onOpen={openScreen} />}
       {activeScreen === "profile" && <ProfilePage profile={profile} />}
       {activeScreen === "notifications" && <NotificationsPage token={token} notify={report} />}
-      {activeScreen === "records" && profile.role !== "normalStudent" && <StudentRecordsPage token={token} profile={profile} notify={report} />}
+      {activeScreen === "records" && <StudentRecordsPage token={token} profile={profile} notify={report} />}
+      {activeScreen === "my-advisor" && <MyAdvisorPage token={token} />}
       {activeScreen === "preferences" && <PreferencesPage token={token} profile={profile} profileId={screenContext?.id || screenContext?._id || profile.studentProfileId} studentTarget={screenContext?._id ? screenContext : undefined} notify={report} onOpenDraftSchedule={(student, selectedTermId) => openScreen("student-schedules", { draftStudent: student, termId: selectedTermId })} />}
       {activeScreen === "directory" && <StudentDirectoryPage token={token} role={profile.role} notify={report} />}
       {activeScreen === "financial-records" && ["coordinator", "administrator"].includes(profile.role) && <FinancialRecordsPage token={token} role={profile.role} notify={report} />}
       {activeScreen === "advising" && <AdvisingPage token={token} role={profile.role} notify={report} onOpenPreferences={(student) => openScreen("preferences", student)} />}
       {activeScreen === "graduation-review" && ["advisor", "coordinator"].includes(profile.role) && <GraduationReview token={token} role={profile.role} />}
       {activeScreen === "my-graduation" && profile.role === "advisingStudent" && <StudentGraduation token={token} />}
-      {activeScreen === "my-advisor" && profile.role === "advisingStudent" && <MyAdvisorPage token={token} />}
       {activeScreen === "calendar-sync" && <CalendarSyncPage token={token} />}
       {activeScreen === "pending-work" && profile.role === "coordinator" && <PendingWorkPage token={token} />}
       {activeScreen === "schedule-activity" && ["coordinator", "administrator"].includes(profile.role) && <ScheduleActivityPage token={token} />}
@@ -235,7 +192,7 @@ export default function App({ service }) {
       {activeScreen === "slot-changes" && <SlotChangesPage token={token} role={profile.role} onOpenSchedule={() => openScreen("my-schedule")} />}
       {["my-schedule", "my-courses", "schedule-swap"].includes(activeScreen) && <StudentSchedulingPage token={token} section={activeScreen} onOpenSlotChanges={profile.role === "advisingStudent" ? () => openScreen("slot-changes") : undefined} />}
       {["courses", "terms", "offerings", "templates"].includes(activeScreen) && <AcademicWorkspace token={token} role={profile.role} section={activeScreen} onNavigate={openScreen} notify={report} />}
-      {!["profile", "overview"].includes(activeScreen) && !allNavItems.some((item) => item.id === activeScreen) && <OverviewPage token={token} profile={profile} onOpen={openScreen} />}
+
     </div>
   );
 
@@ -243,6 +200,7 @@ export default function App({ service }) {
     if (workspaceParams.get("role") !== profile.role) {
       return <p className="feedback error" role="alert">Sign in with the matching portal role to view academic services.</p>;
     }
+    if (!activeScreen) return <p className="feedback error" role="alert">This page is unavailable for your role.</p>;
     return (
       <div className="extra-hours-shell extra-hours-embedded academic-services-embedded">
         {workspaceContent}

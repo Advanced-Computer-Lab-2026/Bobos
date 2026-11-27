@@ -121,6 +121,8 @@
 .signin-actions .signin-continue:hover {background:color-mix(in srgb,var(--ink) 90%,var(--canvas))}
 .signin-actions .signin-continue:active {transform:translateY(1px)}
 .signin-actions .auth-recovery {justify-self:center;font-size:13px;color:var(--muted)}
+.auth-feedback {margin:0;color:var(--muted);font-size:13px;line-height:1.5}
+.auth-feedback.error {color:var(--danger, #b14b3c)}
 .preview-role-picker {
   min-inline-size: 0;
   margin: 22px 0 0;
@@ -214,7 +216,9 @@
   color:var(--ink);
 }
 dialog > .portal-focus-ring {position:absolute}
-:root:has([data-portal-focus]:focus-visible) .portal-focus-ring {display:block}
+:root:has([data-portal-focus]:focus-visible) .portal-focus-ring,
+.portal-focus-ring[data-service-ink] {display:block}
+.portal-focus-ring[data-service-ink=hover] svg {stroke-width:1.4}
 .portal-focus-ring svg {display:block;width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:2}
 .portal-focus-ring path:not(:first-child) {opacity:0}
 

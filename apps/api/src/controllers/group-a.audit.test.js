@@ -10,6 +10,7 @@ import { User, StudentProfile, AcademicTerm, Course, CourseAttempt, StudentSched
   FinancialTransaction, FinancialReversalRequest, Notification, GraduationPlan, ExitExamRequest } from "../models/index.js";
 import { getWallet } from "../models/academics.js";
 import { calculateDraftCreditPolicy } from "../utils/credit-allowance.js";
+import { mockStripeCheckout } from "./stripe-checkout.fixture.js";
 
 const gap = (reason) => process.env.A_AUDIT_STRICT === "1" ? {} : { todo: reason };
 let database, server, origin, users, student, terms, past, courses;
@@ -133,18 +134,35 @@ test("A1 Req 91: insufficient wallets are rejected and concurrent payment of one
   assert.equal(await FinancialTransaction.countDocuments({ kind: "extraHoursWalletPayment" }), 1);
 });
 
-test("A1 Req 93-94: cancelled/failed gateway attempts can retry; paid receipt downloads through the real route", async () => {
+test("A1 Req 91, 93-94: Stripe checkout retries and only verified payment produces a receipt", async (t) => {
+  const stripe = mockStripeCheckout(t);
   const request = await extra({ decisionStatus: "approved", settlementStatus: "awaitingChoice" });
-  for (const gatewayResult of ["cancelled", "failed"]) {
-    const attempt = await settle(request, { option: "now", method: "gateway", gatewayResult });
-    assert.equal(attempt.status, 200);
-    assert.equal(attempt.data.transaction.status, gatewayResult);
-    assert.equal((await call(`/extra-hours/mine/financial-history/${attempt.data.transaction._id}/download`, { role: "student" })).status, 404);
-  }
-  const paid = await settle(request, { option: "now", method: "gateway", gatewayResult: "succeeded" });
-  assert.equal(paid.status, 200);
-  assert.ok(paid.data.confirmation.transactionReference);
-  const receiptPath = `/extra-hours/mine/financial-history/${paid.data.transaction._id}/download`;
+  const policy = async () => calculateDraftCreditPolicy(student, await ExtraHoursRequest.find({ student: student._id }).populate("courses.course", "creditHours").lean());
+  const checkout = (suffix = "", body = {}, role = "student") =>
+    call(`/extra-hours/${request.id}/checkout${suffix}`, { role, method: "POST", body });
+  assert.equal((await checkout("", {}, "otherStudent")).status, 404);
+  assert.equal((await settle(request, { option: "now", method: "gateway", gatewayResult: "succeeded" })).status, 400);
+  assert.equal((await checkout()).status, 201);
+  assert.equal((await checkout()).status, 200);
+  assert.equal((await checkout("/check")).data.status, "pending");
+  assert.equal((await settle(request, { option: "deferred" })).status, 409);
+  assert.equal((await checkout("/check", { cancel: true })).data.status, "cancelled");
+  assert.equal((await checkout()).status, 201);
+  stripe.fail();
+  assert.equal((await checkout("/check", { cancel: true })).data.status, "failed");
+  assert.equal((await ExtraHoursRequest.findById(request.id)).settlementStatus, "awaitingChoice");
+  assert.equal((await policy()).approvedExtraHours, 0);
+  assert.equal((await checkout()).status, 201);
+  stripe.pay();
+  const verified = await Promise.all([checkout("/check"), checkout("/check")]);
+  assert.ok(verified.every(({ data }) => data.status === "succeeded"));
+  const transactions = await FinancialTransaction.find({ extraHoursRequest: request.id });
+  assert.deepEqual(transactions.map((item) => item.status).sort(), ["cancelled", "failed", "succeeded"]);
+  assert.equal((await ExtraHoursRequest.findById(request.id)).settlementStatus, "paid");
+  assert.equal((await policy()).approvedExtraHours, 3);
+  const paid = transactions.find((item) => item.status === "succeeded");
+  assert.equal(paid.transactionReference, "pi_receipt");
+  const receiptPath = `/extra-hours/mine/financial-history/${paid.id}/download`;
   const receipt = await call(receiptPath, { role: "student" });
   assert.equal(receipt.status, 200, JSON.stringify(receipt.data));
   assert.match(receipt.headers.get("content-type"), /application\/pdf/);

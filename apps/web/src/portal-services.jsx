@@ -9,8 +9,11 @@ import serviceStyles from "./extra-hours-study.css?inline";
 
 import paperStyles from "./components/paper-toss-button.css?inline";
 import academicStyles from "./portal-academic.css?inline";
+import pickerStyles from "../public/portal-studio/select-picker.css?inline";
+import statusStyles from "./portal-status.css?inline";
+import tabsStyles from "../public/portal-studio/view-tabs.css?inline";
 
-const styles = [baseStyles, workspaceStyles, formStyles, serviceStyles, paperStyles, academicStyles].join("\n")
+const styles = [tabsStyles, baseStyles, workspaceStyles, formStyles, serviceStyles, paperStyles, academicStyles, pickerStyles, statusStyles].join("\n")
   .replaceAll(":root", ".service-surface");
 
 export function mount(host) {
@@ -19,13 +22,23 @@ export function mount(host) {
   style.textContent = styles + `
     .service-surface[data-embedded="true"] {
       background:transparent;
-      font-family:inherit;
+      color: var(--portal-ink);
+      font-family: Styrene, system-ui, sans-serif;
+      --ink: var(--portal-ink);
+      --muted: var(--portal-muted);
+      --canvas: var(--portal-canvas);
+      --paper: var(--portal-paper);
+      --raised: var(--portal-raised);
+      --line: var(--portal-line);
       --embedded-ink: var(--portal-ink);
       --embedded-muted: var(--portal-muted);
       --embedded-canvas: var(--portal-canvas);
       --embedded-paper: var(--portal-paper);
       --embedded-raised: var(--portal-raised);
       --embedded-line: var(--portal-line);
+    }
+    @media (forced-colors: none) {
+      [data-service-ink-focus]:focus-visible { outline: none !important; }
     }
   `;
   const surface = document.createElement("div");
@@ -53,6 +66,7 @@ export function mount(host) {
   }
   const updateTheme = () => {
     surface.dataset.theme = document.documentElement.dataset.theme;
+    surface.style.colorScheme = surface.dataset.theme;
     const theme = getComputedStyle(host);
     for (const name of ["ink", "muted", "canvas", "paper", "raised", "line"]) {
       surface.style.setProperty(`--portal-${name}`, theme.getPropertyValue(`--${name}`));
@@ -61,15 +75,14 @@ export function mount(host) {
   updateTheme();
   const observer = new MutationObserver(updateTheme);
   observer.observe(document.documentElement, { attributeFilter: ["data-theme"] });
-  const tabs = document.createElement("link");
-  tabs.rel = "stylesheet";
-  tabs.href = "/portal-studio/view-tabs.css";
   host.replaceChildren();
-  shadow.append(tabs, style, surface);
+  shadow.append(style, surface);
+  const disposeInk = window.mountPortalControlInk?.(shadow);
   const root = createRoot(surface);
   root.render(<App service={host.dataset.portalService} />);
   return () => {
     observer.disconnect();
+    disposeInk?.();
     root.unmount();
   };
 }

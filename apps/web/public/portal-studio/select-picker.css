@@ -1,0 +1,31 @@
+@supports (appearance:base-select){
+  select:not([multiple]):is(:not([size]), [size="1"]), select:not([multiple]):is(:not([size]), [size="1"])::picker(select){appearance:base-select}
+  select:not([multiple]):is(:not([size]), [size="1"]){background-image:none;padding-inline-end:12px;align-items:center;gap:14px}
+  select::picker-icon{content:"";width:8px;height:8px;margin:0 3px 4px auto;
+    border:solid var(--muted);border-width:0 1.5px 1.5px 0;transform:rotate(45deg)}
+  select:open::picker-icon{transform:rotate(225deg);margin-block:4px 0}
+  ::picker(select){
+    background:var(--paper);color:var(--ink);padding:4px;
+    border:1px solid var(--control);border-radius:var(--control-radius, 8px);margin-block:5px;
+    box-shadow:0 8px 20px #0003;
+    max-height:300px;
+  }
+  select option{
+    min-height:38px;padding:8px 10px;gap:12px;
+    border-radius:5px;font-size:13px;color:var(--ink);
+  }
+  select option:checked{background:var(--raised);font-weight:500;box-shadow:inset 0 -1px var(--muted)}
+  select option:is(:hover, :focus-visible){background:var(--raised);box-shadow:inset 0 -1px var(--ink)}
+  @media (forced-colors:active) {
+    select option:is(:hover, :focus-visible){outline:1px solid Highlight;outline-offset:-1px}
+  }
+  /* Match the drawn tick used by Preferred days off. */
+  select option::checkmark{
+    order:1;content:"";flex:0 0 16px;height:16px;margin-inline-start:auto;
+    background:var(--success-ink);
+    mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='m4 12 4 4q4-7 12-13' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+  }
+  @media (forced-colors:active){
+    select option::checkmark{forced-color-adjust:none;background:CanvasText}
+  }
+}

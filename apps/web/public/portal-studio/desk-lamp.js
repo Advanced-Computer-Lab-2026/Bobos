@@ -32,6 +32,86 @@ function drawInputEdges(form) {
   }
 }
 
+// React services mount inside a shadow root, so their controls need to be
+// resolved there. Keep the ink outside the control so its hit area stays put.
+window.mountPortalControlInk = function (shadow) {
+  const events = new AbortController();
+  const capture = { capture: true, passive: true, signal: events.signal };
+  const selector = 'button, input:not([type=hidden]), select, textarea, a[href]';
+  const createRing = (kind) => {
+    const ring = document.createElement('span');
+    ring.className = 'portal-focus-ring';
+    ring.dataset.serviceInk = kind;
+    ring.setAttribute('aria-hidden', 'true');
+    ring.innerHTML = inkContour;
+    return ring;
+  };
+  const hoverRing = createRing('hover');
+  const focusRing = createRing('focus');
+  let hovered;
+  let focused;
+  let frame;
+
+  function place(ring, control, padding) {
+    if (!control?.isConnected || !control.getClientRects().length) {
+      ring.remove();
+      return;
+    }
+    const rect = control.getBoundingClientRect();
+    Object.assign(ring.style, {
+      left: `${rect.left - padding}px`,
+      top: `${rect.top - padding}px`,
+      width: `${rect.width + padding * 2}px`,
+      height: `${rect.height + padding * 2}px`,
+    });
+    if (!ring.isConnected) document.body.append(ring);
+  }
+
+  function update() {
+    const active = shadow.activeElement;
+    const next = active?.matches(`:focus-visible:is(${selector})`) ? active : null;
+    if (focused !== next) {
+      focused?.removeAttribute('data-service-ink-focus');
+      focused = next;
+      focused?.setAttribute('data-service-ink-focus', '');
+    }
+    place(focusRing, focused, 3);
+    place(hoverRing, hovered !== focused && hovered?.matches(':hover') ? hovered : null, 1);
+  }
+
+  function schedule() {
+    cancelAnimationFrame(frame);
+    frame = requestAnimationFrame(update);
+  }
+
+  shadow.addEventListener('pointerover', (event) => {
+    hovered = event.pointerType === 'mouse'
+      ? event.target.closest(selector)
+      : null;
+    if (hovered?.matches(':disabled,[aria-disabled=true]')) hovered = null;
+    schedule();
+  }, capture);
+  shadow.addEventListener('pointerout', (event) => {
+    if (hovered && !hovered.contains(event.relatedTarget)) {
+      hovered = null;
+      schedule();
+    }
+  }, capture);
+  for (const event of ['focusin', 'focusout', 'keydown', 'pointerdown', 'scroll', 'change']) {
+    shadow.addEventListener(event, schedule, capture);
+  }
+  window.addEventListener('resize', schedule, capture);
+  window.addEventListener('scroll', schedule, capture);
+
+  return () => {
+    events.abort();
+    cancelAnimationFrame(frame);
+    hoverRing.remove();
+    focusRing.remove();
+    focused?.removeAttribute('data-service-ink-focus');
+  };
+};
+
 // One outline follows keyboard focus on controls without a built-in ink edge.
 {
   const layer = document.createElement('span');

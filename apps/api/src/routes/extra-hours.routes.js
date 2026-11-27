@@ -8,6 +8,8 @@ import {
   listMyExtraHoursRequests,
   listAdvisorExtraHoursRequests,
   chooseExtraHoursSettlement,
+  startExtraHoursCheckout,
+  checkExtraHoursCheckout,
   getExtraHoursFinancialHistory,
   getExtraHoursWallet,
   downloadExtraHoursConfirmation,
@@ -27,6 +29,8 @@ router.get("/mine/wallet", requireRole("advisingStudent"), getExtraHoursWallet);
 router.get("/mine/financial-history/:transactionId/download", requireRole("advisingStudent"), downloadExtraHoursConfirmation);
 router.post("/:id/decision", requireRole("coordinator"), decideExtraHoursRequest);
 router.post("/:id/settlement", requireRole("advisingStudent"), chooseExtraHoursSettlement);
+router.post("/:id/checkout", requireRole("advisingStudent"), startExtraHoursCheckout);
+router.post("/:id/checkout/check", requireRole("advisingStudent"), checkExtraHoursCheckout);
 
 // Req 83: Advisor requests extra hours
 router.post(

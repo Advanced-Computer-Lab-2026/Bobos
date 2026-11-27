@@ -83,35 +83,6 @@ input,select,textarea{border:1px solid var(--control);border-radius:var(--contro
 input::placeholder,textarea::placeholder{color:var(--muted);opacity:1}
 textarea{resize:vertical}
 select{appearance:none;padding-inline-end:37px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='m2 2 4 4 4-4' fill='none' stroke='%23747069' stroke-width='1.4'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;cursor:pointer}
-@supports (appearance:base-select){
-  select,::picker(select){appearance:base-select}
-  select{background-image:none;padding:10px 12px;align-items:center;gap:14px}
-  select::picker-icon{content:"";width:8px;height:8px;margin:0 3px 4px auto;
-    border:solid var(--muted);border-width:0 1.5px 1.5px 0;transform:rotate(45deg)}
-  select:open::picker-icon{transform:rotate(225deg);margin-block:4px 0}
-  ::picker(select){
-    background:var(--paper);color:var(--ink);padding:4px;
-    border:1px solid var(--control);border-radius:var(--control-radius);margin-block:5px;
-    box-shadow:0 8px 20px #0003;
-    max-height:300px;
-  }
-  select option{
-    min-height:38px;padding:8px 10px;gap:12px;
-    border-radius:5px;font-size:13px;color:var(--ink);
-  }
-  select option:checked{background:var(--raised);font-weight:500}
-  select option:hover{background:var(--raised)}
-  select option:focus-visible{outline:2px solid var(--ink);outline-offset:-2px}
-  /* Match the drawn tick used by Preferred days off. */
-  select option::checkmark{
-    order:1;content:"";flex:0 0 16px;height:16px;margin-inline-start:auto;
-    background:var(--success-ink);
-    mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='m4 12 4 4q4-7 12-13' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
-  }
-  @media (forced-colors:active){
-    select option::checkmark{forced-color-adjust:none;background:CanvasText}
-  }
-}
 /* Preview controls sit outside the product shell. All choices remain one click away. */
 .preview-tools{display:flex;align-items:center;gap:18px;min-height:70px;padding:10px 22px;background:var(--paper);border-bottom:1px solid var(--line);position:relative;z-index:40}
 .preview-compare{font-size:12px;font-weight:700;padding:5px 0;margin-right:4px}

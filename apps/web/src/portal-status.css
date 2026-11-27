@@ -1,0 +1,37 @@
+/* Use Portal’s illustrated status marks and keep the written status visible. */
+.service-surface .status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 7px;
+  padding: 0;
+  background: none;
+  color: var(--ink);
+  font: 500 13px/1.35 Styrene, system-ui, sans-serif;
+  white-space: normal;
+}
+.service-surface .status-pill::before {
+  content: "";
+  flex: none;
+  width: 24px;
+  height: 24px;
+  background: var(--portal-status-mark) center / contain no-repeat;
+}
+.service-surface .status-pill {
+  --portal-status-mark: url("data:image/svg+xml,%3Csvg xmlns=%22http%3A//www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%23d6d0c3%22 stroke=%22%23383a35%22 stroke-width=%221.25%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M5 2.5 16 2l4 4.5-.6 15-15 .3Z%22/%3E%3Cpath fill=%22none%22 stroke-width=%221.85%22 d=%22m15.7 2.7-.2 4.8 4.2-.5M8 14l7-.4%22/%3E%3C/svg%3E");
+}
+.service-surface .status-pill.ready {
+  --portal-status-mark: url("data:image/svg+xml,%3Csvg xmlns=%22http%3A//www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%23bfd0c3%22 stroke=%22%23383a35%22 stroke-width=%221.25%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22m2 12 4-7 14-.5 2 8-2 6-17 1Z%22/%3E%3Cpath fill=%22none%22 stroke-width=%221.85%22 d=%22m3 12 6-.3 1.4 2.4 4-.2 1.2-2.6 5.8-.3%22/%3E%3C/svg%3E");
+}
+.service-surface .status-pill.draft {
+  --portal-status-mark: url("data:image/svg+xml,%3Csvg xmlns=%22http%3A//www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%23e8c590%22 stroke=%22%23383a35%22 stroke-width=%221.25%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22m3 20 2-7L16.5 2a2 2 0 0 1 3 0l2 2a2 2 0 0 1 0 3L9 18Z%22/%3E%3Cpath fill=%22none%22 stroke-width=%221.85%22 d=%22m5.4 13.4 3.5 4m5.2-13 4.4 4.4M3.8 18l1.1 1%22/%3E%3C/svg%3E");
+}
+.service-surface .status-pill:is(.pending, .warning) {
+  --portal-status-mark: url("data:image/svg+xml,%3Csvg xmlns=%22http%3A//www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%23e8c590%22 stroke=%22%23383a35%22 stroke-width=%221.25%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22m5 2.7 14-.4-.1 3.2c0 3-2.4 5-5.5 6.5 3.6 1.9 5.4 4 5.3 6.7l.1 2.4-14 .4.2-2.8c0-3.2 2.1-5 5.1-6.7-3.4-1.9-5.3-4-5.1-6.5Z%22/%3E%3Cpath fill=%22none%22 stroke-width=%221.85%22 d=%22m8.4 7.3 6.6-.2m-6.4 11.3 3.3-3.3 3.6 3.1Z%22/%3E%3C/svg%3E");
+}
+.service-surface .status-pill:is(.good, .completed, .refunded) {
+  --portal-status-mark: url("data:image/svg+xml,%3Csvg xmlns=%22http%3A//www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%23bcd1ca%22 stroke=%22%23383a35%22 stroke-width=%221.25%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M21.6 11.6c.3 6.3-4.5 10.1-10 10.1C5.9 21.8 2 17.3 2.3 12 2.1 6.4 6.3 2.4 12 2.2c5.5-.2 9.6 4.1 9.6 9.4Z%22/%3E%3Cpath fill=%22none%22 stroke-width=%221.85%22 d=%22m6.8 12 3.4 3.6L17.9 8%22/%3E%3C/svg%3E");
+}
+.service-surface .status-pill:is(.error, .danger, .failed) {
+  --portal-status-mark: url("data:image/svg+xml,%3Csvg xmlns=%22http%3A//www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%23ee9b83%22 stroke=%22%23383a35%22 stroke-width=%221.25%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22m10.2 3.9-8 14.8q-.8 1.8 1.3 2l17.2-.4q1.7 0 .8-1.7l-8-14.9q-1.6-2.5-3.3.2Z%22/%3E%3Cpath fill=%22none%22 stroke-width=%221.85%22 d=%22m12 8.7-.1 5.1m.1 2.9v.3%22/%3E%3C/svg%3E");
+}

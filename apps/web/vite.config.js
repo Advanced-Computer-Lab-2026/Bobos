@@ -1,3 +1,6 @@
+import { createHash } from "node:crypto";
+import { readFileSync, writeFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
@@ -65,25 +68,77 @@ function localPortalDemo() {
   };
 }
 
-export default defineConfig(({ command, isPreview }) => ({
-  plugins: [react(), localPortalDemo(), {
-    name: "portal-services-entry",
+// Portal Studio is served from public/ as classic scripts. Give its production
+// script and stylesheet URLs the same cache isolation Vite gives React chunks.
+const studyPages = [
+  "delete-options.html",
+  "feedback-studies.html",
+  "portal-studio/coming-up-notifications-study.html",
+  "portal-studio/logo-study.html",
+  "portal-studio/notification-study.html",
+  "portal-studio/student-overview-study.html",
+  "portal-studio/variants/01-front-desk/logos/comparison.html",
+];
+
+function portalSite() {
+  return {
+    name: "portal-site",
     configureServer(server) {
-      server.middlewares.use((req, _res, next) => {
+      server.middlewares.use((req, res, next) => {
+        const path = new URL(req.url, "http://localhost").pathname;
+        if (studyPages.includes(path.slice(1))) {
+          res.writeHead(302, { Location: "/" }).end();
+          return;
+        }
         if (req.url === "/portal-services.js") req.url = "/src/portal-services.jsx";
         next();
       });
     },
-  }],
+    writeBundle({ dir }, bundle) {
+      const out = resolve(dir);
+      const service = Object.values(bundle).find((file) => file.type === "chunk" && file.name === "portal-services");
+      if (!service) this.error("The Portal services bundle is missing.");
+      const versioned = new Map();
+      const fingerprint = (path) => {
+        if (versioned.has(path)) return versioned.get(path);
+        let contents = readFileSync(join(out, path));
+        if (path === "portal-studio/app.js") {
+          contents = contents.toString().replace("'/portal-services.js'", JSON.stringify("/" + service.fileName));
+        }
+        const hash = createHash("sha256").update(contents).digest("hex").slice(0, 12);
+        const target = path.replace(/\.(js|css)$/, `.${hash}.$1`);
+        writeFileSync(join(out, target), contents);
+        versioned.set(path, target);
+        return target;
+      };
+      const shell = "portal-studio/index.html";
+      for (const page of ["index.html", "workspace.html", "academic-services.html", shell]) {
+        const file = join(out, page);
+        const html = readFileSync(file, "utf8").replace(/(src|href)="([^"?]+\.(?:js|css))(?:\?[^"]*)?"/g, (original, attr, url) => {
+          const path = url.startsWith("/") ? url.slice(1) : join(dirname(page), url);
+          if (!path.startsWith("portal-studio/")) return original;
+          return `${attr}="/${fingerprint(path)}"`;
+        });
+        writeFileSync(file, html);
+      }
+      // Keep old study bookmarks from opening a second interface.
+      const redirect = readFileSync(join(out, "index.html"));
+      for (const page of studyPages) writeFileSync(join(out, page), redirect);
+    },
+  };
+}
+
+export default defineConfig(({ command, isPreview }) => ({
+  plugins: [react(), localPortalDemo(), portalSite()],
   // Concurrent dev servers must keep their optimized dependencies separate.
   ...(command === "serve" && !isPreview && { cacheDir: `node_modules/.vite/dev-${process.pid}` }),
   build: { rollupOptions: {
     preserveEntrySignatures: "exports-only",
     input: { index: "index.html", "academic-services": "academic-services.html", workspace: "workspace.html", "portal-services": "src/portal-services.jsx" },
-    output: { entryFileNames: (entry) => entry.name === "portal-services" ? "portal-services.js" : "assets/[name]-[hash].js" },
   } },
   envDir: "../..",
   server: {
+    strictPort: true,
     proxy: {
       "/api": "http://localhost:3000",
     },

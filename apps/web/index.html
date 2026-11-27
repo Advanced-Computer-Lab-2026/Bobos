@@ -1,22 +1,12 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Portal · Academic workspace</title>
-    <script>
-      const destination = new URL("portal-studio/index.html", location.href);
-      destination.search = location.search;
-      destination.hash = location.hash;
-      destination.searchParams.set("preview", "live");
-      if (destination.searchParams.has("calendar")) {
-        destination.searchParams.set("page", "calendar-sync");
-        if (!destination.searchParams.has("role")) destination.searchParams.set("role", "normalStudent");
-      } else if (!destination.searchParams.has("page")) {
-        destination.searchParams.set("page", localStorage.getItem("portal-studio-preview-session") === "1" ? "overview" : "login");
-      }
-      location.replace(destination);
-    </script>
-  </head>
-  <body><a href="./portal-studio/index.html?page=login">Open Portal</a></body>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Opening Portal</title>
+  <!-- Public scripts also run on static hosting. -->
+  <script defer src="/portal-studio/routes.js"></script>
+  <script defer src="/portal-studio/legacy-entry.js"></script>
+</head>
+<body><p>Opening Portal… <a href="/portal-studio/index.html">Continue to Portal</a></p></body>
 </html>

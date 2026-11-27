@@ -51,6 +51,10 @@ See [Group B API coverage](docs/group-b-verification.md) for the student directo
 
 See [the Group A Sprint 2 audit](docs/group-a-sprint2-audit.md) for the integrated student workflows, all 36 assigned requirements, and reproduced missing/partial behavior. Run `npm run test:a` for strict acceptance (known gaps fail) or `npm run test:a:regression` to keep those same gap assertions explicitly marked TODO.
 
+### Extra-hours card payments (Req. 91 and 93)
+
+Set `STRIPE_SECRET_KEY` to a Stripe sandbox secret key in the API environment. Hosted Stripe Checkout accepts test cards in EGP. The Portal displays **Pay by card** for an approved request and confirms the payment with Stripe before applying the extra hours. The API checks pending checkouts in the background every minute, so a student can close the tab after paying. Use `WEB_ORIGIN` to set the return origin when hosted.
+
 ### Probation warning emails (Req. 118)
 
 Administrators can record official semester standings in **Academic terms → Record standing**. The API stores one standing per student and term. API clients can also use `PUT /api/academic-terms/academicTerm/<termCode>/standings/<studentId>` with `academicStanding` set to `probation` or `goodAcademicStanding`.
