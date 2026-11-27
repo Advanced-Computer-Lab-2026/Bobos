@@ -107,7 +107,7 @@ function portalSite() {
       for (const page of htmlEntries) {
         const file = join(out, page);
         const html = readFileSync(file, "utf8").replace(/(src|href)="([^"?]+\.(?:js|css))(?:\?[^"]*)?"/g, (original, attr, url) => {
-          const path = url.startsWith("/") ? url.slice(1) : join(dirname(page), url);
+          const path = (url.startsWith("/") ? url.slice(1) : join(dirname(page), url)).replaceAll("\\", "/");
           if (!path.startsWith("portal-studio/")) return original;
           return `${attr}="/${fingerprint(path)}"`;
         });

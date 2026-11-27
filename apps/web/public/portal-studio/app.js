@@ -687,7 +687,7 @@ function notifications(){
           ${emailStatus ? `<small>Email: ${escapeHtml(emailStatus)}</small>` : ''}
           ${item.isRead ? '<small>Read</small>' : button('Mark as read','read-one','btn desk-action', `data-notification="${escapeHtml(item._id)}"`)}
       </article>`;
-    }).join('')}</div>` : `<div class="empty">${role === 'coordinator' ? notificationScenes('tube',false) : ''}<h2>You’re all caught up.</h2><p>${tab === 'unread' ? 'No unread notifications.' : 'No notifications yet.'}</p></div>`))+'</section>';
+    }).join('')}</div>` : `<div class="empty">${notificationScenes('coffee',false)}<h2>You’re all caught up.</h2><p>${tab === 'unread' ? 'No unread notifications.' : 'No notifications yet.'}</p></div>`))+'</section>';
 }
 
 async function markPortalNotifications(ids, control) {
@@ -1322,6 +1322,9 @@ function mountPortalService(host) {
 }
 
 function render(focus=false){
+  const previousRole = document.body.dataset.portalRole;
+  const sidebarScroll = app.querySelector('.sidebar')?.scrollTop || 0;
+  const navigationScroll = app.querySelector('.sidebar nav')?.scrollTop || 0;
   loadStudentSchedule();
   loadAccountData(focus);
   closeDeadline();
@@ -1364,6 +1367,12 @@ function render(focus=false){
   const lamp = app.querySelector('.desk-lamp-scene');
   if (lamp) mountDeskLamp(lamp);
   binderMotion.mount(app.querySelector('[data-concertina=true] .folio-stack'));
+  if (!authPages.has(page) && previousRole === role) {
+    const sidebar = app.querySelector('.sidebar');
+    const navigation = sidebar?.querySelector('nav');
+    if (sidebar) sidebar.scrollTop = sidebarScroll;
+    if (navigation) navigation.scrollTop = navigationScroll;
+  }
   if(focus)document.querySelector('#content')?.focus({preventScroll:true});
 }
 function navigate(target, url, state = {}) {

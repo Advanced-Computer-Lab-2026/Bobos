@@ -3,6 +3,8 @@ import { termLabel } from "../term-label.js";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { api, explainApiError } from "../api.js";
 import PaperTossButton, { waitForPaperToss } from "./PaperTossButton.jsx";
+import { StudentRegister } from "./CoordinatorRecords.jsx";
+import { validateAcademicTerm, termFieldLabels } from "../term-validation.js";
 
 const pretty = (value = "") => String(value || "—").replace(/([a-z])([A-Z])/g, "$1 $2").replace(/^./, (letter) => letter.toUpperCase());
 const seasons = ["winter", "spring", "summer", "firstMakeup", "secondMakeup"];
@@ -170,292 +172,168 @@ function TermCalendar({ term }) {
 
 function TermsWorkspace({ token, role, notify }) {
   const [form, setForm] = useState(blankTerm);
-  const [termId, setTermId] = useState("");
+  const [termId, setTermId] = useState('');
   const [terms, setTerms] = useState([]);
   const [loading, setLoading] = useState(false);
   const [fetchingTerms, setFetchingTerms] = useState(false);
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const [loadError, setLoadError] = useState('');
   const [recordingStanding, setRecordingStanding] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [viewing, setViewing] = useState(null);
+  const [touched, setTouched] = useState({});
+  const [attempt, setAttempt] = useState(0);
+  const [search, setSearch] = useState('');
+  const [filters, setFilters] = useState({ year: '', season: '', status: '' });
+  const editor = useRef(null);
+  const validation = validateAcademicTerm(form);
+  const visibleError = field => (attempt || touched[field]) ? validation[field] : '';
 
   const loadTerms = async () => {
-    setFetchingTerms(true);
+    setFetchingTerms(true); setLoadError('');
     try {
-      const data = await api("/api/academic-terms/academicTerm", { token });
+      const data = await api('/api/academic-terms/academicTerm', { token });
       setTerms(Array.isArray(data) ? data : []);
-    } catch (e) {
-      setError(explainApiError(e, "Academic terms"));
-      setTerms(readRecentTerms());
-    } finally {
-      setFetchingTerms(false);
-    }
+    } catch {
+      setLoadError('Could not refresh academic terms. Your last loaded terms are still shown.');
+      setTerms(current => current.length ? current : readRecentTerms());
+    } finally { setFetchingTerms(false); }
   };
-
+  useEffect(() => { loadTerms(); }, [token]);
   useEffect(() => {
-    loadTerms();
-  }, [token]);
+    if (attempt) editor.current?.querySelector('[aria-invalid="true"]')?.focus();
+  }, [attempt]);
 
-  const update = (field, value) => {
-    setForm((current) => ({ ...current, [field]: value }));
+  const update = (field, value) => { setForm(current => ({ ...current, [field]: value })); setError(''); };
+  const openEditor = term => {
+    setTermId(term?._id || term?.code || ''); setForm(term ? termToForm(term) : { ...blankTerm });
+    setTouched({}); setAttempt(0); setError(''); setMessage(''); setViewing(null); setEditing(true);
   };
-
-  const toPayload = () => {
-    const payload = {};
-    for (const key of Object.keys(blankTerm)) {
-      if (form[key] !== undefined) {
-        payload[key] = termDateFields.includes(key) && form[key]
-          ? dateToIso(form[key])
-          : form[key];
-      }
-    }
-    payload.code = form.code || `${form.season}-${form.academicYear.replace(/[^0-9]/g, "")}`;
-    return payload;
-  };
-
-  const validateDates = () => {
-    if (form.termStart && form.termEnd && form.termStart > form.termEnd) {
-      return "Term end must be on or after term start.";
-    }
-    if (form.teachingStart && form.teachingEnd && form.teachingStart > form.teachingEnd) {
-      return "Teaching end must be on or after teaching start.";
-    }
-    if (form.termStart && form.teachingStart && form.teachingStart < form.termStart) {
-      return "Teaching start must be on or after term start (Teaching must start during the term).";
-    }
-    if (form.termEnd && form.teachingEnd && form.teachingEnd > form.termEnd) {
-      return "Teaching end must be on or before term end (Teaching must end during the term).";
-    }
-    if (form.registrationStart && form.registrationEnd && form.registrationStart > form.registrationEnd) {
-      return "Registration end must be on or after registration start.";
-    }
-    return null;
-  };
-
-  const submit = async (event) => {
-    event.preventDefault();
-    setError("");
-    setMessage("");
-
-    const clientValidation = validateDates();
-    if (clientValidation) {
-      setError(clientValidation);
-      return;
-    }
-
+  const submit = async event => {
+    event.preventDefault(); if (loading) return;
+    setAttempt(value => value + 1); setError('');
+    if (Object.keys(validation).length) return;
+    const payload = Object.fromEntries(Object.keys(blankTerm).map(key => [key,
+      termDateFields.includes(key) ? dateToIso(form[key]) : typeof form[key] === 'string' ? form[key].trim() : form[key],
+    ]));
+    payload.code = form.code || `${form.season}-${form.academicYear.replace(/[^0-9]/g, '')}`;
     setLoading(true);
     try {
-      const data = await api(
-        termId.trim()
-          ? `/api/academic-terms/academicTerm/${encodeURIComponent(termId.trim())}`
-          : "/api/academic-terms/academicTerm",
-        {
-          token,
-          method: termId.trim() ? "PUT" : "POST",
-          body: toPayload(),
-        }
-      );
-      setTermId(data._id || data.code);
-      const next = [data, ...terms.filter((term) => term._id !== data._id && term.code !== data.code)].slice(0, 8);
-      window.localStorage.setItem("bobos.recentTerms", JSON.stringify(next));
-      window.localStorage.setItem("bobos.lastTermId", data.code || data._id);
-      setMessage(`${termLabel(data)} saved.`);
-      notify("success", `${termLabel(data)} saved.`);
+      const data = await api(termId ? `/api/academic-terms/academicTerm/${encodeURIComponent(termId)}` : '/api/academic-terms/academicTerm', {
+        token, method: termId ? 'PUT' : 'POST', body: payload,
+      });
+      const next = [data, ...terms.filter(term => term._id !== data._id && term.code !== data.code)];
+      setTerms(next); setTermId(data._id || data.code);
+      setSearch(''); setFilters({ year: '', season: '', status: '' });
+      window.localStorage.setItem('bobos.recentTerms', JSON.stringify(next.slice(0, 8)));
+      window.localStorage.setItem('bobos.lastTermId', data.code || data._id);
+      setEditing(false); setMessage(`${termLabel(data)} saved.`); notify('success', `${termLabel(data)} saved.`);
       loadTerms();
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setLoading(false);
-    }
+    } catch (requestError) {
+      setError(requestError.status === 409
+        ? 'This academic year and season already exist. Edit that term or choose a different season.'
+        : requestError.status === 400 ? 'The term could not be saved. Check the dates and try again.'
+        : 'Could not save the term. Your entries are kept. Please try again.');
+    } finally { setLoading(false); }
   };
-
-  const useTerm = (term) => {
-    setTermId(term._id || term.code);
-    setForm(termToForm(term));
-    setMessage("");
-    setError("");
-  };
-
   const standingSaved = ({ warningEmailStatus }) => {
     setRecordingStanding(false);
-    setMessage(warningEmailStatus === "sent" ? "Semester standing saved. Probation warning email sent." : "Semester standing saved.");
-    if (warningEmailStatus === "failed") setError("The probation warning email could not be delivered.");
-    if (warningEmailStatus === "pending") setMessage("Semester standing saved. The probation warning check is pending.");
+    const text = warningEmailStatus === 'sent' ? 'Standing saved. Probation warning email sent.'
+      : warningEmailStatus === 'failed' ? 'Standing saved. The probation warning email could not be sent.'
+      : warningEmailStatus === 'pending' ? 'Standing saved. The probation warning email is pending.' : 'Standing saved.';
+    setMessage(text); notify(warningEmailStatus === 'failed' ? 'warning' : 'success', text);
+  };
+  const dateField = (field, shortLabel) => {
+    const problem = visibleError(field);
+    const minimum = field === 'termEnd' || field === 'teachingStart' ? form.termStart
+      : field === 'teachingEnd' ? form.teachingStart : field === 'registrationEnd' ? form.registrationStart : '';
+    return <label className="field" key={field}>{shortLabel && <span>{shortLabel}</span>}
+      <input id={`term-${field}`} name={field} type="date" aria-label={termFieldLabels[field]} required value={form[field]}
+        min={minimum || undefined} max={field === 'teachingEnd' ? form.termEnd || undefined : undefined}
+        aria-invalid={Boolean(problem)} aria-describedby={problem ? `term-${field}-error` : undefined}
+        onBlur={() => setTouched(current => ({ ...current, [field]: true }))} onChange={event => update(field, event.target.value)} />
+      {problem && <small className="term-field-error" id={`term-${field}-error`}>{problem}</small>}
+    </label>;
   };
 
-  if (role !== "administrator") {
+  if (role !== 'administrator') {
     const selectedTerm = terms.find(term => (term._id || term.code) === termId) || terms.find(term => term.isActive) || terms[0];
     return <div className="page-stack term-register">
-      <PageTitle title="Academic terms" description="Teaching dates, registration windows and scheduling deadlines." />
-      {error && <div className="feedback error" role="alert">{error}</div>}
-      {fetchingTerms ? <Loading /> : !selectedTerm ? <EmptyState title="No academic terms" text="Configured terms and their dates will appear here." /> : <>
-        <div className="term-read-layout">
-          <label className="field term-selection"><span>Academic term</span><select value={selectedTerm._id || selectedTerm.code} onChange={event => setTermId(event.target.value)}>{terms.map(term => <option key={term._id || term.code} value={term._id || term.code}>{termLabel(term)}{term.isActive ? " · Active" : ""}</option>)}</select></label>
-          <section className="term-milestones" aria-labelledby="term-dates-heading">
-            <div className="term-milestones-heading"><h2 id="term-dates-heading">Dates and deadlines</h2><span className={`status-pill ${selectedTerm.isActive ? "good" : "muted"}`}>{selectedTerm.isActive ? "Active term" : "Inactive term"}</span></div>
-            <dl className="term-dates">{Object.entries(termDateGroups).map(([label, fields]) => <div className={fields.length === 1 ? "term-deadline" : undefined} key={label}><dt>{label}</dt><dd><TermDates dates={fields.map(field => selectedTerm[field])} /></dd></div>)}</dl>
-          </section>
-          <TermCalendar key={selectedTerm._id || selectedTerm.code} term={selectedTerm}/>
-        </div>
-      </>}
+      <PageTitle title="Academic terms" description="Dates and deadlines for your term." />
+      {loadError && <div className="feedback error" role="alert">{loadError}<button type="button" onClick={loadTerms}>Try again</button></div>}
+      {fetchingTerms && !terms.length ? <Loading /> : !selectedTerm ? <EmptyState title="No academic terms" text="Terms will appear here once an administrator adds them." /> : <div className="term-read-layout">
+        <label className="field term-selection"><span>Academic term</span><select value={selectedTerm._id || selectedTerm.code} onChange={event => setTermId(event.target.value)}>{terms.map(term => <option key={term._id || term.code} value={term._id || term.code}>{termLabel(term)}{term.isActive ? ' · Active' : ''}</option>)}</select></label>
+        <section className="term-milestones" aria-labelledby="term-dates-heading"><div className="term-milestones-heading"><h2 id="term-dates-heading">Dates and deadlines</h2><span className={`status-pill ${selectedTerm.isActive ? 'good' : 'muted'}`}>{selectedTerm.isActive ? 'Active' : 'Inactive'}</span></div><dl className="term-dates">{Object.entries(termDateGroups).map(([label, fields]) => <div key={label}><dt>{label}</dt><dd><TermDates dates={fields.map(field => selectedTerm[field])} /></dd></div>)}</dl></section>
+        <TermCalendar key={selectedTerm._id || selectedTerm.code} term={selectedTerm}/>
+      </div>}
     </div>;
   }
-
-  return (
-    <div className="page-stack">
-      <PageTitle
-        eyebrow="ACADEMIC CALENDAR"
-        title="Academic terms"
-        description="Define term dates and deadlines used by offerings and scheduling."
-        action={role === "administrator" && terms.length > 0 && (
-          <button className="outline-button" type="button" onClick={() => { setMessage(""); setError(""); setRecordingStanding(true); }}>
-            Record standing
-          </button>
-        )}
-      />
-      {message && <div className="feedback success" role="status">{message}</div>}
-      {error && <div className="feedback error" role="alert">{error}</div>}
-      <div className="content-grid term-grid">
-        <section className="panel">
-          <div className="panel-heading">
-            <div>
-
-              <h2>{termId ? "Update term" : "Create a term"}</h2>
-            </div>
-
-          </div>
-          <form className="form-stack" onSubmit={submit}>
-            <div className="form-grid">
-              <Field label="Academic year">
-                <input
-                  required
-                  value={form.academicYear}
-                  onChange={(e) => update("academicYear", e.target.value)}
-                  placeholder="2026/2027"
-                />
-              </Field>
-              <Field label="Season">
-                <select value={form.season} onChange={(e) => update("season", e.target.value)}>
-                  {seasons.map((season) => (
-                    <option key={season} value={season}>{pretty(season)}</option>
-                  ))}
-                </select>
-              </Field>
-              <label className="check-field term-active">
-                <input
-                  type="checkbox"
-                  checked={form.isActive}
-                  onChange={(e) => update("isActive", e.target.checked)}
-                /> Active term
-              </label>
-            </div>
-            {Object.entries(termDateGroups).slice(0,3).map(([group, fields]) => <fieldset className="term-date-pair" key={group}><legend>{group}</legend><div className="form-grid">
-              {fields.map((field) => (
-                <Field key={field} label={pretty(field)}>
-                  <input
-                    type="date"
-                    required
-                    value={form[field]}
-                    min={
-                      field === "teachingStart" && form.termStart
-                        ? form.termStart
-                        : field === "termEnd" && form.termStart
-                        ? form.termStart
-                        : undefined
-                    }
-                    max={
-                      field === "teachingEnd" && form.termEnd
-                        ? form.termEnd
-                        : undefined
-                    }
-                    onChange={(e) => update(field, e.target.value)}
-                  />
-                </Field>
-              ))}
-            </div></fieldset>)}
-            <fieldset className="term-date-pair"><legend>Scheduling deadlines</legend><div className="form-grid">{termDateFields.slice(-2).map(field => <Field key={field} label={pretty(field)}><input type="date" required value={form[field]} onChange={event => update(field, event.target.value)} /></Field>)}</div></fieldset>
-            <div className="form-footer">
-              <button
-                className="text-button"
-                type="button"
-                onClick={() => {
-                  setForm(blankTerm);
-                  setTermId("");
-                  setMessage("");
-                  setError("");
-                }}
-              >
-                Clear form
-              </button>
-              <button className="primary-button" disabled={loading}>
-                {loading ? "Saving…" : termId ? "Update term" : "Create term"}
-                <span>→</span>
-              </button>
-            </div>
-          </form>
-        </section>
-        <section className="panel">
-          <div className="panel-heading">
-            <div>
-              <p className="eyebrow">ACADEMIC TERMS</p>
-              <h2>Configured terms</h2>
-            </div>
-            <span className="panel-count">{terms.length.toString().padStart(2, "0")}</span>
-          </div>
-          {fetchingTerms ? (
-            <Loading />
-          ) : terms.length ? (
-            <div className="recent-terms">
-              {terms.map((term) => (
-                <button
-                  className={`recent-term ${(term._id === termId || term.code === termId) ? "selected" : ""}`}
-                  key={term._id || term.code}
-                  onClick={() => useTerm(term)}
-                  aria-pressed={term._id === termId || term.code === termId}
-                  type="button"
-                >
-                  <span className="term-calendar-mark" aria-hidden="true">{term.termStart ? new Date(term.termStart).getUTCDate() : "–"}</span>
-                  <span>
-                    <strong>{termLabel(term)}</strong>
-                    <small><TermDates dates={[term.termStart, term.termEnd]} /></small>
-                  </span>
-                  <span className={`status-pill ${term.isActive ? "good" : "muted"}`}>{term.isActive ? "Active" : "Inactive"}</span>
-                </button>
-              ))}
-            </div>
-          ) : (
-            <EmptyState
-              title="No terms found"
-              text="Create an academic term to begin scheduling."
-              icon="◷"
-            />
-          )}
-
-        </section>
-      </div>
-      {recordingStanding && (
-        <TermStandingModal
-          token={token}
-          terms={terms}
-          selectedTerm={terms.find(term => term._id === termId || term.code === termId)}
-          onClose={() => setRecordingStanding(false)}
-          onSaved={standingSaved}
-        />
-      )}
-    </div>
-  );
+  const years = [...new Set(terms.map(term => term.academicYear).filter(Boolean))].sort().reverse();
+  const matching = terms.filter(term => (!filters.year || term.academicYear === filters.year)
+    && (!filters.season || term.season === filters.season)
+    && (!filters.status || Boolean(term.isActive) === (filters.status === 'active'))
+    && `${termLabel(term)} ${term.code}`.toLowerCase().includes(search.trim().toLowerCase()));
+  const resetFilters = () => { setSearch(''); setFilters({ year: '', season: '', status: '' }); };
+  const chips = Object.entries(filters).filter(([, value]) => value).map(([key, value]) => ({
+    key, label: pretty(value), onRemove: () => setFilters(current => ({ ...current, [key]: '' })),
+  }));
+  return <div className="page-stack terms-manager">
+    <PageTitle title="Academic terms" description="Manage term dates and deadlines." action={<div className="terms-header-actions">
+      <button className="primary-button" type="button" onClick={() => openEditor(null)}>Create term</button>
+    </div>} />
+    {message && <div className="feedback success" role="status">{message}</div>}
+    {loadError && <div className="feedback error terms-load-error" role="alert">{loadError}<button className="text-button" type="button" onClick={loadTerms}>Try again</button></div>}
+    <section className="terms-toolbar" aria-label="Term filters">
+      <label className="field"><span>Find a term</span><input type="search" value={search} placeholder="Year, season or code" onChange={event => setSearch(event.target.value)} /></label>
+      {[['year', 'Academic year', years], ['season', 'Season', seasons], ['status', 'Status', ['active', 'inactive']]].map(([key, label, options]) => <label key={key} className="field"><span>{label}</span><select aria-label={label} value={filters[key]} onChange={event => setFilters(current => ({ ...current, [key]: event.target.value }))}><option value="">All {key === 'year' ? 'years' : key === 'season' ? 'seasons' : 'statuses'}</option>{options.map(value => <option key={value} value={value}>{pretty(value)}</option>)}</select></label>)}
+      <button type="button" className="text-button terms-clear" aria-label="Clear filters" disabled={!search && !chips.length} onClick={resetFilters}>Clear</button>
+    </section>
+    <section className="terms-results" aria-label="Configured academic terms" aria-busy={fetchingTerms}>
+      <div className="terms-results-heading"><div><h2>Terms</h2><span role="status">{matching.length} of {terms.length}</span></div><button className="outline-button" type="button" disabled={!terms.length || fetchingTerms} onClick={() => { setMessage(''); setRecordingStanding(true); }}>Record standing</button></div>
+      {fetchingTerms && !terms.length ? <Loading /> : matching.length ? <StudentRegister label="Academic terms" columns={['Term', 'Starts', 'Ends', 'Status', 'Actions']} className="terms-table">
+        {matching.map(term => <tr key={term._id || term.code}><td><button className="term-name" type="button" onClick={() => setViewing(term)}><span className="term-calendar-mark" aria-hidden="true">{term.termStart ? new Date(term.termStart).getUTCDate() : '–'}</span><span><strong>{termLabel(term)}</strong><small>{term.code}</small></span></button></td>
+          <td data-label="Starts"><TermDates dates={[term.termStart]} /></td><td data-label="Ends"><TermDates dates={[term.termEnd]} /></td><td><span className={`status-pill ${term.isActive ? 'good' : 'muted'}`}>{term.isActive ? 'Active' : 'Inactive'}</span></td>
+          <td><button className="outline-button" type="button" aria-label={`Edit ${termLabel(term)}`} onClick={() => openEditor(term)}>Edit</button></td></tr>)}
+      </StudentRegister> : <div className="terms-empty"><img src="/portal-studio/images/extra-hours-folder.svg" alt="" width="76" height="60" /><h3>{terms.length ? 'No matching terms' : 'No academic terms yet'}</h3><p>{terms.length ? 'Try another search or clear the filters.' : 'Add your first term to set up its dates.'}</p><button className="outline-button" type="button" onClick={terms.length ? resetFilters : () => openEditor(null)}>{terms.length ? 'Reset filters' : 'Create term'}</button></div>}
+    </section>
+    {viewing && <Modal title={termLabel(viewing)} onClose={() => setViewing(null)} wide><div className="terms-detail-layout"><dl className="terms-detail-dates">{Object.entries(termDateGroups).map(([label, fields]) => <div key={label}><dt>{label}</dt><dd><TermDates dates={fields.map(field => viewing[field])} /></dd></div>)}</dl><TermCalendar term={viewing} /></div><div className="form-footer"><button type="button" className="outline-button" onClick={() => setViewing(null)}>Close</button><button type="button" className="primary-button" onClick={() => openEditor(viewing)}>Edit term</button></div></Modal>}
+    {editing && <Modal title={termId ? 'Edit term' : 'Create term'} busy={loading} onClose={() => { if (!loading) setEditing(false); }} wide>
+      <form ref={editor} className="term-editor" noValidate onSubmit={submit}>
+        {attempt > 0 && Object.keys(validation).length > 0 && <div className="term-validation-summary" role="alert">Complete {Object.keys(validation).length} highlighted {Object.keys(validation).length === 1 ? 'field' : 'fields'} before saving.</div>}
+        {error && <div className="feedback error" role="alert">{error}</div>}
+        <fieldset disabled={loading}><legend>Term details</legend><div className="term-identity-fields">
+          <label className="field"><span>Academic year</span><input name="academicYear" aria-label="Academic year" aria-invalid={Boolean(visibleError('academicYear'))} aria-describedby={visibleError('academicYear') ? 'term-year-error' : undefined} required value={form.academicYear} placeholder="2026/2027" onBlur={() => setTouched(current => ({ ...current, academicYear: true }))} onChange={event => update('academicYear', event.target.value)} />{visibleError('academicYear') && <small id="term-year-error" className="term-field-error">{visibleError('academicYear')}</small>}</label>
+          <label className="field"><span>Season</span><select name="season" value={form.season} onChange={event => update('season', event.target.value)}>{seasons.map(season => <option key={season} value={season}>{pretty(season)}</option>)}</select></label>
+          <label className="check-field"><input type="checkbox" checked={form.isActive} onChange={event => update('isActive', event.target.checked)} />Active term</label>
+        </div></fieldset>
+        <fieldset className="term-window-group" disabled={loading}><legend>Date windows</legend><div className="term-window-labels" aria-hidden="true"><span></span><span>Starts</span><span>Ends</span></div>{[['Term', ['termStart', 'termEnd']], ['Teaching', ['teachingStart', 'teachingEnd']], ['Registration', ['registrationStart', 'registrationEnd']]].map(([label, fields]) => <div className="term-window-row" key={label} role="group" aria-label={label}><h3>{label}</h3>{fields.map(field => dateField(field, ''))}</div>)}</fieldset>
+        <fieldset className="term-deadline-group" disabled={loading}><legend>Deadlines</legend><div className="term-date-fields">{dateField('advisingDeadline', 'Advising')}{dateField('wholeScheduleSwapDeadline', 'Schedule swaps')}</div></fieldset>
+        <div className="form-footer"><button type="button" className="outline-button" disabled={loading} onClick={() => setEditing(false)}>Cancel</button><button type="submit" className="primary-button" disabled={loading}>{loading ? 'Saving…' : termId ? 'Save changes' : 'Create term'}</button></div>
+      </form>
+    </Modal>}
+    {recordingStanding && <TermStandingModal token={token} terms={terms} selectedTerm={terms.find(term => term._id === termId || term.code === termId) || terms.find(term => term.isActive)} onClose={() => setRecordingStanding(false)} onSaved={standingSaved} />}
+  </div>;
 }
 
 function TermStandingModal({ token, terms, selectedTerm, onClose, onSaved }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
 
   const save = async (event) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const term = form.get("term");
     const studentId = form.get("studentId").trim();
-    if (!studentId) {
-      setError("Enter a student ID.");
+    const missing = {};
+    if (!term) missing.term = 'Choose an academic term.';
+    if (!studentId) missing.studentId = 'Enter the student ID.';
+    if (!form.get('academicStanding')) missing.academicStanding = 'Choose a standing.';
+    setFieldErrors(missing);
+    if (Object.keys(missing).length) {
+      const element = event.currentTarget;
+      requestAnimationFrame(() => element.querySelector('[aria-invalid="true"]')?.focus());
       return;
     }
     setSaving(true);
@@ -468,31 +346,34 @@ function TermStandingModal({ token, terms, selectedTerm, onClose, onSaved }) {
       });
       onSaved(result);
     } catch (requestError) {
-      setError(explainApiError(requestError, "Semester standing"));
+      setError(requestError.status === 404 ? 'The student or term could not be found. Check the student ID and try again.' : 'Could not save the standing. Your entries are kept. Please try again.');
     } finally {
       setSaving(false);
     }
   };
 
-  return <Modal title="Record semester standing" eyebrow="ACADEMIC TERMS" onClose={() => !saving && onClose()}>
-    <form className="form-stack" onSubmit={save}>
+  return <Modal title="Record semester standing" busy={saving} onClose={() => !saving && onClose()}>
+    <form className="form-stack term-standing-form" noValidate onSubmit={save} onChange={event => { const name = event.target.name; setFieldErrors(current => ({ ...current, [name]: '' })); setError(''); }}>
       <Field label="Academic term">
-        <select name="term" defaultValue={selectedTerm?._id || selectedTerm?.code || ""} required>
+        <select name="term" aria-label="Academic term" defaultValue={selectedTerm?._id || selectedTerm?.code || ""} required disabled={saving} aria-invalid={Boolean(fieldErrors.term)} aria-describedby={fieldErrors.term ? 'standing-term-error' : undefined}>
           <option value="" disabled>Choose a term</option>
           {terms.map(term => <option key={term._id || term.code} value={term._id || term.code}>
             {termLabel(term)}
           </option>)}
         </select>
+        {fieldErrors.term && <small id="standing-term-error" className="term-field-error">{fieldErrors.term}</small>}
       </Field>
       <Field label="Student ID">
-        <input name="studentId" placeholder="e.g. 61-00002" maxLength={24} required />
+        <input name="studentId" aria-label="Student ID" placeholder="e.g. 61-00002" maxLength={24} required disabled={saving} aria-invalid={Boolean(fieldErrors.studentId)} aria-describedby={fieldErrors.studentId ? 'standing-student-error' : undefined} />
+        {fieldErrors.studentId && <small id="standing-student-error" className="term-field-error">{fieldErrors.studentId}</small>}
       </Field>
       <Field label="Academic standing">
-        <select name="academicStanding" defaultValue="" required>
+        <select name="academicStanding" aria-label="Academic standing" defaultValue="" required disabled={saving} aria-invalid={Boolean(fieldErrors.academicStanding)} aria-describedby={fieldErrors.academicStanding ? 'standing-status-error' : undefined}>
           <option value="" disabled>Choose a standing</option>
           <option value="goodAcademicStanding">Good academic standing</option>
           <option value="probation">Probation</option>
         </select>
+        {fieldErrors.academicStanding && <small id="standing-status-error" className="term-field-error">{fieldErrors.academicStanding}</small>}
       </Field>
       {error && <div className="feedback error" role="alert">{error}</div>}
       <FormFooter onCancel={onClose} busy={saving} submitText="Save standing" />
@@ -896,7 +777,7 @@ function SlotFields({ index, slot, onChange, onRemove, canRemove }) {
 
 function PageTitle({ eyebrow, title, description, action }) { return <div className="page-title-row"><div><p className="eyebrow">{eyebrow}</p><h1>{title}</h1><p className="page-description">{description}</p></div>{action}</div>; }
 function Field({ label, children, className = "" }) { return <label className={`field ${className}`}><span>{label}</span>{children || <input />}</label>; }
-export function Modal({ title, eyebrow, onClose, children, wide = false }) {
+export function Modal({ title, eyebrow, onClose, children, wide = false, busy = false }) {
   const ref = useRef(null);
   useLayoutEffect(() => {
     const dialog = ref.current;
@@ -907,7 +788,7 @@ export function Modal({ title, eyebrow, onClose, children, wide = false }) {
     onCancel={event => { event.preventDefault(); onClose(); }}
     onClick={event => { if (event.target === ref.current) onClose(); }}>
     <section className={`modal-card ${wide ? "wide-modal" : ""}`}>
-      <div className="modal-heading"><div>{eyebrow && <p className="eyebrow">{eyebrow}</p>}<h2>{title}</h2></div><button className="icon-button" type="button" onClick={onClose} aria-label="Close">×</button></div>
+      <div className="modal-heading"><div>{eyebrow && <p className="eyebrow">{eyebrow}</p>}<h2>{title}</h2></div><button className="icon-button" type="button" onClick={onClose} disabled={busy} aria-label="Close">×</button></div>
       {children}
     </section>
   </dialog>;

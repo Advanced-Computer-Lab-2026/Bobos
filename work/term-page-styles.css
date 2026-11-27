@@ -1,0 +1,56 @@
+
+/* Academic terms: browse first, edit only when needed. */
+.academic-services-embedded .terms-manager { gap:24px; }
+.academic-services-embedded .terms-header-actions { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.academic-services-embedded .terms-manager .page-description { max-width:48ch; }
+.academic-services-embedded .terms-search { width:min(100%,360px); }
+.academic-services-embedded .terms-filters { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:18px; max-width:760px; }
+.academic-services-embedded .terms-results-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:14px; }
+.academic-services-embedded .terms-results-heading h2 { font-size:18px; font-weight:500; margin:0; }
+.academic-services-embedded .terms-results-heading>span { color:var(--muted); font-size:13px; }
+.academic-services-embedded .terms-table table { width:100%; }
+.academic-services-embedded .terms-table td { vertical-align:middle; }
+.academic-services-embedded .terms-table td:nth-child(2) { font-variant-numeric:tabular-nums; }
+.academic-services-embedded .term-name { display:flex; align-items:center; gap:14px; border:0; padding:3px 0; color:var(--ink); background:transparent; text-align:start; cursor:pointer; }
+.academic-services-embedded .term-name strong { display:block; font-size:15px; font-weight:550; }
+.academic-services-embedded .term-name small { display:block; font-size:12px; color:var(--muted); margin-top:4px; }
+.academic-services-embedded .term-name:hover strong { text-decoration:underline; text-underline-offset:4px; }
+.academic-services-embedded .term-name .term-calendar-mark { width:36px; height:40px; flex:none; display:grid; place-items:center; background:#e8e0c8; border-top:6px solid #a8b9a5; border-radius:4px; color:#443d31; font-size:18px; }
+.academic-services-embedded .terms-empty { display:grid; justify-items:center; gap:10px; padding:42px 20px; text-align:center; }
+.academic-services-embedded .terms-empty h3 { margin:4px 0 0; font-size:17px; }
+.academic-services-embedded .terms-empty p { color:var(--muted); font-size:14px; margin:0 0 7px; }
+.academic-services-embedded .terms-load-error { display:flex; justify-content:space-between; align-items:center; gap:16px; }
+.academic-services-embedded .term-editor { display:grid; gap:22px; }
+.academic-services-embedded .term-editor-note { color:var(--muted); font-size:12px; margin:0; }
+.academic-services-embedded .term-editor fieldset { min-width:0; margin:0; padding:0; border:0; }
+.academic-services-embedded .term-editor legend { color:var(--ink); font-size:15px; font-weight:550; padding:0; margin-bottom:12px; }
+.academic-services-embedded .term-identity-fields { display:grid; grid-template-columns:1fr 1fr auto; align-items:start; gap:16px; }
+.academic-services-embedded .term-identity-fields .check-field { margin-top:33px; white-space:nowrap; }
+.academic-services-embedded .term-editor-dates { display:grid; grid-template-columns:1fr 1fr; align-items:start; gap:24px; padding-top:20px; border-top:1px solid var(--line); }
+.academic-services-embedded .term-date-fields { display:grid; grid-template-columns:1fr 1fr; align-items:start; gap:12px; }
+.academic-services-embedded .term-editor .field>span { font-size:12px; color:var(--muted); }
+.academic-services-embedded .term-editor input { min-width:0; width:100%; }
+.academic-services-embedded .term-editor input[type=checkbox] { width:auto; }
+.academic-services-embedded .term-field-error { display:block; font-size:12px; line-height:1.45; color:#e5ad9a; font-weight:400; margin-top:5px; }
+.academic-services-embedded .term-editor [aria-invalid=true],.academic-services-embedded .term-standing-form [aria-invalid=true] { border-color:#c78d7b; }
+.academic-services-embedded .term-validation-summary { padding:10px 13px; border-left:3px solid #c78d7b; background:color-mix(in srgb,var(--paper) 92%,#c78d7b); color:var(--ink); font-size:13px; }
+.academic-services-embedded .term-editor .form-footer { margin-top:0; padding-top:18px; border-top:1px solid var(--line); }
+.academic-services-embedded .terms-detail-layout { display:grid; grid-template-columns:minmax(0,1fr) 280px; gap:28px; align-items:start; }
+.academic-services-embedded .terms-detail-dates { margin:0; }
+.academic-services-embedded .terms-detail-dates>div { padding:13px 0; border-bottom:1px solid var(--line); }
+.academic-services-embedded .terms-detail-dates dt { font-size:12px; color:var(--muted); margin-bottom:7px; }
+.academic-services-embedded .terms-detail-dates dd { margin:0; font-size:15px; color:var(--ink); font-variant-numeric:tabular-nums; }
+.service-surface[data-theme=light] .term-field-error { color:#94452f; }
+@media(max-width:760px) {
+  .academic-services-embedded .term-editor-dates { grid-template-columns:1fr; }
+  .academic-services-embedded .terms-detail-layout { grid-template-columns:1fr; }
+  .academic-services-embedded .terms-detail-layout .term-calendar { max-width:300px; }
+}
+@media(max-width:540px) {
+  .academic-services-embedded .terms-filters { grid-template-columns:1fr; }
+  .academic-services-embedded .term-identity-fields { grid-template-columns:1fr 1fr; }
+  .academic-services-embedded .term-identity-fields .check-field { grid-column:1/-1; margin-top:0; }
+  .academic-services-embedded .terms-manager .page-title-row { align-items:flex-start; }
+  .academic-services-embedded .terms-header-actions { width:100%; }
+  .academic-services-embedded .terms-header-actions button { flex:1; }
+}

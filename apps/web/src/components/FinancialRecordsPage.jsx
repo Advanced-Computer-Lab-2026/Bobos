@@ -353,11 +353,11 @@ export default function FinancialRecordsPage({ token, role, notify }) {
   const dateFields = <>
     <label className="field">
       <span>From date</span>
-      <input type="date" value={startDate} onChange={(event) => { setStartDate(event.target.value); setPage(1); }} />
+      <input type="date" data-calendar-range="financial-records" data-calendar-edge="start" value={startDate} onChange={(event) => { setStartDate(event.target.value); setPage(1); }} />
     </label>
     <label className="field">
       <span>To date</span>
-      <input type="date" value={endDate} onChange={(event) => { setEndDate(event.target.value); setPage(1); }} />
+      <input type="date" data-calendar-range="financial-records" data-calendar-edge="end" value={endDate} onChange={(event) => { setEndDate(event.target.value); setPage(1); }} />
     </label>
   </>;
   return (

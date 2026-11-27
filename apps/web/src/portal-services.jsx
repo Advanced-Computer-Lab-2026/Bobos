@@ -1,6 +1,7 @@
 import "@vitejs/plugin-react/preamble";
 import React from "react";
 import { createRoot } from "react-dom/client";
+import { flushSync } from "react-dom";
 import App from "./App.jsx";
 import baseStyles from "./style.css?inline";
 import workspaceStyles from "./workspace-polish.css?inline";
@@ -84,12 +85,14 @@ export function mount(host) {
   observer.observe(document.documentElement, { attributeFilter: ["data-theme"] });
   host.replaceChildren();
   shadow.append(style, surface);
+  const disposeCalendar = window.BobosCalendar?.mount(shadow, { commit: flushSync });
   const disposeInk = window.mountPortalControlInk?.(shadow, { coordinator: surface.dataset.portalRole === "coordinator" });
   const root = createRoot(surface);
   root.render(<App service={host.dataset.portalService} />);
   return () => {
     observer.disconnect();
     disposeInk?.();
+    disposeCalendar?.();
     root.unmount();
   };
 }

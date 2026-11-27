@@ -89,11 +89,33 @@ const notificationScenes = (() => {
       (full?peg(138,68)+peg(231,78):peg(191,78))+peg(293,72)+plant+
       path('m35 173 46-3m219 10 63-3m26-10 40-3','none','stroke="var(--muted)" opacity=".65"');
   }
-  const scenes = {tube,pigeon,lighthouse,press,line};
+  function coffee() {
+    // A letter lies flat under the saucer; its turned corner has its own opaque face.
+    const stationery = path('M57 147q57 2 118 15l-18 25q-53-12-116-16Z',paper)+
+      path('m157 187-13-13 22-2q-5 7-9 15Z','#dfd0af')+
+      path('m69 160 34 6m-39 1 56 11','none','stroke="#a5967b" stroke-width="1.2"');
+    const saucer = path('M62 155q49-14 102 0-49 21-102 0Z','#91aa9a')+
+      path('M71 156q42 10 84-1','none','stroke="#c9d3b8" stroke-width="1.3"');
+    const cup = path('M82 112c-31-15-36 23-4 24','none','stroke="#d6ae70" stroke-width="8"')+
+      path('M82 112c-31-15-36 23-4 24','none','stroke-width="1.3"')+
+      path('M80 105q32 6 65 0l-4 30q-3 20-29 19-25-1-28-20Z',paper)+
+      path('m81 115q32 7 62 0l-1 7q-30 6-60-1Z','#719386')+
+      path('M80 105c0-9 65-9 65 0s-65 9-65 0Z',paper)+
+      path('M87 105q25-6 51 0-25 6-51 0Z','#574a38');
+    const steam = moving('coffee-steam',path('M102 85c-11-12 10-17 1-30m20 29c-11-11 10-17 1-30','none','stroke="var(--muted)" stroke-width="1.5"'));
+    const bell = circle(228,114,4,brass)+path('m225 118 1 5h5v-5',brass)+
+      path('M201 149q2-27 28-28 25 0 28 27l5 5-66 1Z',brass)+
+      path('m208 137 4-6','none','stroke="#f5ecd6" stroke-width="2"')+
+      path('m196 153q31-4 66-1l2 6q-33 4-70 1Z','#dfbb80')+
+      path('m190 161q37-6 78-1l2 7q-39 6-82 0Z','#60877a');
+    return path('M39 184q111 5 241-1','none','stroke="var(--line)" stroke-width="1.2"')+
+      stationery+saucer+cup+steam+bell;
+  }
+  const scenes = {tube,pigeon,lighthouse,press,line,coffee};
   return function draw(name,full) {
-    const key = Object.hasOwn(scenes,name) ? name : 'tube';
+    const key = !full && (!name || name === 'tube') ? 'coffee' : Object.hasOwn(scenes,name) ? name : 'tube';
     return `<svg class="notification-plate" data-scene="${key}" data-mail="${full?'unread':'empty'}"
-      viewBox="0 0 460 202" aria-hidden="true" focusable="false" fill="none" stroke="${ink}" stroke-width="1.8"
+      viewBox="${key === 'coffee' ? '0 0 320 210' : '0 0 460 202'}" aria-hidden="true" focusable="false" fill="none" stroke="${ink}" stroke-width="1.8"
       stroke-linecap="round" stroke-linejoin="round">${scenes[key](full)}</svg>`;
   };
 })();

@@ -11,6 +11,7 @@ export default function FilterDisclosure({ search, chips = [], onClear, children
   useEffect(() => {
     if (!floating || !open) return;
     const outside = (event) => {
+      if (event.composedPath().some(node => node.classList?.contains("quiet-calendar"))) return;
       if (!event.composedPath().includes(root.current)) setOpen(false);
     };
     document.addEventListener("pointerdown", outside, true);

@@ -255,8 +255,8 @@ export function ScheduleActivityPage({ token, studentId }) {
       </>}
     ><div className="filter-grid">
       <label className="field"><span>Action</span><select value={filters.action} onChange={(event) => update("action", event.target.value)}><option value="">All actions</option><option value="processed">Processed</option><option value="reopened">Reopened</option></select></label>
-      <label className="field"><span>From date</span><input type="date" value={filters.from} max={filters.to || undefined} onChange={(event) => update("from", event.target.value)} /></label>
-      <label className="field"><span>Through date</span><input type="date" value={filters.to} min={filters.from || undefined} onChange={(event) => update("to", event.target.value)} /></label>
+      <label className="field"><span>From date</span><input type="date" data-calendar-range="activity" data-calendar-edge="start" value={filters.from} max={filters.to || undefined} onChange={(event) => update("from", event.target.value)} /></label>
+      <label className="field"><span>Through date</span><input type="date" data-calendar-range="activity" data-calendar-edge="end" value={filters.to} min={filters.from || undefined} onChange={(event) => update("to", event.target.value)} /></label>
     </div></FilterDisclosure></div>
     {error && <div className="feedback error" role="alert">{error}</div>}
     <section className="activity-log" aria-label="Schedule activity history">
