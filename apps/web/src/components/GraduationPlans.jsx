@@ -5,6 +5,8 @@ import { StudentIdentity } from "./CoordinatorRecords.jsx";
 import OfferingCourseIcon from "./OfferingCourseIcon.jsx";
 import PaperTossButton, { waitForPaperToss } from "./PaperTossButton.jsx";
 
+const seasonList = new Intl.ListFormat("en", { type: "conjunction" });
+
 function assignmentsFor(plan) {
   return Object.fromEntries((plan?.termPlans ?? []).flatMap(({ term, courses }) =>
     courses.map((course) => [course, term])));
@@ -145,6 +147,7 @@ export default function GraduationPlans({ student, token, onBack, backLabel }) {
     exam.course === currentExamCourse?._id && ["pending", "approved"].includes(exam.status));
   const canRequestExam = currentExamCourse && !examEligibility.message && !examAlreadyRequested;
   const readOnly = Boolean(plan && plan.status !== "draft");
+  const { count: electiveCount, hours: electiveHours } = workspace?.electiveRequirement ?? {};
 
   const visibleCourses = courses.filter((course) => `${course.code} ${course.name}`.toLowerCase().includes(courseSearch.trim().toLowerCase()));
   return <div className="page-stack workspace-page graduation-planner-page">
@@ -190,10 +193,12 @@ export default function GraduationPlans({ student, token, onBack, backLabel }) {
       </section>}
       {editing && <section className="panel" aria-busy={busy}>
         <div className="results-heading">
-          <h2>{readOnly ? "Saved plan" : plan ? "Edit private draft" : "New plan"}</h2>
+          <div className="planner-editor-heading">
+            <h2>{readOnly ? "Saved plan" : plan ? "Edit private draft" : "New plan"}</h2>
+            {!readOnly && <p className="helper-text">This draft stays private until you submit it to the coordinator.</p>}
+          </div>
           <button className="outline-button" type="button" disabled={busy} onClick={() => setEditing(false)}>Close plan</button>
         </div>
-        {!readOnly && <p className="helper-text">This plan is private until you submit it for coordinator review.</p>}
         {plan?.responseNote && <p>Coordinator response: {plan.responseNote}</p>}
         {readOnly ? (
           <>
@@ -204,10 +209,15 @@ export default function GraduationPlans({ student, token, onBack, backLabel }) {
             {plan.exitExamRequest && <p>This plan uses an approved exit exam.</p>}
           </>
         ) : <>
-          <p>Choose at least {workspace.electiveRequirement.count} remaining electives totalling {workspace.electiveRequirement.hours} credit hours.</p>
-          {workspace.missingSeasons.length > 0 && <p className="feedback warning">
-            Upcoming terms still to be configured: {workspace.missingSeasons.join(", ")}.
-          </p>}
+          <div className="planner-editor-requirements">
+            <p>
+              Choose at least <strong>{electiveCount} remaining {electiveCount === 1 ? "elective" : "electives"}</strong>
+              {" "}for a minimum of <strong>{electiveHours} credit {electiveHours === 1 ? "hour" : "hours"}</strong>.
+            </p>
+            {workspace.missingSeasons.length > 0 && <p className="helper-text">
+              Term setup is pending for {seasonList.format(workspace.missingSeasons.map((season) => termLabel({ season })))}.
+            </p>}
+          </div>
           {terms.length > 0 && <div className="table-scroll"><table>
             <thead><tr><th>Term</th><th>Assigned hours</th><th>Credit limit</th></tr></thead>
             <tbody>{terms.map((term) => {
