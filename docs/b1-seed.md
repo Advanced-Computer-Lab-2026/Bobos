@@ -1,4 +1,4 @@
-# B1 test seed
+# Assessment accounts and workflows
 
 Run from the repository root:
 
@@ -9,11 +9,11 @@ npm run seed:b1 --workspace @bobos/api
 
 Set `MONGODB_URI` explicitly to your disposable local assessment MongoDB database before running either command. The evaluation seed is needed only when that database has no active term or curriculum. B1 uses the active term and preserves other accounts and data. It refuses production and remote MongoDB hosts.
 
-B1 adds fixtures once and retains their later changes, so rerunning does not reset decisions or passwords, duplicate events, or erase test work. A second immediate run was checked: zero inserted documents. Keep the same active term when using this fixture set.
+B1 creates these records once and preserves subsequent decisions, passwords and schedule history. Keep the same active term when using these accounts.
 
 ## Sign in
 
-Every account initially uses `Password123!`.
+The initial password is the same as the assessment password displayed in the setup terminal.
 
 | Account | Purpose |
 | --- | --- |
@@ -42,7 +42,7 @@ Every account initially uses `Password123!`.
 | 92-00002 | b1.normal2 | Open whole-schedule swap |
 | 92-00003 | b1.normal3 | Completed whole-schedule swap |
 
-These are direct database fixtures for B1 reporting, history and calendar testing. The seed uses the existing `CSEN704` Advanced Computer Lab course and reconciles its reserved seat counts against schedules.
+The records use the existing `CSEN704` Advanced Computer Lab course and reconcile its reserved seats against the schedules.
 
 ## Manual checks
 
@@ -51,6 +51,6 @@ These are direct database fixtures for B1 reporting, history and calendar testin
 3. Search `B1 Former Staff Name`: 12 historical actor snapshots. Search `b1.coordinator@guc.edu.eg` or `b1.advisor@guc.edu.eg` to test actor-email matches.
 4. The history covers ten UTC dates ending on the first seed run date. Combine From/Through and action filters and compare the filtered export. Existing non-B1 records remain available outside the `91-` search.
 5. Directory → open student 91-00001 or 91-00002 → student schedule history: verify that only the selected student's history is shown.
-6. Sign in as `b1.student1@student.guc.edu.eg` → Calendar sync → Sign in with Google. Choose an allowed Gmail test user and approve calendar access. Sync the processed timetable and inspect its lecture/tutorial/lab events. No Google credentials, tokens, connections or claims of successful consent are seeded.
+6. Sign in as `b1.student1@student.guc.edu.eg` → Calendar sync → Sign in with Google. Choose the Google account authorized for this assessment and approve calendar access. Sync the processed timetable and inspect its lecture/tutorial/lab events.
 
 Automated read-only API verification checked all 14 students, seven request categories, the two repaired edge cases, 120 events, third-page size, 120-row export, staff snapshots and the unconnected Google status. The initial Google OAuth settings were configured; Google consent remains a real external step.
