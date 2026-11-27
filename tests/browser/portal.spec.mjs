@@ -179,3 +179,45 @@ test("Req 100 and 127: the Portal ledger and downloaded CSV use the same date an
   expect(csv).not.toContain("AUDIT-OTHER-METHOD");
   expect(csv).not.toContain("AUDIT-OTHER-DATE");
 });
+
+test("Req 15: My advisor uses the illustrated page for navigation, bookmarks, and reload", async ({ page }) => {
+  const passwordHash = await bcrypt.hash(password, 4);
+  const [advisor, student] = await User.create([
+    { fullName: "Dr. Regression Advisor", role: "advisor", email: "actual.advisor@guc.edu.eg", passwordHash },
+    { fullName: "Advisor Regression Student", role: "advisingStudent", email: "advisor.regression@student.guc.edu.eg", passwordHash },
+  ]);
+  const profile = await StudentProfile.create({
+    user: student._id, studentId: "28-90055", studentType: "advising", advisingReason: "failedCourses",
+    major: "CS", currentSemester: 5, gpa: 2, academicStanding: "goodAcademicStanding", assignedAdvisor: advisor._id,
+  });
+  const main = page.getByRole("main");
+  async function expectIllustratedAdvisor() {
+    await expect(page).toHaveURL(/[?&]page=my-advisor(?:&|$)/);
+    await expect(main.getByRole("heading", { name: advisor.fullName, exact: true })).toBeVisible();
+    await expect(main.getByRole("link", { name: advisor.email })).toHaveAttribute("href", `mailto:${advisor.email}`);
+    await expect(main.locator(".advisor-callout .student-desk-art")).toBeVisible();
+    await expect(main.locator("[data-portal-service]")).toHaveCount(0);
+  }
+
+  await page.goto(baseURL);
+  await signIn(page, student.email, password);
+  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "My advisor" }).click();
+  await expectIllustratedAdvisor();
+  await page.reload();
+  await expectIllustratedAdvisor();
+  for (const bookmark of ["/portal-studio/index.html?page=advisor-assignment", "/workspace.html?screen=my-advisor", "/portal-studio/index.html?page=my-advisor&role=coordinator"]) {
+    await page.goto(baseURL + bookmark);
+    await expectIllustratedAdvisor();
+  }
+
+  await StudentProfile.updateOne({ _id: profile._id }, { $unset: { assignedAdvisor: 1 } });
+  await page.reload();
+  await expect(main.getByRole("status")).toHaveText(/don’t have an assigned advisor/);
+  await expect(main.getByRole("link", { name: advisor.email })).toHaveCount(0);
+  await expect(main.locator(".advisor-callout .student-desk-art")).toBeVisible();
+
+  await page.route("**/api/advisor/my-advisor", route => route.fulfill({ status: 503, json: {} }));
+  await page.reload();
+  await expect(main.getByRole("alert")).toHaveText(/could not load your advisor/i);
+  await expect(main.locator(".advisor-callout .student-desk-art")).toBeVisible();
+});

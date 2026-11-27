@@ -220,10 +220,6 @@ td strong, td .secondary-text { display: block; }
 .advisor-result strong, .advisor-result small { display: block; }
 .advisor-result strong { font-size: 12px; }
 .advisor-result small { margin-top: 3px; color: var(--muted); font-size: 12px; }
-.advisor-card { display: flex; align-items: center; gap: 15px; }
-.advisor-card > div { flex: 1; }
-.advisor-card h2 { margin: 0 0 5px; }
-.advisor-card a:not(.primary-button) { font-size: 12px; }
 .preference-toolbar { display: flex; align-items: end; gap: 13px; flex-wrap: wrap; }
 .preference-toolbar .field { flex: 1; min-width: 220px; }
 .preference-student-lookup { display: flex; align-items: end; gap: 10px; flex: 1 1 360px; }
@@ -489,8 +485,6 @@ td strong, td .secondary-text { display: block; }
   .term-picker .inline-controls .field { max-width: unset; }
   .advisor-result { flex-wrap: wrap; }
   .advisor-result .status-pill { margin-left: auto; }
-  .advisor-card { flex-wrap: wrap; }
-  .advisor-card > div { min-width: calc(100% - 85px); }
   .modal-backdrop { align-items: start; padding: 12px; }
   .modal-card { max-height: calc(100vh - 24px); padding: 17px; }
   .slot-row-existing .form-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }

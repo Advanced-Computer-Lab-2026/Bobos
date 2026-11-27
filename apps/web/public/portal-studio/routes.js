@@ -11,7 +11,7 @@ globalThis.BobosPortalRoutes = (() => {
     'login', 'forgot', 'reset', 'courses', 'terms', 'templates',
     'profile', 'notifications', 'records', 'my-advisor', 'course-detail', 'student-detail', 'draft-schedule', 'template-detail',
     'manage-courses', 'manage-terms', 'manage-templates',
-    'official-records', 'advisor-assignment', 'account-inbox', 'account-details',
+    'official-records', 'account-inbox', 'account-details',
   ]);
   const oldPaths = {
     '/dev-login': 'login', '/coordinator/assign-groups': 'group-assignments',
@@ -21,10 +21,11 @@ globalThis.BobosPortalRoutes = (() => {
 
   const legacyWorkflows = {
     profile: 'account-details', notifications: 'account-inbox',
-    records: 'official-records', 'my-advisor': 'advisor-assignment',
+    records: 'official-records',
   };
 
   function screenPage(screen, role) {
+    if (screen === 'advisor-assignment') return 'my-advisor';
     if (screen === 'graduation-review') return role === 'advisor' ? 'my-submitted-plans' : 'graduation-plans';
     if (screen === 'my-graduation') return 'graduation-plans';
     return directPages.has(screen) ? screen : 'academic-services';
@@ -33,6 +34,12 @@ globalThis.BobosPortalRoutes = (() => {
   function normalize(query) {
     const page = query.get('page');
     const screen = query.get('screen');
+    if (page === 'advisor-assignment' || page === 'my-advisor' ||
+        (!page && (screen === 'advisor-assignment' || screen === 'my-advisor'))) {
+      query.set('page', 'my-advisor');
+      query.delete('screen');
+      return;
+    }
     if (page === 'academic-services' && !screen) {
       query.set('page', 'overview');
       return;

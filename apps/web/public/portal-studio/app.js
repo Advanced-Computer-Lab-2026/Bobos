@@ -1,7 +1,10 @@
 'use strict';
 // Portal Studio with authenticated calendar and student service integrations.
+const workspaceSessionKey = 'bobos.token';
 function normalizePortalLocation() {
   const url = new URL(location.href);
+  const accountRole = localStorage.getItem(workspaceSessionKey) && localStorage.getItem('portal-account-role');
+  if (accountRole) url.searchParams.set('role', accountRole);
   BobosPortalRoutes.normalize(url.searchParams);
   if (url.href !== location.href) history.replaceState(history.state, '', url);
   return url.searchParams;
@@ -17,7 +20,7 @@ const pages = {
   offerings:'Course offerings', 'copy-offerings':'Copy offerings', templates:'Schedule templates',
   'template-detail':'Template editor', 'group-assignments':'Group assignments',
   'manage-courses':'Manage course catalogue', 'manage-terms':'Manage academic terms', 'manage-templates':'Manage schedule templates',
-  'official-records':'Official student records', 'advisor-assignment':'Current advisor assignment', 'account-inbox':'University inbox', 'account-details':'University account details',
+  'official-records':'Official student records', 'account-inbox':'University inbox', 'account-details':'University account details',
   'my-schedule':'My schedule', 'my-courses':'Registered courses',
   'schedule-swap':'Eligible swap groups', preferences:'Schedule preferences',
   records:'Academic records', 'my-advisor':'My advisor', 'calendar-sync':'Calendar sync',
@@ -26,11 +29,11 @@ const pages = {
 const roleNames = {coordinator:'Coordinator', administrator:'Administrator', advisor:'Advisor', advisingStudent:'Advising student', normalStudent:'Normal student'};
 const authPages = new Set(['login','forgot','reset']);
 const previewSessionKey = 'portal-studio-preview-session';
-const workspaceSessionKey = 'bobos.token';
 const workspaceAccountNameKey = 'portal-account-name';
 let liveStudent = { token: null, loading: false, error: '', data: null };
 let liveProfile;
 let liveInbox;
+let liveAdvisor;
 const previewEmail = 'demo@portal.test';
 const signedIn = () => localStorage.getItem(previewSessionKey) === '1';
 const pageKey = key => Object.hasOwn(pages,key) ? key : 'overview';
@@ -53,18 +56,28 @@ const isNotificationUnread = id => {
 async function accountRequest(path, token, method = 'GET') {
   const response = await fetch('../api/' + path, {method, headers:{Authorization:'Bearer ' + token}});
   const data = await response.json();
-  if (!response.ok) throw new Error(data.message || 'Could not load your account data.');
+  if (!response.ok) throw Object.assign(new Error(data.message || 'Could not load your account data.'), {status: response.status});
   return data;
 }
 
 function loadAccountData(refresh) {
   const token = localStorage.getItem(workspaceSessionKey);
-  if (!token || authPages.has(page)) { liveProfile = liveInbox = undefined; return; }
+  if (!token || authPages.has(page)) { liveProfile = liveInbox = liveAdvisor = undefined; return; }
   if (page === 'profile' && (refresh || liveProfile?.token !== token)) {
     const state = liveProfile = {token};
     accountRequest('profile', token).then(data => { state.data = data.profile; })
       .catch(error => { state.error = error.message; }).finally(() => {
         if (liveProfile === state && page === 'profile') render();
+      });
+  }
+  if (page === 'my-advisor' && role === 'advisingStudent' && (refresh || liveAdvisor?.token !== token)) {
+    const state = liveAdvisor = {token};
+    accountRequest('advisor/my-advisor', token).then(data => { state.data = data; })
+      .catch(error => {
+        if (error.status === 404 && error.message === 'No advisor currently assigned') state.data = null;
+        else state.error = true;
+      }).finally(() => {
+        if (liveAdvisor === state && page === 'my-advisor' && localStorage.getItem(workspaceSessionKey) === token) render();
       });
   }
   if (liveInbox?.token !== token || (refresh && page === 'notifications')) {
@@ -506,7 +519,7 @@ function groups(){
   ].filter(([, items]) => items.length);
 }
 function sidebar(){
-  const parent = {'manage-courses':'courses','manage-terms':'terms','manage-templates':'templates','official-records':'records','advisor-assignment':'my-advisor','account-inbox':'notifications','account-details':'profile','student-detail':'directory','draft-schedule':'student-schedules','course-detail':'courses','copy-offerings':'offerings','template-detail':'templates'};
+  const parent = {'manage-courses':'courses','manage-terms':'terms','manage-templates':'templates','official-records':'records','account-inbox':'notifications','account-details':'profile','student-detail':'directory','draft-schedule':'student-schedules','course-detail':'courses','copy-offerings':'offerings','template-detail':'templates'};
   const study = workspaces[lab.layout].name==='Claude Study';
   const sectionIcons = ['home','people','calendar','book'];
   return `<aside class="sidebar">
@@ -1177,20 +1190,30 @@ function records(){
     (tab==='wallet'?table(['Date','Transaction','Amount','Balance'],[['14 Nov 2026','Course registration payment','− EGP 7,500','EGP 2,500'],['10 Nov 2026','Wallet deposit','+ EGP 10,000','EGP 10,000']]):table(['Course','Semester','Credits','Grade','Status'],courseData.slice(0,4).map(c=>[`${c[0]}<small>${c[1]}</small>`,'Winter 2025',c[3],'1.7',badge('Passed')])));
 }
 function advisor(){
-  const study = workspaces[lab.layout].name==='Claude Study';
-  return head('Academic advising',study ? termContext('Semester 7') : '', localStorage.getItem(workspaceSessionKey) ? link('advisor-assignment','View current assignment','btn') : '')+`
+  const heading = head('Academic advising');
+  if (role !== 'advisingStudent') return heading + '<p>This page is available to advising students.</p>';
+
+  const token = localStorage.getItem(workspaceSessionKey);
+  const state = token && liveAdvisor?.token === token ? liveAdvisor : null;
+  const person = state?.data;
+  const status = !token ? '<p>Sign in to see your assigned advisor.</p>'
+    : state?.error ? '<p role="alert">Could not load your advisor. Refresh the page to try again.</p>'
+    : person === null ? '<p role="status">You don’t have an assigned advisor yet.</p>'
+    : '<p role="status">Loading your advisor…</p>';
+  const deadline = liveStudent.token === token && liveStudent.data?.term.advisingDeadline;
+  const deadlineLabel = deadline ? formatCalendarDay(campusDay(new Date(deadline)), {day:'numeric', month:'long', year:'numeric'}) : '';
+  return heading + `
     <div class="advising-layout">
-      <section class="advisor-details">${study ? `<header class="advisor-identity">${avatar('Dr. Salma Adel')}<div><h2>Dr. Salma Adel</h2><p>Computer Engineering</p></div></header>` : '<h2>Dr. Salma Adel</h2><p>Computer Engineering</p>'}
-        <dl class="details"><div><dt>Email</dt><dd><a href="mailto:salma.adel@guc.edu.eg">salma.adel@guc.edu.eg</a></dd></div>
-        <div><dt>Office</dt><dd>C3.204</dd></div><div><dt>Office hours</dt><dd>Tuesday, 12:00–14:00</dd></div>
-        <div><dt>Assigned since</dt><dd>5 October 2026</dd></div></dl>
-        <section class="advisor-checklist"><h2>Before you meet</h2>
-        ${['Review remaining credits','Choose preferred course groups','Write down questions'].map(item => `<label class="checkrow"><input type="checkbox">${item}</label>`).join('')}
-        </section>
+      <section class="advisor-details" aria-label="Advisor assignment">
+        ${person ? `<header class="advisor-identity">${avatar(person.fullName)}<div><h2>${escapeHtml(person.fullName)}</h2><p>Your assigned advisor</p></div></header>
+          <dl class="details"><div><dt>University email</dt><dd><a href="mailto:${escapeHtml(person.email)}">${escapeHtml(person.email)}</a></dd></div></dl>
+          <section class="advisor-checklist"><h2>Before you meet</h2>
+          ${['Review remaining credits','Choose preferred course groups','Write down questions'].map(item => `<label class="checkrow"><input type="checkbox">${item}</label>`).join('')}
+          </section>` : status}
       </section>
-      <aside><section class="advisor-callout"><h2>Your draft is ready</h2><p>Review your course selections before meeting with Dr. Salma.</p>
-        ${link('my-schedule','Review schedule','btn primary')}</section>
-        <p class="advisor-deadline"><strong>Preferences due 18 November</strong><br>${link('preferences','Set course preferences','btn row-control')}</p>
+      <aside><section class="advisor-callout"><h2>Your advising schedule</h2><p>Review your proposed timetable and course selections.</p>
+        ${link('my-schedule','View schedule','btn primary')}</section>
+        <p class="advisor-deadline">${deadlineLabel ? `<strong>Preferences due ${deadlineLabel}</strong><br>` : ''}${link('preferences','Set course preferences','btn row-control')}</p>
       </aside>
     </div>`;
 }
@@ -1348,7 +1371,7 @@ for (const screen of ['courses', 'terms', 'templates']) {
   renderers['manage-' + screen] = () => portalService(screen, 'academic-services');
 }
 for (const [page, screen] of Object.entries({
-  'official-records':'records', 'advisor-assignment':'my-advisor', 'account-inbox':'notifications', 'account-details':'profile'
+  'official-records':'records', 'account-inbox':'notifications', 'account-details':'profile'
 })) {
   renderers[page] = () => portalService(screen, 'academic-services');
 }

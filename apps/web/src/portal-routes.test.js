@@ -43,3 +43,24 @@ test("new illustrated details, service variants, and calendar callbacks retain t
   assert.equal(genericOverview.get("page"), "overview");
   assert.equal(siteEntry(new URL("/workspace.html?screen=records", origin)).searchParams.get("page"), "official-records");
 });
+
+test("advisor bookmarks resolve to the single illustrated page", () => {
+  const legacy = [
+    "/portal-studio/index.html?page=advisor-assignment&screen=directory",
+    "/portal-studio/index.html?page=academic-services&screen=my-advisor",
+    "/workspace.html?screen=my-advisor",
+    "/academic-services.html?screen=advisor-assignment",
+  ];
+  for (const path of legacy) {
+    const url = siteEntry(new URL(path, origin));
+    assert.equal(url.pathname, "/portal-studio/index.html");
+    assert.equal(url.searchParams.get("page"), "my-advisor");
+    assert.equal(url.searchParams.has("screen"), false);
+  }
+  const screenOnly = new URLSearchParams("screen=advisor-assignment");
+  normalize(screenOnly);
+  assert.equal(screenOnly.toString(), "page=my-advisor");
+  const nested = new URLSearchParams("page=my-advisor&screen=advisor-assignment");
+  normalize(nested);
+  assert.equal(nested.toString(), "page=my-advisor");
+});

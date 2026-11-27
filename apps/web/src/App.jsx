@@ -3,7 +3,7 @@ import { api } from "./api.js";
 import { NotificationsPage, PreferencesPage, ProfilePage, StudentRecordsPage } from "./components/BasicPages.jsx";
 import StudentDirectoryPage from "./components/StudentDirectoryPage.jsx";
 import FinancialRecordsPage from "./components/FinancialRecordsPage.jsx";
-import AdvisingPage, { MyAdvisorPage } from "./components/AdvisingPage.jsx";
+import AdvisingPage from "./components/AdvisingPage.jsx";
 import SlotChangesPage from "./components/SlotChangesPage.jsx";
 import AcademicWorkspace from "./components/AcademicWorkspace.jsx";
 import { GroupAssignmentsPage, StaffSchedulesPage, StudentSchedulingPage } from "./components/SchedulingPages.jsx";
@@ -28,7 +28,6 @@ const navGroups = (role) => {
       ...(role === "advisingStudent" ? [{ id: "slot-changes", label: "Slot change requests" }] : []),
       ...(role === "normalStudent" ? [{ id: "schedule-swap", label: "Eligible swap groups" }] : []),
       ...(role === "advisingStudent" ? [{ id: "preferences", label: "Schedule preferences" }] : []),
-      ...(role === "advisingStudent" ? [{ id: "my-advisor", label: "My advisor" }] : []),
       { id: "calendar-sync", label: "Calendar sync" },
     ] }] : []),
     ...(staff ? [{ title: "Student services", items: [
@@ -175,7 +174,6 @@ export default function App({ service }) {
       {activeScreen === "profile" && <ProfilePage profile={profile} />}
       {activeScreen === "notifications" && <NotificationsPage token={token} notify={report} />}
       {activeScreen === "records" && <StudentRecordsPage token={token} profile={profile} notify={report} />}
-      {activeScreen === "my-advisor" && <MyAdvisorPage token={token} />}
       {activeScreen === "preferences" && <PreferencesPage token={token} profile={profile} profileId={screenContext?.id || screenContext?._id || profile.studentProfileId} studentTarget={screenContext?._id ? screenContext : undefined} notify={report} onOpenDraftSchedule={(student, selectedTermId) => openScreen("student-schedules", { draftStudent: student, termId: selectedTermId })} />}
       {activeScreen === "directory" && <StudentDirectoryPage token={token} role={profile.role} notify={report} />}
       {activeScreen === "financial-records" && ["coordinator", "administrator"].includes(profile.role) && <FinancialRecordsPage token={token} role={profile.role} notify={report} />}
