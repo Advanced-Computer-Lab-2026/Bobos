@@ -1,7 +1,7 @@
 import { termLabel } from "../term-label.js";
 import { useEffect, useRef, useState } from "react";
 import { api, explainApiError } from "../api.js";
-import { RegisterRow, StudentIdentity, StudentRegister } from "./CoordinatorRecords.jsx";
+import { StudentIdentity } from "./CoordinatorRecords.jsx";
 import FilterDisclosure from "./FilterDisclosure.jsx";
 import OfferingCourseIcon from "./OfferingCourseIcon.jsx";
 import { GraduationEmpty, WorkspaceHeader } from "./WorkspaceUI.jsx";
@@ -28,6 +28,45 @@ function PlanCourses({ plan }) {
     </div>}
     <GraduationResponse note={plan.responseNote} />
   </>;
+}
+
+function AdvisorSubmission({ plan, multiple, first }) {
+  const courses = plan.termPlans.flatMap(term => term.courses);
+  const summary = <>
+    <StudentIdentity name={plan.student?.user?.fullName} id={plan.student?.studentId} />
+    <span className="submission-load">{plan.termPlans.length} {plan.termPlans.length === 1 ? "term" : "terms"} · {courses.length} {courses.length === 1 ? "course" : "courses"} · {creditLabel(courses.reduce((sum, course) => sum + course.creditHours, 0))}</span>
+    <Status status={plan.status} />
+  </>;
+  const content = <div className="submission-body">
+    <section className="submission-courses">
+      <h3>Courses by term</h3>
+      {plan.termPlans.length ? <StudentPlanTerms plan={plan} /> : <p>No term courses in this plan.</p>}
+      {plan.exitExamRequest && <div className="graduation-exam-course">
+        <OfferingCourseIcon code={plan.exitExamRequest.course?.code} />
+        <div><strong>Approved exit exam</strong><p>{plan.exitExamRequest.course?.name || "Archived course"} · {plan.exitExamRequest.course?.code || "—"}</p></div>
+      </div>}
+    </section>
+    <section className="submission-history">
+      <h3>Review history</h3>
+      <ol>
+        <li><strong>Submitted for review</strong>
+          {plan.submittedAt && <time dateTime={plan.submittedAt}>{studentDate.format(new Date(plan.submittedAt))}</time>}
+          {plan.advisor?.fullName && <span>{plan.advisor.fullName}</span>}
+        </li>
+        <li className={plan.status === "accepted" ? "accepted" : "waiting"}><strong>{plan.status === "accepted" ? "Accepted by coordinator" : "Awaiting coordinator decision"}</strong>
+          {plan.status === "accepted" && plan.decidedAt && <time dateTime={plan.decidedAt}>{studentDate.format(new Date(plan.decidedAt))}</time>}
+        </li>
+      </ol>
+      <GraduationResponse note={plan.responseNote} />
+    </section>
+  </div>;
+  return multiple ? <details className="submission-sheet" open={first}>
+    <summary className="submission-heading">{summary}<span className="submission-chevron" aria-hidden="true" /></summary>
+    {content}
+  </details> : <article className="submission-sheet">
+    <header className="submission-heading">{summary}</header>
+    {content}
+  </article>;
 }
 
 function DecisionForm({ kind, disabled, decide }) {
@@ -155,7 +194,7 @@ export default function GraduationReview({ token, role }) {
   const plans = kind === "plans";
   const rows = (plans ? result?.plans : result?.requests) ?? [];
   return <div className="page-stack workspace-page graduation-review-page">
-    <WorkspaceHeader title={coordinator ? "Graduation review" : "My submitted plans"} action={!(coordinator && plans) && !(selected && !coordinator) && <button className="outline-button" disabled={loading || busy} onClick={reload}>Refresh</button>} />
+    <WorkspaceHeader title={coordinator ? "Graduation review" : "My submitted plans"} action={!(coordinator && plans) && <button className="outline-button" disabled={loading || busy} onClick={reload}>Refresh</button>} />
     {coordinator && <div className="tabs" role="group" aria-label="Review queue">
       <button aria-pressed={plans}
         disabled={busy} onClick={() => changeView("plans")}>Graduation plans</button>
@@ -199,28 +238,15 @@ export default function GraduationReview({ token, role }) {
     {notice && <div className="feedback success" role="status">{notice}</div>}
     {error && <div className="feedback error" role="alert">{error}{issues.length > 0 &&
       <ul>{issues.map((issue, index) => <li key={index}>{issue}</li>)}</ul>}</div>}
-    {(!selected || coordinator) && <section aria-busy={loading}>
+    <section aria-busy={loading}>
       {loading ? <p role="status">Loading {plans ? "submitted plans" : "exit-exam requests"}…</p> : !rows.length ? !error && <GraduationEmpty heading="h2" submitted={plans}
         title={plans && Object.values(filters).some(Boolean) ? "No matching plans" : plans ? "No submitted plans" : "No exit-exam requests"}
         description={plans && Object.values(filters).some(Boolean) ? "Try another student, advisor or submission date." : plans
           ? coordinator ? "Plans will appear here when advisors submit them." : "Plans you send for coordinator review will appear here."
           : "Requests will appear here when advisors submit them."} /> :
         !coordinator ? <div className="advisor-submissions">
-          <div className="graduation-section-heading"><h2>Submitted plans</h2><span className="graduation-meta">{result.total} {result.total === 1 ? "plan" : "plans"}</span></div>
-          {result.total === 1 ? <article className="single-submission">
-            <StudentIdentity name={rows[0].student?.user?.fullName} id={rows[0].student?.studentId} />
-            <div className="single-plan-progress"><Status status={rows[0].status} />
-              {rows[0].submittedAt && <span className="graduation-meta">Submitted on {studentDate.format(new Date(rows[0].submittedAt))}</span>}
-            </div>
-            <button type="button" className="outline-button" data-open-plan={rows[0]._id} onClick={() => open(rows[0])}>Open plan</button>
-          </article> : <StudentRegister columns={["Student", "Status", "Submitted", "Action"]} label="My submitted plans">
-            {rows.map(row => <RegisterRow key={row._id}>
-              <StudentIdentity name={row.student?.user?.fullName} id={row.student?.studentId} />
-              <Status status={row.status} />
-              <span>{row.submittedAt ? studentDate.format(new Date(row.submittedAt)) : "—"}</span>
-              <button type="button" className="outline-button" data-open-plan={row._id} onClick={() => open(row)}>Open plan</button>
-            </RegisterRow>)}
-          </StudentRegister>}
+          {result.total > 1 && <h2>{result.total} submitted plans</h2>}
+          {rows.map((plan, index) => <AdvisorSubmission key={plan._id} plan={plan} multiple={result.total > 1} first={index === 0} />)}
         </div> :
         <div className={`table-scroll graduation-register${coordinator ? " register-with-actions" : ""}`}><table>
           <thead><tr><th>Student</th>{coordinator && <th>Advisor</th>}{!plans && <th>Course</th>}
@@ -243,16 +269,13 @@ export default function GraduationReview({ token, role }) {
         <button className="outline-button" disabled={loading || busy || page * result.limit >= result.total}
           onClick={() => { setSelected(null); setPage(page + 1); }}>Next</button>
       </div>}
-    </section>}
+    </section>
     {selected && <section ref={detail} className="panel review-decision" id="review-decision" tabIndex={-1}>
       <div className="results-heading">
         <div><h2>{plans ? "Graduation plan" : "Exit-exam request"}</h2><StudentIdentity name={selected.student?.user?.fullName} id={selected.student?.studentId} /></div>
-        <button className="outline-button" disabled={busy} onClick={close}>{coordinator ? "Close" : "Back to submitted plans"}</button>
+        <button className="outline-button" disabled={busy} onClick={close}>Close</button>
       </div>
       <div className="plan-review-status"><Status status={selected.status} />
-        {!coordinator && (selected.status === "accepted" && selected.decidedAt
-          ? <span>Accepted on {studentDate.format(new Date(selected.decidedAt))}</span>
-          : selected.submittedAt && <span>Submitted on {studentDate.format(new Date(selected.submittedAt))}</span>)}
       </div>
       {plans ? <PlanCourses plan={selected} /> : <>
         <p><strong>Course</strong> {selected.course?.code} {selected.course?.name}</p>

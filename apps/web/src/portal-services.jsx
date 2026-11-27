@@ -14,9 +14,11 @@ import coordinatorStyles from "./coordinator-services.css?inline";
 import coordinatorControls from "./coordinator-controls.css?inline";
 import statusStyles from "./portal-status.css?inline";
 import requestStyles from "./portal-requests.css?inline";
+import draftCourseStyles from "./draft-course-selection.css?inline";
+import draftStudentStyles from "./draft-student.css?inline";
 import tabsStyles from "../public/portal-studio/view-tabs.css?inline";
 
-const styles = [tabsStyles, baseStyles, workspaceStyles, formStyles, serviceStyles, paperStyles, academicStyles, pickerStyles, statusStyles, coordinatorStyles, coordinatorControls, requestStyles].join("\n")
+const styles = [tabsStyles, baseStyles, workspaceStyles, formStyles, serviceStyles, paperStyles, academicStyles, pickerStyles, statusStyles, coordinatorStyles, coordinatorControls, requestStyles, draftCourseStyles, draftStudentStyles].join("\n")
   .replaceAll(":root", ".service-surface");
 
 export function mount(host) {
@@ -52,7 +54,7 @@ export function mount(host) {
   surface.dataset.portalRole = serviceParams.get("role") || "";
   surface.dataset.service = serviceParams.get("screen") || "";
   const staffPresentation = ["coordinator", "administrator"].includes(surface.dataset.portalRole)
-    || (surface.dataset.portalRole === "advisor" && ["advising", "graduation-plans", "student-schedules", "extra-hours"].includes(surface.dataset.service));
+    || (surface.dataset.portalRole === "advisor" && ["advising", "graduation-plans", "student-schedules", "extra-hours", "preferences"].includes(surface.dataset.service));
   surface.toggleAttribute("data-staff-presentation", staffPresentation);
   const polishedServices = ["advising", "preferences", "graduation-plans", "graduation-review", "my-submitted-plans", "slot-changes", "offerings"];
   surface.classList.toggle("portal-advising-services", polishedServices.includes(serviceParams.get("screen")));

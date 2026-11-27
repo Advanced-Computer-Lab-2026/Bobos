@@ -538,14 +538,31 @@
 .schedule-register .roster-actions {
   --action-travel:-7px;
 }
+.schedule-register .record-burst:has(.record-menu:popover-open) > .record-more { background:var(--raised); }
 .service-surface[data-staff-presentation] .schedule-register .record-burst .record-menu {
-  margin-block:5px;
-  inline-size:calc(132px + 8px + 44px);
+  inline-size:132px;
+  margin:7px 0 0;
+  position-try-fallbacks:none;
 }
 .service-surface[data-staff-presentation] .schedule-register .record-burst .record-menu > button {
-  min-height:38px;
+  min-height:44px;
   padding-inline:12px;
-  text-align:start;
+  text-align:center;
+}
+@container (width < 1080px) {
+  .service-surface[data-staff-presentation] .schedule-register .roster-actions:has(.record-menu:popover-open) { padding-block-end:51px; }
+}
+@container (width >= 1080px) {
+  .service-surface[data-staff-presentation] .schedule-register .record-burst .record-menu {
+    position-area:inline-start center;
+    align-self:anchor-center;
+    margin:0;
+    margin-inline-end:155px;
+  }
+  .service-surface[data-staff-presentation] .schedule-register .record-burst .record-menu > button {
+    min-height:38px;
+    --release-x:52px;
+  }
 }
 
 @keyframes row-action-skid {

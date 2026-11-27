@@ -23,7 +23,7 @@
 .staff-preferences .preference-student-results {
   margin-block-start: 12px;
 }
-.staff-preferences .preference-student-results :is(th, td):last-child { width: 1%; white-space: nowrap; }
+.staff-preferences .preference-student-results :is(th, td):last-child { width: 1%; white-space: nowrap; text-align: start; }
 .staff-preferences .preference-student-results .register-person strong { font-size: 15px; }
 .staff-preferences .preference-student-results .register-person small { overflow-wrap: anywhere; }
 .staff-preferences .preference-reading > .register-empty {
@@ -95,7 +95,6 @@
 .preference-read-error .feedback, .preference-identify .feedback { margin-block-end: 0; }
 @container staff-preferences (max-width: 620px) {
   .staff-preferences .preference-context { grid-template-columns: minmax(0, 1fr); }
-  .staff-preferences .preference-student-results td:last-child { width: auto; }
   .preference-term { max-width: 380px; }
   .staff-preferences .preference-priorities :is(th,td) { padding-inline: 5px; }
   .staff-preferences .preference-priorities thead th:first-child { width: 28%; }
@@ -107,6 +106,21 @@
   .preferred-group-reading > li { grid-template-columns: auto minmax(0, 1fr); gap: 3px 10px; }
   .preference-group-detail { grid-column: 2; }
   .staff-preferences .preference-context :is(button, input, select) { min-height: 44px; }
+}
+@container (550px < width <= 790px) {
+  .service-surface[data-staff-presentation] .academic-services-embedded .preference-student-results > table { display: table; }
+  .preference-student-results > table {
+    > thead { position: static; width: auto; height: auto; clip-path: none; }
+    > tbody { display: table-row-group; }
+    > tbody > tr { display: table-row; }
+  }
+  .service-surface[data-staff-presentation] .academic-services-embedded .preference-student-results > table > tbody > tr > td {
+    display: table-cell;
+    padding: 13px 16px;
+  }
+}
+@container (width <= 550px) {
+  .staff-preferences .preference-student-results td:last-child { width: auto; }
 }
 @container staff-preferences (max-width: 460px) {
   .preference-term, .preference-identify { width: 100%; }

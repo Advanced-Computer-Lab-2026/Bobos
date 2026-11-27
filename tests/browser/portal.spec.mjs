@@ -476,6 +476,13 @@ test("Req 31, 33, 81–82: student meeting details and read-only Administrator a
   const moreActions = row.getByRole("button", { name: /More actions/ });
   await moreActions.click();
   await expect(row.getByRole("button", { name: "Advising overview" })).toBeVisible();
+  await expect.poll(() => row.evaluate((studentRow) => {
+    const reveal = studentRow.querySelector(".record-menu:popover-open").getBoundingClientRect();
+    const bounds = studentRow.getBoundingClientRect();
+    const register = studentRow.closest(".schedule-register");
+    return reveal.top >= bounds.top && reveal.bottom <= bounds.bottom
+      && register.scrollWidth === register.clientWidth && register.scrollHeight === register.clientHeight;
+  })).toBe(true);
   await page.keyboard.press("Escape");
   await expect(row.getByRole("button", { name: /manage|process|reopen/i })).toHaveCount(0);
   const view = row.getByRole("button", { name: "View schedule", exact: true });
@@ -615,7 +622,10 @@ test("Coordinator schedule folders open the selected student and term across rel
   expect(new URL(page.url()).searchParams.get("student")).toBe(String(student._id));
   expect(new URL(page.url()).searchParams.get("term")).toBe(term.code);
   await page.reload();
-  await expect(page.getByText("Folder Student · 45-00019", { exact: true })).toBeVisible();
+  const editorContext = page.getByRole("region", { name: "Student and draft" });
+  await expect(editorContext.getByRole("heading", { name: "Folder Student", exact: true })).toBeVisible();
+  await expect(editorContext).toContainText("45-00019");
+  await expect(editorContext).toContainText("Winter 2030/2031");
   await page.getByRole("button", { name: /Back to students/ }).click();
   await expect(page.getByRole("heading", { name: "Student schedules", exact: true })).toBeVisible();
   expect(new URL(page.url()).searchParams.has("student")).toBe(false);

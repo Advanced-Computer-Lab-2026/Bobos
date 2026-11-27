@@ -245,10 +245,10 @@ export default function StaffPreferences({ token, profile, profileId, studentTar
   </div>;
 }
 
-function PreferenceSubmission({ preferences, offerings, updatedAt }) {
+export function PreferenceSubmission({ preferences, offerings, updatedAt, title = "Scheduling priorities", draft = false }) {
   const { preferredDays, avoidedDays, desiredDaysOff, preferredTimes, avoidedTimes, preferredGroups, note } = preferences;
   return <div className="preference-submission">
-    <header className="preference-reading-heading"><h2>Scheduling priorities</h2>
+    <header className="preference-reading-heading"><h2>{title}</h2>
       {updatedAt && <p>Last updated <time dateTime={updatedAt}>{updatedAtFormat.format(new Date(updatedAt))} Cairo</time></p>}
     </header>
     <table className="preference-priorities" aria-label="Scheduling priorities">
@@ -264,7 +264,9 @@ function PreferenceSubmission({ preferences, offerings, updatedAt }) {
       {preferredGroups?.length ? <ol className="preferred-group-reading" aria-label="Preferred course groups, highest priority first" role="list">
         {preferredGroups.map(({ course, componentType, groupNumber, priority }, index) => {
           const offering = offerings?.find((item) => String(item.course?._id || item.course) === String(course?._id || course));
-          const option = offering && preferenceGroupOptions(offering).find((item) => item.componentType === componentType && item.groupNumber === groupNumber);
+          const groups = offering?.groups || (offering && preferenceGroupOptions(offering));
+          const option = groups?.find((item) => item.componentType === componentType && item.groupNumber === groupNumber);
+          const sessions = option?.sessions || option?.slots || [];
           const identity = course?.code ? course : offering?.course;
           return <li key={`${course?._id || course}-${componentType}-${groupNumber}-${index}`}>
             <OfferingCourseIcon code={identity?.code} />
@@ -274,7 +276,7 @@ function PreferenceSubmission({ preferences, offerings, updatedAt }) {
             </div>
             <div className="preference-group-detail">
               <strong className="preference-group-type">{componentType} {groupNumber}</strong>
-              {option ? option.sessions.map((session, position) => <small key={session._id || position}>{preferenceMeetingLabel(session)}</small>) : <small>{offerings ? "Group is no longer published" : "Meeting details are unavailable"}</small>}
+              {option ? sessions.map((session, position) => <small key={session._id || position}>{session.startTime ? [session.day, `${session.startTime}–${session.endTime}`, session.room].filter(Boolean).join(" · ") : preferenceMeetingLabel(session)}</small>) : <small>{offerings && !draft ? "Group is no longer published" : "Meeting details are unavailable"}</small>}
             </div>
           </li>;
         })}

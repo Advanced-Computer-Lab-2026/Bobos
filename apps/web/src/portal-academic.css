@@ -1312,12 +1312,50 @@
 .exam-eligibility { padding:12px 16px; border-inline-start:3px solid var(--line); background:var(--paper); }
 .exam-eligibility strong { font-weight:550; }
 .exam-eligibility p,.planner-exam-record p { color:var(--muted); font-size:13px; }
-.single-submission {
-  display:flex; align-items:center; gap:16px 28px; flex-wrap:wrap;
-  padding:20px; border:1px solid var(--line); border-radius:10px; background:var(--paper);
+/* The advisor's submission opens as a course sheet with the review history beside it. */
+.advisor-submissions { container-type:inline-size; }
+.submission-sheet { min-width:0; border:1px solid var(--line); background:var(--paper); border-radius:12px; overflow:hidden; }
+.submission-heading {
+  display:flex; align-items:center; gap:12px 20px; flex-wrap:wrap; list-style:none;
+  padding:clamp(16px,2.2vw,28px); background:var(--raised);
 }
-.single-submission .register-person { flex:1 1 170px; }
-.single-plan-progress { display:grid; justify-items:start; gap:4px; }
+.submission-heading::-webkit-details-marker { display:none; }
+summary.submission-heading { cursor:pointer; }
+.submission-heading .register-person { flex:1 1 190px; min-width:0; }
+.submission-heading .register-person strong { font-size:19px; font-weight:550; line-height:1.3; overflow-wrap:anywhere; }
+.submission-heading .register-person small { display:block; color:var(--muted); font-size:13px; }
+.submission-heading .portal-person-avatar { width:46px; height:46px; flex-basis:46px; }
+.submission-load { color:var(--muted); font-size:13px; }
+.submission-chevron { width:9px; height:9px; margin:0 3px; border-right:1.5px solid; border-bottom:1.5px solid; transform:rotate(45deg); }
+.submission-sheet[open] .submission-chevron { transform:rotate(225deg); }
+.submission-body { display:grid; grid-template-columns:minmax(0,1fr) minmax(225px,.46fr); border-top:1px solid var(--line); }
+.submission-body > section { padding:clamp(16px,2.2vw,28px); min-width:0; }
+.submission-body h3 { margin:0 0 20px; font:550 17px/1.35 Styrene,system-ui,sans-serif; color:var(--ink); }
+.submission-body p, .submission-body h4 { margin:0; }
+.submission-history { border-inline-start:1px solid var(--line); }
+.submission-history ol { list-style:none; padding:0; margin:0; }
+.submission-history li { position:relative; padding-inline-start:24px; }
+.submission-history li + li { margin-top:20px; }
+.submission-history li::before { content:""; position:absolute; inset:5px auto auto 1px; width:9px; height:9px; border:2px solid var(--muted); border-radius:50%; background:var(--muted); }
+.submission-history li.waiting::before { background:var(--paper); }
+.submission-history li:not(:last-child)::after { content:""; position:absolute; top:17px; bottom:-25px; left:6px; border-inline-start:1px solid var(--line); }
+.submission-history li > * { display:block; }
+.submission-history strong { font-weight:550; }
+.submission-history :is(time,li > span) { margin-top:3px; color:var(--muted); font-size:13px; }
+.submission-history .graduation-response { margin-top:18px; }
+.submission-courses .graduation-term + .graduation-term,.submission-courses .graduation-exam-course { margin-top:18px; }
+.submission-courses .graduation-term-heading { padding:10px 14px; border:0; border-radius:6px; background:#e7e2d4; color:#35362e; }
+.submission-courses .graduation-term-heading h4 { font-size:15px; }
+.submission-courses .graduation-term-heading span { color:#505249; }
+.submission-courses .graduation-course-list li { padding:14px 6px; gap:12px; }
+.submission-courses .graduation-course-list strong { font-size:15px; }
+.submission-courses .offering-course-emblem { width:42px; height:42px; }
+.submission-courses .offering-course-emblem :is(img,svg) { width:32px; height:32px; }
+@container (max-width:660px) {
+  .submission-body { grid-template-columns:minmax(0,1fr); }
+  .submission-history { border-inline-start:0; border-block-start:1px solid var(--line); }
+  .submission-load { order:4; flex-basis:100%; }
+}
 .planner-sections { display:grid; gap:24px; min-width:0; }
 .planner-sections > section { min-width:0; }
 .graduation-planner-page { container-type:inline-size; }
