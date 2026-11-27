@@ -1,9 +1,10 @@
 import mongoose from "mongoose";
 import { MandatoryCourseRemovalRequest } from "../models/requests.js";
 import { StudentProfile, User } from "../models/identity.js";
-import { Course, CourseOffering, AcademicTerm } from "../models/catalogue.js";
+import { Course, AcademicTerm } from "../models/catalogue.js";
 import { StudentSchedule, CourseAttempt } from "../models/academics.js";
 import { majorMatches } from "../utils/major.js";
+import { changeSlotCount, collectSlotRefs } from "./scheduling.controller.js";
 
 const VALID_REASONS = [
   "incorrectMandatoryDesignation",
@@ -347,67 +348,43 @@ export async function decideMandatoryRemovalRequest(req, res) {
       return res.status(400).json({ message: "responseNote cannot exceed 1000 characters." });
     }
 
-    const request = await MandatoryCourseRemovalRequest.findOneAndUpdate(
-      { _id: id, status: "pending" },
-      {
-        $set: {
-          status: decision,
-          responseNote: responseNote.trim(),
-          decidedBy: req.user._id,
-          decidedAt: new Date(),
-        },
-      },
-      { returnDocument: "after", runValidators: true }
-    );
-    if (!request) {
-      const existing = await MandatoryCourseRemovalRequest.findById(id).select("status").lean();
-      if (!existing) {
-        return res.status(404).json({ message: "Mandatory course removal request not found." });
+    const outcome = await mongoose.connection.transaction(async (session) => {
+      const request = await MandatoryCourseRemovalRequest.findById(id).session(session);
+      if (!request) return { status: 404, message: "Mandatory course removal request not found." };
+      if (request.status !== "pending") {
+        return { status: 409, message: `This request has already been decided (${request.status}).` };
       }
-      return res.status(409).json({
-        message: `This request has already been decided (${existing.status}).`,
-      });
-    }
+      request.status = decision;
+      request.responseNote = responseNote.trim();
+      request.decidedBy = req.user._id;
+      request.decidedAt = new Date();
+      await request.save({ session });
 
-    if (decision === "approved") {
-      const draftSchedule = await StudentSchedule.findOneAndUpdate(
-        {
+      if (decision === "approved") {
+        const draft = await StudentSchedule.findOne({
           student: request.student,
           term: request.term,
-          status: "draft",
+          status: { $in: ["draft", "readyForStudentReview"] },
           "courses.course": request.course,
-        },
-        {
-          $pull: { courses: { course: request.course } },
-          $inc: { version: 1 },
-        },
-        { returnDocument: "before" }
-      );
-
-      if (draftSchedule) {
-        const courseToRemove = draftSchedule.courses.find(
-          (c) => String(c.course) === String(request.course)
-        );
-
-        if (courseToRemove && draftSchedule.seatsReserved && courseToRemove.slots?.length) {
-          for (const slot of courseToRemove.slots) {
-            const offeringId = slot.courseOffering || courseToRemove.courseOffering;
-            const slotId = slot.slotGroupId;
-            if (offeringId && slotId) {
-              await CourseOffering.updateOne(
-                {
-                  _id: offeringId,
-                  slots: { $elemMatch: { _id: slotId, assignedStudentCount: { $gt: 0 } } },
-                },
-                { $inc: { "slots.$.assignedStudentCount": -1 } }
-              );
+        }).session(session);
+        if (draft) {
+          const removed = draft.courses.filter(course => course.course.equals(request.course));
+          if (draft.seatsReserved) {
+            for (const slot of collectSlotRefs(removed).values()) {
+              await changeSlotCount({ ...slot, delta: -slot.count }, session);
             }
           }
+          draft.courses = draft.courses.filter(course => !removed.includes(course));
+          draft.status = "draft";
+          draft.version += 1;
+          await draft.save({ session });
         }
       }
-    }
+      return { id: request._id };
+    });
+    if (outcome.status) return res.status(outcome.status).json({ message: outcome.message });
 
-    const updated = await MandatoryCourseRemovalRequest.findById(request._id)
+    const updated = await MandatoryCourseRemovalRequest.findById(outcome.id)
       .populate({
         path: "student",
         populate: { path: "user", select: "fullName email" },

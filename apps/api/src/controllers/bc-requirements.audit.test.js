@@ -394,26 +394,42 @@ test("GAP B2 Req 102: an active, uncancelled extra-hours request cannot be refun
   assert.equal(await FinancialTransaction.countDocuments({ kind: "refund" }), 0);
 });
 
-test("GAP B2 Req 102: cancelling an unpaid deferred charge never credits the wallet", gap("Deferred cancellation path is absent; generic refund credits wallet"), async () => {
-  const request = await extraRequest({ decisionStatus: "withdrawn", settlementStatus: "deferred", settlementOption: "deferred" });
-  const charge = await FinancialTransaction.create({ student: student._id, extraHoursRequest: request._id, kind: "deferredCharge", amount: 3200, status: "succeeded", settlementOption: "deferred", deferredChargeReference: "D-102" });
+test("B2 Req 102: cancelling an outstanding installment restores eligibility state without wallet credit", async () => {
+  const request = await extraRequest({ settlementStatus: "deferred", settlementOption: "deferred" });
+  const charge = await FinancialTransaction.create({ student: student._id, extraHoursRequest: request._id, kind: "deferredCharge", amount: 3200, status: "pending", settlementOption: "deferred", deferredChargeReference: "D-102", installment: "Next installment" });
   await FinancialReversalRequest.create({ student: student._id, extraHoursRequest: request._id, originalTransaction: charge._id, requestedBy: users.advisor._id, reversalType: "cancelDeferredCharge" });
+  const record = await call(`/finance/records/${charge._id}`);
+  assert.equal(record.body.availableReversal, "cancelDeferredCharge");
   const before = (await getWallet(student._id)).balance;
   const res = await call(`/finance/${charge._id}/refund`, { method: "POST", body: {} });
   assert.equal(res.status, 200);
   assert.equal((await getWallet(student._id)).balance, before, "unpaid deferred debt must not become wallet credit");
-  assert.equal(await FinancialTransaction.countDocuments({ kind: "deferredChargeCancellation" }), 1);
+  const cancelledCharge = await FinancialTransaction.findById(charge._id);
+  assert.equal(cancelledCharge.status, "cancelled");
+  const reversal = await FinancialTransaction.findOne({ kind: "deferredChargeCancellation" });
+  assert.equal(reversal.installment, "Next installment");
+  assert.equal(reversal.deferredChargeReference, "D-102");
+  const cancelledRequest = await ExtraHoursRequest.findById(request._id);
+  assert.equal(cancelledRequest.settlementStatus, "cancelled");
+  assert.equal(cancelledRequest.history.at(-1).action, "cancelled");
+  const retry = await call(`/extra-hours/${request._id}/settlement`, { role: "advisingStudent", method: "POST", body: { option: "now", method: "gateway" } });
+  assert.equal(retry.status, 409);
 });
 
-test("GAP B2 Req 102: refund revokes approved hours and removes unapplied draft additions", gap("Refund never updates extra-hours settlement or draft courses"), async () => {
+test("B2 Req 102: refund revokes hours and releases seats from unprocessed additions", async () => {
   const request = await extraRequest({ decisionStatus: "withdrawn" });
   const payment = await FinancialTransaction.create({ student: student._id, extraHoursRequest: request._id, kind: "gatewayPayment", amount: 3200, status: "succeeded", settlementOption: "gateway" });
   await FinancialReversalRequest.create({ student: student._id, extraHoursRequest: request._id, originalTransaction: payment._id, requestedBy: users.advisor._id, reversalType: "refundToWallet" });
-  await schedule(student, "draft");
+  const before = await schedule(student, "readyForStudentReview");
+  await CourseOffering.updateOne({ _id: offering._id }, { $set: { "slots.$[slot].assignedStudentCount": 1 } }, { arrayFilters: [{ "slot.groupNumber": "1" }] });
   const res = await call(`/finance/${payment._id}/refund`, { method: "POST", body: {} });
   assert.equal(res.status, 200);
   assert.ok(["refunded", "cancelled"].includes((await ExtraHoursRequest.findById(request._id)).settlementStatus));
-  assert.equal((await StudentSchedule.findOne({ student: student._id })).courses.length, 0);
+  const after = await StudentSchedule.findById(before._id);
+  assert.equal(after.status, "draft");
+  assert.equal(after.courses.length, 0);
+  assert.equal(after.version, before.version + 1);
+  assert.ok((await CourseOffering.findById(offering._id)).slots.every(slot => slot.assignedStudentCount === 0));
 });
 
 test("GAP B2 Req 102: simultaneous refund requests produce only one credit", gap("Refund read/save/ledger operations are not atomic"), async () => {
@@ -424,11 +440,14 @@ test("GAP B2 Req 102: simultaneous refund requests produce only one credit", gap
   assert.equal(await FinancialTransaction.countDocuments({ relatedTransaction: payment._id, kind: "refund" }), 1);
 });
 
-test("GAP B2 Req 102: refunding a wallet payment restores the balance exactly once", gap("Marking the original wallet debit REFUNDED removes its debit and then adds a second credit"), async () => {
+test("B2 Req 89,102: a legacy wallet debit is counted and its refund restores the balance once", async () => {
   const request = await extraRequest({ decisionStatus: "withdrawn" });
   await FinancialTransaction.create({ student: student._id, kind: "walletTopUp", amount: 5000, status: "succeeded" });
-  const payment = await FinancialTransaction.create({ student: student._id, extraHoursRequest: request._id, kind: "extraHoursWalletPayment", amount: 3200, status: "succeeded", settlementOption: "wallet" });
+  const payment = await FinancialTransaction.create({ student: student._id, extraHoursRequest: request._id, kind: "extraHoursWalletPayment", amount: 3200, status: "COMPLETED", settlementOption: "wallet" });
   assert.equal((await getWallet(student._id)).balance, 1800);
+  assert.equal((await call("/extra-hours/mine/wallet", { role: "advisingStudent" })).body.balance, 1800);
+  const partial = await call(`/finance/${payment._id}/refund`, { method: "POST", body: { amount: 100 } });
+  assert.equal(partial.status, 400);
   const result = await call(`/finance/${payment._id}/refund`, { method: "POST", body: {} });
   assert.equal(result.status, 200);
   assert.equal((await getWallet(student._id)).balance, 5000, "refund must reverse a 3200 debit exactly once");
@@ -457,14 +476,18 @@ test("GAP B3 Req 64: completed-hours deferral requires more than 157 completed h
   assert.ok([400, 409, 422].includes(response.status), "student with zero completed hours qualified for >157 hour deferral");
 });
 
-test("GAP B3 Req 69: concurrent removal decisions release each seat only once", gap("Approval, schedule removal and capacity release are not one transaction/conditional decision"), async () => {
-  await schedule(student, "draft");
+test("B3 Req 69: concurrent removal decisions return review schedules to draft and release seats once", async () => {
+  const before = await schedule(student, "readyForStudentReview");
   await CourseOffering.updateOne({ _id: offering._id }, { $set: { "slots.$[slot].assignedStudentCount": 1 } }, { arrayFilters: [{ "slot.groupNumber": "1" }] });
   const request = await MandatoryCourseRemovalRequest.create({ student: student._id, advisor: users.advisor._id, course: course._id, term: term._id, reason: "other", explanation: "Audit concurrent decision" });
   const decisions = await Promise.all(Array.from({ length: 8 }, () => call(`/mandatory-removals/${request._id}/decision`, { method: "PATCH", body: { decision: "approved", responseNote: "Approved removal" } })));
   assert.equal(decisions.filter((result) => result.status === 200).length, 1, "only one decision may win");
   const live = await CourseOffering.findById(offering._id);
   assert.ok(live.slots.every((slot) => slot.assignedStudentCount === 0), "capacity must not go negative");
+  const after = await StudentSchedule.findById(before._id);
+  assert.equal(after.status, "draft");
+  assert.equal(after.version, before.version + 1);
+  assert.equal(after.courses.length, 0);
 });
 
 test("GAP B3 Req 81: a pending mandatory-removal approval blocks final processing", gap("Processing does not query pending mandatory-removal decisions"), async () => {

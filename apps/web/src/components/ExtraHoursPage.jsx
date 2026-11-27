@@ -81,10 +81,10 @@ export default function ExtraHoursPage({
         );
         const [requests, advisorRows] = await Promise.all([
           api(`/api/extra-hours?${params}`, { token }),
-          api("/api/advisor/advisors", { token }),
+          api("/api/extra-hours/requesting-advisors", { token }),
         ]);
         setRows(requests);
-        setAdvisors(advisorRows.advisors || advisorRows || []);
+        setAdvisors(advisorRows);
       }
     } catch (e) {
       setError(e.message || "Unable to load extra-hours requests.");

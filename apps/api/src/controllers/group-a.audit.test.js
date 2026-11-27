@@ -104,6 +104,34 @@ test("A1 Req 84-86: coordinator list/details, exact student search and all four 
   assert.deepEqual((await call("/extra-hours?studentId=nonexistent")).data, []);
 });
 
+test("A1 Req 86: requesting advisor filter includes advisors outside the active directory", async () => {
+  const path = "/extra-hours/requesting-advisors";
+  assert.deepEqual((await call(path)).data, []);
+  assert.equal((await call(path, { role: "student" })).status, 403);
+  await extra();
+  const historical = await extra({ advisor: users.otherAdvisor._id });
+  await extra({ advisor: users.otherAdvisor._id, decisionStatus: "rejected" });
+
+  await User.updateOne({ _id: users.otherAdvisor._id }, { isAdvisorInSystem: false });
+  const expected = [users.advisor, users.otherAdvisor].map(({ _id, fullName }) => ({ _id: String(_id), fullName }));
+  const outsideDirectory = await call(path);
+  assert.equal(outsideDirectory.status, 200);
+  assert.deepEqual(outsideDirectory.data, expected);
+  const directory = await call("/advisor/advisors");
+  assert.equal(directory.status, 200);
+  assert.deepEqual(directory.data.map(advisor => advisor._id), [String(users.advisor._id)]);
+
+  await User.updateOne({ _id: users.otherAdvisor._id }, { isActive: false });
+  const inactive = await call(path);
+  assert.equal(inactive.status, 200);
+  assert.deepEqual(inactive.data, expected);
+
+  const query = new URLSearchParams({ advisorId: String(users.otherAdvisor._id), decisionStatus: "pending" });
+  const filtered = await call(`/extra-hours?${query}`);
+  assert.equal(filtered.status, 200);
+  assert.deepEqual(filtered.data.map(row => row._id), [String(historical._id)]);
+});
+
 test("A1 Req 87-88,90,92: approval does not activate hours; deferred confirmation activates once without wallet charge", async () => {
   const request = await extra();
   assert.equal((await settle(request, { option: "deferred" })).status, 409);

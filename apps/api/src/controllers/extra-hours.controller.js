@@ -10,12 +10,13 @@ import {
   Notification,
   FinancialTransaction,
 } from "../models/index.js";
+import { getWallet } from "../models/academics.js";
+import { walletDelta, walletKinds } from "../models/finance.js";
 import { standardCreditAllowance } from "../utils/credit-allowance.js";
 import { notifyStudents } from "../services/student-notifications.js";
 import { createStripeCheckout, expireStripeCheckout, getStripeCheckout, stripeCheckoutConfigured } from "../services/stripe-checkout.js";
 
 const { Types } = mongoose;
-const walletKinds = ["walletTopUp", "refund", "extraHoursWalletPayment"];
 const isProbationStudent = (student) => student.academicStanding === "probation"
   || student.advisingReason === "probation" || student.gpa >= 3.70;
 
@@ -28,26 +29,12 @@ async function creditHoursBefore(student, term, standardAllowance, { session, ex
   return requests.reduce((total, request) => total + request.requestedHours, standardAllowance);
 }
 
-function walletDelta(transaction) {
-  if (transaction.kind === "extraHoursWalletPayment") {
-    return ["succeeded", "REFUNDED", "refunded"].includes(transaction.status) ? -Math.round(transaction.amount * 100) : 0;
-  }
-  return transaction.status === "succeeded" ? Math.round(transaction.amount * 100) : 0;
-}
-
 const populatedRequest = (id) => ExtraHoursRequest.findById(id)
   .populate({ path: "student", populate: { path: "user", select: "fullName email" } })
   .populate("advisor", "fullName email")
   .populate("decidedBy", "fullName email")
   .populate("term", "code season academicYear")
   .populate("courses.course", "code name creditHours");
-
-async function studentAndWallet(userId) {
-  const student = await StudentProfile.findOne({ user: userId });
-  if (!student) return { student: null, balance: 0 };
-  const transactions = await FinancialTransaction.find({ student: student._id, kind: { $in: walletKinds } }).select("kind amount status").lean();
-  return { student, balance: transactions.reduce((sum, txn) => sum + walletDelta(txn), 0) / 100 };
-}
 
 function notifyExtraHoursDecision(request, message, session) {
   return notifyStudents({ _id: request.student, studentType: "advising" }, {
@@ -323,6 +310,20 @@ export async function listExtraHoursRequests(req, res) {
   } catch (err) { return res.status(500).json({ message: err.message }); }
 }
 
+/** Req. 86: Include historical request submitters in the coordinator's filter. */
+export async function listExtraHoursRequestingAdvisors(_req, res) {
+  try {
+    const ids = await ExtraHoursRequest.distinct("advisor");
+    const advisors = await User.find({ _id: { $in: ids } })
+      .select("fullName")
+      .sort({ fullName: 1, _id: 1 })
+      .lean();
+    return res.json(advisors);
+  } catch {
+    return res.status(500).json({ message: "Unable to load requesting advisors." });
+  }
+}
+
 export async function decideExtraHoursRequest(req, res) {
   try {
     const { id } = req.params;
@@ -368,7 +369,7 @@ export async function decideExtraHoursRequest(req, res) {
 /** Student requests are restricted to the signed-in advising student's profile. */
 export async function listMyExtraHoursRequests(req, res) {
   try {
-    const { student } = await studentAndWallet(req.user._id);
+    const student = await StudentProfile.findOne({ user: req.user._id });
     if (!student) return res.status(404).json({ message: "Student profile not found." });
     const rows = await ExtraHoursRequest.find({ student: student._id }).sort({ createdAt: -1 }).populate("advisor", "fullName email").populate("decidedBy", "fullName email").populate("term", "code season academicYear").populate("courses.course", "code name creditHours");
     return res.json(rows);
@@ -610,16 +611,10 @@ export async function getExtraHoursFinancialHistory(req, res) {
 
 export async function getExtraHoursWallet(req, res) {
   try {
-    const { student, balance } = await studentAndWallet(req.user._id);
+    const student = await StudentProfile.findOne({ user: req.user._id });
     if (!student) return res.status(404).json({ message: "Student profile not found." });
-    const rows = await FinancialTransaction.find({ student: student._id, kind: { $in: ["walletTopUp", "refund", "extraHoursWalletPayment"] } }).sort({ occurredAt: 1, _id: 1 }).lean();
-    let running = 0;
-    for (const row of rows) {
-      running += walletDelta(row);
-      row.resultingBalance = running / 100;
-      row.direction = row.kind === "extraHoursWalletPayment" ? "debit" : "credit";
-    }
-    return res.json({ studentId: student.studentId, balance, currency: "EGP", transactions: rows.reverse() });
+    const wallet = await getWallet(student._id);
+    return res.json({ ...wallet, studentId: student.studentId });
   } catch (err) { return res.status(500).json({ message: err.message }); }
 }
 
