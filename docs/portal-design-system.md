@@ -19,6 +19,8 @@ Academic services keeps the illustrated portal sidebar and theme. Academic servi
 
 My advisor uses the illustrated contact layout and office drawing. The sidebar, refreshes, and older advisor-assignment bookmarks all open the same page. Keep the current advisor's name and email, loading, unassigned, and error states within that layout. Existing Portal screens should have one renderer per workflow. Connect live data inside the approved screen, and route older bookmarks to that renderer. When changing this route, run the browser test that checks the illustration, real contact data, and older links.
 
+The Course catalogue editor uses tabs for course details, curriculum placement, teaching and availability, and prerequisites. Edits stay in place when switching tabs, and the prerequisites tab shows the selection count. Save and Cancel stay visible as the form scrolls. Field grids stack on narrow screens.
+
 The shared Calendar opens from date fields, including inside embedded services. Its heading switches between days and a month/year chooser. Apply updates the original fields, and Cancel discards the selection. Paired filters share a range picker, while academic term dates remain individual fields.
 
 The empty Notifications page uses the coffee cup, desk bell and letter. The steam rises briefly when the illustration appears and stays still with reduced motion.

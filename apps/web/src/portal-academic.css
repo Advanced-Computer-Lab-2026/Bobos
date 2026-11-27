@@ -961,7 +961,22 @@
 .academic-services-embedded .prerequisite-options { max-height:180px; overflow:auto; border-block:1px solid var(--line); }
 .academic-services-embedded .prerequisite-options label { color:var(--ink); padding:8px 0; }
 .academic-services-embedded .prerequisite-options small { color:var(--muted); }
-.academic-services-embedded .catalogue-editor .register-count { display:block; margin:8px 0; }
+.academic-services-embedded .catalogue-editor { gap:20px; }
+.academic-services-embedded .catalogue-editor .form-grid { align-items:start; }
+.academic-services-embedded .catalogue-editor .course-settings { margin-block-start:14px; }
+.academic-services-embedded .catalogue-editor .course-settings legend { font-size:14px; }
+.academic-services-embedded .catalogue-editor [hidden] { display:none !important; }
+.academic-services-embedded .course-editor-tabs { display:flex; flex-wrap:wrap; gap:6px; border-bottom:1px solid var(--line); padding-bottom:12px; }
+.academic-services-embedded .course-editor-tabs button { background:transparent; border:1px solid transparent; border-radius:7px; color:var(--muted); cursor:pointer; font:inherit; padding:7px 11px; }
+.academic-services-embedded .course-editor-tabs button:is(:hover,[aria-pressed="true"]) { color:var(--ink); border-color:var(--line); }
+.academic-services-embedded .course-editor-tabs button[aria-pressed="true"] { background:var(--surface-2,var(--paper)); font-weight:600; }
+.academic-services-embedded .catalogue-editor .prerequisite-options { margin-block-start:10px; }
+.service-surface[data-service="courses"] .academic-services-embedded .catalogue-editor .form-footer {
+  position:sticky; bottom:0; z-index:1; background:var(--paper); padding-block:12px;
+}
+@media (max-width:520px) {
+  .academic-services-embedded .catalogue-editor :is(.form-grid,.teaching-hours) { grid-template-columns:minmax(0,1fr); }
+}
 .academic-services-embedded .course-sheet .form-footer,.academic-services-embedded .catalogue-editor .form-footer { justify-content:flex-end; gap:10px; padding-top:15px; border-top:1px solid var(--line); }
 @media(max-width:650px) {
   .academic-services-embedded .register-controls { gap:12px; }

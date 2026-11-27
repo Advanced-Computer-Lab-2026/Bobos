@@ -1,3 +1,4 @@
+import { flushSync } from "react-dom";
 import OfferingCourseIcon from "./OfferingCourseIcon.jsx";
 import { termLabel } from "../term-label.js";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -1240,30 +1241,45 @@ function catalogueMajors(course) {
 }
 
 function CourseEditor({ course, courses, onSave, onClose, saving, error }) {
+  const [section, setSection] = useState("details");
   const [search, setSearch] = useState("");
   const [requiredIds, setRequiredIds] = useState(() => (course.prerequisites || []).map(item => item._id || item));
   const options = courses.filter(item => item._id !== course._id && `${item.code} ${item.name}`.toLowerCase().includes(search.trim().toLowerCase()));
   return <Modal title={course._id ? "Edit course" : "Add a course"} onClose={onClose} wide>
-    <form className="form-stack catalogue-editor" onSubmit={onSave}>
-      <fieldset><legend>Course information</legend><div className="form-grid">
+    <form className="form-stack catalogue-editor" onSubmit={onSave} onInvalid={event => {
+      const panel = event.target.closest("fieldset[data-course-section]");
+      if (panel?.hidden) flushSync(() => setSection(panel.dataset.courseSection));
+    }}>
+      <nav className="course-editor-tabs" aria-label="Course editor sections">
+        {Object.entries({ details: "Course details", curriculum: "Curriculum placement", teaching: "Teaching and availability", prerequisites: "Prerequisites" }).map(([key, label]) => (
+          <button key={key} type="button" aria-pressed={section === key} aria-controls={`course-editor-${key}`} onClick={() => setSection(key)}>
+            {label}{key === "prerequisites" ? ` (${requiredIds.length})` : ""}
+          </button>
+        ))}
+      </nav>
+      <fieldset id="course-editor-details" data-course-section="details" hidden={section !== "details"}><legend>Course details</legend><div className="form-grid">
         <Field label="Course code"><input name="code" required maxLength={24} defaultValue={course.code} placeholder="CSEN704" /></Field>
         <Field label="Course name"><input name="name" required defaultValue={course.name} /></Field>
         <Field label="Credit hours"><input name="creditHours" required type="number" min="0" step="0.5" defaultValue={course.creditHours} /></Field>
         <Field label="Course type"><select name="courseType" defaultValue={course.courseType || "core"}><option value="core">Core</option><option value="elective">Elective</option><option value="huma">Humanities</option></select></Field>
+      </div></fieldset>
+      <fieldset id="course-editor-curriculum" data-course-section="curriculum" hidden={section !== "curriculum"}><legend>Curriculum placement</legend><div className="form-grid">
         <Field label="Recommended semester"><input name="recommendedSemester" type="number" min="1" max="10" defaultValue={course.recommendedSemester} /></Field>
         <Field label="Majors (one per line)"><textarea name="facultyMajors" rows={2} defaultValue={catalogueMajors(course).join("\n")} placeholder="One major per line" /></Field>
       </div></fieldset>
-      <fieldset><legend>Weekly teaching hours</legend><div className="teaching-hours">
-        {["lectureHours", "tutorialHours", "labHours"].map(key => <Field key={key} label={pretty(key)}><input type="number" name={key} min="0" step="0.5" defaultValue={course[key]} /></Field>)}
-      </div></fieldset>
-      <fieldset><legend>Offering seasons</legend><div className="course-checks">{seasons.map(season => <label key={season}><input type="checkbox" name="offeringSeasons" value={season} defaultChecked={course.offeringSeasons?.includes(season)} />{pretty(season)}</label>)}</div></fieldset>
-      <fieldset><legend>Prerequisites</legend>
+      <fieldset id="course-editor-teaching" data-course-section="teaching" hidden={section !== "teaching"}><legend>Teaching and availability</legend>
+        <div className="teaching-hours">
+          {["lectureHours", "tutorialHours", "labHours"].map(key => <Field key={key} label={pretty(key)}><input type="number" name={key} min="0" step="0.5" defaultValue={course[key]} /></Field>)}
+        </div>
+        <fieldset className="course-settings"><legend>Offering seasons</legend><div className="course-checks">{seasons.map(season => <label key={season}><input type="checkbox" name="offeringSeasons" value={season} defaultChecked={course.offeringSeasons?.includes(season)} />{pretty(season)}</label>)}</div></fieldset>
+        <div className="course-checks course-settings"><label><input type="checkbox" name="isBachelorProject" defaultChecked={course.isBachelorProject} />Bachelor project</label><label><input type="checkbox" name="isActive" defaultChecked={course.isActive !== false} />Active in catalogue</label></div>
+      </fieldset>
+      <fieldset id="course-editor-prerequisites" data-course-section="prerequisites" hidden={section !== "prerequisites"}>
+        <legend>Prerequisites</legend>
         <label className="field"><span>Find a prerequisite</span><input type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Course code or name" /></label>
         {requiredIds.map(id => <input key={id} type="hidden" name="prerequisites" value={id} />)}
-        <span className="register-count" role="status">{requiredIds.length} selected</span>
         <div className="prerequisite-options">{options.map(item => <label key={item._id}><input type="checkbox" checked={requiredIds.includes(item._id)} onChange={event => setRequiredIds(ids => event.target.checked ? [...ids, item._id] : ids.filter(id => id !== item._id))} /><span><small>{item.code}</small> {item.name}</span></label>)}{!options.length && <p>No matching courses.</p>}</div>
       </fieldset>
-      <div className="course-checks"><label><input type="checkbox" name="isBachelorProject" defaultChecked={course.isBachelorProject} />Bachelor project</label><label><input type="checkbox" name="isActive" defaultChecked={course.isActive !== false} />Active in catalogue</label></div>
       {error && <div className="feedback error" role="alert">{error}</div>}
       <FormFooter onCancel={onClose} busy={saving} submitText={course._id ? "Save changes" : "Create course"} />
     </form>

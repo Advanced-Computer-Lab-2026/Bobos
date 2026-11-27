@@ -839,11 +839,15 @@ test("Catalogue editing preserves filtered prerequisites, seasons and legacy maj
   const sheet = page.getByRole("dialog");
   await expect(sheet).toContainText(first.name);
   await sheet.getByRole("button", {name:"Edit course"}).click();
+  await sheet.getByRole("button", {name:"Curriculum placement"}).click();
   await expect(page.getByLabel("Majors (one per line)")).toHaveValue("CS\nDMET");
-  await page.getByRole("searchbox", {name:"Find a prerequisite"}).fill(second.code);
+  await expect(sheet.getByRole("searchbox", {name:"Find a prerequisite"})).toBeHidden();
+  await sheet.getByRole("button", {name:/^Prerequisites/}).click();
+  await sheet.getByRole("searchbox", {name:"Find a prerequisite"}).fill(second.code);
   const prerequisite = page.getByRole("checkbox", {name:/PRQ802/});
   await prerequisite.focus();
   await page.keyboard.press("Space");
+  await sheet.getByRole("button", {name:"Teaching and availability"}).click();
   await sheet.getByRole("checkbox", {name:"Spring", exact:true}).check();
   await page.getByRole("button", {name:"Save changes"}).click();
   await expect(sheet).toHaveCount(0);
