@@ -133,13 +133,6 @@ const href = (target, courseCode) => {
       if (current.has(key)) query.set(key, current.get(key));
     }
   }
-  if (target === 'preferences' && role === 'coordinator'
-    && ['localhost', '127.0.0.1'].includes(location.hostname)
-    && localStorage.getItem(previewSessionKey) === '1'
-    && !query.has('student')) {
-    query.set('student', '79-32001');
-    query.set('term', 'S2026');
-  }
   if (target === 'course-detail' && courseCode) query.set('course', courseCode);
   return '?' + query;
 };

@@ -13,8 +13,8 @@ const pretty = (value = "—") =>
   String(value || "—")
     .replace(/([a-z])([A-Z])/g, "$1 $2")
     .replace(/^./, (s) => s.toUpperCase());
-const money = (amount) =>
-  `${Number(amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EGP`;
+const moneyAmount = (amount) => Number(amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const money = (amount) => `${moneyAmount(amount)} EGP`;
 const date = (value) => (value ? new Date(value).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "Africa/Cairo" }) : "—");
 const paymentStates = {
   awaitingChoice: { label: "Awaiting payment choice", tone: "warning" },
@@ -500,21 +500,30 @@ export default function ExtraHoursPage({
       )}
       {staff && <RecordPages page={currentPage} size={size} total={visibleRows.length} onChange={setPage} label="Requests" />}
       {opened && <Modal title="Extra-hours request" className="extra-request-dialog" onClose={closeReview} wide>
-        <div className="extra-review-intro">
-          <div className="extra-review-student">
-            <StudentIdentity name={opened.student?.user?.fullName} id={opened.student?.studentId} />
+        <div className="extra-review-body">
+          <div className="extra-review-intro">
+            <div className="extra-review-overview">
+              <div className="extra-review-student">
+                <StudentIdentity name={opened.student?.user?.fullName} id={opened.student?.studentId} />
+                <div className="extra-review-state">
+                  <RequestDecision row={opened} statusRef={reviewStatus} />
+                  {paymentStates[opened.settlementStatus] && <span className="extra-payment-state" data-tone={paymentStates[opened.settlementStatus].tone}>{paymentStates[opened.settlementStatus].label}</span>}
+                </div>
+              </div>
+              <dl className="extra-review-total">
+                <dt>Request total</dt><dd>{moneyAmount(opened.totalCost)} <small>EGP</small></dd>
+              </dl>
+            </div>
+            <dl className="extra-review-meta">
+              <div><dt>Term</dt><dd>{termLabel(opened.term)}</dd></div>
+              <div><dt>Submitted</dt><dd><time dateTime={opened.createdAt}>{date(opened.createdAt)}</time></dd></div>
+              <div><dt>Requested by</dt><dd>{opened.advisor?.fullName || "—"}</dd></div>
+              <div className="extra-reference"><dt>Request reference</dt><dd>{opened._id}</dd></div>
+            </dl>
           </div>
-          <RequestSummary row={opened} statusRef={reviewStatus} />
-          <dl className="extra-review-meta">
-            <div><dt>Term</dt><dd>{termLabel(opened.term)}</dd></div>
-            <div><dt>Requested by</dt><dd>{opened.advisor?.fullName || "—"}</dd></div>
-            <div><dt>Submitted</dt><dd><time dateTime={opened.createdAt}>{date(opened.createdAt)}</time></dd></div>
-          </dl>
-        </div>
-        <RequestDetails row={opened} staff>
-          {opened.decisionStatus === "pending" && <div className="extra-review-actions">
-            {reviewError && <div className="feedback error" role="alert">{reviewError}</div>}
-            {coordinator && <>
+          <RequestDetails row={opened} staff>
+            {coordinator && opened.decisionStatus === "pending" && <div className="extra-review-actions">
+              {reviewError && <div className="feedback error" role="alert">{reviewError}</div>}
               <label className="field">
                 <span>Response note (required)</span>
                 <textarea rows={2} maxLength={1000} value={notes[opened._id] || ""}
@@ -528,14 +537,14 @@ export default function ExtraHoursPage({
                   disabled={busyId === opened._id || !notes[opened._id]?.trim()}
                   onClick={() => decision(opened, "approved")}>Approve request</button>
               </div>
-            </>}
-            {advisor && <div className="form-actions">
-              <button type="button" className="text-button danger-text"
-                disabled={busyId === opened._id}
-                onClick={() => withdraw(opened)}>Withdraw request</button>
             </div>}
-          </div>}
-        </RequestDetails>
+          </RequestDetails>
+        </div>
+        {advisor && opened.decisionStatus === "pending" && <footer className="extra-withdraw-footer">
+          {reviewError && <div className="feedback error" role="alert">{reviewError}</div>}
+          <button type="button" className="outline-button" disabled={busyId === opened._id}
+            onClick={() => withdraw(opened)}>{busyId === opened._id ? "Withdrawing…" : "Withdraw request"}</button>
+        </footer>}
       </Modal>}
       {student && (
         <section className="extra-financial">
@@ -612,14 +621,18 @@ export default function ExtraHoursPage({
   );
 }
 
-function RequestSummary({ row, student = false, statusRef }) {
-  const payment = !student && paymentStates[row.settlementStatus];
+function RequestDecision({ row, student = false, statusRef }) {
   const tone = { approved: "good", rejected: "danger", pending: "warning" }[row.decisionStatus] || "muted";
+  return <span className={`status-pill ${tone}`} ref={statusRef} tabIndex={statusRef ? -1 : undefined}>
+    {pretty(row.decisionStatus)}
+    {student && row.settlementStatus && row.settlementStatus !== "none" ? ` · ${pretty(row.settlementStatus)}` : ""}
+  </span>;
+}
+
+function RequestSummary({ row, student = false }) {
+  const payment = !student && paymentStates[row.settlementStatus];
   return <div className="extra-request-summary">
-    <span className={`status-pill ${tone}`} ref={statusRef} tabIndex={statusRef ? -1 : undefined}>
-      {pretty(row.decisionStatus)}
-      {student && row.settlementStatus && row.settlementStatus !== "none" ? ` · ${pretty(row.settlementStatus)}` : ""}
-    </span>
+    <RequestDecision row={row} student={student} />
     <dl className="extra-request-price">
       <dt>Request total</dt>
       <dd>{money(row.totalCost)}</dd>
@@ -634,26 +647,40 @@ function RequestDetails({ row, staff = false, children }) {
     row.decidedAt && { action: row.decisionStatus, occurredAt: row.decidedAt },
   ].filter(Boolean);
   const eligibility = row.eligibilitySnapshot;
+  const hours = [
+    { label: "Current hours", value: eligibility?.hoursBeforeRequest },
+    { label: "Requested hours", value: row.requestedHours },
+    { label: "Hours after request", value: eligibility?.hoursAfterRequest },
+  ];
   return <div className="extra-review-sheet">
     <div className="extra-sheet-columns">
       <section className="extra-sheet-courses">
         <h3>Requested courses</h3>
-        <ul>{row.courses?.map(item => <li key={item.course?._id || item._id || item.course}>
+        {staff && <div className="extra-course-columns" aria-hidden="true"><span>Course</span><span>Subtotal</span></div>}
+        <ul role="list">{row.courses?.map(item => <li key={item.course?._id || item._id || item.course}>
           <OfferingCourseIcon code={item.course?.code} />
           <div>
             <strong>{item.course?.name || item.course?.code || "Course"}</strong>
-            <small>{[item.course?.code, `${item.hours} ${item.hours === 1 ? "hour" : "hours"} × ${money(item.pricePerHour)}`, item.isRepeated && "Repeated course"].filter(Boolean).join(" · ")}</small>
+            {staff ? <>
+              {(item.course?.code || item.isRepeated) && <small>{[item.course?.code, item.isRepeated && "Repeated course"].filter(Boolean).join(" · ")}</small>}
+              <small>{item.hours} {item.hours === 1 ? "hour" : "hours"} × {money(item.pricePerHour)}</small>
+            </> : <small>{[item.course?.code, `${item.hours} ${item.hours === 1 ? "hour" : "hours"} × ${money(item.pricePerHour)}`, item.isRepeated && "Repeated course"].filter(Boolean).join(" · ")}</small>}
           </div>
-          <span>{money(item.subtotal)}</span>
+          {staff ? <span className="extra-line-price">{moneyAmount(item.subtotal)} <small>EGP</small></span> : <span>{money(item.subtotal)}</span>}
         </li>)}</ul>
         {!staff && <div className="extra-sheet-total"><span>Request total</span><strong>{money(row.totalCost)}</strong></div>}
       </section>
       <section className="extra-sheet-load">
         <h3>Study load</h3>
-        <dl>
-          <div><dt>Current hours</dt><dd>{eligibility?.hoursBeforeRequest ?? "—"}</dd></div>
-          <div><dt>Requested hours</dt><dd>{row.requestedHours ?? "—"}</dd></div>
-          <div className="extra-load-total"><dt>Hours after request</dt><dd>{eligibility?.hoursAfterRequest ?? "—"}</dd></div>
+        {staff && <dl className="extra-load-hours">
+          {hours.map(({ label, value }, index) => <div key={label} className={index === 2 ? "extra-load-result" : undefined}>
+            <dt>{label}</dt><dd>{index === 1 && value > 0 ? "+" : ""}{value ?? "—"}</dd>
+          </div>)}
+        </dl>}
+        <dl className={staff ? "extra-load-facts" : undefined}>
+          {!staff && hours.map(({ label, value }, index) => <div key={label} className={index === 2 ? "extra-load-total" : undefined}>
+            <dt>{label}</dt><dd>{value ?? "—"}</dd>
+          </div>)}
           <div><dt>Standard allowance</dt><dd>{eligibility?.standardAllowance == null ? "—" : `${eligibility.standardAllowance} hours`}</dd></div>
           <div><dt>Graduating within one year</dt><dd>{eligibility?.graduatingWithinOneYear == null ? "—" : eligibility.graduatingWithinOneYear ? "Yes" : "No"}</dd></div>
         </dl>
@@ -661,10 +688,7 @@ function RequestDetails({ row, staff = false, children }) {
       </section>
     </div>
     <section className="extra-sheet-history">
-      <div className="extra-history-heading">
-        <h3>Request history</h3>
-        {staff && <dl className="extra-reference"><dt>Request reference</dt><dd>{row._id}</dd></dl>}
-      </div>
+      <h3>Request history</h3>
       {events.length ? <ol>{events.map((entry, index) => <li key={entry._id || index}>
         <time dateTime={entry.occurredAt}>{date(entry.occurredAt)}</time>
         <div>

@@ -27,6 +27,34 @@ function NoteField({ label, value, onChange, hint, placeholder, className = "" }
   return <label className={`field ${className}`}><span>{label} (optional)</span>{hint && <small>{hint}</small>}<textarea rows={3} maxLength={1000} value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} /></label>;
 }
 
+function SlotMeetingSummary({ slot, showSeats = false }) {
+  return <span className="slot-meeting-schedule">
+    <span className="slot-meeting-group">Group {slot.groupNumber}</span>
+    {slot.meetings.map((meeting) => <span className="slot-meeting-time" key={meeting.slotId}>
+      <span className="slot-meeting-when"><strong>{meeting.day}</strong><span>{meeting.startTime}–{meeting.endTime}</span></span>
+      <small>{meeting.room}{showSeats && ` · ${meeting.remainingSeats} ${meeting.remainingSeats === 1 ? "seat" : "seats"} left`}</small>
+    </span>)}
+  </span>;
+}
+
+function SlotComparison({ request, current, children }) {
+  const pending = request.status === "pending";
+  const replacementTitle = pending ? "Proposed replacement" : request.replacementSlotLabel ? "Approved replacement" : "Replacement";
+  const showLiveCurrent = current && (pending || !request.currentSlotLabel);
+  return <section className="slot-comparison-sheet" aria-label="Compare meetings">
+    <div className="slot-comparison-track">
+      <section className="slot-comparison-original" aria-labelledby="slot-current-meeting-title">
+        <h2 id="slot-current-meeting-title">{pending ? "Current assignment" : "Original assignment"}</h2>
+        {showLiveCurrent ? <SlotMeetingSummary slot={current} /> : <p className="slot-recorded-meeting">{request.currentSlotLabel || "Original slot no longer listed."}</p>}
+      </section>
+      <section className="slot-comparison-replacement" aria-labelledby="slot-proposed-meeting-title">
+        <h2 id="slot-proposed-meeting-title">{replacementTitle}</h2>
+        {pending ? children : <p className="slot-recorded-meeting">{request.replacementSlotLabel || "No replacement assigned."}</p>}
+      </section>
+    </div>
+  </section>;
+}
+
 export default function SlotChangesPage({ token, role, onOpenSchedule }) {
   const mine = role === "advisingStudent";
   const coordinator = role === "coordinator";
@@ -43,6 +71,7 @@ export default function SlotChangesPage({ token, role, onOpenSchedule }) {
   const [message, setMessage] = useState("");
   const pageRef = useRef(null);
   const heading = useRef(null);
+  const decisionHeading = useRef(null);
   const studentRequestHeading = useRef(null);
   const load = useCallback((signal) => api(mine ? `${path}/me` : path, { token, signal }), [mine, token]);
   useEffect(() => {
@@ -71,11 +100,15 @@ export default function SlotChangesPage({ token, role, onOpenSchedule }) {
       if (detail) {
         setDetail(await api(`${path}/${detail.request._id}`, { token }));
         setReplacement(""); setResponse("");
+        requestAnimationFrame(() => decisionHeading.current?.focus());
       }
     } catch (err) {
       setError(err.message);
       if (err.status === 409 && detail) {
-        try { setDetail(await api(`${path}/${detail.request._id}`, { token })); setReplacement(""); }
+        try {
+          setDetail(await api(`${path}/${detail.request._id}`, { token })); setReplacement("");
+          requestAnimationFrame(() => decisionHeading.current?.focus());
+        }
         catch { /* Keep the original decision error visible. */ }
       }
     } finally { setBusy(false); }
@@ -99,6 +132,8 @@ export default function SlotChangesPage({ token, role, onOpenSchedule }) {
   ].filter(Boolean);
   const setFilter = (key) => (event) => setFilters((old) => ({ ...old, [key]: event.target.value }));
   const currentRequest = detail?.request;
+  const replacement = detail?.alternatives.find((slot) => slot.slotId === replacementSlotId);
+  const canChooseReplacement = detail?.alternatives.some((slot) => slot.remainingSeats > 0 && !slot.clashes.length);
   const eligibleSlots = (data?.slots || []).filter((slot) => !requests.some((request) =>
     request.status === "pending" && request.course?._id === slot.courseId && request.componentType === slot.type));
 
@@ -132,8 +167,8 @@ export default function SlotChangesPage({ token, role, onOpenSchedule }) {
       <p>{mine ? "Ask your advising team to change an assigned lecture, tutorial, or lab." : "Review advising students’ requests and compare replacement slots."}</p></div>
       {mine && <button type="button" className="outline-button" onClick={onOpenSchedule}>My schedule</button>}
     </div>}
-    {error && <div className="feedback error" role="alert">{error}</div>}
-    {message && <div className="feedback success" role="status">{message}</div>}
+    {!currentRequest && error && <div className="feedback error" role="alert">{error}</div>}
+    {!currentRequest && message && <div className="feedback success" role="status">{message}</div>}
     {!data && !error && <p role="status">Loading requests…</p>}
     {mine && data && <section className="panel form-stack">
       <h2>Request a slot change</h2>
@@ -224,76 +259,86 @@ export default function SlotChangesPage({ token, role, onOpenSchedule }) {
       </section>
     </div>}
     {currentRequest && <section className="slot-review" aria-labelledby="slot-review-title" aria-busy={busy}>
-      <button type="button" className="outline-button slot-review-back" disabled={busy} onClick={() => {
+      <button type="button" className="text-button slot-review-back" disabled={busy} onClick={() => {
         setDetail(null); setError(""); setMessage("");
         requestAnimationFrame(() => pageRef.current?.getRootNode().getElementById(`slot-request-${currentRequest._id}`)?.focus());
-      }}><span aria-hidden="true">← </span>Back to requests</button>
+      }}><span aria-hidden="true">←</span> Back to requests</button>
       <header className="slot-case-heading">
         <OfferingCourseIcon code={currentRequest.course?.code} />
-        <div><small>{[currentRequest.course?.code, component(currentRequest.componentType) + " change", termLabel(currentRequest.term)].filter(Boolean).join(" · ")}</small>
+        <div>
           <h1 id="slot-review-title" ref={heading} tabIndex={-1}>{currentRequest.course?.name || currentRequest.course?.code || "Slot change request"}</h1>
+          <small>{[currentRequest.course?.code, currentRequest.componentType && `${component(currentRequest.componentType)} change`, termLabel(currentRequest.term)].filter(Boolean).join(" · ")}</small>
         </div>
         <Status status={currentRequest.status} />
       </header>
-      <div className="slot-case-context">
-        <section className="slot-case-student">
+      <section className="slot-case-preference" aria-labelledby="slot-preference-title">
+        <div className="slot-request-origin">
           <StudentIdentity name={currentRequest.student?.user?.fullName} id={currentRequest.student?.studentId} />
-          <h2>Student’s preference</h2>
-          <p>{currentRequest.preferenceNote || "No preference provided."}</p>
-          <small>Submitted <time dateTime={currentRequest.createdAt}>{currentRequest.createdAt ? submittedAt.format(new Date(currentRequest.createdAt)) : "—"}</time> · Advisor {currentRequest.student?.assignedAdvisor?.fullName || "unassigned"}</small>
-        </section>
-        <section className="slot-case-assignment">
-          <h2>Current assigned slot</h2>
-          {detail.current && currentRequest.status === "pending" ? <>
-            <strong>Group {detail.current.groupNumber}</strong>
-            {detail.current.meetings.map(meeting => <p key={meeting.slotId}>{meeting.day} · {meeting.startTime}–{meeting.endTime}<small>{meeting.room}</small></p>)}
-          </> : <p>{currentRequest.currentSlotLabel || (detail.current ? slotText(detail.current) : "Slot no longer listed")}</p>}
-        </section>
-      </div>
-      {currentRequest.status === "pending" ? <form className="form-stack slot-review-form" onSubmit={(event) => {
+          <dl className="slot-request-facts">
+            <div><dt>Submitted</dt><dd><time dateTime={currentRequest.createdAt}>{currentRequest.createdAt ? submittedAt.format(new Date(currentRequest.createdAt)) : "—"}</time></dd></div>
+            <div><dt>Advisor</dt><dd>{currentRequest.student?.assignedAdvisor?.fullName || "Unassigned"}</dd></div>
+          </dl>
+        </div>
+        <div>
+          <h2 id="slot-preference-title">Student’s preference</h2>
+          {currentRequest.preferenceNote ? <blockquote>{currentRequest.preferenceNote}</blockquote> : <p>No preference provided.</p>}
+        </div>
+      </section>
+      {currentRequest.status === "pending" ? <form className="slot-review-form" onSubmit={(event) => {
         event.preventDefault();
-        action(`${path}/${currentRequest._id}/decision`, { decision: "approved", replacementSlotId, responseNote });
+        if (replacement && !busy) action(`${path}/${currentRequest._id}/decision`, { decision: "approved", replacementSlotId, responseNote });
       }}>
-        <fieldset className="slot-alternatives">
-          <legend>Replacement slots</legend>
-          {detail.issue && <p className="helper-text">{detail.issue}</p>}
-          {!detail.issue && !detail.alternatives.length && <p className="helper-text">No alternative slots are published for this component.</p>}
-          {detail.alternatives.map((slot) => {
-            const noSeats = !slot.remainingSeats;
-            const hasClash = Boolean(slot.clashes.length);
-            return <label className="slot-alternative" key={slot.slotId} onDoubleClick={(event) => {
-              event.preventDefault();
-              if (busy || noSeats || hasClash) return;
-              setReplacement((selected) => selected === slot.slotId ? "" : selected);
-            }}>
-              <input type="radio" name="replacement" value={slot.slotId} checked={replacementSlotId === slot.slotId} onChange={() => setReplacement(slot.slotId)} disabled={busy || noSeats || hasClash} />
-              <span className="slot-alternative-group"><strong>Group {slot.groupNumber}</strong></span>
-              <span className="slot-alternative-meetings">{slot.meetings.map(meeting => <span key={meeting.slotId}>
-                <strong>{meeting.day} <span>{meeting.startTime}–{meeting.endTime}</span></strong>
-                <small>{meeting.room} · {meeting.remainingSeats} {meeting.remainingSeats === 1 ? "seat" : "seats"} left</small>
-              </span>)}</span>
-              <span className={`slot-alternative-state ${hasClash || noSeats ? "is-unavailable" : ""}`}>
-                <span aria-hidden="true">{hasClash || noSeats ? "!" : "✓"}</span>
-                {hasClash ? `Clashes with ${slot.clashes.join("; ")}` : noSeats ? "Group full" : "No timetable clash"}
-              </span>
-            </label>;
-          })}
-          {replacementSlotId && <button type="button" className="text-button slot-clear-selection" disabled={busy} onClick={() => setReplacement("")}>Clear selected slot</button>}
-        </fieldset>
-        <section className="slot-case-decision"><h2>Decision</h2>
-        <NoteField label="Response to student" value={responseNote} onChange={setResponse} className="slot-response-field" />
-        <div className="form-actions slot-review-actions">
-          <button type="button" className="outline-button" disabled={busy} onClick={() => action(`${path}/${currentRequest._id}/decision`, { decision: "rejected", responseNote })}>Reject request</button>
-          <button type="submit" className="primary-button" disabled={busy || !replacementSlotId}>Approve change</button>
-        </div></section>
-      </form> : <div className="slot-case-context">
-        {currentRequest.replacementSlotLabel && <section className="slot-current-meeting"><h3>Approved replacement</h3><p>{currentRequest.replacementSlotLabel}</p></section>}
-        <section className="portal-request-note">
-          <h3>Response to student</h3>
-          <p>{currentRequest.responseNote || "No response note."}</p>
-          {currentRequest.decidedBy && <div className="portal-note-attribution"><strong>{currentRequest.decidedBy.fullName}</strong><small><time dateTime={currentRequest.decidedAt}>{date(currentRequest.decidedAt)}</time></small></div>}
+        <SlotComparison request={currentRequest} current={detail.current}>
+          <fieldset className="slot-alternatives" aria-labelledby="slot-proposed-meeting-title">
+            {detail.issue && <p className="slot-recorded-meeting">{detail.issue}</p>}
+            {!detail.issue && !detail.alternatives.length && <p className="slot-recorded-meeting">No alternative slots are published for this component.</p>}
+            {detail.alternatives.map((slot) => {
+              const noSeats = !slot.remainingSeats;
+              const hasClash = Boolean(slot.clashes.length);
+              return <label className="slot-alternative" key={slot.slotId}>
+                <input type="radio" name="replacement" value={slot.slotId} checked={replacementSlotId === slot.slotId} onChange={() => setReplacement(slot.slotId)} disabled={busy || noSeats || hasClash} />
+                <SlotMeetingSummary slot={slot} showSeats />
+                <span className={`slot-alternative-state ${hasClash || noSeats ? "is-unavailable" : ""}`}>
+                  {hasClash ? `Clashes with ${slot.clashes.join("; ")}` : noSeats ? "Group full" : "No timetable clash"}
+                </span>
+              </label>;
+            })}
+          </fieldset>
+          {detail.alternatives.length > 0 && <div className="slot-selection-summary">
+            <p aria-live="polite">{replacement ? `Group ${replacement.groupNumber} selected` : canChooseReplacement ? "Select a group to propose the change." : "No eligible replacement available."}</p>
+            {replacement && <button type="button" className="text-button slot-clear-selection" disabled={busy} onClick={() => {
+              pageRef.current?.querySelector(".slot-alternatives input:checked")?.focus();
+              setReplacement("");
+            }}>Clear selected slot</button>}
+          </div>}
+        </SlotComparison>
+        <section className="slot-case-decision" aria-labelledby="slot-decision-title">
+          <h2 id="slot-decision-title">Decision</h2>
+          <div className="slot-decision-content">
+            <NoteField label="Response to student" value={responseNote} onChange={setResponse} className="slot-response-field" />
+            {error && <div className="feedback error" role="alert">{error}</div>}
+            {message && <div className="feedback success" role="status">{message}</div>}
+            <div className="slot-decision-footer">
+              <p>{replacement ? `Approving moves the student to Group ${replacement.groupNumber}.` : "Approval requires an eligible replacement."}</p>
+              <div className="form-actions slot-review-actions">
+                <button type="button" className="outline-button" disabled={busy} onClick={() => action(`${path}/${currentRequest._id}/decision`, { decision: "rejected", responseNote })}>Reject request</button>
+                <button type="submit" className="primary-button" disabled={busy || !replacement}>Approve change</button>
+              </div>
+            </div>
+          </div>
         </section>
-      </div>}
+      </form> : <>
+        <SlotComparison request={currentRequest} current={detail.current} />
+        <section className="slot-case-decision" aria-labelledby="slot-decision-title">
+          <h2 id="slot-decision-title" ref={decisionHeading} tabIndex={-1}>Response to student</h2>
+          <div className="slot-decision-content slot-decision-record">
+            {message && <div className="feedback success" role="status">{message}</div>}
+            {error && <div className="feedback error" role="alert">{error}</div>}
+            <p>{currentRequest.responseNote || "No response note."}</p>
+            {currentRequest.decidedBy && <div className="portal-note-attribution"><strong>{currentRequest.decidedBy.fullName}</strong><small><time dateTime={currentRequest.decidedAt}>{date(currentRequest.decidedAt)}</time></small></div>}
+          </div>
+        </section>
+      </>}
     </section>}
   </div>;
 }

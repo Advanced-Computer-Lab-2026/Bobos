@@ -884,6 +884,7 @@ test("Coordinator can read ranked preferences, change term and review a removal 
     {fullName:"Schedule Review Advisor", email:"schedule.advisor@guc.edu.eg", role:"advisor", passwordHash},
   ]);
   const student = await auditAdvisingStudent({fullName:"Schedule Review Student", email:"schedule.review@student.guc.edu.eg", studentId:"49-00805", assignedAdvisor:advisor._id, passwordHash});
+  const anotherStudent = await auditAdvisingStudent({fullName:"Schedule Preferences Student", email:"schedule.preferences@student.guc.edu.eg", studentId:"49-00825", passwordHash});
   const term = await auditTerm();
   const alternate = await AcademicTerm.create({ ...term.toObject(), _id:new mongoose.Types.ObjectId(), code:"CATALT", season:"spring", isActive:false });
   const submission = await SchedulingPreference.create({student:student._id, term:term._id, preferredDays:[{day:"Thursday",priority:4},{day:"Monday",priority:1}], preferredTimes:[{startMinute:390,endMinute:465,priority:3}], note:"Please keep the morning lab."});
@@ -906,8 +907,17 @@ test("Coordinator can read ranked preferences, change term and review a removal 
   await expect(page.locator(".preference-reading")).toContainText("Please keep the morning lab.");
   await expect(page.locator(".preference-reading time")).toHaveAttribute("datetime", submission.updatedAt.toISOString());
   await page.getByRole("button", {name:"Change student",exact:true}).click();
-  await expect(page.getByLabel("Find advising student")).toBeFocused();
-  await page.getByLabel("Find advising student").fill(student.studentId);
+  const studentSearch = page.getByLabel("Find advising student");
+  await expect(studentSearch).toBeFocused();
+  await expect(studentSearch).toBeEmpty();
+  const roster = page.getByRole("table", {name:"Advising students"});
+  await expect(roster).toHaveCount(0);
+  const searchEntry = await studentSearch.boundingBox();
+  await page.getByRole("button", {name:"Find student"}).click();
+  await expect(roster.getByRole("row").filter({hasText:student.studentId})).toBeVisible();
+  await expect(roster.getByRole("row").filter({hasText:anotherStudent.studentId})).toBeVisible();
+  await expect.poll(async () => (await studentSearch.boundingBox()).y).toBeLessThan(searchEntry.y - 60);
+  await studentSearch.fill(student.studentId);
   await page.getByRole("button", {name:"Find student"}).click();
   const selection = page.locator(".preference-student-selected");
   await expect(selection).toContainText(student.studentId);
@@ -915,8 +925,17 @@ test("Coordinator can read ranked preferences, change term and review a removal 
   await expect(selection.getByRole("button", {name:"Change student",exact:true})).toBeVisible();
   await page.getByLabel("Academic term").selectOption(String(term._id));
   await expect(page.locator(".preference-reading")).toContainText("Please keep the morning lab.");
-  const rankedDays = page.getByRole("list", {name:"Preferred days, highest priority first"});
-  await expect(rankedDays.getByRole("listitem")).toHaveText(["MondayPriority #1", "ThursdayPriority #4"]);
+  const teachingWeek = page.getByRole("list", {name:"Teaching week"});
+  const monday = teachingWeek.getByRole("listitem").filter({hasText:"Monday"});
+  const thursday = teachingWeek.getByRole("listitem").filter({hasText:"Thursday"});
+  await expect(monday).toContainText("Preferred");
+  await expect(monday).toContainText("Priority #1");
+  await expect(thursday).toContainText("Preferred");
+  await expect(thursday).toContainText("Priority #4");
+  const thursdayButton = thursday.getByRole("button");
+  await thursdayButton.press("Enter");
+  await expect(thursdayButton).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(".preference-day-reading")).toContainText("Priority #4");
   const teachingTimes = page.getByRole("list", {name:"Preferred times, highest priority first"});
   await expect(teachingTimes).toContainText("06:30–07:45");
   await expect(teachingTimes.getByRole("listitem")).toContainText("Priority #3");
@@ -927,6 +946,7 @@ test("Coordinator can read ranked preferences, change term and review a removal 
   await expect(page.getByRole("heading", {name:"Advising draft schedule"})).toBeVisible();
   await expect(page.locator(".draft-summary")).toContainText("No draft exists for this term");
   await mainNavigation(page).getByRole("link", {name:"Schedule preferences"}).click();
+  await expect(page).toHaveURL(url => !url.searchParams.has("student") && !url.searchParams.has("term"));
   await expect(page.getByLabel("Find advising student")).toBeVisible();
   await mainNavigation(page).getByRole("link", {name:"Course removals"}).click();
   const removalSearch = page.getByRole("searchbox", {name:"Search student, ID, course, or advisor"});
@@ -992,6 +1012,11 @@ test("Coordinator can read ranked preferences, change term and review a removal 
     await advisorPage.getByLabel("Academic term").selectOption(String(term._id));
     await expect(advisorPage.locator(".preference-reading blockquote")).toHaveText(submission.note);
     await expect(advisorPage.getByRole("button", {name:"Save preferences"})).toHaveCount(0);
+    await advisorPage.getByRole("button", {name:"Change student",exact:true}).click();
+    await advisorPage.getByLabel("Find advising student").press("Enter");
+    const assigned = advisorPage.getByRole("table", {name:"Assigned students"});
+    await expect(assigned.getByRole("row").filter({hasText:student.studentId})).toBeVisible();
+    await expect(assigned.getByRole("row").filter({hasText:anotherStudent.studentId})).toHaveCount(0);
   } finally {
     await advisorPage.close();
   }

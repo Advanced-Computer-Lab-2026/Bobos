@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { api, explainApiError } from "../api.js";
 import { minutesToTime, preferenceGroupOptions, preferenceMeetingLabel } from "../preference-groups.js";
 import { termLabel } from "../term-label.js";
-import { RegisterEmpty, RegisterRow, StudentIdentity, StudentRegister } from "./CoordinatorRecords.jsx";
+import { RegisterRow, StudentIdentity, StudentRegister } from "./CoordinatorRecords.jsx";
 import OfferingCourseIcon from "./OfferingCourseIcon.jsx";
 
 const updatedAtFormat = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short", timeZone: "Africa/Cairo" });
@@ -10,17 +10,19 @@ const studentProfileId = (student) => student?._id || student?.id || student?.pr
 const studentName = (student) => student.user?.fullName || student.fullName || "Student";
 const studentEmail = (student) => student.user?.email || student.email;
 const formatWindow = ({ startMinute, endMinute }) => `${minutesToTime(startMinute)}–${minutesToTime(endMinute)}`;
+const teachingDays = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"];
 
 export default function StaffPreferences({ token, profile, profileId, studentTarget, onOpenDraftSchedule }) {
   const [selectedStudent, setSelectedStudent] = useState(studentTarget || (profileId ? { _id: profileId } : null));
   const [search, setSearch] = useState(studentTarget?.studentId || "");
   const [matches, setMatches] = useState([]);
-  const [assignedStudents, setAssignedStudents] = useState(null);
   const [linkedStudentPending, setLinkedStudentPending] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     return !studentTarget && !profileId && Boolean(params.get("student")?.trim() && params.get("term"));
   });
   const [searching, setSearching] = useState(false);
+  const [searched, setSearched] = useState(false);
+  const [animateSearch, setAnimateSearch] = useState(false);
   const [lookupError, setLookupError] = useState("");
   const [terms, setTerms] = useState([]);
   const [termId, setTermId] = useState("");
@@ -32,11 +34,13 @@ export default function StaffPreferences({ token, profile, profileId, studentTar
   const [readError, setReadError] = useState("");
   const bookmark = useRef(new URLSearchParams(window.location.search));
   const studentSearch = useRef(null);
+  const pointerSubmit = useRef(false);
   const termSelect = useRef(null);
   const lookupRequest = useRef(null);
   const preferenceRequest = useRef(null);
   const selectedTerm = terms.find((term) => term._id === termId);
   const selectedId = studentProfileId(selectedStudent);
+  const advisor = profile.role === "advisor";
   const canLoad = Boolean(selectedId && selectedTerm);
   const canOpenDraft = canLoad && ["advisor", "coordinator"].includes(profile.role) &&
     (selectedStudent.studentType === "advising" || Boolean(studentTarget?._id));
@@ -58,20 +62,6 @@ export default function StaffPreferences({ token, profile, profileId, studentTar
     });
     return () => controller.abort();
   }, [termAttempt, token]);
-
-  useEffect(() => {
-    if (profile.role !== "advisor" || selectedId || linkedStudentPending) return;
-    const controller = new AbortController();
-    api("/api/schedules/students", { token, signal: controller.signal }).then(({ students = [] }) => {
-      if (!controller.signal.aborted) {
-        setAssignedStudents(students.filter(student => student.isActive)
-          .sort((a, b) => studentName(a).localeCompare(studentName(b))));
-      }
-    }).catch(() => {
-      if (!controller.signal.aborted) setAssignedStudents([]);
-    });
-    return () => controller.abort();
-  }, [linkedStudentPending, profile.role, selectedId, token]);
 
   useEffect(() => () => {
     lookupRequest.current?.abort();
@@ -111,8 +101,7 @@ export default function StaffPreferences({ token, profile, profileId, studentTar
     }
   }, [token]);
 
-  const findStudent = useCallback(async (query, linked = false) => {
-    if (!query) { setLookupError("Enter a student ID, name, or email to search."); return; }
+  const findStudent = useCallback(async (query, { linked = false, term = "" } = {}) => {
     lookupRequest.current?.abort();
     const controller = new AbortController();
     const { signal } = controller;
@@ -121,9 +110,18 @@ export default function StaffPreferences({ token, profile, profileId, studentTar
     setLookupError("");
     setMatches([]);
     try {
-      const { data = [] } = await api(`/api/advisor/students?search=${encodeURIComponent(query)}&limit=100`, { token, signal });
+      let data;
+      if (!query && advisor) {
+        const params = term ? `?termId=${encodeURIComponent(term)}` : "";
+        const { students = [] } = await api(`/api/schedules/students${params}`, { token, signal });
+        data = students.filter(student => student.isActive).sort((a, b) => studentName(a).localeCompare(studentName(b)));
+      } else {
+        const params = new URLSearchParams({ limit: "100" });
+        if (query) params.set("search", query);
+        ({ data = [] } = await api(`/api/advisor/students?${params}`, { token, signal }));
+      }
       if (signal.aborted) return;
-      const exact = data.find((student) => String(student.studentId).toLowerCase() === query.toLowerCase());
+      const exact = query && data.find((student) => String(student.studentId).toLowerCase() === query.toLowerCase());
       if (exact) {
         setSelectedStudent(exact);
         setSearch(exact.studentId);
@@ -132,6 +130,8 @@ export default function StaffPreferences({ token, profile, profileId, studentTar
         setLookupError("The linked advising student is unavailable.");
       } else if (data.length) {
         setMatches(data);
+      } else if (!query) {
+        setLookupError(advisor ? "No active advising students are assigned to you." : "No advising students are available.");
       } else {
         setLookupError(`No advising student matched “${query}”.`);
       }
@@ -140,7 +140,7 @@ export default function StaffPreferences({ token, profile, profileId, studentTar
     } finally {
       if (!signal.aborted) setSearching(false);
     }
-  }, [token]);
+  }, [advisor, token]);
 
   useEffect(() => {
     if (studentTarget || profileId || termsLoading || termError || !bookmark.current) return;
@@ -157,7 +157,7 @@ export default function StaffPreferences({ token, profile, profileId, studentTar
     }
     setTermId(term._id);
     setSearch(student);
-    findStudent(student, true).finally(() => setLinkedStudentPending(false));
+    findStudent(student, { linked: true }).finally(() => setLinkedStudentPending(false));
   }, [findStudent, profileId, studentTarget, termError, terms, termsLoading]);
 
   useEffect(() => {
@@ -174,57 +174,91 @@ export default function StaffPreferences({ token, profile, profileId, studentTar
 
   function changeStudent() {
     lookupRequest.current?.abort();
+    setSearching(false);
     setMatches([]);
     setSelectedStudent(null);
     setSearch("");
+    setSearched(false);
+    setAnimateSearch(false);
     setLookupError("");
     clearRecord();
     requestAnimationFrame(() => studentSearch.current?.focus());
   }
 
-  function selectMatch(student) {
+  function submitLookup(event) {
+    event.preventDefault();
+    const animate = pointerSubmit.current;
+    pointerSubmit.current = false;
+    if (searching) return;
+    setAnimateSearch(animate);
+    setSearched(true);
+    findStudent(search.trim(), { term: termId });
+  }
+
+  function editLookup(event) {
+    lookupRequest.current?.abort();
+    setSearching(false);
+    setSearch(event.target.value);
+    setMatches([]);
+    setLookupError("");
+  }
+
+  function selectMatch(student, animate) {
     clearRecord();
+    setAnimateSearch(animate);
     setSelectedStudent(student);
     setSearch(student.studentId);
     setMatches([]);
     requestAnimationFrame(() => termSelect.current?.focus());
   }
 
-  const showAssigned = profile.role === "advisor" && !selectedStudent && !linkedStudentPending && !search.trim();
-  const quickStudents = showAssigned ? assignedStudents ?? [] : [];
-  const lookupStudents = matches.length ? matches : quickStudents;
+  const searchStage = !selectedStudent && !linkedStudentPending;
+  const resultsHeading = search.trim() ? "Matching students" : advisor ? "Assigned students" : "Advising students";
+  const resultCount = `${matches.length} ${matches.length === 1 ? "student" : "students"}`;
   const waitingForRecord = !readError && (loading || (canLoad && !record));
   const waitingForSelection = !termError && (linkedStudentPending || (selectedId && termsLoading));
-  return <div className="page-stack schedule-preferences-page staff-preferences">
-    <div className="page-title-row"><div><h1>Student preferences</h1></div></div>
+  const noSubmission = record && (!record.submitted || !record.preferences);
+  const draftAction = canOpenDraft && <button className="outline-button" type="button"
+    onClick={() => onOpenDraftSchedule?.({ ...selectedStudent, fullName: studentName(selectedStudent) }, selectedTerm.code || termId)}>
+    Create or update draft schedule <span aria-hidden="true">→</span>
+  </button>;
+  return <div className="page-stack schedule-preferences-page staff-preferences"
+    data-student-lookup={searchStage ? (searched ? "active" : "entry") : undefined}
+    data-search-motion={animateSearch || undefined}>
+    <div className={searchStage ? "preference-search-masthead" : "page-title-row"}><div>
+      {searchStage && <div className="preference-search-art"><SearchMagnifier /></div>}
+      <h1>Student preferences</h1>
+      {searchStage && <p>Find an advising student to read their saved preferences for the term.</p>}
+    </div></div>
     <section className="preference-context" data-selected={Boolean(selectedStudent) || undefined} aria-label="Student and term">
       <div className="preference-identify">
         {selectedStudent ? <div className="preference-student-selected">
           <StudentIdentity name={studentName(selectedStudent)} id={selectedStudent.studentId} email={studentEmail(selectedStudent)} />
           <button className="outline-button preference-change" type="button" onClick={changeStudent}>Change student</button>
         </div> : linkedStudentPending ? <p className="preference-read-progress" role="status">Opening linked student…</p> : <>
-          <form className="preference-student-lookup" onSubmit={(event) => { event.preventDefault(); findStudent(search.trim()); }}>
-            <label className="field"><span>Find advising student</span><input ref={studentSearch} type="search" autoComplete="off" value={search} onChange={(event) => { setSearch(event.target.value); setMatches([]); setLookupError(""); }} placeholder="Student ID, name, or email" disabled={searching} /></label>
-            <button className="outline-button" type="submit" disabled={searching}>{searching ? "Searching…" : "Find student"}</button>
+          <form className="preference-student-lookup" onSubmit={submitLookup}>
+            <label className="field"><span>Find advising student</span><input ref={studentSearch} type="search" autoComplete="off" value={search} onChange={editLookup} placeholder="Student ID, name, or email" /></label>
+            <button className="primary-button" type="submit" aria-disabled={searching || undefined}
+              onClick={event => { pointerSubmit.current = event.detail > 0; }}>{searching ? "Searching…" : "Find student"}</button>
           </form>
           {lookupError && <p className="feedback error" role="alert">{lookupError}</p>}
         </>}
       </div>
       <div className="preference-term">
-        <label className="field"><span>Academic term</span><select ref={termSelect} value={termId} onChange={changeTerm} disabled={termsLoading || searching || terms.length === 0}>
+        <label className="field"><span>Academic term</span><select ref={termSelect} value={termId} onChange={changeTerm} disabled={termsLoading || terms.length === 0}>
             <option value="">{termsLoading ? "Loading terms…" : terms.length ? "Select a term" : "No terms available"}</option>
             {terms.map((term) => <option key={term._id} value={term._id}>{termLabel(term)}{term.isActive ? " (Active)" : ""}</option>)}
           </select></label>
         {termError && <div className="preference-read-error"><p className="feedback error" role="alert">{termError}</p><button className="outline-button" type="button" onClick={() => setTermAttempt((attempt) => attempt + 1)}>Retry terms</button></div>}
       </div>
     </section>
-    {showAssigned && assignedStudents === null && <p className="preference-read-progress" role="status">Loading assigned students…</p>}
-    {lookupStudents.length > 0 && <section className="preference-lookup-results">
-      <header className="preference-reading-heading"><h2>{showAssigned ? "Assigned students" : "Matching students"}</h2><p>{lookupStudents.length} {lookupStudents.length === 1 ? "student" : "students"}</p></header>
-      <StudentRegister className="preference-student-results" label={showAssigned ? "Assigned students" : "Matching students"} columns={["Student", "Action"]}>
-        {lookupStudents.map((student) => <RegisterRow key={studentProfileId(student)}>
+    {searchStage && <span className="preference-sr" role="status">{searching ? "Searching for advising students…" : matches.length ? `${resultsHeading}. ${resultCount}.` : ""}</span>}
+    {matches.length > 0 && <section className="preference-lookup-results">
+      <header className="preference-reading-heading"><h2>{resultsHeading}</h2><p>{resultCount}</p></header>
+      <StudentRegister className="preference-student-results" label={resultsHeading} columns={["Student", "Action"]}>
+        {matches.map((student) => <RegisterRow key={studentProfileId(student)}>
           <StudentIdentity name={studentName(student)} id={student.studentId} email={studentEmail(student)} />
-          <button className="outline-button" type="button" onClick={() => selectMatch(student)} aria-label={`View preferences for ${studentName(student)}`}>View preferences</button>
+          <button className="outline-button" type="button" onClick={event => selectMatch(student, event.detail > 0)} aria-label={`View preferences for ${studentName(student)}`}>View preferences</button>
         </RegisterRow>)}
       </StudentRegister>
     </section>}
@@ -235,28 +269,57 @@ export default function StaffPreferences({ token, profile, profileId, studentTar
           {canLoad && <button className="outline-button" type="button" onClick={() => load(selectedId, termId)}>Retry</button>}
         </>}
       </div>}
-      {record ? record.submitted && record.preferences ? <PreferenceSubmission preferences={record.preferences} offerings={record.offerings} updatedAt={record.lastUpdatedAt} /> :
-        <RegisterEmpty art="submitted-plan.svg" title="No preferences submitted" description={`${studentName(selectedStudent)} hasn’t shared scheduling preferences for ${termLabel(selectedTerm)}. You can still start a draft.`} /> :
-        !waitingForRecord && !waitingForSelection && !termsLoading && !canLoad && !readError && !lookupError && !termError && !searching && !lookupStudents.length && !(showAssigned && assignedStudents === null) && <RegisterEmpty art="submitted-plan.svg" title={selectedStudent ? "Choose an academic term" : "Find a student to review"} description={selectedStudent ? "Select the term to see this student’s saved preferences." : "Search the advising roster by name, student ID, or email."} />}
-      {canOpenDraft && <footer className="preference-draft-handoff">
-        <button className="outline-button" type="button" onClick={() => onOpenDraftSchedule?.({ ...selectedStudent, fullName: studentName(selectedStudent) }, selectedTerm.code || termId)}>Create or update draft schedule <span aria-hidden="true">→</span></button>
-      </footer>}
+      {record ? noSubmission ? <PreferenceEmpty title="No preferences submitted">
+        <p>{draftAction ? `You can still plan ${studentName(selectedStudent)}’s schedule for ${termLabel(selectedTerm)}.` :
+          `${studentName(selectedStudent)} hasn’t shared preferences for ${termLabel(selectedTerm)}.`}</p>
+        {draftAction && <div className="preference-empty-action">{draftAction}</div>}
+      </PreferenceEmpty> : <PreferenceSubmission preferences={record.preferences} offerings={record.offerings} updatedAt={record.lastUpdatedAt} weekMap /> :
+        selectedStudent && !waitingForRecord && !waitingForSelection && !termsLoading && !canLoad && !readError && !termError &&
+        <PreferenceEmpty title="Choose an academic term">
+          <p>Select a term to check whether this student submitted preferences.</p>
+        </PreferenceEmpty>}
+      {draftAction && !noSubmission && <footer className="preference-draft-handoff">{draftAction}</footer>}
     </section>
   </div>;
 }
 
-export function PreferenceSubmission({ preferences, offerings, updatedAt, title = "Scheduling priorities", draft = false }) {
+function SearchMagnifier() {
+  return <svg viewBox="0 0 132 104" width="132" height="104" fill="none" stroke="#554b3d" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M13 89q43 8 107 0" stroke="#9a907f" strokeWidth="1.2" />
+    <path d="m20 38 45-11 17 14 5 36-57 9Z" fill="#a8bbb0" />
+    <path d="m17 31 44-10 18 14 6 37-57 10Z" fill="#efe3c7" />
+    <path d="m61 21 3 17 15-3Z" fill="#d1bfa0" />
+    <path d="m27 49 31-7m-29 16 24-5m-21 15 27-6" stroke="#87775f" />
+    <g className="preference-search-lens">
+      <path d="m90 58 10 11 6-5-11-12Z" fill="#c5a77e" />
+      <path d="M101 64q3-3 7 0l14 16q4 5-1 8-4 3-8-2l-15-15q-2-3 3-7Z" fill="#ba8466" />
+      <path d="m105 71 12 13" stroke="#f0c4a1" />
+      <path d="M100 38c1 14-10 24-23 24S53 52 53 38s10-24 23-24c14-1 24 10 24 24Z" fill="#d4b078" />
+      <path d="M94 38c0 10-7 18-17 18s-18-8-18-18 8-18 18-18 17 8 17 18Z" fill="#a9c4cd" />
+      <path d="M64 36q2-8 10-11m-11 15v2" stroke="#f5ebd3" strokeWidth="2.6" />
+    </g>
+  </svg>;
+}
+
+function PreferenceEmpty({ title, children }) {
+  return <div className="preference-empty">
+    <img src="/portal-studio/images/submitted-plan.svg" width="88" height="68" alt="" />
+    <div className="preference-empty-copy"><h2>{title}</h2>{children}</div>
+  </div>;
+}
+
+export function PreferenceSubmission({ preferences, offerings, updatedAt, title = "Scheduling priorities", draft = false, weekMap = false }) {
   const { preferredDays, avoidedDays, desiredDaysOff, preferredTimes, avoidedTimes, preferredGroups, note } = preferences;
   return <div className="preference-submission">
     <header className="preference-reading-heading"><h2>{title}</h2></header>
-    <table className="preference-priorities" aria-label="Scheduling priorities">
+    {weekMap ? <PreferenceWeek preferences={preferences} /> : <table className="preference-priorities" aria-label="Scheduling priorities">
       <thead><tr><th scope="col">Preference</th><th scope="col">Weekdays</th><th scope="col">Teaching times</th></tr></thead>
       <tbody>
         <PriorityRow title="Preferred" kind="good" dayLabel="Preferred days" days={preferredDays} timeLabel="Preferred times" times={preferredTimes} />
         <PriorityRow title="To avoid" kind="danger" dayLabel="Days to avoid" days={avoidedDays} timeLabel="Times to avoid" times={avoidedTimes} />
         <PriorityRow title="Days off" dayLabel="Desired days off" days={desiredDaysOff} />
       </tbody>
-    </table>
+    </table>}
     <section className="preference-note-detail" data-has-note={Boolean(note) || undefined}>
       <h3>{note && <img src="/portal-studio/images/submitted-plan.svg" alt="" width="40" height="31" />}Student note</h3>
       {note ? <blockquote className="preference-note-text">{note}</blockquote> : <p className="preference-missing">No note submitted.</p>}
@@ -289,6 +352,60 @@ export function PreferenceSubmission({ preferences, offerings, updatedAt, title 
     </section>
     {updatedAt && <p className="preference-submitted-at">Last updated <time dateTime={updatedAt}>{updatedAtFormat.format(new Date(updatedAt))} Cairo</time></p>}
   </div>;
+}
+
+function PreferenceWeek({ preferences }) {
+  const detailsId = useId();
+  const [pickedDay, setPickedDay] = useState("");
+  const dayPreferences = [
+    { label: "Preferred", kind: "good", items: preferences.preferredDays || [] },
+    { label: "To avoid", kind: "danger", items: preferences.avoidedDays || [] },
+    { label: "Day off", kind: "off", items: preferences.desiredDaysOff || [] },
+  ];
+  const extraDays = new Set(dayPreferences.flatMap(({ items }) => items.map(({ day }) => day)).filter(day => !teachingDays.includes(day)));
+  const days = [...teachingDays, ...extraDays];
+  const requests = Object.fromEntries(days.map(day => [day, dayPreferences.flatMap(({ label, kind, items }) => items.flatMap((item, index) =>
+    item.day === day ? [{ label, kind, priority: item.priority ?? index + 1 }] : []))]));
+  const activeDay = days.includes(pickedDay) ? pickedDay : days.find(day => requests[day].length) || days[0];
+  return <div className="preference-week-layout">
+    <section className="preference-week-shape" aria-label="The shape of the week">
+      <h3>The shape of the week</h3>
+      <ul className="preference-week-days" data-seventh-day={days.length > 6 || undefined} role="list" aria-label="Teaching week">
+        {days.map(day => <li key={day}>
+          <button className="preference-week-day" type="button" aria-pressed={day === activeDay} aria-controls={detailsId} onClick={() => setPickedDay(day)}>
+            <strong>{day}</strong>
+            {requests[day].length ? requests[day].map(({ label, kind, priority }, index) => <span className="preference-week-intent" key={`${kind}-${index}`}>
+              <PreferenceIntent kind={kind} label={label} />
+              <span className="preference-week-rank">Priority #{priority}</span>
+            </span>) : <span className="preference-week-intent is-neutral"><span className="preference-week-neutral" aria-hidden="true">–</span><span>No preference</span></span>}
+          </button>
+        </li>)}
+      </ul>
+      <div id={detailsId} className="preference-day-reading" aria-live="polite">
+        <h4>{activeDay}</h4>
+        {requests[activeDay].length ? requests[activeDay].map(({ label, kind, priority }, index) => <span className="preference-day-reading-request" key={`${kind}-${index}`}>
+          <PreferenceIntent kind={kind} label={label} /><small>Priority #{priority}</small>
+        </span>) : <p className="preference-missing">No day preference submitted.</p>}
+      </div>
+    </section>
+    <section className="preference-week-times" aria-label="Teaching times">
+      <h3>Teaching times</h3>
+      <div className="preference-time-strips">
+        {[
+          { label: "Prefer", kind: "good", listLabel: "Preferred times", items: preferences.preferredTimes || [] },
+          { label: "To avoid", kind: "danger", listLabel: "Times to avoid", items: preferences.avoidedTimes || [] },
+        ].map(({ label, kind, listLabel, items }) => <div className="preference-time-strip" key={kind}>
+          <h4><PreferenceIntent kind={kind} label={label} /></h4>
+          <RankedChoices label={listLabel} items={items} format={formatWindow} />
+        </div>)}
+      </div>
+    </section>
+  </div>;
+}
+
+function PreferenceIntent({ kind, label }) {
+  return kind === "off" ? <span className="preference-off-label"><DayOffCup />{label}</span>
+    : <span className={`status-pill ${kind}`}>{label}</span>;
 }
 
 // The day-off cup follows the free day in Portal’s teaching week.

@@ -428,7 +428,7 @@ export default function MandatoryRemovalDashboard({ token, role, advisorId, noti
         <dialog ref={decisionDialogRef} className="academic-dialog modal-backdrop removal-decision-dialog" aria-labelledby="removal-decision-title"
           onCancel={(event) => { event.preventDefault(); closeReview(); }}
           onClick={(event) => { if (event.target === decisionDialogRef.current) closeReview(); }}>
-          <section className="modal-card">
+          <section className="modal-card wide-modal">
             <div className="modal-heading">
               <div className="removal-decision-title-row">
                 <h2 id="removal-decision-title">Decide course removal</h2>
@@ -437,30 +437,33 @@ export default function MandatoryRemovalDashboard({ token, role, advisorId, noti
               <button className="icon-button" type="button" aria-label="Close" disabled={submittingDecision} onClick={closeReview}>×</button>
             </div>
 
-            <form className="form-stack" aria-busy={submittingDecision} onSubmit={handleDecide}>
-              <dl className="removal-decision-identities">
-                <div>
-                  <dt>Course</dt>
-                  <dd className="removal-detail-course">
-                    <OfferingCourseIcon code={reviewingRequest.course?.code} />
-                    <div>
-                      <strong>{reviewingRequest.course?.name || reviewingRequest.course?.code || "Unknown course"}</strong>
-                      {reviewingRequest.course?.name && <small>{reviewingRequest.course?.code}</small>}
-                    </div>
-                  </dd>
+            <div className="removal-decision-split">
+              <section className="removal-decision-evidence" aria-labelledby="removal-evidence-title">
+                <h3 id="removal-evidence-title">Request evidence</h3>
+                <dl className="removal-decision-identities">
+                  <div>
+                    <dt>Student</dt>
+                    <dd><RemovalStudent request={reviewingRequest} /></dd>
+                  </div>
+                  <div>
+                    <dt>Course</dt>
+                    <dd className="removal-detail-course">
+                      <OfferingCourseIcon code={reviewingRequest.course?.code} />
+                      <div>
+                        <strong>{reviewingRequest.course?.name || reviewingRequest.course?.code || "Unknown course"}</strong>
+                        {reviewingRequest.course?.name && <small>{reviewingRequest.course?.code}</small>}
+                      </div>
+                    </dd>
+                  </div>
+                </dl>
+                <div className="removal-rationale">
+                  <RemovalReason request={reviewingRequest} />
+                  <RemovalExplanation request={reviewingRequest} quoted />
                 </div>
-                <div>
-                  <dt>Student</dt>
-                  <dd><RemovalStudent request={reviewingRequest} /></dd>
-                </div>
-              </dl>
+              </section>
 
-              <div className="removal-rationale">
-                <RemovalReason request={reviewingRequest} />
-                <RemovalExplanation request={reviewingRequest} quoted />
-              </div>
-
-              <div className="removal-decision-entry">
+              <form className="form-stack removal-decision-form" aria-labelledby="removal-response-title" aria-busy={submittingDecision} onSubmit={handleDecide}>
+                <h3 id="removal-response-title">Your decision</h3>
                 <fieldset className="removal-decision-options" aria-label="Decision" disabled={submittingDecision}>
                   {REMOVAL_DECISIONS.map(({ value, choice }) => <label key={value}>
                     <input type="radio" name="removal-decision" value={value} checked={decision === value} onChange={() => setDecision(value)} required />
@@ -489,17 +492,17 @@ export default function MandatoryRemovalDashboard({ token, role, advisorId, noti
                     {responseNote.length} / 1000 characters
                   </small>
                 </div>
-              </div>
 
-              {decisionError && <div className="feedback error" role="alert">{decisionError}</div>}
+                {decisionError && <div className="feedback error" role="alert">{decisionError}</div>}
 
-              <div className="form-footer">
-                <button type="button" className="outline-button" disabled={submittingDecision} onClick={closeReview}>Cancel</button>
-                <button type="submit" className={`primary-button${decision === "rejected" ? " destructive-action" : ""}`} disabled={submittingDecision || !decision || !responseNote.trim()}>
-                  {submittingDecision ? "Saving…" : decisionLabel || "Save decision"}
-                </button>
-              </div>
-            </form>
+                <div className="form-footer">
+                  <button type="button" className="outline-button" disabled={submittingDecision} onClick={closeReview}>Cancel</button>
+                  <button type="submit" className={`primary-button${decision === "rejected" ? " destructive-action" : ""}`} disabled={submittingDecision || !decision || !responseNote.trim()}>
+                    {submittingDecision ? "Saving…" : decisionLabel || "Save decision"}
+                  </button>
+                </div>
+              </form>
+            </div>
           </section>
         </dialog>
       )}

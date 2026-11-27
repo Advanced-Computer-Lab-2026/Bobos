@@ -111,7 +111,7 @@ export function StudentRecordsPage({ token, profile, profileId: targetProfileId,
       </div>}
       {(error || (tab === "transcript" && yearsError)) && <div className="feedback error" role="alert">{error || yearsError}</div>}
       {loading || (tab === "transcript" && yearsLoading) ? <Loading /> : data ? <RecordData data={data} tab={tab} /> : tab === "transcript" && !error && !yearsError &&
-        <RecordsEmpty title="No transcript yet" description="Yearly transcripts appear after an academic year has course attempts." spacious />}
+        <RecordsEmpty title="No transcript yet" description="Yearly transcripts appear after an academic year has course attempts." art="academic-records/blank-transcript.svg" spacious />}
     </section>
   </div>;
 }
@@ -325,7 +325,7 @@ function RecordData({ data, tab }) {
     return records.length ? <CourseRecordGroup title="Failed or unattended courses" previewLength={records.length} items={records.map(item => ({
       id: item._id, course: item.course,
       details: { Term: termLabel(item.term), Attempt: item.attemptNumber, Attendance: humanize(item.attendance), Result: humanize(item.result), Grade: item.grade },
-    }))} /> : <RecordsEmpty title="No failed or unattended courses" description="Courses appear here when a failed or unattended attempt is recorded." art="course-removal-slip.svg" spacious />;
+    }))} /> : <RecordsEmpty title="No failed or unattended courses" description="Courses appear here when a failed or unattended attempt is recorded." art="academic-records/clear-attempts.svg" spacious />;
   }
   if (tab === "transcript") {
     const terms = Object.entries(data.terms || {}).filter(([, rows]) => rows?.length);
@@ -335,7 +335,7 @@ function RecordData({ data, tab }) {
         id: row._id || index, course: row.course,
         details: { Grade: row.grade, Result: humanize(row.result), Attendance: humanize(row.attendance) },
       }))} />)}
-    </div> : <RecordsEmpty title="No course attempts for this year" description="Select another academic year to view its transcript." spacious />;
+    </div> : <RecordsEmpty title="No course attempts for this year" description="Select another academic year to view its transcript." art="academic-records/blank-transcript.svg" spacious />;
   }
   return <AcademicHistory data={data} />;
 }
@@ -344,13 +344,15 @@ function AcademicHistory({ data }) {
   const summary = data.studentProfile || {};
   const groups = [
     {
-      title: "Current courses", empty: "Courses appear here once they’re recorded as in progress.",
+      title: "Current courses", empty: "Courses in progress will appear here.",
+      emptyArt: "academic-records/current-courses.svg",
       items: (data.currentCourses || []).map((item) => ({
         id: item._id, course: item.course, details: { Term: termLabel(item.term) },
       })),
     },
     {
-      title: "Completed courses", empty: "No passing grades have been recorded yet.",
+      title: "Completed courses", empty: "Passed courses will appear here.",
+      emptyArt: "academic-records/completed-courses.svg",
       items: (data.completedCourses || []).map((item) => ({
         id: item._id, course: item.course, details: { Term: termLabel(item.term), Grade: item.grade },
       })),
@@ -384,12 +386,12 @@ function AcademicHistory({ data }) {
 
 function RecordsEmpty({ title, description, art = "academic-transcript.svg", spacious = false }) {
   return <div className={spacious ? "records-blank records-blank-tab" : "records-blank"}>
-    <img src={`/portal-studio/images/${art}`} alt="" width={spacious ? 148 : 44} height={spacious ? 124 : 44} />
+    <img src={`/portal-studio/images/${art}`} alt="" width={spacious ? 148 : 52} height={spacious ? 124 : 46} />
     <div><strong>{title}</strong>{description && <p>{description}</p>}</div>
   </div>;
 }
 
-function CourseRecordGroup({ title, items, empty, previewLength = 4 }) {
+function CourseRecordGroup({ title, items, empty, emptyArt, previewLength = 4 }) {
   const id = useId();
   const [expanded, setExpanded] = useState(false);
   const visibleItems = expanded ? items : items.slice(0, previewLength);
@@ -398,7 +400,7 @@ function CourseRecordGroup({ title, items, empty, previewLength = 4 }) {
       <div><h3 id={id}>{title}</h3><span>{items.length}</span></div>
       {items.length > previewLength && <button type="button" className="outline-button" aria-controls={`${id}-list`} aria-expanded={expanded} aria-label={`${expanded ? "Show fewer" : `Show all ${items.length}`} ${title.toLowerCase()}`} onClick={() => setExpanded(!expanded)}>{expanded ? "Show fewer" : `Show all ${items.length}`}</button>}
     </header>
-    {items.length === 0 ? <RecordsEmpty title={`No ${title.toLowerCase()}`} description={empty} /> :
+    {items.length === 0 ? <RecordsEmpty title={`No ${title.toLowerCase()}`} description={empty} art={emptyArt} /> :
       <ul className="records-courses" id={`${id}-list`} aria-labelledby={id} role="list">{visibleItems.map(({ id: key, course, details }) =>
         <li key={key}>
           <div className="records-course-identity">

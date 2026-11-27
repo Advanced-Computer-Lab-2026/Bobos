@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { api, explainApiError } from "../api.js";
 import { StudentIdentity } from "./CoordinatorRecords.jsx";
 import OfferingCourseIcon from "./OfferingCourseIcon.jsx";
-import { GraduationEmpty } from "./WorkspaceUI.jsx";
 import PaperTossButton, { waitForPaperToss } from "./PaperTossButton.jsx";
 
 function assignmentsFor(plan) {
@@ -128,11 +127,15 @@ export default function GraduationPlans({ student, token, onBack, backLabel }) {
 
   const courses = workspace?.courses ?? [];
   const terms = workspace?.terms ?? [];
-  const currentExamCourse = courses.find((course) => course._id === workspace?.examEligibility.courseId);
-  const failedCourses = courses.filter((course) => course.failed).length;
-  const examExplanation = workspace?.examEligibility.message && !workspace.examEligibility.courseId
-    ? `${failedCourses ? `This student has ${failedCourses} remaining failed courses.` : "This student has no remaining failed courses."} ${workspace.examEligibility.message}`
-    : workspace?.examEligibility.message;
+  const examEligibility = workspace?.examEligibility;
+  const currentExamCourse = courses.find((course) => course._id === examEligibility?.courseId);
+  let examExplanation = examEligibility?.message;
+  if (examExplanation && !examEligibility.courseId) {
+    const failedCourses = courses.filter((course) => course.failed).length;
+    examExplanation = failedCourses
+      ? `This student has ${failedCourses} failed courses left. ${examExplanation}`
+      : "This student has no remaining failed courses.";
+  }
   const courseNames = new Map([...Object.entries(workspace?.savedCourseCodes ?? {}), ...courses.map((course) => [course._id, course.code])]);
   const termNames = new Map([...Object.entries(workspace?.savedTermCodes ?? {}), ...terms.map((term) => [term._id, term.code])]);
   const remainingIds = new Set(courses.map((course) => course._id));
@@ -140,30 +143,40 @@ export default function GraduationPlans({ student, token, onBack, backLabel }) {
   const examCourseId = workspace?.exams.find((exam) => exam._id === examId)?.course;
   const examAlreadyRequested = workspace?.exams.some((exam) =>
     exam.course === currentExamCourse?._id && ["pending", "approved"].includes(exam.status));
+  const canRequestExam = currentExamCourse && !examEligibility.message && !examAlreadyRequested;
   const readOnly = Boolean(plan && plan.status !== "draft");
 
   const visibleCourses = courses.filter((course) => `${course.code} ${course.name}`.toLowerCase().includes(courseSearch.trim().toLowerCase()));
   return <div className="page-stack workspace-page graduation-planner-page">
-    <header className="workspace-header">
-      <div><h1>Graduation plans</h1></div>
-      <button className="outline-button" type="button" onClick={onBack}>{backLabel}</button>
+    <header className="workspace-header planner-header">
+      <div className="planner-heading">
+        <h1>Graduation plans</h1>
+        <button className="outline-button" type="button" onClick={onBack}>{backLabel}</button>
+      </div>
+      <div className="planner-student-card">
+        <div className="planner-student-card-label">
+          <img src="/portal-studio/portal-card-index.svg" width="18" height="18" alt="" />
+          <span>Student ID</span>
+        </div>
+        <StudentIdentity name={student.user?.fullName || student.fullName} id={student.studentId} />
+      </div>
     </header>
-    <div className="planner-student-context" aria-label="Student">
-      <StudentIdentity name={student.user?.fullName || student.fullName} id={student.studentId} />
-    </div>
     {notice && <div className="feedback success" role="status">{notice}</div>}
     {error && <div className="feedback error" role="alert">{error}
       {issues.length > 0 && <ul>{issues.map((issue, index) => <li key={index}>{issue}</li>)}</ul>}
     </div>}
     {!workspace && !error && <div className="loading-state" role="status">Loading graduation plans…</div>}
     {workspace && <div className="planner-sections">
-      {!editing && <section className="planner-plan-list" data-empty={workspace.plans.length === 0 || undefined} aria-labelledby="planner-plans-title">
+      {!editing && <section className="planner-plan-list" data-empty={workspace.plans.length === 0 || undefined} aria-label="Plans for this student">
         {workspace.plans.length === 0 ? <>
-          <h2 id="planner-plans-title">Your plans</h2>
-          <GraduationEmpty title="No graduation plans yet" description="Start a private draft to arrange the student’s remaining courses by term." />
+          <img src="/portal-studio/images/graduation-plan-sheet.svg" width="244" height="160" alt="" />
+          <div>
+            <h2>No graduation plans yet</h2>
+            <p>Assign each remaining course to a term.</p>
+          </div>
           <button className="primary-button" type="button" onClick={() => openPlan(null)} disabled={busy}>New plan</button>
         </> : <div className="results-heading">
-          <h2 id="planner-plans-title">Your plans</h2>
+          <h2>Saved plans</h2>
           <button className="primary-button" type="button" onClick={() => openPlan(null)} disabled={busy}>New plan</button>
         </div>}
         {workspace.plans.length > 0 && <div className="table-scroll"><table>
@@ -265,12 +278,14 @@ export default function GraduationPlans({ student, token, onBack, backLabel }) {
           </div>}
         </>}
       </section>}
-      <section className="planner-exams">
-        <h2>Exit-exam requests</h2>
-        {!workspace.exams.length && <div className="planner-exam-empty">
-          <h3>No exit exam requested</h3>
-          {examExplanation && <p>{examExplanation}</p>}
-        </div>}
+      <section className="planner-exams" aria-labelledby="planner-exams-title">
+        {!workspace.exams.length && !canRequestExam ? <div className="planner-exam-empty">
+          <img src="/portal-studio/images/exit-exam-form.svg" width="158" height="116" alt="" />
+          <div>
+            <h2 id="planner-exams-title">No exit exam requests yet</h2>
+            {examExplanation && <p>{examExplanation}</p>}
+          </div>
+        </div> : <h2 id="planner-exams-title">Exit exam requests</h2>}
         {workspace.exams.map((exam) => <div className="planner-exam-record" key={exam._id}>
           <div className="graduation-exam-course"><OfferingCourseIcon code={courseNames.get(exam.course)} />
             <strong>{courseNames.get(exam.course) || "Exit exam"}</strong>
@@ -279,7 +294,7 @@ export default function GraduationPlans({ student, token, onBack, backLabel }) {
           {exam.responseNote && <p><strong>Coordinator response</strong> {exam.responseNote}</p>}
         </div>)}
         {workspace.exams.length > 0 && examExplanation && <p className="exam-eligibility">{examExplanation}</p>}
-        {currentExamCourse && !workspace.examEligibility.message && !examAlreadyRequested &&
+        {canRequestExam &&
           <form className="form-stack" onSubmit={requestExam}>
             <div className="graduation-exam-course"><OfferingCourseIcon code={currentExamCourse.code} /><div><strong>Eligible for an exit exam</strong><p>{currentExamCourse.code} · {currentExamCourse.name}</p></div></div>
             <label className="field"><span>Why can’t this course be repeated before graduation?</span>
