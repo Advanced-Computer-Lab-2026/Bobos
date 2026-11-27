@@ -1016,20 +1016,21 @@ function mountLiveCalendar(panel) {
     if (data.connected) {
       status.textContent = 'Connected as ' + data.providerAccountId + '. ' +
         (data.lastSyncError || (data.lastSyncedAt ? 'Last synced ' + new Date(data.lastSyncedAt).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Africa/Cairo' }) + ' (Cairo time).' : 'Waiting for the first sync.'));
-      control('Sync now', async () => {
-        const result = await request('sync', 'POST');
-        await refresh();
-        status.textContent = result.synced ? `Sync complete. ${result.synced} recurring class ${result.synced === 1 ? 'event is' : 'events are'} up to date. ${status.textContent}` : 'Sync complete. Your Google Calendar is up to date. ' + status.textContent;
-      }, { primary: true, pending: 'Syncing classes…' });
       if (data.lastSyncedAt) {
         const openCalendar = document.createElement('a');
-        openCalendar.className = 'btn row-control';
+        openCalendar.className = 'btn primary calendar-sync-primary';
         openCalendar.textContent = 'Open Google Calendar ↗';
         openCalendar.href = 'https://calendar.google.com/calendar/r' + (data.providerAccountId ? '?authuser=' + encodeURIComponent(data.providerAccountId) : '');
         openCalendar.target = '_blank';
         openCalendar.rel = 'noopener noreferrer';
         openCalendar.setAttribute('aria-label', 'Open Google Calendar in a new tab');
         controls.append(openCalendar);
+      } else {
+        control('Sync now', async () => {
+          const result = await request('sync', 'POST');
+          await refresh();
+          status.textContent = result.synced ? `Sync complete. ${result.synced} recurring class ${result.synced === 1 ? 'event is' : 'events are'} up to date. ${status.textContent}` : 'Sync complete. Your Google Calendar is up to date. ' + status.textContent;
+        }, { primary: true, pending: 'Syncing classes…' });
       }
       control('Change Google account', async () => location.assign((await request(connectPath)).authorizationUrl), { pending: 'Opening Google…' });
       control('Disconnect', async () => { await request('connection', 'DELETE'); await refresh(); }, { pending: 'Disconnecting…' });
@@ -1079,8 +1080,8 @@ function calendarSync() {
   if (!student()) return head('Calendar sync') + '<p>Sign in with a student account to access Calendar sync.</p>';
   return `<section class="calendar-sync-account" data-live-calendar aria-label="Google Calendar sync">
     <div class="calendar-sync-entry">
+      <img class="calendar-sync-logo" src="images/google-calendar.png" width="500" height="500" alt="Google Calendar">
       <div class="calendar-sync-art">
-        <img class="calendar-sync-logo" src="images/google-calendar.png" width="500" height="500" alt="Google Calendar">
         <h1>Calendar sync</h1>
         <p>Add your classes to Google Calendar as weekly events.</p>
       </div>

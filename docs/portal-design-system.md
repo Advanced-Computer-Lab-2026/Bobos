@@ -110,7 +110,7 @@ Calendar sync renders directly within Portal Studio and reads the authenticated 
 
 In local development, OAuth returns to the loopback origin that started the connection, preserving the browser's Portal session. The Google callback URI stays configured separately. Production returns to the configured Portal origin.
 
-Before connection, place the [Google Calendar logo](https://commons.wikimedia.org/wiki/File:Google_Calendar_icon_(2020).svg) and one Sync with Google Calendar button beside a compact example week with sample class events and Cairo time. Stack the preview below the button on narrow screens. After connection, show the live account state, the latest sync in Cairo time, and the account controls.
+Before connection, place the [Google Calendar logo](https://commons.wikimedia.org/wiki/File:Google_Calendar_icon_(2020).svg) and one Sync with Google Calendar button beside an example week with sample class events and Cairo time. Stack the preview below the button on narrow screens. After connection, keep the logo alongside the account heading and show the latest sync in Cairo time. Once a sync succeeds, Open Google Calendar replaces Sync now as the main action.
 ## Theme control
 Portal Studio carries the academic workspace sun/moon control in its header and sign-in page. The circular reveal expands from the switch center over 400ms using the existing theme-reveal animation. The shared portal.theme preference persists between both interfaces and page reloads. Reduced motion changes the theme immediately.
 Calendar authorization always requests Google account selection and consent. Connected students can choose Change Google account. Google Cloud remains in Testing mode and accepts approved test users.
