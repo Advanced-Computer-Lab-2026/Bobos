@@ -97,57 +97,6 @@ export default function AdvisingPage({ token, role, notify, onOpenPreferences, g
   </div>;
 }
 
-export function MyAdvisorPage({ token }) {
-  const [advisor, setAdvisor] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    api("/api/advisor/my-advisor", { token })
-      .then(setAdvisor)
-      .catch((requestError) => {
-        if (requestError?.status === 404) {
-          setAdvisor(null);
-          return;
-        }
-        setError(explainApiError(requestError, "Assigned advisor"));
-      })
-      .finally(() => setLoading(false));
-  }, [token]);
-
-  return (
-    <div className="page-stack">
-      <div className="page-title-row">
-        <div>
-          <p className="eyebrow">STUDENT SERVICES</p>
-          <h1>My advisor</h1>
-          <p className="page-description">Contact details for your currently assigned advisor.</p>
-        </div>
-      </div>
-      {error && <div className="feedback error" role="alert">{error}</div>}
-      {loading ? (
-        <div className="panel loading-state"><span className="loader" />Loading advisor…</div>
-      ) : advisor ? (
-        <section className="panel advisor-card">
-          <span className="avatar avatar-xl">{advisor.fullName?.slice(0, 1) || "A"}</span>
-          <div>
-            <p className="eyebrow">YOUR ADVISOR</p>
-            <h2>{advisor.fullName}</h2>
-            <a href={`mailto:${advisor.email}`}>{advisor.email}</a>
-          </div>
-          <a className="primary-button" href={`mailto:${advisor.email}`}>Send email <span>↗</span></a>
-        </section>
-      ) : (
-        <div className="panel empty-state">
-          <span>♧</span>
-          <h3>Not Assigned</h3>
-          <p>No advisor currently assigned. Your assigned advisor will appear here once an advisor is assigned to you.</p>
-        </div>
-      )}
-    </div>
-  );
-}
-
 function AssignModal({ token, student, advisors, onClose, onSaved }) {
   const isReassign = Boolean(student.assignedAdvisor?._id);
   const [advisorId, setAdvisorId] = useState(student.assignedAdvisor?._id || "");

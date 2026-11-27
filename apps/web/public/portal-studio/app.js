@@ -1,7 +1,10 @@
 'use strict';
 // Portal Studio with authenticated calendar and student service integrations.
+const workspaceSessionKey = 'bobos.token';
 function normalizePortalLocation() {
   const url = new URL(location.href);
+  const accountRole = localStorage.getItem(workspaceSessionKey) && localStorage.getItem('portal-account-role');
+  if (accountRole) url.searchParams.set('role', accountRole);
   BobosPortalRoutes.normalize(url.searchParams);
   if (url.href !== location.href) history.replaceState(history.state, '', url);
   return url.searchParams;
@@ -9,15 +12,13 @@ function normalizePortalLocation() {
 const params = normalizePortalLocation();
 const pages = {
   'academic-services':'Academic services', 'graduation-plans':'Graduation plans', 'my-submitted-plans':'My submitted plans', overview:'Overview', notifications:'Notifications', profile:'My profile',
-  directory:'Student directory', 'extra-hours':'Extra-hours requests', 'student-detail':'Student details', advising:'Advising students',
+  directory:'Student directory', 'extra-hours':'Extra-hours requests', advising:'Advising students',
   'pending-work':'Pending work', 'schedule-activity':'Schedule activity', 'slot-changes':'Slot change requests',
   'financial-records':'Financial records', 'mandatory-removals':'Course removals',
   'student-schedules':'Student schedules', 'draft-schedule':'Advising draft',
   courses:'Course catalogue', 'course-detail':'Course details', terms:'Academic terms',
   offerings:'Course offerings', 'copy-offerings':'Copy offerings', templates:'Schedule templates',
-  'template-detail':'Template editor', 'group-assignments':'Group assignments',
-  'manage-courses':'Manage course catalogue', 'manage-terms':'Manage academic terms', 'manage-templates':'Manage schedule templates',
-  'official-records':'Official student records', 'advisor-assignment':'Current advisor assignment', 'account-inbox':'University inbox', 'account-details':'University account details',
+  'group-assignments':'Group assignments',
   'my-schedule':'My schedule', 'my-courses':'Registered courses',
   'schedule-swap':'Eligible swap groups', preferences:'Schedule preferences',
   records:'Academic records', 'my-advisor':'My advisor', 'calendar-sync':'Calendar sync',
@@ -26,45 +27,63 @@ const pages = {
 const roleNames = {coordinator:'Coordinator', administrator:'Administrator', advisor:'Advisor', advisingStudent:'Advising student', normalStudent:'Normal student'};
 const authPages = new Set(['login','forgot','reset']);
 const previewSessionKey = 'portal-studio-preview-session';
-const workspaceSessionKey = 'bobos.token';
 const workspaceAccountNameKey = 'portal-account-name';
 let liveStudent = { token: null, loading: false, error: '', data: null };
 let liveProfile;
 let liveInbox;
+let liveAdvisor;
 const previewEmail = 'demo@portal.test';
-const signedIn = () => localStorage.getItem(previewSessionKey) === '1';
+const signedIn = () => Boolean(localStorage.getItem(workspaceSessionKey));
 const pageKey = key => Object.hasOwn(pages,key) ? key : 'overview';
-const returnPage = key => authPages.has(key) ? 'overview' : pageKey(key);
+const returnPage = key => {
+  const query = new URLSearchParams({page:key || 'overview'});
+  BobosPortalRoutes.normalize(query);
+  const target = query.get('page');
+  return authPages.has(target) ? 'overview' : pageKey(target);
+};
 let returnAfterSignIn = returnPage(params.get('next'));
 
 let role = Object.hasOwn(roleNames,params.get('role')) ? params.get('role') : 'coordinator';
 let page = pageKey(params.get('page'));
 let tab = '';
-let testCount = 0;
-const readNotifications = new Set();
-const notificationKey = id => `${role}:${id}`;
 const isNotificationUnread = id => {
   const token = localStorage.getItem(workspaceSessionKey);
-  return token
-    ? liveInbox?.token === token && liveInbox.data?.some(item => item._id === id && !item.isRead)
-    : !readNotifications.has(notificationKey(id));
+  return liveInbox?.token === token && liveInbox.data?.some(item => item._id === id && !item.isRead);
 };
 
 async function accountRequest(path, token, method = 'GET') {
   const response = await fetch('../api/' + path, {method, headers:{Authorization:'Bearer ' + token}});
   const data = await response.json();
-  if (!response.ok) throw new Error(data.message || 'Could not load your account data.');
+  if (!response.ok) throw Object.assign(new Error(data.message || 'Could not load your account data.'), {status: response.status});
   return data;
 }
 
 function loadAccountData(refresh) {
   const token = localStorage.getItem(workspaceSessionKey);
-  if (!token || authPages.has(page)) { liveProfile = liveInbox = undefined; return; }
+  if (!token || authPages.has(page)) { liveProfile = liveInbox = liveAdvisor = termDirectory = undefined; return; }
+  if (page === 'overview' && termDirectory?.token !== token) {
+    const state = termDirectory = {token};
+    accountRequest('academic-terms', token).then(data => {
+      if (termDirectory !== state) return;
+      state.data = data;
+      if (page === 'overview') render();
+    }).catch(() => {});
+  }
   if (page === 'profile' && (refresh || liveProfile?.token !== token)) {
     const state = liveProfile = {token};
     accountRequest('profile', token).then(data => { state.data = data.profile; })
       .catch(error => { state.error = error.message; }).finally(() => {
         if (liveProfile === state && page === 'profile') render();
+      });
+  }
+  if (page === 'my-advisor' && role === 'advisingStudent' && (refresh || liveAdvisor?.token !== token)) {
+    const state = liveAdvisor = {token};
+    accountRequest('advisor/my-advisor', token).then(data => { state.data = data; })
+      .catch(error => {
+        if (error.status === 404 && error.message === 'No advisor currently assigned') state.data = null;
+        else state.error = true;
+      }).finally(() => {
+        if (liveAdvisor === state && page === 'my-advisor' && localStorage.getItem(workspaceSessionKey) === token) render();
       });
   }
   if (liveInbox?.token !== token || (refresh && page === 'notifications')) {
@@ -76,45 +95,19 @@ function loadAccountData(refresh) {
   }
 }
 let returnFocus;
-const studentPreferences = new Map([[0,{days:['Thursday'],groups:Array(4).fill('Group 4'),notes:'I would prefer to keep Thursday free.'}]]);
-const preferenceDrafts = new Map();
-const preferenceUndo = new Map();
-const savedPreferenceSignatures = new Map([...studentPreferences].map(([index, value]) => [index, JSON.stringify(value)]));
-function readPreferenceForm() {
-  return {days:[...document.querySelectorAll('.dayoff:checked')].map(input=>input.value), groups:[...document.querySelectorAll('[data-course-group]')].map(select=>select.value), notes:document.querySelector('#preference-notes').value};
-}
-function syncPreferenceSaveButton(animate = false) {
-  const save = document.querySelector('[data-action="save-preferences"]');
-  if (!save) return;
-  const index = student() ? 0 : selectedStudent;
-  const current = readPreferenceForm();
-  preferenceDrafts.set(index, current);
-  const saved = savedPreferenceSignatures.get(index) === JSON.stringify(current);
-  save.dataset.saved = String(saved);
-  save.setAttribute('aria-pressed', String(saved));
-  save.setAttribute('aria-label', saved ? 'Preferences saved. Press again to undo this save.' : 'Save preferences');
-  save.querySelector('.preference-save-label').textContent = saved ? 'Saved' : 'Save preferences';
-  if (animate) {
-    save.classList.remove('bookmark-changed');
-    void save.offsetWidth;
-    save.classList.add('bookmark-changed');
-  }
-}
 const app = document.querySelector('#app');
 const dialog = document.querySelector('#dialog');
 const escapeHtml = value => String(value).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 const student = () => ['normalStudent','advisingStudent'].includes(role);
-const person = () => student() ? (liveStudent.data?.student?.fullName || 'Student') : role === 'advisor' ? 'Dr. Salma Adel' : role === 'administrator' ? 'Youssef Ali' : 'Nadia Ahmed';
-const href = (target,index=selectedStudent,course=selectedCourse) => {
-  const destination = authPages.has(target) ? returnAfterSignIn : target;
-  const preserveStudent = ['draft-schedule','student-detail'].includes(destination) || (destination === 'preferences' && !student());
-  const look = '&preview=live';
-  const current = new URLSearchParams(location.search);
-  const serviceScreen = destination === 'academic-services' && (current.get('screen') || history.state?.portalScreen);
-  return `?page=${target}&role=${role}${look}${authPages.has(target)&&destination!=='overview'?`&next=${destination}`:''}${preserveStudent?`&student=${index}`:''}${destination==='course-detail'?`&course=${encodeURIComponent(course[0])}`:''}${serviceScreen?`&screen=${encodeURIComponent(serviceScreen)}`:''}`;
+const person = () => sessionStorage.getItem(workspaceAccountNameKey) || liveStudent.data?.student?.fullName || roleNames[role];
+const href = (target, courseCode) => {
+  const query = new URLSearchParams({page:target, role, preview:'live'});
+  if (authPages.has(target) && returnAfterSignIn !== 'overview') query.set('next', returnAfterSignIn);
+  if (target === 'course-detail' && courseCode) query.set('course', courseCode);
+  return '?' + query;
 };
 
-const link = (target, text, cls='', index) => `<a class="${cls}" href="${href(target,index)}" data-page="${target}"${index===undefined?'':` data-student="${index}"`}>${text}</a>`;
+const link = (target, text, cls='') => `<a class="${cls}" href="${href(target)}" data-page="${target}">${text}</a>`;
 const navigationLabel = id => id === 'graduation-plans'
   ? ({coordinator:'Graduation review', advisingStudent:'My graduation'}[role] || pages[id])
   : pages[id];
@@ -139,14 +132,6 @@ function badge(text, tone='') {
   })[text] || ({pending:'pending','payment-pending':'pending',review:'ready',ice:'upcoming',neutral:'blank'})[tone] || 'complete';
   return `<span class="badge ${tone}" data-state="${kind}"><svg class="icon status-mark" viewBox="0 0 24 24" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round">${statusMarks[kind]}</svg>${text}</span>`;
 }
-const names = ['Omar Hassan','Mariam Mostafa','Ahmed Khaled','Farah Mahmoud','Youssef Tarek','Laila Amr','Nour Ibrahim','Salma Tamer','Kareem Mostafa','Yasmin Adel','Ali Nabil','Hana Sherif'];
-function studentIndex(query) {
-  const index = Number(query.get('student'));
-  return Number.isInteger(index) && index >= 0 && index < names.length ? index : 0;
-}
-let selectedStudent = studentIndex(params);
-const scheduleStates = ['Ready for review','Draft','Ready for review','Ready for review','Draft','Not started','Ready for review','Ready for review','Not started','Ready for review','Draft','Draft'];
-const readyStudents = names.map((name, index) => ({name, index})).filter(({index}) => scheduleStates[index] === 'Ready for review');
 const statusTone = state => state === 'Ready for review' ? 'ready' : state === 'Draft' ? 'draft' : 'neutral';
 function icon(name) {
   const paths = {
@@ -239,37 +224,30 @@ function queueSketch(name) {
   };
   return `<svg class="queue-sketch" viewBox="0 0 64 52" fill="none" stroke="#352f29" stroke-width="1.55" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">${subjects[name]}</svg>`;
 }
-// The term ledger and calendar read the same dated milestones.
-const academicTerms = [
-  {name:'Winter 2026',year:'2026 / 2027',opens:'2026-11-22',closes:'2026-12-06',swaps:'2026-12-13',status:'Active'},
-  {name:'Spring 2027',year:'2026 / 2027',opens:'2027-02-14',closes:'2027-02-28',swaps:'2027-03-07',status:'Upcoming'},
-  {name:'Spring 2026',year:'2025 / 2026',opens:'2026-02-15',closes:'2026-03-01',swaps:'2026-03-08',status:'Archived'}
-];
+let termDirectory;
+const currentAcademicTerm = () => termDirectory?.data?.find(term => term.isActive);
+const displayTerm = term => term ? `${term.season[0].toUpperCase()}${term.season.slice(1)} ${term.academicYear}` : '';
 const termMilestones = [
-  ['opens','Registration opens','sky','Opens'],
-  ['closes','Registration closes','gold','Closes'],
-  ['swaps','Schedule swaps close','iris','Swaps close']
+  ['registrationStart','Registration opens','sky','Opens'],
+  ['registrationEnd','Registration closes','gold','Closes'],
+  ['wholeScheduleSwapDeadline','Schedule swaps close','iris','Swaps close']
 ];
 const calendarDate = iso => new Date(iso+'T12:00:00');
 const formatCalendarDay = (iso, options) => calendarDate(iso).toLocaleDateString('en-GB',options);
 const campusDay = (date = new Date()) => date.toLocaleDateString('sv-SE',{timeZone:'Africa/Cairo'});
 const studentDashboard = () => page==='overview' && student() && workspaces[lab.layout].name==='Claude Study';
-const milestonesFor = term => termMilestones.map(([key,label,,short]) => ({
-  day:calendarDate(term[key]).getDate(), iso:term[key], label, short, term:term.name
-}));
+const milestonesFor = term => termMilestones.flatMap(([key,label,,short]) => {
+  if (!term?.[key]) return [];
+  const iso = campusDay(new Date(term[key]));
+  return [{day:calendarDate(iso).getDate(), iso, label, short, term:displayTerm(term)}];
+});
 let calendarMonth = 0;
-const previewMonth=new URLSearchParams(location.search).get('month');
-if (!productionPreview && /^20\d{2}-(0[1-9]|1[0-2])$/.test(previewMonth)){
-  const {today}=calendarDates();
-  const [year,month]=previewMonth.split('-').map(Number);
-  calendarMonth=(year-today.getFullYear())*12+month-1-today.getMonth();
-}
 function calendarDates() {
   const todayISO = campusDay();
   const today = calendarDate(todayISO);
   const month = new Date(today.getFullYear(),today.getMonth()+calendarMonth,1,12);
   const prefix = month.getFullYear()+'-'+String(month.getMonth()+1).padStart(2,'0')+'-';
-  const deadlines = academicTerms.flatMap(milestonesFor)
+  const deadlines = (termDirectory?.data || []).flatMap(milestonesFor)
     .filter(({iso}) => iso.startsWith(prefix) && (!studentDashboard() || iso >= todayISO))
     .sort((a,b)=>a.iso.localeCompare(b.iso));
   return {today,month,deadlines};
@@ -278,7 +256,7 @@ function calendarAgenda() {
   const {deadlines} = calendarDates();
   if (studentDashboard()) {
     const upcoming = calendarMonth===0
-      ? milestonesFor(currentAcademicTerm).filter(({iso}) => iso >= campusDay()).slice(0,2)
+      ? milestonesFor(currentAcademicTerm()).filter(({iso}) => iso >= campusDay()).slice(0,2)
       : deadlines;
     return `<h3>${calendarMonth===0?'Upcoming deadlines':'Deadlines this month'}</h3>${upcoming.length
       ? `<ul>${upcoming.map(({iso,label})=>`<li><strong>${label}</strong><time datetime="${iso}">${formatCalendarDay(iso,{day:'numeric',month:'short'})}</time></li>`).join('')}</ul>`
@@ -304,131 +282,47 @@ function inkNumber(value){
   const digits=String(value);
   return `<svg class="ink-number" role="img" aria-label="${digits}" viewBox="0 0 ${digits.length*12} 18">${Array.from(digits,(n,i)=>`<path transform="translate(${i*12} 0)" d="${numeralStrokes[n]}"/>`).join('')}</svg>`;
 }
-function calendarPage(ink=false) {
+function calendarPage() {
   const {today,month,deadlines} = calendarDates();
   const lastDay = new Date(month.getFullYear(),month.getMonth()+1,0).getDate();
   const monthName=month.toLocaleString('en-GB',{month:'long'});
-  const illustrated=ink && Object.hasOwn(sketchEditions,calendarStyle);
   const cells = Array.from({length:42},(_,index)=>{
     const day = 1-month.getDay()+index;
     if(day<1 || day>lastDay) return '<span></span>';
     const date = new Date(month.getFullYear(),month.getMonth(),day,12);
     const dayEvents = deadlines.filter(event=>event.day===day);
     const current = date.toDateString()===today.toDateString() ? ' aria-current="date"' : '';
-    if (!dayEvents.length) return `<span class="folio-date"${current}><b>${ink?inkNumber(day):day}</b></span>`;
+    if (!dayEvents.length) return `<span class="folio-date"${current}><b>${inkNumber(day)}</b></span>`;
     const when=formatCalendarDay(dayEvents[0].iso,{weekday:'long',day:'numeric',month:'long'});
-    const entries=dayEvents.map(event=>`<span class="deadline-entry"><strong>${event.label}</strong><small>${event.term}</small></span>`).join('');
-    return `<button type="button" class="folio-date marked" ${current} data-deadline aria-label="${when}, ${dayEvents.map(event=>event.label+', '+event.term).join(', ')}" aria-pressed="false"><b>${ink?inkNumber(day):day}</b>${deadlineRing}<span popover="manual" class="deadline-note" aria-hidden="true"><span class="deadline-slip" data-milestone="${dayEvents[0].short}"><span class="deadline-tape"></span><time datetime="${dayEvents[0].iso}"><em>${day}<svg aria-hidden="true" viewBox="0 0 51 43"><path d="M35 5C21 1 6 8 5 22c-2 10 8 16 23 15 12-1 19-8 18-18C45 10 39 7 29 6"/></svg></em><span>${formatCalendarDay(dayEvents[0].iso,{weekday:'short'})}<br>${monthName}</span></time>${entries}</span></span></button>`;
+    const entries=dayEvents.map(event=>`<span class="deadline-entry"><strong>${event.label}</strong><small>${escapeHtml(event.term)}</small></span>`).join('');
+    return `<button type="button" class="folio-date marked" ${current} data-deadline aria-label="${when}, ${escapeHtml(dayEvents.map(event=>event.label+', '+event.term).join(', '))}" aria-pressed="false"><b>${inkNumber(day)}</b>${deadlineRing}<span popover="manual" class="deadline-note" aria-hidden="true"><span class="deadline-slip" data-milestone="${dayEvents[0].short}"><span class="deadline-tape"></span><time datetime="${dayEvents[0].iso}"><em>${day}<svg aria-hidden="true" viewBox="0 0 51 43"><path d="M35 5C21 1 6 8 5 22c-2 10 8 16 23 15 12-1 19-8 18-18C45 10 39 7 29 6"/></svg></em><span>${formatCalendarDay(dayEvents[0].iso,{weekday:'short'})}<br>${monthName}</span></time>${entries}</span></span></button>`;
 
   }).join('');
-  return `<div class="folio-inner"><div class="folio-month"><strong>${illustrated || (ink && isConcertina(calendarStyle))?`<span class="sr-only">${monthName}</span>${inkMonth(monthName)}`:monthName}</strong><small>${month.getFullYear()}</small>${illustrated?inkScene(calendarStyle,month.getMonth()):ink && isConcertina(calendarStyle)?seasonDrawing(month.getMonth()):''}</div><div class="folio-days">${['Su','Mo','Tu','We','Th','Fr','Sa'].map(d=>`<small>${d}</small>`).join('')}${cells}</div></div>`;
+  return `<div class="folio-inner"><div class="folio-month"><strong><span class="sr-only">${monthName}</span>${inkMonth(monthName)}</strong><small>${month.getFullYear()}</small>${seasonDrawing(month.getMonth())}</div><div class="folio-days">${['Su','Mo','Tu','We','Th','Fr','Sa'].map(d=>`<small>${d}</small>`).join('')}${cells}</div></div>`;
 }
-// Each cel describes the printed face, its turning underside, and the pencil
-// accents visible on that drawing. The three contours change independently.
-const calendarCels = [
-  [70,'M3 4L296 3 298 192Q156 197 2 194Z','',''],
-  [47,'M3 4L296 3 297 172Q288 185 270 193Q127 197 2 194Z','M297 172Q297 187 282 191L270 193Q288 185 297 172Z','M282 188l7-4'],
-  [43,'M3 4L296 3 297 146Q278 171 243 189Q146 197 2 194Z','M297 146Q302 164 287 179Q267 189 243 189Q278 170 297 146Z','M273 181q13-5 19-15'],
-  [54,'M3 4L296 3 296 112Q270 148 215 169Q150 191 2 190Z','M296 112Q307 133 286 154Q254 182 197 186Q89 197 2 190Q150 191 215 169Q270 148 296 112Z','M264 159q22-13 29-30M162 186q28-2 44-7'],
-  [40,'M3 4L296 3 296 83Q254 119 195 138Q102 165 2 159Z','M296 83Q309 102 283 129Q233 168 146 172Q62 179 2 159Q102 165 195 138Q254 119 296 83Z','M269 132q15-9 23-24M29 165q22 6 47 6'],
-  [57,'M3 4L296 3 295 57Q245 83 186 96Q91 117 3 111Z','M295 57Q307 78 275 99Q225 133 139 139Q51 145 3 111Q92 117 186 96Q245 83 295 57Z','M20 116q25 15 48 17M248 114q22-9 32-19'],
-  [44,'M3 4L296 3 293 34Q238 50 171 55Q80 62 4 55Z','M293 34Q305 49 275 70Q224 102 137 103Q41 104 4 55Q81 62 171 55Q238 50 293 34Z','M16 64q19 23 51 29M253 78l12-7'],
-  [56,'M3 4L296 3 289 15Q157 27 4 15Z','M289 15Q307 29 278 43Q220 70 124 64Q42 61 4 15Q155 26 289 15Z','M17 23q17 17 41 26M231 55q22-4 41-13'],
-  [43,'','M4 5Q63-5 152-9Q253-14 291-4Q308 3 285 16Q238 41 134 38Q37 35 4 5Z','M40 12q31 15 75 17M251 23l20-8'],
-  [58,'','M5 5Q22-20 90-37Q170-56 245-49Q279-46 290-28Q298-10 288 3Q177 16 5 5Z','M34-12q27-16 54-20M255-43q18 3 26 13'],
-  [48,'','M5 5Q28-29 99-48Q168-67 225-61Q263-58 276-41Q286-24 290 3Q147 13 5 5Z','M31-18q28-18 55-23M239-55q17 3 25 12'],
-  [56,'','M5 5Q28-26 112-38Q193-52 247-39Q277-30 290 3Q190 10 5 5Z','M48-22q33-11 63-14'],
-  [44,'','M5 5Q45-14 114-23Q211-35 263-18Q280-12 290 3Q140 9 5 5Z','M155-24q42-4 72-2'],
-  [55,'','M5 5Q80-10 159-13Q248-18 290 3Q165 9 5 5Z','M189-10l24 1'],
-  [52,'','M5 5Q99-1 192-3Q266-4 290 3Q167 8 5 5Z','']
-];
-const calendarInkHolds = {
-  3:'M296 112Q306 132 287 154Q253 183 197 186Q89 196 2 190Q150 192 215 169Q271 148 296 112Z',
-  5:'M295 57Q308 77 276 99Q225 134 139 139Q51 144 3 111Q92 118 186 96Q245 82 295 57Z',
-  7:'M289 15Q306 28 278 43Q220 71 124 64Q42 60 4 15Q155 27 289 15Z',
-  8:'M4 5Q63-6 152-8Q253-15 291-4Q307 4 285 16Q238 42 134 38Q37 34 4 5Z',
-  9:'M5 5Q22-21 90-37Q170-55 245-50Q280-46 290-28Q297-10 288 3Q177 15 5 5Z',
-  10:'M5 5Q28-28 99-49Q168-66 225-61Q264-59 276-41Q287-24 290 3Q148 14 5 5Z',
-  11:'M5 5Q27-27 112-38Q193-51 247-40Q277-29 290 3Q190 11 5 5Z',
-  13:'M5 5Q80-11 159-13Q248-17 290 3Q165 8 5 5Z'
-};
-// Sparse strokes on the reverse side follow the edges through the turn.
-const calendarVerso = [
-  '', '', 'M282 176l5-4m-2 4 5-5',
-  'M227 175q11-2 17-6m-13 6 16-6m16-11 7-5',
-  'M72 167q17 3 32 2m83-13 12-5m-8 5 10-4m37-18 9-6',
-  'M63 131q27 6 54 3m11-5 10-1m32-2 14-4m-9 5 12-4m40-8 17-8',
-  'M59 88q19 7 48 8m23-2 10-.2m39-4 12-3m-8 5 11-3m38-12 15-7',
-  'M62 46q19 7 42 8m27 2 12-.3m47-3 11-3m-9 5 12-3m41-13 11-5',
-  'M63 18q21 8 45 8m22 4 15 1m39-2 14-2m-9 4 14-2m33-7 18-6',
-  'M61-18q21-11 42-16m28-5 14-3m36-2 11 1m-9 2 14 1m28 3 17 5',
-  'M66-31q21-10 39-14m28-5 13-3m32-2 15 1m-10 2 13 1m26 4 16 4',
-  'M63-17q22-8 45-12m28-5 15-2m27-1 16 1m-10 2 13 .5',
-  'M76-11q17-4 34-7m46-3 17-.5m-14 3 11-.4',
-  'M85-5q16-3 31-4m52-2 17 .4', ''
-];
-const calendarStyles={...concertinaEditions,...sketchEditions,flutter:'Sketchpad',snap:'Matchbook',tide:'Tide table',stiff:'Letterpress',clean:'Clean original'};
-const styleKey='portal-teaching-calendar';
-const requestedCalendar=new URLSearchParams(location.search).get('calendar');
-let calendarStyle=Object.hasOwn(calendarStyles,requestedCalendar)?requestedCalendar:localStorage.getItem(styleKey);
-if(productionPreview || !Object.hasOwn(calendarStyles,calendarStyle)) calendarStyle='bellows';
-
-function calendarStylePicker(){
-  const options=Object.entries(calendarStyles).map(([key,label])=>
-    `<option value="${key}" ${key===calendarStyle?'selected':''}>${label}</option>`).join('');
-  return `<label class="edition-picker">Calendar style <select data-calendar-picker>${options}</select></label>`;
+function deskCalendar() {
+  const month = calendarDates().month.getMonth();
+  return `<section class="desk-calendar teaching-pad${studentDashboard()?' student-overview-calendar':''}" aria-label="Academic calendar"
+    data-calendar-style="bellows" data-concertina="true" data-sketch="false" data-season-month="${month}"
+    style="--season-sheet:${seasonalPaper[month][0]};--season-back:${seasonalPaper[month][1]}">
+    <header class="calendar-heading"><h2 id="academic-calendar">Academic calendar</h2>${studentDashboard()?link('calendar-sync',icon('calendar')+'Calendar sync','btn calendar-sync-link'):''}</header>
+    <div class="binder-body"><div class="calendar-feature">${binderRow('feet')}</div>
+      <div class="folio-stack">${binderRow('wires')}<div class="folio-paper" aria-live="polite">${calendarPage()}</div></div>
+    </div>
+    <div class="folio-nav">${studentDashboard()?'':`<button type="button" class="folio-today" data-calendar-nav="today" aria-label="Go to current month">Today · ${calendarDates().today.toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</button>`}
+      <button type="button" data-calendar-nav="-1" aria-label="Previous month">Previous</button><button type="button" data-calendar-nav="1" aria-label="Next month">Next</button>
+    </div><div class="folio-agenda" aria-live="polite">${calendarAgenda()}</div>
+  </section>`;
 }
-function calendarFeature(){
-  if(isConcertina(calendarStyle)){
-    const seam='<svg class="cloth-needle" viewBox="0 0 300 16" preserveAspectRatio="none" aria-hidden="true"><path d="M6 10q32-.7 56 .2t50-.4 74 .3 57-.3 51-.4" fill="none" stroke="#ced9d8" stroke-width="1.3" stroke-dasharray="4 3 3.1 2.5 4.4 3"/><path d="m10 9 2 2m2-3 2 2m261-2 4 1.5m2-2 3 2" fill="none" stroke="#3d5362" stroke-width="1.1"/></svg>';
-    return (calendarStyle==='linen'?seam:bindingDrawing(calendarStyle))+binderRow('feet');
-  }
-  const sketches={
-    flutter:'<path d="m7 27 20-19 6 6-21 19-8 2 3-8Zm0 0 5 6m13-23 6 6M15 33q10-6 17-4t16-3"/>',
-    snap:'<path d="m10 32 14-18m-11 20 14-18M24 14c-4-7 6-15 7-10 3 5 1 11-5 12ZM32 13l6-3m-8-8 2-2m2 16 7 1"/>',
-    tide:'<path d="M2 24q6 3 11-4c4-6 8-11 16-9-7 4-7 11 1 12q6 2 14-5M3 29q9 3 14-3m9 3q9 2 18-4M8 13l4-2"/>',
-    bellows:'<path d="m2 23 10-13 8 10 9-12 12 11-9 13-11-9-9 10ZM12 10l0 23m8-13 1 3m8-15 3 24"/>',
-    stiff:'<path d="m7 17 3-9 25-2 3 10-31 3Zm5 4 23-2 2 4-27 3Zm-7 9 36-3m-31 7 27-2"/>',
-    night:'<path d="M17 4C6 8 7 25 21 25q7 0 10-5C19 24 12 13 17 4Z"/><path class="little-stars" d="m31 4 1 4 4 1-4 2-1 4-1-4-4-1 4-2Zm10 11 .8 2 2 .8-2 1-.8 2-1-2-2-1 2-.8Z"/>'
-  };
-  return sketches[calendarStyle]?`<svg class="binding-sketch" aria-hidden="true" viewBox="0 0 48 38" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${sketches[calendarStyle]}</svg>`:'';
-}
-function flipSpeedControl(){
-  const options=flipRates.map(rate=>`<option value="${rate}"${rate===flipRate?' selected':''}>${rate===0?'Paused':rate+'×'}</option>`).join('');
-  return `<div class="flip-playback"><label>Flip speed <select data-flip-speed>${options}</select></label><span data-flip-frame></span>
-    <div class="flip-frames" role="group" aria-label="Frame controls">
-      <button type="button" data-flip-step="-1" disabled>Previous frame</button>
-      <input type="range" min="1" max="1" value="1" step="1" data-flip-scrub aria-label="Animation frame" disabled>
-      <button type="button" data-flip-step="1" disabled>Next frame</button>
-    </div></div>`;
-}
-function deskCalendar(teaching=false) {
-  return `<section class="desk-calendar${teaching?' teaching-pad':''}${studentDashboard()?' student-overview-calendar':''}" aria-label="Academic calendar" ${teaching?`data-calendar-style="${calendarStyle}" data-concertina="${isConcertina(calendarStyle)}" data-sketch="${Object.hasOwn(sketchEditions,calendarStyle)}" data-season-month="${calendarDates().month.getMonth()}" style="--season-sheet:${seasonalPaper[calendarDates().month.getMonth()][0]};--season-back:${seasonalPaper[calendarDates().month.getMonth()][1]}"`:''}>${teaching?`<header class="calendar-heading"><h2 id="academic-calendar">Academic calendar</h2>${studentDashboard()?link('calendar-sync',icon('calendar')+'Calendar sync','btn calendar-sync-link'):''}${productionPreview?'':calendarStylePicker()}</header>`:''}${teaching?`<div class="binder-body"><div class="calendar-feature">${calendarFeature()}</div>`:''}<div class="folio-stack">${teaching ? binderRow('wires') : ''}
-    ${teaching ? '' : `<svg class="folio-stand" viewBox="0 0 300 200" preserveAspectRatio="none" aria-hidden="true" stroke="#302f2c" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-      <path fill="#8fabbd" d="M6 0Q108-4 276-3q8 0 12 9l20 159q0 5-3 8l-15 26Q163 205-4 200l1-10Z"/>
-      <path fill="#607d8d" d="M281 1q6 0 7 6l20 158-16 25Z"/>
-      <path fill="#e4dcca" d="M291 126l8 37-6 12Z"/>
-      <path fill="#e3dbca" d="M0 181l291-1-1 15q-134 8-293 1Z"/>
-      <path fill="none" d="M6 192q113 3 197-1m13 0 64-3"/>
-      <path fill="#faf5e8" d="M5 2Q117-1 280 1l10 186q-132 8-292 3Z"/>
-      <path fill="#9bbdce" d="M5 2q121-4 275-1l2 38q-136 4-278 1Z"/>
-      <path fill="none" stroke="#547b8c" d="M9 37q45 1 67 0m152-1 43-1"/>
-    </svg>`}
-    <div class="folio-paper" aria-live="polite">${calendarPage(teaching && calendarStyle!=='clean')}</div>
-    ${teaching ? '' : `<svg class="folio-wires" viewBox="0 0 300 200" preserveAspectRatio="none" aria-hidden="true" fill="none" stroke-linecap="round">
-      ${[48,63,220,235].map((x,i)=>`<g transform="translate(${x} ${i%2})"><ellipse cx="1" cy="6" rx="3.6" ry="2.3" fill="#3f5360"/><path d="M1 6C-5 3-6-12-1-14c5-2 9 5 8 12" stroke="#353938" stroke-width="3.7"/><path d="M0 4C-3 0-4-8-1-11" stroke="#cbd4c9" stroke-width="1.2"/></g>`).join('')}
-    </svg>`}</div>${teaching?'</div>':''}<div class="folio-nav">${studentDashboard()?'':`<button type="button" class="folio-today" data-calendar-nav="today" aria-label="Go to current month">Today · ${calendarDates().today.toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</button>`}<button type="button" data-calendar-nav="-1" aria-label="Previous month">${teaching?'Previous':'‹'}</button><button type="button" data-calendar-nav="1" aria-label="Next month">${teaching?'Next':'›'}</button></div>
-    ${teaching&&!productionPreview?flipSpeedControl():''}<div class="folio-agenda" aria-live="polite">${calendarAgenda()}</div></section>`;
-}
-function workQueue(tasks, separateCalendar=false) {
+function workQueue(tasks) {
   const entries = tasks.map(([symbol,tone,count,subject,phrase,desc,target,cta],index)=>`
     <li class="queue-entry" data-tone="${tone}" data-icon="${symbol}" data-current="${index===0}">
       <span class="queue-icon">${queueIcon(symbol)}${queueSketch(symbol)}</span>
-      <div class="queue-copy"><strong>${count} ${phrase}</strong><p>${desc}</p></div>
+      <div class="queue-copy"><strong>${count == null ? '' : count + ' '}${phrase}</strong><p>${desc}</p></div>
       ${link(target,cta+icon('chevron'),'queue-link')}
     </li>`).join('');
   const list = `<div class="queue-designer" data-direction="illustrated"><div class="queue-stage"><ul class="queue-entries" role="list">${entries}</ul></div></div>`;
-  return separateCalendar ? list : `<div class="queue-calendar-layout">${list}${deskCalendar()}</div>`;
+  return list;
 }
 
 function avatar(name) {
@@ -440,21 +334,11 @@ function avatar(name) {
 }
 
 
-const courseData = [
-  ['CSEN 701','Embedded Systems','Computer Engineering','5','Winter'],
-  ['CSEN 703','Analysis & Design of Algorithms','Computer Engineering','5','Winter'],
-  ['CSEN 704','Advanced Computer Lab','Computer Engineering','4','Winter'],
-  ['DMET 701','Computer Graphics','Digital Media Engineering','5','Winter'],
-  ['ELCT 701','Communication Systems','Electronics Engineering','5','Winter'],
-  ['MATH 701','Numerical Analysis','Mathematics','4','Winter']
-];
 const displayStudentCode = code => String(code).replace(/^([A-Z]+)\s*(\d+)$/, '$1 $2');
 function studentCourses() {
-  if (!student()) return courseData.slice(0,4);
   return (liveStudent.data?.schedule?.courses || []).map(c => [escapeHtml(displayStudentCode(c.courseCode)), escapeHtml(c.courseName), escapeHtml(liveStudent.data.student.major), c.creditHours, liveStudent.data.term.season]);
 }
 function studentWeek() {
-  if (!student()) return weeklyMeetings;
   const colors = ['ice','cherry','teal','clay'];
   const courses = studentCourses();
   return Object.entries(liveStudent.data?.schedule?.week || {}).filter(([day,meetings]) => day !== 'Friday').map(([day,meetings]) => [day, meetings.map(m => [m.startTime, displayStudentCode(m.courseCode), escapeHtml(`${m.type[0].toUpperCase()+m.type.slice(1)} · ${m.room}`), colors[Math.max(0,courses.findIndex(c => c[0]===displayStudentCode(m.courseCode))) % colors.length]])]);
@@ -475,12 +359,12 @@ function loadStudentSchedule() {
     if(liveStudent.token===token) {liveStudent.loading=false; if(student()) render();}
   });
 }
-const resolveCourse = code => (student() ? studentCourses() : courseData).find(c=>c[0]===code) || (student() ? studentCourses()[0] : null) || courseData[0];
+const resolveCourse = code => studentCourses().find(c=>c[0]===code);
 let selectedCourse = resolveCourse(params.get('course'));
 
 function courseLink(code,label,cls) {
   const course = resolveCourse(code);
-  return `<a class="${cls}" href="${href('course-detail',selectedStudent,course)}" data-page="course-detail" data-course-code="${course[0]}">${label}</a>`;
+  return `<a class="${cls}" href="${href('course-detail',course[0])}" data-page="course-detail">${label}</a>`;
 }
 function groups(){
   const managesAcademics = role === 'coordinator' || role === 'administrator';
@@ -506,7 +390,7 @@ function groups(){
   ].filter(([, items]) => items.length);
 }
 function sidebar(){
-  const parent = {'manage-courses':'courses','manage-terms':'terms','manage-templates':'templates','official-records':'records','advisor-assignment':'my-advisor','account-inbox':'notifications','account-details':'profile','student-detail':'directory','draft-schedule':'student-schedules','course-detail':'courses','copy-offerings':'offerings','template-detail':'templates'};
+  const parent = {'draft-schedule':'student-schedules','course-detail':student()?'my-courses':'courses','copy-offerings':'offerings'};
   const study = workspaces[lab.layout].name==='Claude Study';
   const sectionIcons = ['home','people','calendar','book'];
   return `<aside class="sidebar">
@@ -515,8 +399,7 @@ function sidebar(){
       const contents = `<ul>${items.map(id => {
         if (id === 'extra-hours') return `<li>${navigationLink(id,`<span>${navigationLabel(id)}</span>`,'navlink')}</li>`;
         const current = page === id || parent[page] === id;
-        const count = id === 'student-schedules' ? readyStudents.length : id === 'mandatory-removals' ? 3 : '';
-        return `<li><a class="navlink${current ? ' active' : ''}" href="${href(id)}" data-page="${id}" ${current ? 'aria-current="page"' : ''}>${study && groupIndex===0 ? icon(id==='overview'?'home':'inbox') : ''}<span>${navigationLabel(id)}</span>${count ? `<span class="nav-count">${count}</span>` : ''}</a></li>`;
+        return `<li><a class="navlink${current ? ' active' : ''}" href="${href(id)}" data-page="${id}" ${current ? 'aria-current="page"' : ''}>${study && groupIndex===0 ? icon(id==='overview'?'home':'inbox') : ''}<span>${navigationLabel(id)}</span></a></li>`;
       }).join('')}</ul>`;
       if (study) {
         const key = `portal-study-nav:${role}:${name}`;
@@ -525,7 +408,7 @@ function sidebar(){
       const isOpen = groupIndex === 0 || items.includes(page) || items.includes(parent[page]);
       return `<details class="navgroup" ${isOpen?'open':''}><summary>${icon(sectionIcons[groupIndex])}<span>${name}</span>${icon('down')}</summary>${contents}</details>`;
     }).join('')}</nav>
-    <div class="sidebar-foot"><span class="term-dot"></span><span>Winter 2026/2027<span class="side-sub">German University in Cairo</span></span></div>
+    <div class="sidebar-foot"><span class="term-dot"></span><span>${escapeHtml(displayTerm(currentAcademicTerm()))}<span class="side-sub">German University in Cairo</span></span></div>
   </aside>`;
 }
 
@@ -542,7 +425,6 @@ function head(title, subtitle='', action='', kicker=''){
   return `<div class="page-head"><div>${kicker?`<div class="kicker">${kicker}</div>`:''}<h1>${title}</h1>${subtitle?`<p>${subtitle}</p>`:''}</div>${action?`<div class="actions">${action}</div>`:''}</div>`;
 }
 
-function stats(items){return `<div class="stats">${items.map(([label,value,foot])=>`<div class="stat"><span>${label}</span><strong>${value}</strong><small>${foot}</small></div>`).join('')}</div>`;}
 function table(headers,rows,search=true){
   const numeric = ['Amount','Credits','Semester','Groups','Courses','Balance','Grade'];
   return `<div class="tablewrap"><table><thead><tr>${headers.map(h=>`<th scope="col" class="${numeric.includes(h)?'num':''}">${h}</th>`).join('')}</tr></thead><tbody>${rows.map(row=>`<tr ${search?'data-search-row':''}>${row.map((cell,i)=>`<td class="${numeric.includes(headers[i])?'num':''}">${cell}</td>`).join('')}</tr>`).join('')}</tbody></table><p class="search-empty" hidden>No matching records. Try a different search.</p></div><div class="tablefoot"><span id="result-count">${rows.length} records</span></div>`;
@@ -558,9 +440,9 @@ function tabs(items,defaultTab){
     `<button type="button" role="tab" aria-selected="${tab===id}" tabindex="${tab===id?0:-1}" class="${tab===id?'active':''}" data-tab="${id}">${title}</button>`
   ).join('')}</div>`;
 }
-const activeTerm = 'Winter 2026/2027';
 function termContext(context) {
-  return `<span class="workspace-term">${icon('calendar')}<strong>${activeTerm}</strong></span><span class="workspace-term-context">${context}</span>`;
+  const term = displayTerm(currentAcademicTerm());
+  return `${term ? `<span class="workspace-term">${icon('calendar')}<strong>${escapeHtml(term)}</strong></span>` : ''}<span class="workspace-term-context">${context}</span>`;
 }
 
 function workspaceGrid(view, modules) {
@@ -583,138 +465,83 @@ function workspaceGrid(view, modules) {
 function studyGreeting() {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
-  return `${greeting}, <span class="greeting-name">${person().replace(/^Dr\. /,'').split(' ')[0]}</span>`;
+  return `${greeting}, <span class="greeting-name">${escapeHtml(person().replace(/^Dr\. /,'').split(' ')[0])}</span>`;
 }
 function workspaceSection(title, target, label, content, actionStyle='quiet-link') {
   return `<div class="section-head"><h2>${title}</h2>${link(target,label,actionStyle)}</div>${content}`;
 }
 
-const currentAcademicTerm = academicTerms.find(term=>term.status==='Active');
-const registrationDates = termMilestones.map(([key,label,tone,short])=>{
-  const date = currentAcademicTerm[key];
-  return [date.slice(-2),formatCalendarDay(date,{month:'short'}),label,tone,short];
-});
 function overview(){
   if(student()) return studentOverview();
   const queueDestination = role==='coordinator' ? 'pending-work' : role==='advisor' ? 'advising' : 'courses';
   const queueLabel = role==='coordinator' ? 'All work' : role==='advisor' ? 'Advising students' : 'Course catalogue';
-  const reviewFiles = `<div class="draft-index">${readyStudents.map(({name,index})=>link('draft-schedule',
-    `<svg class="desktop-folder" viewBox="0 0 96 72" aria-hidden="true"><path fill="#bdbaaf" d="M5 15q0-6 6-6h22l8 7h43q6 0 6 6v39H5z"/><g class="folder-sheet"><path class="folder-leaf-edge" fill="#fffdf6" stroke="#b8b4a7" stroke-width=".85" d="M12 21Q45 19 82 20L84 59Q50 60 11 60Z"/><path class="folder-writing" stroke="#989383" fill="none" stroke-linecap="round" stroke-width="1.65" d="M19 27q13-.6 35 0m-35 5q16-.8 48 0"/><path class="folder-third" stroke="#aaa396" fill="none" stroke-linecap="round" stroke-width="1.4" d="M19 36.7q11-.4 24 .1"/></g><path class="folder-cover" fill="var(--console-ivory,#f0eee6)" stroke="#c7c3b7" d="M5 31q0-5 5-5h75q5 0 5 5l-2 28q0 5-5 5H12q-5 0-5-5z"/></svg><strong>${name}</strong><small>${index===0?'19 credits · Thursday off':'Semester 7 · Group 4'}</small>`,'draft-file',index)).join('')}</div>`;
-  const removalsTask = ['course-removal','rose',3,'Course removals','course removal requests','Credit load and scheduling decisions','mandatory-removals','Review'];
+  const reviewFiles = `<div class="draft-index">${link('student-schedules',
+    `<svg class="desktop-folder" viewBox="0 0 96 72" aria-hidden="true"><path fill="#bdbaaf" d="M5 15q0-6 6-6h22l8 7h43q6 0 6 6v39H5z"/><g class="folder-sheet"><path class="folder-leaf-edge" fill="#fffdf6" stroke="#b8b4a7" stroke-width=".85" d="M12 21Q45 19 82 20L84 59Q50 60 11 60Z"/><path class="folder-writing" stroke="#989383" fill="none" stroke-linecap="round" stroke-width="1.65" d="M19 27q13-.6 35 0m-35 5q16-.8 48 0"/><path class="folder-third" stroke="#aaa396" fill="none" stroke-linecap="round" stroke-width="1.4" d="M19 36.7q11-.4 24 .1"/></g><path class="folder-cover" fill="var(--console-ivory,#f0eee6)" stroke="#c7c3b7" d="M5 31q0-5 5-5h75q5 0 5 5l-2 28q0 5-5 5H12q-5 0-5-5z"/></svg><strong>Student schedules</strong><small>Open schedules and drafts</small>`, 'draft-file')}</div>`;
+  const removalsTask = ['course-removal','rose',null,'Course removals','Course removal requests','Credit load and scheduling decisions','mandatory-removals','Review'];
   const tasks = role==='coordinator' ? [
     removalsTask,
-    ['advisor-assignment','mint',2,'Advisors','students need an advisor','Advising assignments','advising','Assign'],
-    ['group-assignment','iris',6,'Group assignment','students need a group','Computer Engineering · Semester 7','group-assignments','Assign'],
+    ['advisor-assignment','mint',null,'Advisors','Advising assignments','Manage student advisor assignments','advising','Assign'],
+    ['group-assignment','iris',null,'Group assignment','Schedule groups','Assign students to published groups','group-assignments','Assign'],
   ] : role==='advisor' ? [
     removalsTask,
-    ['advisor-assignment','mint',readyStudents.length,'Advising','drafts ready to review','Student schedules and preferences','advising','Open advising'],
+    ['advisor-assignment','mint',null,'Advising','Advising students','Student schedules and preferences','advising','Open advising'],
   ] : [
-    ['group-assignment','iris',courseData.length,'Course offerings','courses in the winter catalogue','Review offerings and class groups','offerings','View offerings'],
-    ['advisor-assignment','mint',registrationDates.length,'Academic terms','registration milestones','Review dates for the active term','terms','Manage terms'],
+    ['group-assignment','iris',null,'Course offerings','Course offerings','Review offerings and class groups','offerings','View offerings'],
+    ['advisor-assignment','mint',null,'Academic terms','Academic terms','Review registration dates and deadlines','terms','Manage terms'],
   ];
   return `<div class="dashboard-edition" data-edition="teaching">${workspaceGrid({
     columns: '1.5fr 1fr',
     rows: ['intro intro', 'queue queue', 'review calendar'],
   }, {
     intro: head(studyGreeting(), termContext(`${roleNames[role]} workspace`)),
-    queue: workspaceSection('Work queue', queueDestination, queueLabel, workQueue(tasks, true)),
+    queue: workspaceSection('Work queue', queueDestination, queueLabel, workQueue(tasks)),
     review: workspaceSection('Schedule review', 'student-schedules', 'All schedules', reviewFiles),
-    calendar: deskCalendar(true),
+    calendar: deskCalendar(),
   })}</div>`;
 }
 
 function studentOverview() {
   const timetable = `<div class="timetable-heading"><h2>Teaching week</h2></div>${weekly()}`;
   const view = { columns: '1fr 1fr', rows: ['week week', 'review activity'] };
-  return `<div class="student-dashboard">${head(studyGreeting(), termContext('Computer Engineering'))}
-    ${workspaceGrid(view, { week: timetable, review: studentFeed(), activity: deskCalendar(true) })}</div>`;
+  return `<div class="student-dashboard">${head(studyGreeting(), termContext(escapeHtml(liveStudent.data?.student.major || 'Student workspace')))}
+    ${workspaceGrid(view, { week: timetable, review: studentFeed(), activity: deskCalendar() })}</div>`;
 }
 
-function staffIdentity(name, id) {
-  const label = `<strong>${name}</strong><small>${id}</small>`;
-  if (workspaces[lab.layout].name!=='Claude Study') return label;
-  return `<div class="staff-identity">${avatar(name)}<div>${label}</div></div>`;
-}
-
-function directory(){
-  return portalService('directory', 'academic-services');
-}
-
-function rosterSection(title, indices, row) {
-  return `<section class="roster-section"><h2>${title}</h2><ul>${indices.map(i=>`<li data-search-row>${row(i)}</li>`).join('')}</ul></section>`;
-}
-
-function advising() {
-  if (role === 'advisor' && productionPreview && localStorage.getItem(workspaceSessionKey)) {
-    return portalService('advising', 'academic-services');
-  }
-  const unassigned = [2,8];
-  const row = i => `${staffIdentity(names[i],`70-${71577+i}`)}
-    <p>${i===3?'Digital Media Engineering':'Computer Engineering'}<small>Semester 7</small></p>
-    ${badge(scheduleStates[i],statusTone(scheduleStates[i]))}${link('student-detail','View student','btn desk-action',i)}`;
-  return head('Advising students','Review assignments, preferences, and schedules.',button('Assign advisor','assign-advisor','btn primary'))+
-    filterbar('Search name or ID',[['All majors',['Computer Engineering','Digital Media Engineering']],['All statuses',['Ready for review','Draft','Not started']]])+
-    rosterSection('Needs an advisor',unassigned,row)+rosterSection('Dr. Salma Adel',names.map((_,i)=>i).filter(i=>!unassigned.includes(i)),row)+listFoot(names.length);
-}
-function listFoot(count) {
-  return `<p class="search-empty" hidden>No matching records. Try a different search.</p><div class="tablefoot"><span id="result-count">${count} records</span></div>`;
-}
-function profile(detail=false){
+function profile(){
   const token = localStorage.getItem(workspaceSessionKey);
-  const real = !detail && token && liveProfile?.token === token ? liveProfile.data : null;
-  if (!detail && token && !real) {
-    const error = liveProfile?.token === token && liveProfile.error;
-    return head('My profile') + (error ? `<p role="alert">${escapeHtml(error)}</p>` : '<p role="status">Loading your profile…</p>');
-  }
+  const state = liveProfile?.token === token ? liveProfile : null;
+  const real = state?.data;
+  const heading = head('My profile');
+  if (!real) return heading + (state?.error
+    ? `<p role="alert">${escapeHtml(state.error)}</p>`
+    : '<p role="status">Loading your profile…</p>');
   const display = value => escapeHtml(value == null ? '—' : String(value)
     .replace(/([a-z])([A-Z])/g, '$1 $2').replace(/^./, letter => letter.toUpperCase()));
-  const name=real ? escapeHtml(real.fullName) : detail?names[selectedStudent]:person();
-  const isStudent=detail || student();
-  const index=detail ? selectedStudent : 0;
-  const roleTitle=detail ? (index%3?'Advising student':'Normal student') : roleNames[role];
-  const major=real ? escapeHtml(real.major || '—') : index===3?'Digital Media Engineering':'Computer Engineering';
-  const advisorName=real ? escapeHtml(real.assignedAdvisor?.fullName || 'Unassigned') : [2,8].includes(index)?'Unassigned':'Dr. Salma Adel';
-  const state=real ? display(real.scheduleStatus) : scheduleStates[index];
-  const accountName=name.replace(/^Dr\. /,'').toLowerCase().replaceAll(' ','.');
-  const email=real ? escapeHtml(real.email) : accountName+(isStudent?'@student.guc.edu.eg':'@guc.edu.eg');
-  const facts = pairs=>`<dl class="profile-facts">${pairs.map(([key,value])=>
+  const email = escapeHtml(real.email);
+  const facts = pairs => `<dl class="profile-facts">${pairs.map(([key,value]) =>
     `<div><dt>${key}</dt><dd>${value}</dd></div>`).join('')}</dl>`;
   const academic = facts([
-    ['Major',major],['Semester',real ? display(real.currentSemester) : '7'],
-    ['Academic standing',real ? display(real.academicStanding) : 'Very good'],
-    ...(real ? [] : [['Enrollment','Active']]),
-    ...(real && role !== 'advisingStudent' ? [] : [['Assigned advisor',advisorName]]),
-    ['Schedule status',badge(state,statusTone(state))]
+    ['Major', escapeHtml(real.major || '—')], ['Semester', display(real.currentSemester)],
+    ['Academic standing', display(real.academicStanding)],
+    ...(role === 'advisingStudent' ? [['Assigned advisor', escapeHtml(real.assignedAdvisor?.fullName || 'Unassigned')]] : []),
+    ['Schedule status', badge(display(real.scheduleStatus), statusTone(display(real.scheduleStatus)))],
   ]);
-  const identity=`<aside class="profile-identity"><div class="campus-id">
-    <div class="campus-wordmark"><img src="portal-card-index.svg" alt="">German University in Cairo</div>
-    <div class="campus-owner">${avatar(name)}<div><h2>${name}</h2><p>${roleTitle}</p></div></div>
-    <div class="campus-card-foot">${isStudent ? 'Student ID <strong>' + (real ? escapeHtml(real.studentId || '—') : '70-' + (71577+index)) + '</strong>' : real ? '' : 'Faculty of Media Engineering &amp; Technology'}</div>
-    </div>${detail?`<div class="profile-contact"><h3>University email</h3><a href="mailto:${email}">${email}</a></div>`:''}</aside>`;
-  const heading = head(detail ? 'Student details' : 'My profile', '', detail
-    ? link('directory','Back to directory','btn')
-    : localStorage.getItem(workspaceSessionKey) ? link('account-details','View account details','btn') : '');
-  if (!detail) {
-    const shortcuts = student() ? ['my-schedule',role==='advisingStudent'?'preferences':'my-courses'] :
-      role==='advisor' ? ['advising','student-schedules'] : role==='administrator' ? ['directory','financial-records'] : ['pending-work','student-schedules'];
-    return heading+`<div class="profile-desk personal-profile">${identity}<div class="profile-pane">
-      <h2>Contact</h2>${facts([['University email',`<a href="mailto:${email}">${email}</a>`]])}
-      ${isStudent?`<h2>Academic information</h2>${academic}`:''}
-      <h2>My workspace</h2><div class="profile-shortcuts">${shortcuts.map(target=>link(target,
+  const shortcuts = student() ? ['my-schedule',role==='advisingStudent'?'preferences':'my-courses'] :
+    role==='advisor' ? ['advising','student-schedules'] : role==='administrator' ? ['directory','financial-records'] : ['pending-work','student-schedules'];
+  return heading + `<div class="profile-desk personal-profile">
+    <aside class="profile-identity"><div class="campus-id">
+      <div class="campus-wordmark"><img src="portal-card-index.svg" alt="">German University in Cairo</div>
+      <div class="campus-owner">${avatar(real.fullName)}<div><h2>${escapeHtml(real.fullName)}</h2><p>${roleNames[role]}</p></div></div>
+      <div class="campus-card-foot">${student() ? `Student ID <strong>${escapeHtml(real.studentId || '—')}</strong>` : ''}</div>
+    </div></aside>
+    <div class="profile-pane"><h2>Contact</h2>${facts([['University email',`<a href="mailto:${email}">${email}</a>`]])}
+      ${student() ? `<h2>Academic information</h2>${academic}` : ''}
+      <h2>My workspace</h2><div class="profile-shortcuts">${shortcuts.map(target => link(target,
         icon({'pending-work':'inbox','student-schedules':'calendar','my-schedule':'calendar',preferences:'edit',
-          'my-courses':'book',advising:'people',directory:'people','financial-records':'book'}[target])+
-        `<span>${pages[target]}</span>`+icon('chevron'),'profile-shortcut')).join('')}</div>
-      </div></div>`;
-  }
-  const history = `<ul class="advisor-records">${[
-    ['Dr. Salma Adel','5 October 2026',advisorName==='Unassigned'?'Ended':'Current'],
-    ['Dr. Hany Youssef','10 February 2026','Ended']
-  ].map(([advisor,date,status])=>`<li>${staffIdentity(advisor,'Assigned '+date)}${badge(status,status==='Ended'?'neutral':'')}</li>`).join('')}</ul>`;
-  const disclosure=(title,content,open=false)=>`<details class="profile-section" ${open?'open':''}><summary>${title}${icon('down')}</summary>${content}</details>`;
-  const actions=link('preferences','View preferences','btn',index)+link('draft-schedule','Open schedule','btn primary',index)+button('Assign advisor','assign-advisor','btn',`data-student-index="${index}"`);
-  return heading+`<div class="profile-desk">${identity}<div class="profile-pane">
-    ${disclosure('Academic details',academic,true)}${disclosure('Advisor history',history)}
-    ${disclosure('Schedule workflow',workflow())}<div class="profile-actions">${actions}</div></div></div>`;
+          'my-courses':'book',advising:'people',directory:'people','financial-records':'book'}[target]) +
+        `<span>${pages[target]}</span>` + icon('chevron'), 'profile-shortcut')).join('')}</div>
+    </div>
+  </div>`;
 }
 function notificationEntries(){
   const token = localStorage.getItem(workspaceSessionKey);
@@ -724,25 +551,7 @@ function notificationEntries(){
       escapeHtml(new Date(item.createdAt).toLocaleString('en-GB', {dateStyle:'medium', timeStyle:'short', timeZone:'Africa/Cairo'})),
       null, item.channels.includes('email') ? escapeHtml(item.deliveryStatus) : '']);
   }
-  const testEntries = Array.from({length:testCount}, (_, i) => [`test-${i}`, 'Test notification', 'This is a test notification for your account.', 'Just now']);
-  if (role==='normalStudent') return testEntries;
-  const registration = ['term', 'Winter 2026 dates updated', 'The registration window opens on 22 November.', 'Yesterday'];
-  if (student()) {
-    const date = campusDay();
-    const upcoming = milestonesFor(currentAcademicTerm).filter(({iso}) => iso >= date);
-    return [
-      ...testEntries,
-      ['schedule', 'Your timetable is ready', 'Class times and rooms are in My schedule.', 'Today, 10:42'],
-      ...(upcoming.length ? [['term', 'Winter 2026 dates updated', upcoming.map(({iso,label}) =>
-        `${label} ${formatCalendarDay(iso,{day:'numeric',month:'long'})}.`).join(' '), currentAcademicTerm.name]] : []),
-    ];
-  }
-  return [
-    ...testEntries,
-    ['schedule', 'Schedule ready for review', 'Omar Hassan’s advising schedule is ready for your review.', 'Today, 10:42', names[0]],
-    ['removal', 'Course removal requested', 'Mariam Mostafa requested removal of CSEN 701.', 'Today, 09:30', names[1]],
-    registration,
-  ];
+
 }
 
 function studentNotificationPanel(){
@@ -784,7 +593,7 @@ function studentFeed(){
       <div class="section-head"><h2 id="student-upcoming-heading">Coming up</h2></div>
       <ul class="student-upcoming-list" role="list">${meetings.map(({time,code,detail,date,day})=>`
         <li>${courseEmblem(code)}
-          <div class="student-class-copy"><h3>${resolveCourse(code)[1]}</h3><p>${detail}</p></div>
+          <div class="student-class-copy"><h3>${resolveCourse(code)?.[1] || escapeHtml(code)}</h3><p>${detail}</p></div>
           <time datetime="${date.toLocaleDateString('sv-SE')}T${time}"><span>${day}</span><strong>${time}</strong></time>
         </li>`).join('')}</ul>
     </section>
@@ -814,7 +623,7 @@ function notifications(){
   const inboxStatus = token && !state?.data
     ? state?.error ? `<p role="alert">${escapeHtml(state.error)}</p>` : '<p role="status">Loading notifications…</p>'
     : '';
-  return head('Notifications', '', (productionPreview?'':button('Create test notification','test-notification'))+
+  return head('Notifications', '',
     (unread.length ? button('Mark all as read','read-all','btn primary') : ''), '')+strip+
     `<section id="notice-results" role="tabpanel" aria-labelledby="notice-view-${tab}">`+
     (inboxStatus || (visible.length ? `<div class="notification-list">${visible.map(([id,title,description,time,subject,emailStatus]) => {
@@ -846,34 +655,12 @@ async function markPortalNotifications(ids, control) {
       toast('Some notifications could not be marked as read.', 'error');
       return;
     }
-  } else {
-    ids.forEach(id => readNotifications.add(notificationKey(id)));
   }
   render();
   document.querySelector('[aria-selected=true][aria-controls="notice-results"]')?.focus();
   toast(ids.length === 1 ? 'Notification marked as read.' : 'All notifications marked as read.');
 }
 
-function academicStudy() {
-  return workspaces[lab.layout].name === 'Claude Study';
-}
-function academicCourse(course, fallback) {
-  if (!academicStudy()) return fallback;
-  const [code, title] = course;
-  const drawing = courseDrawing(code) || icon('book');
-  return `<span class="academic-course"><span class="academic-emblem" data-course="${code}" data-course-tone="${globalThis.BobosCourseIcons?.[String(code).replace(/\s/g, '').toUpperCase()]?.tone || 'ivory'}" aria-hidden="true">${drawing}</span><span><strong>${title}</strong><small>${code}</small></span></span>`;
-}
-function academicStudent(name,index) {
-  const id = `70-${71577+index}`;
-  if (!academicStudy()) return `${name}<small>${id}</small>`;
-  return `<span class="academic-person">${avatar(name)}<span><strong>${name}</strong><small>${id}</small></span></span>`;
-}
-function courses(){return head('Course catalogue',academicStudy() ? `${courseData.length} courses · ${new Set(courseData.map(c=>c[2])).size} departments` : '',localStorage.getItem(workspaceSessionKey)
-  ? link('manage-courses','Manage catalogue','btn primary')
-  : button('Add course','add-course','btn primary')+button('Import CSV','import-csv'))+
-  filterbar('Search courses',[['All departments',['Computer Engineering','Digital Media Engineering','Electronics Engineering']],['All seasons',['Winter','Spring']]])+
-  table(academicStudy() ? ['Course','Department','Credits','Season',''] : ['Code','Course','Department','Credits','Season',''],courseData.map(c=>[
-    ...(academicStudy() ? [academicCourse(c)] : [c[0],`<strong>${c[1]}</strong>`]),...c.slice(2),courseLink(c[0],'View course','btn row-control')]));}
 function courseDetailArt(symbol, tone) {
   return `<span class="course-detail-art" data-art-tone="${tone}">
     <svg aria-hidden="true" width="30" height="30" viewBox="0 0 36 36">
@@ -882,10 +669,12 @@ function courseDetailArt(symbol, tone) {
   </span>`;
 }
 function courseDetail(){
-  const [code,title,department,credits,season] = selectedCourse;
-  const first = code==='CSEN 701';
-  const facts = [['Course code',code],['Credit hours',credits],['Department',department],['Semester','7'],['Type','Mandatory'],['Offering seasons',first?'Winter, Spring':season]];
-  if (student()) {
+  if (!student()) return portalService('courses', 'academic-services');
+  if (!selectedCourse) return head('Course details') + `<p role="status">${escapeHtml(
+    liveStudent.loading ? 'Loading your course…' : liveStudent.error || 'This course is not on your timetable.'
+  )}</p>` + link('my-courses','Registered courses','btn');
+  const [code,title,department,credits] = selectedCourse;
+  const facts = [['Course code',code],['Credit hours',credits],['Department',department]];
     const factIcons = {
       'Credit hours': ['pocket-watch', 'blue'],
       Semester: ['semester-index', 'lilac'],
@@ -921,65 +710,10 @@ function courseDetail(){
         </div>`;
         }).join('')}</dl>
       </section>
-      <section class="course-prerequisites" aria-labelledby="course-prerequisites-heading">
-        <h2 id="course-prerequisites-heading">Prerequisites</h2>
-        ${first ? `<div class="course-prerequisite">
-          ${courseDetailArt('prerequisite', 'sage')}
-          <div><strong>Introduction to Computer Architecture</strong><small>CSEN 501</small></div>
-        </div>` : '<p>No prerequisites listed.</p>'}
-      </section>
       </div>
       </div>
     </div>`;
-  }
-  const actions = student() ? link('my-courses','My courses','btn') : button('Edit course','edit-course','btn primary')+link('courses','Back to catalogue','btn');
-  return head(title,`${code} · ${department}`,actions,'Course details')+
-    `<div class="split"><section class="panel academic-facts"><h2>Course information</h2><dl class="details">${facts.map(([label,value])=>`<div><dt>${label}</dt><dd>${value}</dd></div>`).join('')}</dl></section>
-    <section class="panel academic-related"><h2>Prerequisites</h2>${first ? '<div class="task"><div><h3>CSEN 501</h3><p>Introduction to Computer Architecture</p></div></div>' : '<p>No prerequisites listed.</p>'}
-    <h2 style="margin-top:28px">Current offering</h2><p>${season} 2026${courseData.slice(0,4).includes(selectedCourse)?' · 4 groups':''}</p>${student()?link('my-schedule','View schedule','btn text'):link('offerings','View offering','btn text')}</section></div>`;
 }
-function terms(){
-  const semesters = academicTerms.map(term=>{
-    const startParts = {day:'numeric'};
-    if (term.opens.slice(0,7)!==term.closes.slice(0,7)) startParts.month='short';
-    const range = formatCalendarDay(term.opens,startParts)+' – '+formatCalendarDay(term.closes,{day:'numeric',month:'short',year:'numeric'});
-    const end = formatCalendarDay(term.swaps,{day:'numeric',month:'short',year:'numeric'});
-    const tone = term.status==='Active' ? '' : term.status==='Upcoming' ? 'pending' : 'neutral';
-    return [term.name,term.year,range,end,term.status,tone,term.status==='Archived'?'View':'Manage'];
-  });
-  if (academicStudy()) {
-    const live = Boolean(localStorage.getItem(workspaceSessionKey));
-    return head('Academic terms','Registration windows and schedule swap deadlines.',live
-      ? link('manage-terms','Manage academic terms','btn primary') : button('Create term','create-term','btn primary'))+
-      `<div class="semester-ledger">${semesters.map(([name,year,registration,deadline,state,tone,action])=>`
-        <article class="semester-line"><div class="semester-identity"><h2>${name}</h2><small>${year}</small></div>
-          ${badge(state,tone)}<dl><div><dt>Registration</dt><dd>${registration}</dd></div><div><dt>Swap deadline</dt><dd>${deadline}</dd></div></dl>
-          ${live ? link('manage-terms',action+' term','btn desk-action') : button(action+' term','manage-term','btn desk-action',`data-term="${name}"`)}</article>`).join('')}</div>`;
-  }
-  return head('Academic terms','',button('Create term','create-term','btn primary'))+
-  table(['Term','Academic year','Registration','Swap deadline','Status',''],semesters.map(([name,year,range,end,state,tone,action])=>
-    [name,year,range,end,badge(state,tone),button(action,'manage-term','btn text')]));
-}
-function offerings(){ return portalService('offerings', 'academic-services'); }
-function copyOfferings(){ return portalService('offerings', 'academic-services'); }
-function templates(){
-  const groups = ['Group 1','Group 2','Group 3','Group 4'];
-  return head('Schedule templates',academicStudy() ? termContext('Computer Engineering') : '',localStorage.getItem(workspaceSessionKey)
-      ? link('manage-templates','Manage templates','btn primary') : link('template-detail','Create template','btn primary'))+
-    filterbar('Search templates',[['All majors',['Computer Engineering','Digital Media Engineering']],['All statuses',['Published','Draft']]])+
-    `<div class="template-library"><div class="template-course-set"><h2>Semester 7 courses</h2><ul>${courseData.slice(0,4).map(([code,title])=>`<li>${courseEmblem(code)}<span>${title}<small>${code}</small></span></li>`).join('')}</ul></div>
-    <ul class="template-register">${groups.map((group,i)=>`<li data-search-row>
-      <div class="template-identity"><h2>${group}</h2><small>Computer Engineering · Semester 7</small></div>
-      ${badge(i===3?'Draft':'Published',i===3?'draft':'')}
-      <a class="btn desk-action" data-page="template-detail" href="${href('template-detail')}&group=${i+1}">Edit template</a></li>`).join('')}</ul></div>${listFoot(groups.length)}`;
-}
-function templateGroup(){
-  const group = new URLSearchParams(location.search).get('group');
-  return 'Group '+(['1','2','3','4'].includes(group)?group:'4');
-}
-function templateDetail(){return head(templateGroup(),'Computer Engineering · Semester 7',button('Publish template','publish','btn primary')+button('Save draft','save-draft'), 'Template editor')+
-  `<section class="panel template-fields"><div class="formgrid"><label>Group name<input value="${templateGroup()}" required></label><label>Major<select><option>Computer Engineering</option><option>Digital Media Engineering</option></select></label><label>Semester<input type="number" min="1" max="10" value="7"></label><label>Term<select><option>Winter 2026</option></select></label></div></section>`+
-  `<div class="section-head"><h2>Course groups</h2>${button('Add course','add-offering','btn text')}</div>`+table(['Course','Lecture','Tutorial','Lab'],courseData.slice(0,4).map(c=>[academicCourse(c,`${c[0]}<small>${c[1]}</small>`),'L1 · Sun 08:30','T4 · Tue 10:00','P4 · Wed 12:00']))+`<div style="margin-top:30px">${academicStudy() ? '<h2 class="academic-week-title">Weekly timetable</h2>' : ''}${weekly()}</div>`;}
 // Small marginal drawings identify the four courses wherever the weekly schedule appears.
 function courseDrawing(code) {
   const identity = globalThis.BobosCourseIcons?.[String(code).replace(/\s/g, '').toUpperCase()];
@@ -1012,13 +746,6 @@ function timetableDrawing(code) {
       return courseDrawing(code);
   }
 }
-const weeklyMeetings = [
-  ['Sunday', [['08:30','CSEN 701','Lecture · C2.301','ice'], ['12:00','CSEN 703','Tutorial · C3.104','cherry']]],
-  ['Monday', [['10:00','CSEN 704','Lab · C7.102','teal']]],
-  ['Tuesday', [['08:30','CSEN 703','Lecture · C3.202','cherry'], ['10:00','CSEN 701','Tutorial · C2.204','ice'], ['14:00','CSEN 704','Lecture · C7.301','teal']]],
-  ['Wednesday', [['12:00','DMET 701','Lecture · C1.201','clay']]],
-  ['Thursday', []]
-];
 function weekly(){
   if (student() && !liveStudent.data) {
     const message = liveStudent.error || (localStorage.getItem(workspaceSessionKey) ? 'Loading your schedule…' : 'Sign in to view your schedule.');
@@ -1027,7 +754,7 @@ function weekly(){
   const illustrated = workspaces[lab.layout].name === 'Claude Study';
   function classCard([time, code, detail, color]) {
     return `<div class="week-class ${color}">${illustrated ? (timetableDrawing(code) || courseDrawing('CSEN 701')) : ''}<time datetime="${time}">${time}</time>
-      <strong>${(student() ? studentCourses() : courseData).find(course => course[0] === code)?.[1] || escapeHtml(code)}</strong>
+      <strong>${resolveCourse(code)?.[1] || escapeHtml(code)}</strong>
       <small>${illustrated ? `${code}<span class="study-place">${detail}</span>` : `${code} · ${detail}`}</small></div>`;
   }
   function dayContents(meetings) {
@@ -1051,34 +778,17 @@ function weekly(){
   return `<div class="week-columns${illustrated ? ' compact-week' : ''}${student() ? ' live-student-week' : ''}" style="--teaching-days:${studentWeek().length}" aria-label="Weekly course schedule">${studentWeek().map(([day, meetings]) =>
     `<section class="week-day" aria-label="${day}"><h2>${day}</h2>${dayContents(meetings)}</section>`).join('')}</div>`;
 }
-function schedule(staff=false){
-  if (staff) {
-    return portalService('student-schedules', 'academic-services');
-  }
+function schedule(){
   const timetableContext = liveStudent.data ? `${escapeHtml(liveStudent.data.term.season)} ${escapeHtml(liveStudent.data.term.academicYear)} · ${escapeHtml(({readyForStudentReview:"Ready for student review", processed:"Processed", draft:"Draft"})[liveStudent.data.schedule.status] || liveStudent.data.schedule.status)}` : '';
   if (!liveStudent.data) return head('My schedule') + `<p role="status">${escapeHtml(liveStudent.error || 'Loading your schedule…')}</p>`;
-  return head('Weekly schedule',timetableContext,button('Download schedule','download-my-schedule'),'')+
+  const actions = liveStudent.data.schedule.status === 'processed'
+    ? button('Download schedule','download-my-schedule') + button('Print','print-schedule')
+    : role === 'advisingStudent' && Date.now() < Date.parse(liveStudent.data.term.advisingDeadline)
+      ? link('slot-changes','Request a slot change','btn') : '';
+  return head('Weekly schedule',timetableContext,actions)+
     tabs([['week','Week'],['list','Course list']],'week')+(tab==='list'?registeredTable():weekly())+
     '';
 }
-function workflow() {
-  const state=scheduleStates[selectedStudent];
-  const ready=state==='Ready for review';
-  const stages=[
-    ['Preferences submitted',names[selectedStudent],state==='Not started'?'Not started':'Complete'],
-    ['Advisor prepared draft',[2,8].includes(selectedStudent)?'Needs an advisor':'Dr. Salma Adel',ready?'Complete':state],
-    ['Coordinator review','Review the proposed course load and timetable.',ready?'Awaiting decision':'Not started']
-  ];
-  return stages.map(([label,description,status])=>`<div class="task"><div><h3>${label}</h3><p>${description}</p></div>
-    ${badge(status,status==='Awaiting decision'?'pending':statusTone(status))}</div>`).join('');
-}
-const removedPreviewDrafts = new Set();
-function draft(){
-  const removed = removedPreviewDrafts.has(selectedStudent);
-  const deleteControl = `<portal-paper-delete label="Delete draft" demo data-delete-preview-draft ${removed?'deleted':''}></portal-paper-delete>`;
-  if (removed) return head(`${names[selectedStudent].split(' ')[0]}’s advising draft`, 'The draft has been deleted in this preview.', deleteControl) + '<section class="panel"><h2>No draft</h2><p>Use the restore button to bring back this preview draft.</p></section>';
-  return head(`${names[selectedStudent].split(' ')[0]}’s advising draft`, `70-${71577+selectedStudent} · ${selectedStudent===3?'Digital Media Engineering':'Computer Engineering'} · Semester 7`,button('Save draft','save-draft')+button('Process schedule','process','btn primary')+deleteControl,'Winter 2026')+
-  `<div class="split academic-plan"><section class="panel"><h2>Selected courses</h2><div class="smallstats"><div><strong>19</strong><span>Credit hours</span></div><div><strong>4</strong><span>Courses selected</span></div><div><strong>0</strong><span>Time conflicts</span></div></div>${courseData.slice(0,4).map(c=>`<div class="task">${academicCourse(c,`<div><h3>${c[0]}</h3><p>${c[1]}</p></div>`)}<label><span class="sr-only">${c[0]} group</span><select aria-label="${c[0]} group"><option>Group 4</option><option>Group 2</option></select></label></div>`).join('')}</section><aside><section class="note"><div class="kicker">Student preferences</div><h2>Thursday off.</h2><p>Preferred group: 4<br>Earliest class: 08:30<br>Preferences updated 12 November.</p>${link('preferences','View preferences','btn text')}</section><section class="panel" style="margin-top:24px"><h2>Validation</h2><p>No time conflicts. Credit load is within the allowed range.</p></section></aside></div>`+(academicStudy() ? '<h2 class="academic-week-title">Proposed timetable</h2>' : '')+weekly()+`<section class="panel draft-workflow" style="margin-top:24px"><h2>Workflow</h2>${workflow()}<div class="draft-workflow-actions">${button('Reopen schedule','reopen','btn desk-action')}</div></section>`;}
 function registeredTable(){
   const illustrated = workspaces[lab.layout].name === 'Claude Study';
   return '<div class="schedule-course-list">'+table(['Course','Type','Credits',''],studentCourses().map(([code,title,,credits])=>[
@@ -1099,66 +809,6 @@ function registered(){
       ${courseLink(code,'View sections','btn schedule-sections-link')}</article>`).join('')}</div>
     <div class="registered-course-actions">${button('Request course removal','request-removal','btn text')}</div>`;
 }
-function assignments(){
-  const indices = names.map((_,i)=>i);
-  const row = i=>`${staffIdentity(names[i],`70-${71577+i}`)}<p>Computer Engineering<small>Semester 7</small></p>
-    <span class="group-label">${i%2?badge('Unassigned'):'Group 4'}</span>
-    ${button(i%2?'Assign group':'Reassign','assign-group','btn desk-action',`data-student-index="${i}"`)}`;
-  return head('Group assignments','Assign students to a published schedule group.')+filterbar('Search students',[['All groups',['Group 1','Group 4','Unassigned']]])+
-    rosterSection('Needs a group',indices.filter(i=>i%2),row)+rosterSection('Group 4',indices.filter(i=>i%2===0),row)+listFoot(names.length);
-}
-function preferences(){
-  const index=student()?0:selectedStudent;
-  const preferencesState=preferenceDrafts.get(index) || studentPreferences.get(index) || {days:[],groups:Array(4).fill('No preference'),notes:''};
-  const identity=`${names[index]} · 70-${71577+index}`;
-  const summary = student()?'Winter 2026 / 2027':identity+' · Winter 2026 / 2027';
-  const study = workspaces[lab.layout].name==='Claude Study';
-  return head('Schedule preferences',study ? termContext(student()?'Group 4':identity) : summary,button('<span class="preference-save-label">Save preferences</span><span class="bookmark-tab" aria-hidden="true"></span>','save-preferences','btn bookmark-save'))+
-    `<div class="preference-workspace">
-      <div class="preference-stack">
-        <section class="preference-block" aria-labelledby="preferred-days">
-          <div class="section-head"><h2 id="preferred-days">${icon('calendar')} Preferred days off</h2><output id="preferred-day-count" aria-live="polite">${preferencesState.days.length} of 2 selected</output></div>
-          <p>Choose up to two days you’d like to keep free.</p>
-          <div class="preference-day-grid">${['Sunday','Monday','Tuesday','Wednesday','Thursday'].map(day=>`<label>
-            <input class="dayoff" type="checkbox" value="${day}" ${preferencesState.days.includes(day)?'checked':''}>
-            <svg class="day-mark" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4Q10 3 20 4L21 20Q12 21 3 20Z"/><path class="day-tick" pathLength="1" d="m6 12 4 4q4-7 12-13"/></svg><span>${day}</span>
-          </label>`).join('')}</div>
-        </section>
-        <section class="preference-block">
-          <label class="preference-notes">Notes for your advisor<textarea id="preference-notes" rows="4" placeholder="Share any timing or accessibility needs.">${escapeHtml(preferencesState.notes)}</textarea></label>
-        </section>
-      </div>
-      <section class="preference-block" aria-labelledby="preferred-groups">
-        <div class="section-head"><h2 id="preferred-groups">${icon('book')} Preferred course groups</h2></div>
-        <p>Choose a group for each course or leave it open.</p>
-        <div class="preference-course-list">${courseData.slice(0,4).map(([code,title],index)=>`<label class="preference-course">
-          ${study ? courseEmblem(code) : `<span class="task-icon" data-tone="${['sky','rose','mint','gold'][index]}">${icon('book')}</span>`}
-          <span class="preference-course-name"><strong>${title}</strong><small>${code}</small></span>
-          <select data-course-group="${index}" aria-label="${code} preferred group">${['Group 4','Group 2','No preference'].map(group=>`<option ${group===preferencesState.groups[index]?'selected':''}>${group}</option>`).join('')}</select>
-        </label>`).join('')}</div>
-      </section>
-    </div>`;
-}
-
-function financial(){
-  return head('Financial records','',button('Export CSV','export-csv'))+`<dl class="account-totals">${[['Received','22,500'],['Pending','15,000'],['Refunded','2,500']].map(([label,amount])=>`<div><dt>${label}</dt><dd>${amount} <small>EGP</small></dd></div>`).join('')}</dl>`+
-    filterbar('Search by Student ID, Student Name, Receipt ID, or Reference...',[['Type',['TUITION','EXTRA_HOURS','FEE','REFUND'],'','All types'],['Status',['COMPLETED','PENDING','REFUNDED','FAILED'],'','All statuses'],['Term',['W25','S26'],'','All terms']])+
-    `<ul class="transactions">${names.slice(0,6).map((name,i)=>`<li data-search-row>${staffIdentity(name,`70-${71577+i}`)}
-      <p>${i===4?'Refund':'Payment'} · TXN-${1042+i}<small>14 Nov 2026</small></p><strong class="amount">${i===4?'2,500':'7,500'} <small>EGP</small></strong>
-      ${badge([1,5].includes(i)?'Pending':'Completed',[1,5].includes(i)?'payment-pending':'payment-complete')}
-      ${button('View record','financial-detail','btn desk-action',`data-record="${i}"`)}
-    </li>`).join('')}</ul>${listFoot(6)}`;
-}
-function removals(){return head('Course removals','Review mandatory-course removal requests.',student()?button('Request removal','request-removal','btn primary'):'')+
-  tabs([['pending','Pending · 3'],['approved','Approved'],['rejected','Rejected']],'pending')+
-  filterbar('Search student or course')+
-  `<ul class="request-queue">${names.slice(0,3).map((name,i)=>`<li data-search-row>
-    ${academicCourse(courseData[i],courseData[i][1])}<div class="request-person"><strong>${name}</strong><small>70-${71577+i}</small></div>
-    <p>${removalReasons[i]}<small>Submitted 13 Nov 2026</small></p>
-    ${button('Review request','removal-decision','btn desk-action',`data-request="${i}"`)}
-  </li>`).join('')}</ul>${listFoot(3)}`;}
-const removalReasons = ['Credit overload','Academic difficulty','Schedule conflict'];
-
 function pending(){
   return portalService('pending-work', 'academic-services');
 }
@@ -1167,30 +817,31 @@ function activity(){
 
 }
 
-function records(){
-  const strip=tabs([['history','Course history'],['transcript','Transcript'],['wallet','Wallet']],'history');
-  const study = workspaces[lab.layout].name==='Claude Study';
-  const performance = [['Cumulative GPA','1.70','Very good standing'],['Completed credits','116','Through semester 6'],['Current semester','07','Winter 2026']];
-  const marks = study ? `<dl class="academic-standing">${performance.map(([label,value,detail])=>`<div><dt>${label}</dt><dd>${value}</dd><dd>${detail}</dd></div>`).join('')}</dl>` : stats(performance);
-  return head('Academic records','Omar Hassan · 70-71577',localStorage.getItem(workspaceSessionKey) ? link('official-records','Open official records','btn primary') : tab==='transcript'?button('Download transcript','transcript'): '', 'Computer Engineering')+
-    marks+strip+
-    (tab==='wallet'?table(['Date','Transaction','Amount','Balance'],[['14 Nov 2026','Course registration payment','− EGP 7,500','EGP 2,500'],['10 Nov 2026','Wallet deposit','+ EGP 10,000','EGP 10,000']]):table(['Course','Semester','Credits','Grade','Status'],courseData.slice(0,4).map(c=>[`${c[0]}<small>${c[1]}</small>`,'Winter 2025',c[3],'1.7',badge('Passed')])));
-}
 function advisor(){
-  const study = workspaces[lab.layout].name==='Claude Study';
-  return head('Academic advising',study ? termContext('Semester 7') : '', localStorage.getItem(workspaceSessionKey) ? link('advisor-assignment','View current assignment','btn') : '')+`
+  const heading = head('Academic advising');
+  if (role !== 'advisingStudent') return heading + '<p>This page is available to advising students.</p>';
+
+  const token = localStorage.getItem(workspaceSessionKey);
+  const state = token && liveAdvisor?.token === token ? liveAdvisor : null;
+  const person = state?.data;
+  const status = !token ? '<p>Sign in to see your assigned advisor.</p>'
+    : state?.error ? '<p role="alert">Could not load your advisor. Refresh the page to try again.</p>'
+    : person === null ? '<p role="status">You don’t have an assigned advisor yet.</p>'
+    : '<p role="status">Loading your advisor…</p>';
+  const deadline = liveStudent.token === token && liveStudent.data?.term.advisingDeadline;
+  const deadlineLabel = deadline ? formatCalendarDay(campusDay(new Date(deadline)), {day:'numeric', month:'long', year:'numeric'}) : '';
+  return heading + `
     <div class="advising-layout">
-      <section class="advisor-details">${study ? `<header class="advisor-identity">${avatar('Dr. Salma Adel')}<div><h2>Dr. Salma Adel</h2><p>Computer Engineering</p></div></header>` : '<h2>Dr. Salma Adel</h2><p>Computer Engineering</p>'}
-        <dl class="details"><div><dt>Email</dt><dd><a href="mailto:salma.adel@guc.edu.eg">salma.adel@guc.edu.eg</a></dd></div>
-        <div><dt>Office</dt><dd>C3.204</dd></div><div><dt>Office hours</dt><dd>Tuesday, 12:00–14:00</dd></div>
-        <div><dt>Assigned since</dt><dd>5 October 2026</dd></div></dl>
-        <section class="advisor-checklist"><h2>Before you meet</h2>
-        ${['Review remaining credits','Choose preferred course groups','Write down questions'].map(item => `<label class="checkrow"><input type="checkbox">${item}</label>`).join('')}
-        </section>
+      <section class="advisor-details" aria-label="Advisor assignment">
+        ${person ? `<header class="advisor-identity">${avatar(person.fullName)}<div><h2>${escapeHtml(person.fullName)}</h2><p>Your assigned advisor</p></div></header>
+          <dl class="details"><div><dt>University email</dt><dd><a href="mailto:${escapeHtml(person.email)}">${escapeHtml(person.email)}</a></dd></div></dl>
+          <section class="advisor-checklist"><h2>Before you meet</h2>
+          ${['Review remaining credits','Choose preferred course groups','Write down questions'].map(item => `<label class="checkrow"><input type="checkbox">${item}</label>`).join('')}
+          </section>` : status}
       </section>
-      <aside><section class="advisor-callout"><h2>Your draft is ready</h2><p>Review your course selections before meeting with Dr. Salma.</p>
-        ${link('my-schedule','Review schedule','btn primary')}</section>
-        <p class="advisor-deadline"><strong>Preferences due 18 November</strong><br>${link('preferences','Set course preferences','btn row-control')}</p>
+      <aside><section class="advisor-callout"><h2>Your advising schedule</h2><p>Review your proposed timetable and course selections.</p>
+        ${link('my-schedule','View schedule','btn primary')}</section>
+        <p class="advisor-deadline">${deadlineLabel ? `<strong>Preferences due ${deadlineLabel}</strong><br>` : ''}${link('preferences','Set course preferences','btn row-control')}</p>
       </aside>
     </div>`;
 }
@@ -1312,7 +963,6 @@ function auth(){
             button(label,'preview-sign-in','preview-role-button',`data-preview-role="${id}"`)).join('')}</div>
         </fieldset>` : ''}
       </section>
-      ${productionPreview?'':'<footer><span>Design preview</span></footer>'}
     </div>
     <figure class="signin-print"><div class="desk-lamp-scene"><img src="images/borrowed-light.svg" alt="Desk lamp lighting a sheet of paper" fetchpriority="high"></div></figure>
   </main>`;
@@ -1343,17 +993,17 @@ function graduationPlans() {
   return portalService('graduation-plans');
 }
 
-const renderers = {'academic-services':academicServices,'extra-hours':extraHours,overview,notifications,profile, directory, 'student-detail':()=>profile(true),advising,'pending-work':pending,'schedule-activity':activity,'financial-records':financial,'mandatory-removals':removals,'student-schedules':()=>schedule(true),'draft-schedule':()=>portalService('student-schedules','academic-services'),courses,'course-detail':courseDetail,terms,offerings,'copy-offerings':copyOfferings,templates,'template-detail':templateDetail,'group-assignments':assignments,'my-schedule':schedule,'my-courses':registered,'schedule-swap':()=>portalService('schedule-swap','academic-services'),preferences,records,'my-advisor':advisor,'calendar-sync':calendarSync,'graduation-plans':graduationPlans,'my-submitted-plans':graduationPlans};
-for (const screen of ['courses', 'terms', 'templates']) {
-  renderers['manage-' + screen] = () => portalService(screen, 'academic-services');
-}
-for (const [page, screen] of Object.entries({
-  'official-records':'records', 'advisor-assignment':'my-advisor', 'account-inbox':'notifications', 'account-details':'profile'
-})) {
-  renderers[page] = () => portalService(screen, 'academic-services');
-}
-// Open the working academic services rather than the illustrated fixture pages.
-for (const screen of ['advising','financial-records','mandatory-removals','group-assignments','preferences','slot-changes']) {
+const renderers = {
+  overview, notifications, profile, 'my-advisor':advisor, 'my-schedule':schedule, 'my-courses':registered,
+  'course-detail':courseDetail, 'calendar-sync':calendarSync, 'extra-hours':extraHours,
+  'graduation-plans':graduationPlans, 'my-submitted-plans':graduationPlans,
+  'copy-offerings':() => portalService('offerings', 'academic-services'),
+  'draft-schedule':() => portalService('student-schedules', 'academic-services'),
+  'academic-services':academicServices,
+};
+for (const screen of ['advising','directory','financial-records','mandatory-removals','group-assignments',
+  'preferences','slot-changes','records','pending-work','schedule-activity','student-schedules',
+  'schedule-swap','courses','terms','offerings','templates']) {
   renderers[screen] = () => portalService(screen, 'academic-services');
 }
 
@@ -1362,7 +1012,7 @@ function themeControl(){
     'toggle-theme', 'theme-toggle', 'aria-label="Switch to ' + (lab.dark ? 'light' : 'dark') + ' mode"');
 }
 function accountControls(){
-  const name = productionPreview && localStorage.getItem(workspaceSessionKey)
+  const name = localStorage.getItem(workspaceSessionKey)
     ? sessionStorage.getItem(workspaceAccountNameKey) || roleNames[role]
     : person();
   const bell = `<svg class="icon notice-bell" aria-hidden="true" viewBox="0 0 28 28" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
@@ -1611,7 +1261,6 @@ function render(focus=false){
   loadStudentSchedule();
   loadAccountData(focus);
   closeDeadline();
-  clearFlipExposure();
   if (page === 'graduation-plans' && role === 'advisor' && new URLSearchParams(location.search).get('view') === 'submitted') {
     page = 'my-submitted-plans';
     history.replaceState(history.state, '', href(page));
@@ -1624,7 +1273,7 @@ function render(focus=false){
   const pageLabel = navigationLabel(page);
   document.title = `Portal · ${pageLabel}`;
   document.body.classList.toggle('auth-screen',authPages.has(page));
-  const body=authPages.has(page)?auth():`<div class="shell">${sidebar()}<div class="workspace"><header class="topbar">${link('overview',portalWordmark(),'mobile-nav wordmark')}<span class="term">${workspaces[lab.layout].name==='Claude Study'?'<small class="study-crumb">Academic workspace &nbsp; / &nbsp;</small>':''}${pageLabel}<span>Winter 2026 / 2027</span></span><div class="topactions">${button(icon('menu')+'<span class="sr-only">Menu</span>','mobile-menu','mobile-menu')}${themeControl()}${accountControls()}</div></header><main class="content" data-screen="${page}" id="content" tabindex="-1">${renderers[page]()}</main></div></div>`;
+  const body=authPages.has(page)?auth():`<div class="shell">${sidebar()}<div class="workspace"><header class="topbar">${link('overview',portalWordmark(),'mobile-nav wordmark')}<span class="term">${workspaces[lab.layout].name==='Claude Study'?'<small class="study-crumb">Academic workspace &nbsp; / &nbsp;</small>':''}${pageLabel}<span>${escapeHtml(displayTerm(currentAcademicTerm()))}</span></span><div class="topactions">${button(icon('menu')+'<span class="sr-only">Menu</span>','mobile-menu','mobile-menu')}${themeControl()}${accountControls()}</div></header><main class="content" data-screen="${page}" id="content" tabindex="-1">${renderers[page]()}</main></div></div>`;
   arrivalObserver?.disconnect();
   disposePortalService?.();
   disposePortalService = undefined;
@@ -1635,18 +1284,12 @@ function render(focus=false){
     themeTools.innerHTML = themeControl();
     app.append(themeTools);
   }
-  const deletePreview = app.querySelector('[data-delete-preview-draft]');
-  if (deletePreview) {
-    deletePreview.perform = async () => { removedPreviewDrafts.add(selectedStudent); render(); toast('Draft deleted in this preview.'); return true; };
-    deletePreview.restore = async () => { removedPreviewDrafts.delete(selectedStudent); render(); toast('Draft restored in this preview.'); return true; };
-  }
   const liveCalendar = app.querySelector('[data-live-calendar]');
   if (liveCalendar) mountLiveCalendar(liveCalendar);
   const service = app.querySelector('[data-portal-service]');
   if (service) mountPortalService(service);
   observeNotificationPlate(app.querySelector('.notification-plate'));
   drawInputEdges(app);
-  if (page === "preferences") syncPreferenceSaveButton();
   const main = app.querySelector('main');
   if (main && !authPages.has(page)) {
     window.addStudentArt?.(page,main,role);
@@ -1665,6 +1308,7 @@ function navigate(target, url, state = {}) {
   const destination = new URL(url || href(page), location.href);
   BobosPortalRoutes.normalize(destination.searchParams);
   page = pageKey(destination.searchParams.get('page'));
+  selectedCourse = resolveCourse(destination.searchParams.get('course'));
   history.pushState(state, '', destination);
   render(true);
   window.scrollTo(0, 0);
@@ -1724,12 +1368,7 @@ async function choosePreviewRole(el){
   const picker = el.closest('.preview-role-picker');
   picker.disabled = true;
   try {
-    const authenticated = await signInDemoWorkspace(selected);
-    if (!authenticated && returnAfterSignIn === 'calendar-sync') {
-      const studentEmail = {normalStudent:'karim.normal@student.guc.edu.eg', advisingStudent:'layla.advising@student.guc.edu.eg'}[selected];
-      if (!studentEmail || !['localhost','127.0.0.1'].includes(location.hostname)) throw new Error('Enter your Bobos student email and password to access Calendar sync.');
-      await signInWorkspace({email:studentEmail, password:'Password123!'}, selected);
-    }
+    if (!(await signInDemoWorkspace(selected))) throw new Error('Sign in with your university account.');
     role = selected;
     startPreview(returnAfterSignIn);
   } catch (error) {
@@ -1754,36 +1393,6 @@ function modal(title,content,submit='Save changes',action='save-modal'){
 }
 function fields(content){return `<div class="modal-fields">${content}</div>`;}
 function closeDialog(){dialog.close();if(returnFocus?.isConnected)returnFocus.focus();}
-function download(filename,text,type='text/plain'){
-  const blob=new Blob([text],{type});const url=URL.createObjectURL(blob);const anchor=document.createElement('a');anchor.href=url;anchor.download=filename;anchor.click();setTimeout(()=>URL.revokeObjectURL(url),500);toast(`Downloaded ${filename}`);
-}
-function filterRows(){
-  const query=(document.querySelector('#search')?.value||'').toLowerCase();
-  const filters=Array.from(document.querySelectorAll('[data-filter]')).filter(el=>el.value);
-  let count=0;
-  for (const row of document.querySelectorAll('[data-search-row]')) {
-    const text=(row.textContent+' '+(row.dataset.scheduleState||'')).toLowerCase();
-    const matchesFilters=filters.every(el=>el.dataset.filter ? row.dataset[el.dataset.filter]===el.value : text.includes(el.value.toLowerCase()));
-    row.hidden=!(text.includes(query) && matchesFilters);
-    if (!row.hidden) count++;
-  }
-  let previousLetter;
-  for (const mark of document.querySelectorAll('.register-entry:not([hidden]) .index-letter')) {
-    const letter=mark.dataset.letter;
-    mark.textContent=letter===previousLetter?'':letter;
-    previousLetter=letter;
-  }
-  const result=document.querySelector('#result-count');if(result)result.textContent=`${count} ${count===1?'record':'records'}`;const empty=document.querySelector('.search-empty');if(empty)empty.hidden=count>0;
-  syncFilterChips();
-}
-function syncFilterChips(){
-  const chips=document.querySelector('#filter-chips');if(!chips)return;
-  const selects=Array.from(document.querySelectorAll('[data-filter]'));
-  const active=selects.map((el,index)=>({el,index})).filter(({el})=>el.value);
-  chips.innerHTML=active.map(({el,index})=>`<li class="filter-chip">${el.value}<button type="button" data-action="remove-filter" data-filter-index="${index}" aria-label="Remove filter ${el.value}">\u00d7</button></li>`).join('')+(active.length?'<li><button class="btn text" type="button" data-action="clear-filters">Clear all</button></li>':'');
-  chips.hidden=!active.length;
-  const count=document.querySelector('.filter-toggle .filter-count');if(count){count.textContent=active.length;count.hidden=!active.length;}
-}
 function action(name,el){
   if (name === 'toggle-theme') {
     window.revealPortalTheme(el, () => {
@@ -1795,17 +1404,6 @@ function action(name,el){
     return;
   }
   switch(name){
-    case 'toggle-filters':{
-      const panel=document.querySelector('#filter-panel');if(!panel)break;
-      panel.hidden=!panel.hidden;el.setAttribute('aria-expanded',String(!panel.hidden));
-      if(!panel.hidden)panel.querySelector('select')?.focus();
-      break;}
-    case 'clear-filters':
-      document.querySelectorAll('[data-filter]').forEach(select=>{select.value='';});filterRows();break;
-    case 'remove-filter':{
-      const select=document.querySelectorAll('[data-filter]')[Number(el.dataset.filterIndex)];
-      if(select){select.value='';filterRows();}
-      break;}
     case 'preview-sign-in':
       void choosePreviewRole(el);
       break;
@@ -1836,105 +1434,15 @@ function action(name,el){
       modal('Menu',`<nav class="workspace-menu" aria-label="Main navigation">${menu}</nav>`,null,'navigation');
       break;
     }
-    case 'test-notification':testCount++;render();toast('Test notification created in this preview.');break;
-    case 'refresh':toast('Preview refreshed.', 'info');break;
     case 'read-all':void markPortalNotifications(notificationEntries().map(([id]) => id).filter(isNotificationUnread), el);break;
     case 'read-one':void markPortalNotifications([el.dataset.notification], el);break;
     case 'close-dialog':closeDialog();break;
-    case 'save-draft':toast('Draft saved in this preview.');break;
-    case 'save-preferences': {
-      const index = student() ? 0 : selectedStudent;
-      const current = readPreferenceForm();
-      if (el.getAttribute('aria-pressed') === 'true') {
-        const previous = preferenceUndo.get(index);
-        if (previous) studentPreferences.set(index, previous);
-        else studentPreferences.delete(index);
-        preferenceUndo.delete(index);
-        savedPreferenceSignatures.delete(index);
-        preferenceDrafts.set(index, current);
-        syncPreferenceSaveButton(true);
-        toast('Save undone', 'info', {title:'Save undone', variant:'bookmark', compact:true});
-      } else if (current.days.length > 2) {
-        toast('Choose up to two preferred days.', 'warning');
-      } else {
-        preferenceUndo.set(index, studentPreferences.has(index) ? structuredClone(studentPreferences.get(index)) : undefined);
-        studentPreferences.set(index, structuredClone(current));
-        savedPreferenceSignatures.set(index, JSON.stringify(current));
-        syncPreferenceSaveButton(true);
-        toast('Preferences saved', 'success', {title:'Preferences saved', compact:true});
-      }
-      break;
-    }
-    case 'export-csv':download('sample-financial-records.csv','Transaction,Student,Type,Amount,Status\n'+names.slice(0,6).map((name,i)=>`TXN-${1042+i},${name},${i===4?'Refund':'Payment'},${i===4?2500:7500},${[1,5].includes(i)?'Pending':'Completed'}`).join('\n'),'text/csv');break;
+    case 'print-schedule':window.print();break;
     case 'download-my-schedule':
       fetch('../api/schedules/me/download', {headers:{Authorization:'Bearer '+localStorage.getItem(workspaceSessionKey)}}).then(async response => {
         if(!response.ok) throw new Error((await response.json()).message || 'Could not download schedule.');
         const url=URL.createObjectURL(await response.blob()); const a=document.createElement('a'); a.href=url; a.download='my-schedule.pdf'; a.click(); setTimeout(()=>URL.revokeObjectURL(url),1000);
       }).catch(error=>toast(error.message,'error')); break;
-    case 'export-calendar':download('sample-schedule.ics','BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Portal//Design Preview//EN\r\nBEGIN:VEVENT\r\nUID:sample-csen701@bobos\r\nDTSTAMP:20261114T080000Z\r\nDTSTART:20261115T063000Z\r\nDTEND:20261115T080000Z\r\nSUMMARY:CSEN 701 - Embedded Systems (sample)\r\nLOCATION:C2.301\r\nEND:VEVENT\r\nEND:VCALENDAR','text/calendar');break;
-    case 'transcript':download('sample-transcript.txt','DESIGN PREVIEW - SAMPLE TRANSCRIPT\nOmar Hassan, 70-71577\nCumulative GPA: 1.70\nCompleted credits: 116\nNot an official academic record.');break;
-    case 'assign-advisor': {
-      const index=Number(el.dataset.studentIndex || 0);
-      const options=names.map((name,i)=>`<option ${i===index?'selected':''}>${name} · 70-${71577+i}</option>`).join('');
-      modal('Assign an advisor',fields(`<label>Student<select>${options}</select></label><label>Advisor<select><option>Dr. Salma Adel</option><option>Dr. Hany Youssef</option></select></label>`),'Assign advisor');
-      break;
-    }
-    case 'assign-group':modal('Assign schedule group',fields('<label>Student<input value="'+names[Number(el.dataset.studentIndex||0)]+' · 70-'+(71577+Number(el.dataset.studentIndex||0))+'" readonly></label><label>Published group<select><option>Group 4 · Computer Engineering</option><option>Group 1 · Computer Engineering</option><option>Unassigned</option></select></label>'),'Save assignment');break;
-    case 'add-course':case 'edit-course':{
-      const editing=name==='edit-course';
-      const [code,title,department,credits]=editing?selectedCourse:['','','Computer Engineering','5'];
-      const departments=[...new Set(courseData.map(course=>course[2]))];
-      modal(editing?'Edit course':'Add course',fields(`<div class="formgrid"><label>Course code<input required value="${code}" placeholder="CSEN 701"></label><label>Credit hours<input type="number" min="1" max="12" required value="${credits}"></label></div><label>Course name<input required value="${escapeHtml(title)}"></label><label>Department<select>${departments.map(d=>`<option ${d===department?'selected':''}>${d}</option>`).join('')}</select></label>`));
-      break;
-    }
-    case 'import-csv':modal('Import courses',fields('<label>Course CSV<input type="file" accept=".csv" required></label><p>Columns: code, name, department, credits, season.</p>'),'Preview import');break;
-    case 'create-term':case 'manage-term': {
-      const term=academicTerms.find(t=>t.name===el.dataset.term) || academicTerms[0];
-      if(name==='manage-term' && term.status==='Archived'){
-        modal(term.name,`<p>Archived · ${term.year}</p><dl class="details">${termMilestones.map(([key,label])=>`<div><dt>${label}</dt><dd>${formatCalendarDay(term[key],{day:'numeric',month:'long',year:'numeric'})}</dd></div>`).join('')}</dl>`,'Close','close');
-      } else {
-        modal(name==='create-term'?'Create academic term':'Manage '+term.name,fields(`<label>Term name<input required value="${term.name}"></label><div class="formgrid">${termMilestones.map(([key,label])=>`<label>${label}<input type="date" value="${term[key]}" required></label>`).join('')}<label>Status<select>${['Active','Upcoming','Archived'].map(status=>`<option ${status===term.status?'selected':''}>${status}</option>`).join('')}</select></label></div>`));
-      }
-      break;
-    }
-    case 'add-offering':modal('Add course offering',fields('<label>Course<select><option>CSEN 701 · Embedded Systems</option><option>CSEN 703 · Algorithms</option></select></label><div class="formgrid"><label>Term<select><option>Winter 2026</option></select></label><label>Number of groups<input type="number" min="1" value="4" required></label></div>'),'Add offering');break;
-    case 'manage-sections':modal('CSEN 701 sections',table(['Section','Time','Room'],[['Lecture 1','Sun 08:30','C2.301'],['Tutorial 4','Tue 10:00','C2.204'],['Lab 4','Wed 12:00','C7.102']],false),'Save sections');break;
-
-    case 'publish':modal('Publish this template?',`<p>${templateGroup()} will become available for student assignments in this preview.</p>`,'Publish template');break;
-    case 'process':modal(`Process ${names[selectedStudent].split(' ')[0]}’s schedule?`,'<p>The draft has 19 credit hours and no time conflicts. Processing sends it to the student for review.</p>','Process schedule');break;
-    case 'reopen':modal('Reopen this schedule?',fields('<label>Reason<textarea required rows="3" placeholder="Explain why the schedule needs another review."></textarea></label>'),'Reopen schedule');break;
-    case 'financial-detail': {
-      const i=Number(el.dataset.record||0);
-      const isRefund=i===4;
-      const pending=[1,5].includes(i);
-      modal(`Transaction TXN-${1042+i}`,`<div class="transaction-detail">
-        <svg class="transaction-edge" viewBox="0 0 360 230" preserveAspectRatio="none" aria-hidden="true">
-          <path vector-effect="non-scaling-stroke" d="M12 3Q94 1 170 2.8T346 2.5Q356 2 357 13Q359 62 357.5 111T357 215Q356 227 345 227Q275 226 197 228T15 226.5Q3 227 3 215Q1 165 2.5 112T3 16Q3 5 12 3Z"/>
-        </svg>
-        <div class="transaction-total">
-          <div><p>${isRefund?'Refund':'Course payment'}</p><strong>${isRefund?'2,500':'7,500'} <small>EGP</small></strong></div>
-          <div class="transaction-state">
-            ${badge(pending?'Pending':'Completed',pending?'payment-pending':'payment-complete')}
-            <time datetime="2026-11-14">14 Nov 2026</time>
-          </div>
-        </div>
-        <dl class="transaction-facts">
-          <div><dt>Student</dt><dd>${avatar(names[i])}<span>${names[i]}<small>70-${71577+i}</small></span></dd></div>
-        </dl>
-        <div class="transaction-footer">
-          ${!isRefund&&!pending?button('Refund transaction','refund','btn danger'):''}
-          ${button('Close','close-dialog','btn primary','autofocus')}
-        </div>
-      </div>`,null);
-      break;
-    }
-    case 'refund':{const opener=returnFocus;dialog.close();modal('Refund this transaction?',fields('<p>EGP 7,500 will be returned to the student’s wallet in this preview.</p><label>Refund reason<textarea required rows="3"></textarea></label>'),'Confirm refund');returnFocus=opener;break;}
-    case 'removal-decision': {
-      const i=Number(el.dataset.request || 0);
-      modal(`${courseData[i][0]} removal request`,`<p>${names[i]} · 70-${71577+i}<br>Reason: ${removalReasons[i]}.${i===0?'<br>Removing this course reduces the semester load from 19 to 14 credits.':''}</p>`+fields('<label>Decision<select><option>Approve removal</option><option>Reject request</option></select></label><label>Decision note<textarea required rows="3" placeholder="Explain the decision to the student."></textarea></label>'),'Submit decision');break;
-    }
-    case 'request-removal':modal('Request course removal',fields('<label>Course<select><option>CSEN 701 · Embedded Systems</option><option>CSEN 703 · Algorithms</option></select></label><label>Reason<textarea required rows="3" placeholder="Why do you need to remove this course?"></textarea></label>'),'Submit request');break;
-    default:toast('Updated in this preview.');
   }
 }
 let activeDeadline=null, noteTimer;
@@ -2024,67 +1532,19 @@ document.addEventListener('click',event=>{
   calendarMonth = control.dataset.calendarNav==='today' ? 0 : previous+Number(control.dataset.calendarNav);
   if(previous===calendarMonth) return;
   const calendar = control.closest('.desk-calendar');
-  pendingExposure?.finish();
-  clearFlipExposure(calendar);
   const paper = calendar.querySelector('.folio-paper:not(.binder-waiting-sheet)');
-  const stack = paper.parentElement;
-  const feature=calendar.querySelector('.calendar-feature');
-  const scene=binderMotion.scene(stack);
-  if(scene){
-    // Keep the outgoing drawing mounted so its ink animation retains its clock.
-    const next=paper.cloneNode(false);
-    paper.before(next);
-    tintCalendar(calendar,calendarDates().month.getMonth());
-    next.innerHTML=calendarPage(true);
-    calendar.querySelector('.folio-agenda').innerHTML=calendarAgenda();
-    scene.turn(next,previous,calendarMonth,productionPreview||flipRate===1?null:showFlipExposure,()=>clearFlipExposure(calendar));
-    return;
-  }
-  stack.querySelectorAll('.calendar-animation,.turn-cels,.binder-waiting-sheet').forEach(layer=>layer.remove());
-  const oldPage = paper.innerHTML;
-  const previousColors=['--sheet','--verso'].map(key=>getComputedStyle(stack).getPropertyValue(key).trim());
+  const scene = binderMotion.scene(paper.parentElement);
   tintCalendar(calendar,calendarDates().month.getMonth());
-  paper.innerHTML = calendarPage(calendar.classList.contains('teaching-pad') && calendarStyle!=='clean');
-  if(feature && !isConcertina(calendarStyle)) feature.innerHTML=calendarFeature();
   calendar.querySelector('.folio-agenda').innerHTML = calendarAgenda();
-  if (motionPreference.matches) return;
-  if (calendar.classList.contains('teaching-pad')) {
-    if(Object.hasOwn(sketchEditions,calendarStyle)) turnSketchPage(stack,oldPage,calendarMonth>previous,previousColors);
-    else flipAcademicSheet(stack,oldPage,calendarMonth>previous,calendarStyle,previousColors);
+  if (!scene) {
+    paper.innerHTML = calendarPage();
     return;
   }
-  const forward = calendarMonth>previous;
-  const overlay = document.createElement('div');
-  overlay.className = 'calendar-animation';
-  overlay.inert = true;
-  overlay.setAttribute('aria-hidden','true');
-  overlay.innerHTML = `${forward?'':`<div class="folio-old-sheet">${oldPage}</div>`}
-    <div class="folio-printed-leaf">${forward?oldPage:paper.innerHTML}</div>
-    <svg viewBox="0 0 300 200" preserveAspectRatio="none" fill="none" stroke-linejoin="round" stroke-linecap="round">
-      <defs><clipPath id="folio-fold" clipPathUnits="objectBoundingBox"><path transform="scale(.0033333333 .005)"/></clipPath></defs>
-      <path class="folio-front-line" stroke="#635b47" stroke-width="1.2"/>
-      <path class="folio-underside" fill="#e9dfc8" stroke="#635b47" stroke-width="1.5"/>
-      <path class="folio-crease" stroke="#a0957d" stroke-width="1.25"/>
-      <path class="folio-verso-ink" stroke="#ab9d7b" stroke-width=".85"/>
-    </svg>`;
-  stack.append(overlay);
-  const paths = overlay.querySelector(':scope > svg').querySelectorAll('path');
-  const leaf = overlay.querySelector('.folio-printed-leaf');
-  const frames = forward ? calendarCels : [...calendarCels].reverse();
-  function expose(index) {
-    if (!overlay.isConnected) return;
-    if (index===frames.length || motionPreference.matches) {overlay.remove();return;}
-    const [hold,face,back,crease] = frames[index];
-    leaf.hidden = !face;
-    [face,face,back,crease].forEach((drawing,i)=>paths[i].setAttribute('d',drawing));
-    const inkFrame = forward ? index : frames.length-1-index;
-    paths[4].setAttribute('d',calendarVerso[inkFrame]);
-    if (calendarInkHolds[inkFrame]) setTimeout(()=>{
-      paths[2].setAttribute('d',calendarInkHolds[inkFrame]);
-    },Math.round(hold*.52));
-    setTimeout(()=>expose(index+1),hold);
-  }
-  expose(0);
+  // Keep the outgoing drawing mounted so its ink animation retains its clock.
+  const next = paper.cloneNode(false);
+  next.innerHTML = calendarPage();
+  paper.before(next);
+  scene.turn(next,previous,calendarMonth);
 });
 function selectView(id) {
   if (tab === id) return;
@@ -2095,72 +1555,12 @@ function selectView(id) {
 }
 document.addEventListener('click',async event=>{
   const target=event.target.closest('[data-page],[data-action],[data-tab]');if(!target)return;
-  if(target.dataset.page){if(event.ctrlKey||event.metaKey||event.shiftKey||event.altKey)return;if(target.dataset.student !== undefined)selectedStudent=Number(target.dataset.student);if(target.dataset.courseCode)selectedCourse=resolveCourse(target.dataset.courseCode);event.preventDefault();
+  if(target.dataset.page){if(event.ctrlKey||event.metaKey||event.shiftKey||event.altKey)return;event.preventDefault();
     navigate(target.dataset.page,target.getAttribute('href'));}
   else if(target.dataset.tab)selectView(target.dataset.tab);
   else action(target.dataset.action,target);
 });
-function chooseCalendarStyle(value){
-  calendarStyle=value;
-  localStorage.setItem(styleKey,value);
-  const pad=document.querySelector('.teaching-pad');
-  clearFlipExposure(pad);
-  pad.querySelectorAll('.turn-cels,.binder-waiting-sheet').forEach(layer=>layer.remove());
-  binderMotion.scene(pad.querySelector('.folio-stack'))?.dispose();
-  pad.dataset.calendarStyle=value;
-  pad.dataset.concertina=String(isConcertina(value));
-  pad.querySelector('.calendar-feature').style.removeProperty('background-color');
-  pad.dataset.sketch=String(Object.hasOwn(sketchEditions,value));
-  tintCalendar(pad,calendarDates().month.getMonth());
-  pad.querySelector('.calendar-feature').innerHTML=calendarFeature();
-  pad.querySelector('.folio-paper').innerHTML=calendarPage(value!=='clean');
-  binderMotion.mount(pad.querySelector('.folio-stack'));
-  document.querySelectorAll('[data-calendar-picker]').forEach(picker=>{picker.value=value;});
-  const url=new URL(location.href);
-  url.searchParams.set('calendar',value);
-  history.replaceState(history.state,'',url);
-}
-function setFlipRate(value){
-  flipRate=value;
-  localStorage.setItem(flipRateKey,String(value));
-  pendingExposure?.schedule();
-  const url=new URL(location.href);
-  url.searchParams.set('flipSpeed',String(value));
-  history.replaceState(history.state,'',url);
-}
-function inspectFlipFrame(input,index){
-  if(!pendingExposure) return;
-  if(flipRate!==0){
-    input.closest('.flip-playback').querySelector('[data-flip-speed]').value='0';
-    setFlipRate(0);
-  }
-  pendingExposure.seek(index);
-}
-document.addEventListener('input',event=>{
-  if(event.target.matches('[data-flip-scrub]')) inspectFlipFrame(event.target,event.target.valueAsNumber-1);
-});
-document.addEventListener('click',event=>{
-  const step=event.target.closest('[data-flip-step]');
-  if(step && pendingExposure) inspectFlipFrame(step,pendingExposure.frame+Number(step.dataset.flipStep));
-});
-document.addEventListener('change',event=>{
-  if(event.target.matches('[data-flip-speed]')){
-    setFlipRate(Number(event.target.value));
-  } else if(event.target.matches('[data-calendar-picker]')){
-    chooseCalendarStyle(event.target.value);
-  }
-  else if(event.target.matches('[data-filter]'))filterRows();
-  else if(event.target.matches('.dayoff')) {
-    const count = document.querySelectorAll('.dayoff:checked').length;
-    if (count > 2) {
-      event.target.checked = false;
-      toast('Choose up to two preferred days.', 'warning');
-    } else {
-      document.querySelector('#preferred-day-count').textContent = `${count} of 2 selected`;
-    }
-  }
-});
-document.addEventListener('input',event=>{if(event.target.id==='search')filterRows();if(event.target.id==='page-finder')document.querySelectorAll('.page-results a').forEach(el=>el.hidden=!el.textContent.toLowerCase().includes(event.target.value.toLowerCase()));});
+document.addEventListener('input',event=>{if(event.target.id==='page-finder')document.querySelectorAll('.page-results a').forEach(el=>el.hidden=!el.textContent.toLowerCase().includes(event.target.value.toLowerCase()));});
 document.addEventListener('submit',async event=>{
   event.preventDefault();
   if(event.target.id==='auth-form'){
@@ -2169,7 +1569,9 @@ document.addEventListener('submit',async event=>{
       const submit = event.submitter;
       if (submit) submit.disabled = true;
       try {
-        if (email === previewEmail && password === 'portal-demo') await signInDemoWorkspace(role);
+        if (email === previewEmail && password === 'portal-demo') {
+          if (!(await signInDemoWorkspace(role))) throw new Error('Sign in with your university account.');
+        }
         else role = await signInWorkspace({email,password});
         startPreview(returnAfterSignIn);
       } catch (error) {
@@ -2217,8 +1619,7 @@ document.addEventListener('submit',async event=>{
         if (submit.isConnected) submit.disabled = false;
       }
     }
-  }else if(event.target.id==='modal-form'){
-    const label=event.submitter?.textContent||'Saved';const close=event.target.dataset.submitAction==='close';closeDialog();if(!close)toast(label === 'Submit decision' ? 'Decision saved in this preview.' : `${label} — completed in this preview.`);
+
   }
 });
 dialog.addEventListener('click',event=>{if(event.target===dialog){const box=dialog.getBoundingClientRect();if(event.clientX<box.left||event.clientX>box.right||event.clientY<box.top||event.clientY>box.bottom)closeDialog();}});
@@ -2231,7 +1632,7 @@ document.addEventListener('keydown',event=>{
   i=event.key==='Home'?0:event.key==='End'?buttons.length-1:(i+(event.key==='ArrowRight'?1:-1)+buttons.length)%buttons.length;
   event.preventDefault();selectView(buttons[i].dataset.tab);
 });
-window.addEventListener('popstate',()=>{const p=normalizePortalLocation();page=pageKey(p.get('page'));returnAfterSignIn=returnPage(p.get('next'));role=Object.hasOwn(roleNames,p.get('role'))?p.get('role'):'coordinator';tab='';selectedStudent=studentIndex(p);selectedCourse=resolveCourse(p.get('course'));restoreLook();render(true);});
+window.addEventListener('popstate',()=>{const p=normalizePortalLocation();page=pageKey(p.get('page'));returnAfterSignIn=returnPage(p.get('next'));role=Object.hasOwn(roleNames,p.get('role'))?p.get('role'):'coordinator';tab='';selectedCourse=resolveCourse(p.get('course'));restoreLook();render(true);});
 window.addEventListener('storage',event=>{
   if (event.key === workspaceSessionKey) sessionStorage.removeItem(workspaceAccountNameKey);
   if (event.key===previewSessionKey && !signedIn() && !authPages.has(page)) {
@@ -2248,13 +1649,6 @@ if (page === 'calendar-sync' && ['connected', 'error'].includes(params.get('cale
   cleanUrl.searchParams.delete('calendar');
   history.replaceState(history.state, '', cleanUrl);
 }
-document.addEventListener('input', event => {
-  if (page === 'preferences' && event.target.matches('#preference-notes,.dayoff,[data-course-group]')) syncPreferenceSaveButton();
-});
-document.addEventListener('change', event => {
-  if (page === 'preferences' && event.target.matches('.dayoff,[data-course-group]')) syncPreferenceSaveButton();
-});
-
 function refreshStudentSchedule() {
   if (student() && ['overview','my-schedule','my-courses','course-detail'].includes(page) && !document.hidden && !liveStudent.loading) {
     liveStudent.token = null;

@@ -18,7 +18,7 @@
     }
   }
   const destination = BobosPortalRoutes.siteEntry(source, {
-    signedIn: localStorage.getItem('portal-studio-preview-session') === '1',
+    signedIn: Boolean(token),
     role,
   });
   location.replace(destination);

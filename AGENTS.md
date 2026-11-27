@@ -4,6 +4,8 @@ Rules for contributing to this repository.
 
 Read [the Portal design system](docs/portal-design-system.md) at the start of every task. For UI, illustration or animation work, inspect the linked live example and source for the component you are changing. Keep the guide current when the approved design changes.
 
+Use the current Portal Studio as the only frontend. Add data and behavior to the existing screen for a workflow. Keep compatibility URLs as redirects or aliases to live screens. Store superseded UI in Git history and keep design studies out of frontend source and public assets. Run `npm run test:regression` for routing or frontend entry changes.
+
 ## Branching
 
 - `main` — production-ready code only. Never push directly.

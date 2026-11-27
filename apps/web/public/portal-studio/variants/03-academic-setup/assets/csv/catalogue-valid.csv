@@ -1,3 +1,0 @@
-code,name,credits,type,major,semester,seasons,prerequisites
-DEMO901,Sample elective,4,elective,CS,7,winter,
-DEMO902,"Advanced sample, with prerequisite",4,elective,CS,9,winter;spring,DEMO901

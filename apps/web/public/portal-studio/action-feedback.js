@@ -73,7 +73,7 @@
       void this.card.offsetWidth;
       this.card.classList.add("feedback-enter");
       this.heading.textContent = options.title || result.title;
-      this.message.textContent = text.replace(/^Save sections\s*[—–-]\s*completed in this preview\.?$/i, "Section changes are saved in this preview.");
+      this.message.textContent = text;
       this.card.hidden = false;
 
       const announcement = options.compact ? text : `${this.heading.textContent}. ${this.message.textContent}`;

@@ -5,75 +5,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { api, explainApiError } from "../api.js";
 import { findPreferenceConflict, preferenceConflictMessage, preferenceGroupOptions, preferenceMeetingLabel } from "../preference-groups.js";
 
-const roleTitle = (role = "") => ({ normalStudent: "Normal student", advisingStudent: "Advising student", advisor: "Advisor", coordinator: "Coordinator", administrator: "Administrator" }[role] || role);
 const humanize = (value = "") => String(value || "—").replace(/([a-z])([A-Z])/g, "$1 $2").replace(/^./, (letter) => letter.toUpperCase());
 const formatDate = (value) => value ? new Date(value).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "—";
 const formatDateTime = (value) => value ? new Date(value).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : null;
-const initials = (value = "") => value.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "B";
-
-export function ProfilePage({ profile }) {
-  const student = ["normalStudent", "advisingStudent"].includes(profile.role);
-  return <div className="page-stack">
-    <PageTitle eyebrow="ACCOUNT DETAILS" title="My profile" description="Your identity and academic information from the university account." />
-    <section className="panel profile-hero"><span className="avatar avatar-xl">{initials(profile.fullName)}</span><div><h2>{profile.fullName}</h2><p>{profile.email}</p><span className="role-pill">{roleTitle(profile.role)}</span></div></section>
-    <section className="panel"><div className="panel-heading"><div><p className="eyebrow">PERSONAL INFORMATION</p><h2>Account details</h2></div></div><div className="detail-grid"><Detail label="Full name" value={profile.fullName} /><Detail label="GUC email" value={profile.email} /><Detail label="Role" value={roleTitle(profile.role)} />{student && <><Detail label="Student number" value={profile.studentId} /><Detail label="Student profile ID" value={profile.studentProfileId} /><Detail label="Student type" value={humanize(profile.studentType)} /><Detail label="Major" value={profile.major} /><Detail label="Current semester" value={profile.currentSemester} /><Detail label="Academic standing" value={humanize(profile.academicStanding)} /><Detail label="Schedule status" value={humanize(profile.scheduleStatus)} /></>}{profile.assignedAdvisor && <Detail label="Assigned advisor" value={`${profile.assignedAdvisor.fullName} · ${profile.assignedAdvisor.email}`} />}</div></section>
-    {student && !profile.studentProfileId && <div className="feedback warning">The current backend profile response does not include the student profile ID needed by the academic-record routes.</div>}
-  </div>;
-}
-
-const warningEmailLabels = { sent: "Email sent", failed: "Email delivery failed", pending: "Email pending" };
-
-export function NotificationsPage({ token, notify }) {
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [creatingTest, setCreatingTest] = useState(false);
-  const [error, setError] = useState("");
-  const load = async () => {
-    setLoading(true); setError("");
-    try {
-      const result = await api("/api/notifications", { token });
-      setItems(result.notifications || []);
-      return true;
-    } catch (requestError) { setError(explainApiError(requestError, "Notifications")); return false; }
-    finally { setLoading(false); }
-  };
-  useEffect(() => { load(); }, [token]);
-  const createTest = async () => {
-    setCreatingTest(true); setError("");
-    try {
-      await api("/api/notifications/test", { token, method: "POST", body: {} });
-      if (await load()) notify("success", "Test notification created. Check the newest item in your inbox.");
-    } catch (requestError) { setError(explainApiError(requestError, "Test notification")); }
-    finally { setCreatingTest(false); }
-  };
-  const markRead = async (item) => {
-    try {
-      await api(`/api/notifications/${item._id}/read`, { token, method: "PATCH", body: {} });
-      setItems((current) => current.map((entry) => entry._id === item._id ? { ...entry, isRead: true, readAt: new Date().toISOString() } : entry));
-      notify("success", "Notification marked as read.");
-    } catch (requestError) { notify("error", requestError.message); }
-  };
-
-  return <div className="page-stack"><PageTitle eyebrow="YOUR INBOX" title="Notifications" description="Updates and reminders sent to your university account." action={<div className="inline-controls"><button className="outline-button" type="button" onClick={load} disabled={loading}>↻ Refresh</button>{import.meta.env.DEV && <button className="primary-button" type="button" onClick={createTest} disabled={creatingTest || loading}>{creatingTest ? "Creating…" : "Create test notification"}</button>}</div>} />
-    {error && <div className="feedback error" role="alert">{error}</div>}
-    <section className="panel notification-panel" aria-busy={loading}>
-      {loading ? <Loading /> : items.length === 0 ? <EmptyState title="You’re all caught up" text="New updates for your account will appear here." icon="◌" /> : items.map((item) => {
-        const isProbationWarning = item.type === "probationWarning";
-        const typeLabel = item.title === "Test notification" ? "Test" : humanize(item.type);
-        const detail = isProbationWarning ? warningEmailLabels[item.deliveryStatus] ?? typeLabel : typeLabel;
-        return <article className={`notification-row ${item.isRead ? "read" : "unread"}`} key={item._id}>
-          <span className={`notification-symbol ${item.isRead ? "muted" : ""}`}>{item.isRead ? "✓" : "•"}</span>
-          <div className="notification-copy">
-            <div className="notification-title"><h3>{item.title}</h3>{!item.isRead && <span className="new-pill">New</span>}</div>
-            <p className={isProbationWarning ? "notification-email-message" : undefined}>{item.message}</p>
-            <small>{formatDate(item.createdAt)} · {detail}</small>
-          </div>
-          {!item.isRead && <button className="text-button" type="button" onClick={() => markRead(item)}>Mark read</button>}
-        </article>;
-      })}
-    </section>
-  </div>;
-}
 
 export function StudentRecordsPage({ token, profile, profileId: targetProfileId, viewerRole, subjectName, onClose, notify }) {
   const [tab, setTab] = useState("history");
