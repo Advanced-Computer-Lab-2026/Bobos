@@ -23,7 +23,6 @@ const pages = {
   login:'Sign in', forgot:'Forgot password', reset:'Reset password'
 };
 const roleNames = {coordinator:'Coordinator', administrator:'Administrator', advisor:'Advisor', advisingStudent:'Advising student', normalStudent:'Normal student'};
-const localDemoRoles = (document.documentElement.dataset.localDemoRoles || '').split(' ').filter(role => Object.hasOwn(roleNames,role));
 const authPages = new Set(['login','forgot','reset']);
 function normalizePortalRoute(query) {
   const accountRole = localStorage.getItem(workspaceSessionKey) && localStorage.getItem('portal-account-role');
@@ -1045,7 +1044,7 @@ function mountLiveCalendar(panel) {
   const state = panel.querySelector('.calendar-connection-state');
   const controls = panel.querySelector('.calendar-sync-actions');
   const syncLabel = 'Sync with Google Calendar';
-  let token = localStorage.getItem(workspaceSessionKey);
+  const token = localStorage.getItem(workspaceSessionKey);
   let working = false;
   let refreshing = false;
   let renderedConnection;
@@ -1074,19 +1073,11 @@ function mountLiveCalendar(panel) {
     returnAfterSignIn = 'calendar-sync';
     navigate('login');
   }
-  const localStudentDemo = localDemoRoles.includes(role) && ['normalStudent','advisingStudent'].includes(role);
   const connectPath = 'connect?' + new URLSearchParams({ portalOrigin: location.origin });
-  async function request(path, method = 'GET', retry = true) {
+  async function request(path, method = 'GET') {
     const response = await fetch('../api/calendar/' + path, { method, headers: { Authorization: 'Bearer ' + token } });
     const data = await response.json();
     if (!response.ok) {
-      if (response.status === 401 && retry && localStudentDemo) {
-        localStorage.removeItem(workspaceSessionKey);
-        if (await signInDemoWorkspace(role)) {
-          token = localStorage.getItem(workspaceSessionKey);
-          return request(path, method, false);
-        }
-      }
       if ([401, 403].includes(response.status)) {
         if (response.status === 401) localStorage.removeItem(workspaceSessionKey);
         controls.replaceChildren();
@@ -1136,15 +1127,7 @@ function mountLiveCalendar(panel) {
   if (!token) {
     controls.replaceChildren();
     state.textContent = 'Not connected';
-    if (localStudentDemo) {
-      control(syncLabel, async () => {
-        if (!await signInDemoWorkspace(role)) { signIn(); return; }
-        token = localStorage.getItem(workspaceSessionKey);
-        const data = await request('connection');
-        if (data.connected) await refresh();
-        else location.assign((await request(connectPath)).authorizationUrl);
-      }, { primary: true, pending: 'Opening Google…' });
-    } else control(syncLabel, signIn, { primary: true });
+    control(syncLabel, signIn, { primary: true });
     return;
   }
   async function checkConnection(background = false) {
@@ -1229,11 +1212,6 @@ function auth(){
             ${page==='reset'?link('forgot','Request another code','auth-recovery'):''}
             ${link('login','Back to sign in','auth-recovery')}`}
         </form>
-        ${page==='login' && localDemoRoles.length ? `<fieldset class="preview-role-picker">
-          <legend>Quick demo sign-in</legend>
-          <div class="preview-role-options">${localDemoRoles.map(id=>
-            button(roleNames[id],'preview-sign-in','preview-role-button',`data-preview-role="${id}"`)).join('')}</div>
-        </fieldset>` : ''}
       </section>
     </div>
     <figure class="signin-print"><div class="desk-lamp-scene"><img src="images/borrowed-light.svg" alt="Desk lamp lighting a sheet of paper" fetchpriority="high"></div></figure>
@@ -1705,7 +1683,7 @@ function startPreview(destination){
   returnAfterSignIn = 'overview';
   navigate(destination, url, history.state || {});
 }
-async function signInWorkspace(credentials, expectedRole){
+async function signInWorkspace(credentials){
   const response = await fetch('../api/identity/login', {
     method:'POST',
     headers:{'Content-Type':'application/json'},
@@ -1715,7 +1693,6 @@ async function signInWorkspace(credentials, expectedRole){
   if (!response.ok || !data.token || !Object.hasOwn(roleNames,data.user?.role)) {
     throw new Error(data.message || 'Could not sign in to the workspace.');
   }
-  if (expectedRole && data.user.role !== expectedRole) throw new Error('The demo account has a different role.');
   localStorage.setItem(workspaceSessionKey,data.token);
   localStorage.setItem('portal-account-role', data.user.role);
   localStorage.setItem(workspaceNavigationKey, String(Date.now()));
@@ -1723,29 +1700,6 @@ async function signInWorkspace(credentials, expectedRole){
   return data.user.role;
 }
 
-async function signInDemoWorkspace(demoRole){
-  if (!localDemoRoles.includes(demoRole)) return false;
-  const response = await fetch(`../__bobos_local_demo?role=${encodeURIComponent(demoRole)}`);
-  if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) return false;
-  await signInWorkspace(await response.json(),demoRole);
-  return true;
-}
-
-async function choosePreviewRole(el){
-  if (page !== 'login' || !Object.hasOwn(roleNames,el.dataset.previewRole)) return;
-  const selected = el.dataset.previewRole;
-  const picker = el.closest('.preview-role-picker');
-  picker.disabled = true;
-  try {
-    if (!(await signInDemoWorkspace(selected))) throw new Error('Sign in with your university account.');
-    role = selected;
-    startPreview(returnAfterSignIn);
-  } catch (error) {
-    toast(error.message, "error");
-  } finally {
-    picker.disabled = false;
-  }
-}
 function toast(text, tone = 'success', options) {
   document.querySelector('portal-action-feedback').show(tone, text, options);
 }
@@ -1773,9 +1727,6 @@ function action(name,el){
     return;
   }
   switch(name){
-    case 'preview-sign-in':
-      void choosePreviewRole(el);
-      break;
     case 'page-back': goToPreviousPage(); break;
     case 'sign-out':
       document.querySelector('portal-action-feedback').clear();

@@ -202,7 +202,7 @@ window.mountPortalControlInk = function (shadow, { coordinator = false } = {}) {
     const bounds = dialog?.getBoundingClientRect();
     const left = bounds ? bounds.left + dialog.clientLeft - dialog.scrollLeft : 0;
     const top = bounds ? bounds.top + dialog.clientTop - dialog.scrollTop : 0;
-    const padding = target.matches('.preview-role-button') ? 1 : 3;
+    const padding = 3;
     layer.style.left = `${rect.left - left - padding}px`;
     layer.style.top = `${rect.top - top - padding}px`;
     layer.style.width = `${rect.width + padding * 2}px`;

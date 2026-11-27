@@ -44,7 +44,7 @@ Probation emails are tested through a local SMTP test server, not a real GUC mai
 
 ### Manual extra-hours fixtures
 
-Run `node scripts/seed-extra-hours-demo.mjs` from the repository root with `EXTRA_HOURS_DEMO_URI` set to the URI of a local MongoDB replica set database named `extra_hours_manual`. Run the API against that same database, and set `BOBOS_PORTAL_DEMO=extra-hours` when starting Vite to use its demo advisor and coordinator. The seed adds missing fixtures and preserves existing request and payment history. Use a new temporary replica set when you need a fresh run.
+Run `node scripts/seed-extra-hours-demo.mjs` from the repository root with `EXTRA_HOURS_DEMO_URI` set to the URI of a local MongoDB replica set database named `extra_hours_manual`. Run the API against that same database, then sign in with the seeded advisor or coordinator credentials. The seed adds missing fixtures and preserves existing request and payment history. Use a new temporary replica set when you need a fresh run.
 
 The demo uses term **EHTEST**, courses **EHT101**, **EHT202**, **EHT301**, and **EHT404**, and the password `ExtraHoursDemo123!`. The coordinator and advisor sign in with `extra.coordinator@guc.edu.eg` and `extra.advisor@guc.edu.eg`. The student accounts use `extra.<scenario>@student.guc.edu.eg`. The local demo picker includes accounts for wallet, gateway, deferral, retries, course activation, and refund history. The seed creates the starting requests. Complete the local settlement workflow to populate the history for each scenario.
 
