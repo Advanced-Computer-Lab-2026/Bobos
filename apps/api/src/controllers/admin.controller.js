@@ -269,7 +269,7 @@ export async function getStudents(req, res) {
     for (const request of extraHourRequests) {
       const status = request.decisionStatus === "pending"
         ? "pendingApproval"
-        : request.decisionStatus === "approved" && ["none", "awaitingChoice", "failed", "cancelled"].includes(request.settlementStatus)
+        : request.decisionStatus === "approved" && ["none", "awaitingChoice", "failed"].includes(request.settlementStatus)
           ? "awaitingPaymentChoice"
           : request.decisionStatus === "approved" && request.settlementStatus === "deferred" ? "deferredToNextInstallment" : null;
       if (status) {
@@ -374,7 +374,7 @@ export async function getPendingWork(req, res) {
   ]) : [[], [], [], [], [], []];
   const [swapRequests, slotChanges, removalRequests, extraHours, graduationPlans, exitExams] = currentTermRequests;
   const actionableExtraHours = extraHours.filter((request) => request.decisionStatus === "pending" ||
-    (request.decisionStatus === "approved" && ["none", "awaitingChoice", "failed", "cancelled", "deferred"].includes(request.settlementStatus)))
+    (request.decisionStatus === "approved" && ["none", "awaitingChoice", "failed", "deferred"].includes(request.settlementStatus)))
     .map((row) => ({ ...row, type: "extraHours" }));
   const financialReversals = extraHours.length ? await FinancialReversalRequest.find({
     student: { $in: ids }, extraHoursRequest: { $in: extraHours.map((row) => row._id) }, status: "pending",

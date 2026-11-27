@@ -49,7 +49,7 @@ See [scheduling preferences](docs/scheduling-preferences.md) for requirements 57
 
 See [Group B API coverage](docs/group-b-verification.md) for the student directory, account status, advisor roster, advising directory, and advisor assignment routes. Run `npm run test:group-b` for Group B role, filtering, and assignment-history checks.
 
-See [the Group A Sprint 2 audit](docs/group-a-sprint2-audit.md) for the integrated student workflows, all 36 assigned requirements, and reproduced missing/partial behavior. Run `npm run test:a` for strict acceptance (known gaps fail) or `npm run test:a:regression` to keep those same gap assertions explicitly marked TODO.
+Run `npm test` for the current portal's API, frontend, and acceptance suites. Run `npm run test:a` or `npm run test:bc` for the focused group suites. The earlier audit documents record the findings at the time of each audit.
 
 ### Extra-hours card payments (Req. 91 and 93)
 

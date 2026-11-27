@@ -12,7 +12,6 @@ import { getWallet } from "../models/academics.js";
 import { calculateDraftCreditPolicy } from "../utils/credit-allowance.js";
 import { mockStripeCheckout } from "./stripe-checkout.fixture.js";
 
-const gap = (reason) => process.env.A_AUDIT_STRICT === "1" ? {} : { todo: reason };
 let database, server, origin, users, student, terms, past, courses;
 before(async () => {
   database = await MongoMemoryReplSet.create({ replSet: { count: 1 } });

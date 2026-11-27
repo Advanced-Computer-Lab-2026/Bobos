@@ -15,9 +15,6 @@ import { startCalendarWorker } from "../services/calendar-worker.js";
 import { setTimeout as delay } from "node:timers/promises";
 import { EventEmitter } from "node:events";
 
-// Known gaps still execute their assertions. Strict mode makes them ordinary failures.
-// This keeps the regression suite usable while exposing unmet acceptance criteria explicitly.
-const gap = (reason) => process.env.BC_AUDIT_STRICT === "1" ? {} : { todo: reason };
 let database, server, base, users, student, other, normal, term, course, offering;
 const realFetch = globalThis.fetch;
 const oid = () => new mongoose.Types.ObjectId();
@@ -84,6 +81,44 @@ async function activity(profile, action, occurredAt, actorName = "Dr Audit", act
   return ScheduleActivity.create({ student: profile._id, term: term._id, schedule: oid(), action, scheduleVersion: 2,
     actor: users.advisor._id, actorName, actorEmail, actorRole: "advisor", occurredAt: new Date(occurredAt), ...(action === "reopened" ? { reason: "Correct timetable" } : {}) });
 }
+
+test("Req 128: catalogue import reports physical CSV rows and creates or updates by course code", async () => {
+  const header = "Course Code,Course Name,Credit Hours,Course Type,Faculty/Major,Recommended Semester,Offering Season,Prerequisites";
+  const first = 'AUD101,"Intro\nto Auditing",3,core,CS,3,winter,';
+  const second = "AUD102,Advanced Auditing,4,core,CS,4,spring,AUD101";
+  const upload = (csvText, role = "administrator") => call("/catalogue/courses/import", { method: "POST", role, body: { csvText } });
+
+  const invalid = await upload([header, first, "", second.replace(",4,core", ",bad,core")].join("\r\n"));
+  assert.equal(invalid.status, 400);
+  assert.ok(invalid.body.errors.some(error => error.row === 5 && error.field === "creditHours"));
+  assert.equal(await Course.countDocuments({ code: /^AUD10/ }), 0);
+  assert.equal((await upload([header, first, second].join("\n"), "coordinator")).status, 403);
+
+  const created = await upload([header, first, second].join("\n"));
+  assert.equal(created.status, 200, JSON.stringify(created.body));
+  assert.equal(created.body.created, 2);
+  const prerequisite = await Course.findOne({ code: "AUD101" });
+  const updated = await upload([header, first, second.replace("Advanced Auditing", "Auditing Practice")].join("\n"));
+  assert.equal(updated.status, 200);
+  assert.equal(updated.body.updated, 2);
+  assert.equal(await Course.countDocuments({ code: /^AUD10/ }), 2);
+  const advanced = await Course.findOne({ code: "AUD102" });
+  assert.equal(advanced.name, "Auditing Practice");
+  assert.deepEqual(advanced.prerequisites.map(String), [String(prerequisite._id)]);
+});
+
+test("Req 128: a write error rolls back the full CSV import", async (t) => {
+  const bulkWrite = Course.bulkWrite.bind(Course);
+  t.mock.method(Course, "bulkWrite", async (operations, options) => {
+    await bulkWrite(operations.slice(0, 1), options);
+    throw Object.assign(new Error("Simulated duplicate key"), { code: 11000 });
+  });
+  const csvText = "Course Code,Course Name,Credit Hours,Course Type,Faculty/Major,Recommended Semester,Offering Season,Prerequisites\n"
+    + "AUD101,Intro to Auditing,3,core,CS,3,winter,\nAUD102,Advanced Auditing,4,core,CS,4,spring,AUD101";
+  const result = await call("/catalogue/courses/import", { method: "POST", role: "administrator", body: { csvText } });
+  assert.equal(result.status, 409);
+  assert.equal(await Course.countDocuments({ code: /^AUD10/ }), 0);
+});
 
 test("B1 Req 116: OAuth requires student auth/config; invalid state cannot create a connection", async () => {
   assert.equal((await call("/calendar/connect", { role: null })).status, 401);
@@ -386,7 +421,7 @@ test("B3 Req 65-68: removal search and combined advisor/status/date filters incl
   assert.equal((await call(`/mandatory-removals/${last._id}`)).body._id, String(last._id));
 });
 
-test("GAP B2 Req 102: an active, uncancelled extra-hours request cannot be refunded", gap("Refund endpoint never checks cancellation/reversal eligibility"), async () => {
+test("B2 Req 102: an active, uncancelled extra-hours request cannot be refunded", async () => {
   const request = await extraRequest();
   const payment = await FinancialTransaction.create({ student: student._id, extraHoursRequest: request._id, kind: "gatewayPayment", amount: 3200, status: "succeeded", settlementOption: "gateway" });
   const res = await call(`/finance/${payment._id}/refund`, { method: "POST", body: {} });
@@ -414,6 +449,10 @@ test("B2 Req 102: cancelling an outstanding installment restores eligibility sta
   assert.equal(cancelledRequest.history.at(-1).action, "cancelled");
   const retry = await call(`/extra-hours/${request._id}/settlement`, { role: "advisingStudent", method: "POST", body: { option: "now", method: "gateway" } });
   assert.equal(retry.status, 409);
+  const dashboard = await call("/admin/pending-work");
+  const row = dashboard.body.students.find(item => item.id === String(student._id));
+  assert.notEqual(row.workflowStatus, "awaitingPaymentChoice");
+  assert.ok(!row.requests.some(item => item.id === String(request._id)));
 });
 
 test("B2 Req 102: refund revokes hours and releases seats from unprocessed additions", async () => {
@@ -432,7 +471,7 @@ test("B2 Req 102: refund revokes hours and releases seats from unprocessed addit
   assert.ok((await CourseOffering.findById(offering._id)).slots.every(slot => slot.assignedStudentCount === 0));
 });
 
-test("GAP B2 Req 102: simultaneous refund requests produce only one credit", gap("Refund read/save/ledger operations are not atomic"), async () => {
+test("B2 Req 102: simultaneous refund requests produce only one credit", async () => {
   const request = await extraRequest({ decisionStatus: "withdrawn" });
   const payment = await FinancialTransaction.create({ student: student._id, extraHoursRequest: request._id, kind: "gatewayPayment", amount: 3200, status: "succeeded" });
   const responses = await Promise.all(Array.from({ length: 8 }, () => call(`/finance/${payment._id}/refund`, { method: "POST", body: {} })));
@@ -470,7 +509,7 @@ test("C1 Req 60: every course taken with the bachelor project requires extra-hou
   assert.ok(response.body.validationIssues.some((issue) => issue.code === "bachelorProjectExtraHours"), "core companion course bypassed extra-hours flow");
 });
 
-test("GAP B3 Req 64: completed-hours deferral requires more than 157 completed hours", gap("Only failed-course membership and nonempty reason are validated"), async () => {
+test("B3 Req 64: completed-hours deferral requires more than 157 completed hours", async () => {
   await CourseAttempt.create({ student: student._id, course: course._id, term: term._id, result: "failed", attendance: "attended", grade: "F" });
   const response = await call("/mandatory-removals", { role: "advisor", method: "POST", body: { studentProfileId: String(student._id), courseId: String(course._id), termId: String(term._id), reason: "completedHours", explanation: "Defer this course" } });
   assert.ok([400, 409, 422].includes(response.status), "student with zero completed hours qualified for >157 hour deferral");
@@ -490,14 +529,14 @@ test("B3 Req 69: concurrent removal decisions return review schedules to draft a
   assert.equal(after.courses.length, 0);
 });
 
-test("GAP B3 Req 81: a pending mandatory-removal approval blocks final processing", gap("Processing does not query pending mandatory-removal decisions"), async () => {
+test("B3 Req 81: a pending mandatory-removal approval blocks final processing", async () => {
   await schedule();
   await MandatoryCourseRemovalRequest.create({ student: student._id, advisor: users.advisor._id, course: course._id, term: term._id, reason: "other", explanation: "Awaiting approval" });
   const result = await call(`${schedulePath()}/process`, { method: "POST", body: {} });
   assert.ok([400, 409].includes(result.status), "required coordinator approval is unresolved");
 });
 
-test("GAP B3 Req 81: processing revalidates current published offerings and required slots", gap("Processing checks state and two request types but never revalidates schedule contents"), async () => {
+test("B3 Req 81: processing revalidates current published offerings and required slots", async () => {
   await schedule();
   await CourseOffering.updateOne({ _id: offering._id }, { isPublished: false });
   const response = await call(`${schedulePath()}/process`, { method: "POST", body: {} });
@@ -512,7 +551,7 @@ test("B3 Req 81,123: two staff processing simultaneously finalize and log exactl
   assert.equal(await ScheduleActivity.countDocuments({ action: "processed" }), 1);
 });
 
-test("GAP C1 Req 59: overview recomputes status after saving an empty draft instead of trusting a stale projection", gap("Overview prioritizes stored workflow projection over current schedule/actions"), async () => {
+test("C1 Req 59: overview shows the current draft when the workflow projection is stale", async () => {
   await StudentWorkflowState.create({ student: student._id, term: term._id, studentType: "advising", status: "processed" });
   assert.equal((await call(`${schedulePath()}/draft`, { method: "POST" })).status, 201);
   const overview = await call(`${schedulePath()}/overview`);
