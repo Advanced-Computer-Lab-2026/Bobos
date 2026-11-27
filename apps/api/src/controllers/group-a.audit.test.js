@@ -7,9 +7,10 @@ import { MongoMemoryReplSet } from "mongodb-memory-server";
 import app from "../app.js";
 import { generateToken } from "../middleware/auth.middleware.js";
 import { User, StudentProfile, AcademicTerm, Course, CourseOffering, CourseAttempt, StudentSchedule, ExtraHoursRequest,
-  FinancialTransaction, FinancialReversalRequest, Notification, GraduationPlan, ExitExamRequest } from "../models/index.js";
+  FinancialTransaction, FinancialReversalRequest, UniversityInstallment, Notification, GraduationPlan, ExitExamRequest } from "../models/index.js";
 import { getWallet } from "../models/academics.js";
 import { calculateDraftCreditPolicy } from "../utils/credit-allowance.js";
+import { linkOutstandingDeferredCharges } from "../services/university-installments.js";
 import { mockStripeCheckout } from "./stripe-checkout.fixture.js";
 
 let database, server, origin, users, student, terms, past, courses;
@@ -213,6 +214,11 @@ test("A1 Req 94: deferred confirmation download is not labelled a paid receipt",
   assert.equal(result.status, 200);
   assert.equal(result.data.confirmation.type, "deferredPaymentConfirmation");
   assert.ok(result.data.confirmation.installment && result.data.confirmation.confirmedAt);
+  const installment = await UniversityInstallment.findById(result.data.confirmation.installmentId);
+  assert.equal(String(installment.student), String(student._id));
+  assert.equal(String(installment.term), String(terms[0]._id));
+  assert.equal(installment.label, result.data.confirmation.installment);
+  assert.equal(result.data.transaction.installmentId, String(installment._id));
   const document = await call(`/extra-hours/mine/financial-history/${result.data.transaction._id}/download`, { role: "student" });
   assert.equal(document.status, 200);
   assert.match(document.headers.get("content-disposition"), /deferred-payment-confirmation/);
@@ -475,4 +481,62 @@ test("Req 117: a returned and resubmitted plan retains both decisions before the
     assert.ok(decisions.some(item => item.message.includes("accepted")));
   }
   assert.ok(!(await inbox("otherStudent")).data.notifications.some(item => item.type === "graduationPlanDecision"));
+});
+
+
+test("Req 92 and 102: distinct deferrals share the next installment and cancellation removes only its charge", async () => {
+  const shortCourses = await Course.create(["INST1", "INST2"].map(code => ({
+    code, name: code, creditHours: 1, courseType: "core", facultyMajors: ["CS"],
+  })));
+  const requests = [];
+  for (const course of shortCourses) {
+    const created = await call("/extra-hours", { role: "advisor", method: "POST",
+      body: { ...requestBody(), courseIds: [String(course._id)] } });
+    assert.equal(created.status, 201, JSON.stringify(created.data));
+    assert.equal((await decide(created.data, { decision: "approved", responseNote: "Confirmed" })).status, 200);
+    requests.push(created.data);
+  }
+
+  const outcomes = await Promise.all(requests.map(request => settle(request, { option: "deferred" })));
+  assert.deepEqual(outcomes.map(result => result.status), [200, 200]);
+  const [first, second] = outcomes.map(result => result.data.transaction);
+  assert.ok(first.installmentId);
+  assert.equal(first.installmentId, second.installmentId);
+  assert.equal(await UniversityInstallment.countDocuments({ student: student._id, term: terms[0]._id }), 1);
+  const history = await call("/extra-hours/mine/financial-history", { role: "student" });
+  assert.equal(history.data.filter(record => record.installmentId === first.installmentId).length, 2);
+  await StudentProfile.create({ user: users.otherStudent._id, studentId: "80-00002", studentType: "advising", major: "CS", currentSemester: 5, gpa: 2,
+    academicStanding: "goodAcademicStanding", advisingReason: "failedCourses" });
+  assert.deepEqual((await call("/extra-hours/mine/financial-history", { role: "otherStudent" })).data, []);
+
+  const route = `/finance/records/${first._id}`;
+  assert.equal((await call(`${route}/reversal-request`, { method: "POST", body: { reason: "Withdraw one course" } })).status, 201);
+  const cancellation = await call(`${route}/refund`, { method: "POST", body: { reason: "Withdraw one course" } });
+  assert.equal(cancellation.status, 200);
+  assert.equal(cancellation.data.refundRecord.installmentId, first.installmentId);
+  const charges = await FinancialTransaction.find({ installmentId: first.installmentId, kind: "deferredCharge", status: "pending" });
+  assert.deepEqual(charges.map(charge => charge.id), [second._id]);
+  assert.equal((await getWallet(student._id)).balance, 0);
+});
+
+test("Req 92 and 94: existing outstanding charges gain a reusable installment link without changing amounts", async () => {
+  const request = await extra({ decisionStatus: "approved", settlementStatus: "deferred", settlementOption: "deferred" });
+  const old = await FinancialTransaction.create({
+    student: student._id, extraHoursRequest: request._id, kind: "deferredCharge", status: "PENDING",
+    amount: request.totalCost, settlementOption: "deferred", installment: "Next installment",
+  });
+  await linkOutstandingDeferredCharges();
+  await linkOutstandingDeferredCharges();
+  const upgraded = await FinancialTransaction.findById(old._id);
+  assert.ok(upgraded.installmentId);
+  assert.equal(upgraded.amount, old.amount);
+  assert.equal(upgraded.status, old.status);
+  assert.equal(upgraded.installment, old.installment);
+  assert.equal(await UniversityInstallment.countDocuments({ student: student._id, term: terms[0]._id }), 1);
+
+  const next = await extra({ decisionStatus: "approved", settlementStatus: "awaitingChoice" });
+  const settled = await settle(next, { option: "deferred" });
+  assert.equal(settled.status, 200);
+  assert.equal(settled.data.transaction.installmentId, String(upgraded.installmentId));
+  assert.equal((await call(`/extra-hours/mine/financial-history/${old._id}/download`, { role: "student" })).status, 200);
 });

@@ -5,6 +5,7 @@ import { AcademicTerm } from "../models/catalogue.js";
 import { ExtraHoursRequest } from "../models/requests.js";
 import { StudentSchedule } from "../models/academics.js";
 import { notifyCoordinatorsOfRequest } from "../services/coordinator-notifications.js";
+import { getNextUniversityInstallment } from "../services/university-installments.js";
 import { changeSlotCount, collectSlotRefs } from "./scheduling.controller.js";
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -484,6 +485,10 @@ export async function processRefund(req, res) {
       }
 
       const now = new Date();
+      if (isDeferred && !transaction.installmentId && linkedReq?.term) {
+        const installment = await getNextUniversityInstallment(transaction.student, linkedReq.term, session);
+        if (installment) transaction.installmentId = installment._id;
+      }
       transaction.status = isDeferred ? "cancelled" : "REFUNDED";
       transaction.refundedAt = now;
       transaction.refundedBy = req.user._id;
@@ -502,6 +507,7 @@ export async function processRefund(req, res) {
         settlementOption: isDeferred ? "deferred" : "wallet",
         term: transaction.term,
         installment: transaction.installment,
+        installmentId: transaction.installmentId,
         deferredChargeReference: transaction.deferredChargeReference,
         transactionReference: refundRef,
         relatedTransaction: transaction._id,

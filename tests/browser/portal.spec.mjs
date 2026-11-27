@@ -401,32 +401,48 @@ test("Req 50, 52: browse beyond the first 20 students and filter by real payment
   await expect(page.getByRole("button", { name: "Next page" })).toHaveCount(0);
 });
 
-test("Req 102, 120: staff queue and cancel an unpaid charge through the Portal", async ({ page }) => {
+test("Req 92, 94, 102, 120: confirm, download and cancel an installment charge through the Portal", async ({ page }) => {
   const term = await auditTerm();
   const passwordHash = await bcrypt.hash(password, 4);
   const [advisor, coordinator] = await User.create([
     { fullName: "Reversal Advisor", role: "advisor", email: "reversal.advisor@guc.edu.eg", passwordHash },
     { fullName: "Reversal Coordinator", role: "coordinator", email: "reversal.coordinator@guc.edu.eg", passwordHash },
   ]);
+  const studentEmail = "reversal.audit@student.guc.edu.eg";
   const student = await auditAdvisingStudent({
-    email: "reversal.audit@student.guc.edu.eg", fullName: "Reversal Student", studentId: "46-00102", passwordHash, assignedAdvisor: advisor._id,
+    email: studentEmail, fullName: "Reversal Student", studentId: "46-00102", passwordHash, assignedAdvisor: advisor._id,
   });
   const course = await Course.create({ code: "CSEN902", name: "Reversal Audit Course", creditHours: 3, courseType: "core" });
   const request = await ExtraHoursRequest.create({
     student: student._id, advisor: advisor._id, term: term._id,
     courses: [{ course: course._id, hours: 3, isRepeated: false, pricePerHour: 800, subtotal: 2400 }],
-    requestedHours: 3, totalCost: 2400, decisionStatus: "approved", settlementStatus: "deferred", settlementOption: "deferred",
+    requestedHours: 3, totalCost: 2400, decisionStatus: "approved", settlementStatus: "awaitingChoice",
     eligibilitySnapshot: { standardAllowance: 30, hoursBeforeRequest: 30, hoursAfterRequest: 33, isProbation: false, graduatingWithinOneYear: false },
   });
-  const charge = await FinancialTransaction.create({
-    student: student._id, extraHoursRequest: request._id, kind: "deferredCharge", status: "pending", amount: 2400,
-    settlementOption: "deferred", deferredChargeReference: "CANCEL-AUDIT-102",
-  });
-
   await page.goto(baseURL);
+  await signIn(page, studentEmail, password);
+  await mainNavigation(page).getByRole("link", { name: "Extra-hours requests", exact: true }).click();
+  await page.getByRole("button", { name: "Add to next installment", exact: true }).click();
+  const history = page.getByRole("region", { name: "Payments and deferred charges" });
+  await expect(history).toContainText(/Installment INST-/);
+  const charge = await FinancialTransaction.findOne({ extraHoursRequest: request._id, kind: "deferredCharge" });
+  expect(charge.installmentId).toBeTruthy();
+  const installmentRef = `INST-${charge.installmentId}`;
+  await expect(history).toContainText(installmentRef);
+  const downloading = page.waitForEvent("download");
+  await history.getByRole("button", { name: "Download PDF" }).click();
+  expect((await downloading).suggestedFilename()).toMatch(/^deferred-payment-confirmation/);
+
+  await page.getByRole("button", { name: /account/i }).click();
+  await page.getByRole("button", { name: "Sign out" }).click();
   await signIn(page, coordinator.email, password);
   await mainNavigation(page).getByRole("link", { name: "Financial records", exact: true }).click();
-  const row = page.getByRole("row", { name: /CANCEL-AUDIT-102/ }).filter({ has: page.getByRole("button", { name: /^View$/ }) });
+  const row = page.getByRole("row", { name: new RegExp(charge.deferredChargeReference) })
+    .filter({ has: page.getByRole("button", { name: /^View$/ }) });
+  await row.getByRole("button", { name: "View", exact: true }).click();
+  const details = page.getByRole("dialog");
+  await expect(details).toContainText(installmentRef);
+  await details.getByRole("button", { name: "Close", exact: true }).last().click();
   await row.getByRole("button", { name: "Request cancellation" }).click();
   let dialog = page.getByRole("dialog", { name: "Request charge cancellation" });
   await dialog.getByLabel(/reason/i).fill("Course no longer needed");

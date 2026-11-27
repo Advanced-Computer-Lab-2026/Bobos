@@ -120,5 +120,7 @@
   {"requirements": [122], "file": "apps/api/src/controllers/bc-requirements.audit.test.js", "test": "Req 122: expired open swaps disappear from pending work before the student visits swap history"},
   {"requirements": [64], "file": "apps/api/src/controllers/bc-requirements.audit.test.js", "test": "Req 64: the second makeup is available only after the first and with at most two failed courses"},
   {"requirements": [108], "file": "apps/api/src/controllers/graduation-plans.integration.test.js", "test": "Req 108: the only unpublished repeat does not prevent a justified exit exam"},
-  {"requirements": [117], "file": "apps/api/src/controllers/group-a.audit.test.js", "test": "Req 117: a returned and resubmitted plan retains both decisions before the first inbox visit"}
+  {"requirements": [117], "file": "apps/api/src/controllers/group-a.audit.test.js", "test": "Req 117: a returned and resubmitted plan retains both decisions before the first inbox visit"},
+  {"requirements": [92, 102], "file": "apps/api/src/controllers/group-a.audit.test.js", "test": "Req 92 and 102: distinct deferrals share the next installment and cancellation removes only its charge"},
+  {"requirements": [92, 94], "file": "apps/api/src/controllers/group-a.audit.test.js", "test": "Req 92 and 94: existing outstanding charges gain a reusable installment link without changing amounts"}
 ]

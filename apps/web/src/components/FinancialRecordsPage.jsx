@@ -600,6 +600,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
                         : viewRecord.linkedRequest || viewRecord.extraHoursRequest || "—"
                     }
                   />
+                  {viewRecord.installmentId && <DetailItem label="Installment reference" value={`INST-${viewRecord.installmentId}`} />}
                   <DetailItem
                     label="Created Date"
                     value={formatDate(viewRecord.createdAt || viewRecord.occurredAt)}

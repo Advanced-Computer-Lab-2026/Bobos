@@ -7,7 +7,7 @@ import {
   User, StudentProfile, AcademicTerm, Course, CourseOffering, StudentSchedule,
   CourseAttempt, ScheduleActivity, CalendarConnection, SlotChangeRequest,
   MandatoryCourseRemovalRequest, ExtraHoursRequest, FinancialTransaction, WholeScheduleSwapRequest,
-  FinancialReversalRequest, GraduationPlan, ExitExamRequest, StudentWorkflowState,
+  FinancialReversalRequest, UniversityInstallment, GraduationPlan, ExitExamRequest, StudentWorkflowState,
 } from "../models/index.js";
 import { generateToken } from "../middleware/auth.middleware.js";
 import { getWallet } from "../models/academics.js";
@@ -443,6 +443,9 @@ test("B2 Req 102: cancelling an outstanding installment restores eligibility sta
   assert.equal(cancelledCharge.status, "cancelled");
   const reversal = await FinancialTransaction.findOne({ kind: "deferredChargeCancellation" });
   assert.equal(reversal.installment, "Next installment");
+  assert.ok(cancelledCharge.installmentId, "an older charge gains its installment link when cancelled");
+  assert.equal(String(reversal.installmentId), String(cancelledCharge.installmentId));
+  assert.equal(String((await UniversityInstallment.findById(reversal.installmentId)).term), String(term._id));
   assert.equal(reversal.deferredChargeReference, "D-102");
   const cancelledRequest = await ExtraHoursRequest.findById(request._id);
   assert.equal(cancelledRequest.settlementStatus, "cancelled");
