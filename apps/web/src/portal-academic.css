@@ -945,6 +945,83 @@
 .academic-dialog.modal-backdrop:not([open]) { display:none; }
 .academic-dialog::backdrop { background:rgba(12,12,12,.62); }
 
+.academic-records { display:grid; min-width:0; gap:18px; max-width:900px; }
+.academic-records .records-panel { display:grid; min-width:0; align-content:start; gap:16px; }
+.academic-records .records-panel:focus-visible { outline:2px solid var(--ink); outline-offset:-2px; }
+.academic-records .records-transcript-controls { flex-wrap:wrap; margin:0; }
+.academic-records .results-heading { margin:0; }
+.academic-records .results-heading h2 { margin:0; }
+.records-caption { margin:3px 0 0; color:var(--muted); font-size:12px; }
+.records-history { display:grid; gap:22px; }
+.records-summary {
+  display:grid; grid-template-columns:52px minmax(0,1fr) minmax(0,1.6fr);
+  grid-template-areas:"art title standing" "program program program";
+  align-items:center; gap:12px; padding:16px;
+  border:1px solid var(--line); border-radius:10px; background:var(--raised);
+}
+.records-summary > img { grid-area:art; width:52px; height:52px; }
+.records-summary-copy { grid-area:title; }
+.records-summary-copy h2 { margin:0; }
+.records-standing {
+  grid-area:standing; display:grid; grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:10px; padding-inline-start:16px; border-inline-start:1px solid var(--line);
+}
+.records-standing, .records-program, .records-course-details { margin:0; }
+.records-standing > div { display:flex; flex-direction:column; justify-content:space-between; }
+.records-standing dt, .records-program dt, .records-course-details dt { color:var(--muted); font-size:12px; }
+.records-standing dd, .records-program dd, .records-course-details dd { margin:0; overflow-wrap:anywhere; }
+.records-standing dd { font-size:21px; font-weight:500; font-variant-numeric:tabular-nums; line-height:1.35; }
+.records-program { grid-area:program; display:flex; flex-wrap:wrap; gap:6px 24px; padding-top:10px; border-top:1px solid var(--line); }
+.records-program > div { display:flex; align-items:baseline; gap:8px; }
+.records-program dd { font-size:13px; font-weight:500; }
+.records-course-heading { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px 12px; margin-bottom:6px; }
+.records-course-heading > div { display:flex; align-items:baseline; gap:9px; }
+.records-course-heading h3 { margin:0; color:var(--ink); font-size:16px; font-weight:500; }
+.records-course-heading span { color:var(--muted); font-size:12px; font-variant-numeric:tabular-nums; }
+.academic-services-embedded .records-course-heading .outline-button { min-height:32px; padding:4px 9px; font-size:12px; }
+.records-empty { margin:0; padding:9px 0; border-top:1px solid var(--line); color:var(--muted); font-size:13px; }
+.records-courses { margin:0; padding:0; list-style:none; border-top:1px solid var(--line); }
+.records-courses > li {
+  display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); align-items:center;
+  gap:8px 20px; padding:10px 0; border-bottom:1px solid var(--line);
+}
+.records-course-identity { display:flex; gap:12px; align-items:center; min-width:0; }
+.records-course-identity .offering-course-emblem { width:36px; height:36px; border-radius:8px; }
+.records-course-identity .offering-course-emblem :is(img,svg) { width:24px; height:24px; }
+.records-course-identity strong { display:block; font-size:14px; font-weight:600; line-height:1.4; overflow-wrap:anywhere; }
+.records-course-identity small { display:block; margin-top:2px; color:var(--muted); font-size:12px; }
+.records-course-details { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.55fr); gap:6px 14px; }
+.records-course-details dd { font-size:13px; }
+.academic-dialog > .modal-card:has(> .academic-records) {
+  --record-inset:clamp(15px,3vw,26px);
+  display:flex; flex-direction:column; width:min(900px,100%);
+  max-height:calc(100dvh - 48px); padding:0; overflow:hidden;
+}
+.modal-card:has(> .academic-records) > .modal-heading {
+  flex:none; align-items:center; margin:0; padding:16px var(--record-inset);
+  border-bottom:1px solid var(--line);
+}
+.modal-card:has(> .academic-records) > .modal-heading h2 { font-size:22px; }
+.modal-card:has(> .academic-records) .modal-description { margin:3px 0 0; color:var(--muted); font-size:13px; }
+.modal-card:has(> .academic-records) .modal-heading button { flex:none; }
+.modal-card > .academic-records { grid-template-rows:auto minmax(0,1fr); min-height:0; gap:0; padding-top:14px; }
+.modal-card > .academic-records > .tabs { margin-inline:var(--record-inset); max-width:calc(100% - 2 * var(--record-inset)); }
+.modal-card > .academic-records > .records-panel { overflow:auto; padding:16px var(--record-inset) 24px; overscroll-behavior:contain; }
+/* The shared ink overlay sits underneath native dialogs in the top layer. */
+.modal-card:has(> .academic-records) [data-service-ink-focus]:focus-visible { outline:2px solid var(--ink) !important; outline-offset:-2px; }
+@media (max-width:700px) {
+  .academic-dialog > .modal-card:has(> .academic-records) { max-height:calc(100dvh - 24px); }
+  .modal-card:has(> .academic-records) > .modal-heading { padding-block:12px; }
+  .modal-card:has(> .academic-records) > .modal-heading h2 { font-size:18px; }
+  .modal-card:has(> .academic-records) > .modal-heading button { min-height:44px; padding-inline:8px; }
+  .records-summary { grid-template-columns:44px minmax(0,1fr); grid-template-areas:"art title" "standing standing" "program program"; gap:10px; padding:12px; }
+  .records-summary > img { width:44px; height:44px; }
+  .records-standing { border-inline-start:0; padding-inline-start:0; }
+  .records-courses > li { grid-template-columns:minmax(0,1fr); }
+  .records-course-details { padding-inline-start:48px; }
+  .academic-services-embedded .records-course-heading .outline-button { min-height:44px; }
+}
+
 .service-surface[data-service="group-assignments"] .register-list-heading { margin:32px 0 22px; }
 .service-surface[data-service="group-assignments"] .register-list-heading h2 { font-size:22px; }
 

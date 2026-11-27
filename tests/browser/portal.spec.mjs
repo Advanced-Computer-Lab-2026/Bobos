@@ -255,6 +255,10 @@ test("Req 15: My advisor uses the illustrated page for navigation, bookmarks, an
 
   await FinancialTransaction.create({ student: profile._id, kind: "walletTopUp", status: "succeeded", amount: 1234.56 });
   await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Academic records" }).click();
+  await expect(main.getByRole("heading", { name: "Academic history" })).toBeVisible();
+  await page.getByRole("tab", { name: "Transcript" }).click();
+  await expect(main.getByText(/Yearly transcripts appear after an academic year has course attempts/)).toBeVisible();
+  await expect(main.getByRole("button", { name: "Download PDF" })).toBeDisabled();
   await page.getByRole("tab", { name: "Wallet" }).click();
   await expect(main).toContainText("1,234.56");
   await page.goto(baseURL + "/workspace.html?screen=records");

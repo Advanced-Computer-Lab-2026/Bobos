@@ -896,7 +896,7 @@ function SlotFields({ index, slot, onChange, onRemove, canRemove }) {
 
 function PageTitle({ eyebrow, title, description, action }) { return <div className="page-title-row"><div><p className="eyebrow">{eyebrow}</p><h1>{title}</h1><p className="page-description">{description}</p></div>{action}</div>; }
 function Field({ label, children, className = "" }) { return <label className={`field ${className}`}><span>{label}</span>{children || <input />}</label>; }
-export function Modal({ title, eyebrow, onClose, children, wide = false }) {
+export function Modal({ title, eyebrow, description, onClose, closeLabel, children, wide = false }) {
   const ref = useRef(null);
   useLayoutEffect(() => {
     const dialog = ref.current;
@@ -907,7 +907,9 @@ export function Modal({ title, eyebrow, onClose, children, wide = false }) {
     onCancel={event => { event.preventDefault(); onClose(); }}
     onClick={event => { if (event.target === ref.current) onClose(); }}>
     <section className={`modal-card ${wide ? "wide-modal" : ""}`}>
-      <div className="modal-heading"><div>{eyebrow && <p className="eyebrow">{eyebrow}</p>}<h2>{title}</h2></div><button className="icon-button" type="button" onClick={onClose} aria-label="Close">×</button></div>
+      <div className="modal-heading"><div>{eyebrow && <p className="eyebrow">{eyebrow}</p>}<h2>{title}</h2>{description && <p className="modal-description">{description}</p>}</div>
+        <button className={closeLabel ? "outline-button" : "icon-button"} type="button" onClick={onClose} aria-label={closeLabel || "Close"}>{closeLabel || "×"}</button>
+      </div>
       {children}
     </section>
   </dialog>;

@@ -2,7 +2,7 @@ import StaffPreferences from "./StaffPreferences.jsx";
 import { parseDays, parseTimes, PREFERENCE_DAYS, PREFERENCE_TIME_SLOTS } from "../preference-inputs.js";
 import OfferingCourseIcon from "./OfferingCourseIcon.jsx";
 import { termLabel } from "../term-label.js";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { api, explainApiError } from "../api.js";
 import { findPreferenceConflict, minutesToTime, preferenceConflictMessage, preferenceGroupOptions, preferenceMeetingLabel } from "../preference-groups.js";
 
@@ -10,51 +10,80 @@ const humanize = (value = "") => String(value || "—").replace(/([a-z])([A-Z])/
 const formatDate = (value) => value ? new Date(value).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "—";
 const formatDateTime = (value) => value ? new Date(value).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : null;
 
-export function StudentRecordsPage({ token, profile, profileId: targetProfileId, viewerRole, subjectName, onClose, notify }) {
+const recordTabs = { history: "History", transcript: "Transcript", failed: "Failed courses", wallet: "Wallet" };
+
+export function StudentRecordsPage({ token, profile, profileId: targetProfileId, notify }) {
   const [tab, setTab] = useState("history");
   const [year, setYear] = useState("");
   const [academicYears, setAcademicYears] = useState([]);
   const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [yearsLoading, setYearsLoading] = useState(true);
+  const [yearsError, setYearsError] = useState("");
+  const request = useRef(null);
+  const tabsId = useId();
   const profileId = targetProfileId || profile.studentProfileId;
-  const role = viewerRole || profile.role;
-  const isStaffViewer = ["advisor", "coordinator"].includes(role);
+  const isStaffViewer = ["advisor", "coordinator"].includes(profile.role);
   const tabs = isStaffViewer ? ["history", "transcript", "failed"] : ["history", "transcript", "failed", "wallet"];
 
-  const load = async (selectedTab = tab, selectedYear = year) => {
-    if (!profileId) { setError("The API profile response is missing the student profile ID required by this records endpoint."); return; }
+  const load = useCallback(async (selectedTab, selectedYear = "") => {
+    request.current?.abort();
+    if (!profileId) {
+      setLoading(false);
+      setError("The student profile needed to load these records is unavailable.");
+      return;
+    }
+    const controller = new AbortController();
+    request.current = controller;
     setLoading(true); setError(""); setData(null);
     try {
       const base = `/api/identity/students/${encodeURIComponent(profileId)}`;
-      let result;
-      if (selectedTab === "history") result = await api(`${base}/history`, { token });
-      if (selectedTab === "transcript") {
-        if (!selectedYear.trim()) throw new Error("Select an attended academic year.");
-        result = await api(`${base}/transcript?year=${encodeURIComponent(selectedYear.trim())}`, { token });
-      }
-      if (selectedTab === "failed") result = await api(`${base}/failed-courses`, { token });
-      if (selectedTab === "wallet") result = await api(`${base}/wallet`, { token });
-      setData(result);
-    } catch (requestError) { setError(explainApiError(requestError, "Academic records")); }
-    finally { setLoading(false); }
-  };
+      const path = { history: "history", transcript: `transcript?year=${encodeURIComponent(selectedYear)}`, failed: "failed-courses", wallet: "wallet" };
+      const result = await api(`${base}/${path[selectedTab]}`, { token, signal: controller.signal });
+      if (!controller.signal.aborted) setData(result);
+    } catch (requestError) {
+      if (!controller.signal.aborted) setError(explainApiError(requestError, "Academic records"));
+    } finally {
+      if (!controller.signal.aborted) setLoading(false);
+    }
+  }, [profileId, token]);
 
   useEffect(() => {
-    if (!profileId) return;
-    let active = true;
-    api(`/api/identity/students/${encodeURIComponent(profileId)}/transcript/years`, { token })
+    if (!profileId) { setYearsLoading(false); return; }
+    const controller = new AbortController();
+    setYearsLoading(true);
+    setYearsError("");
+    api(`/api/identity/students/${encodeURIComponent(profileId)}/transcript/years`, { token, signal: controller.signal })
       .then((result) => {
-        if (!active) return;
+        if (controller.signal.aborted) return;
         const years = result.academicYears || [];
         setAcademicYears(years);
         setYear((selected) => years.includes(selected) ? selected : years[0] || "");
       })
-      .catch((requestError) => { if (active) setError(explainApiError(requestError, "Academic years")); });
-    return () => { active = false; };
+      .catch((requestError) => { if (!controller.signal.aborted) setYearsError(explainApiError(requestError, "Academic years")); })
+      .finally(() => { if (!controller.signal.aborted) setYearsLoading(false); });
+    return () => controller.abort();
   }, [profileId, token]);
 
-  useEffect(() => { if (profileId && tab !== "transcript") load(tab, year); }, [tab, profileId]);
+  useEffect(() => {
+    if (tab !== "transcript") load(tab);
+    return () => request.current?.abort();
+  }, [tab, load]);
+
+  function selectTab(item) {
+    if (item === tab) return;
+    request.current?.abort();
+    setData(null); setError(""); setLoading(item !== "transcript"); setTab(item);
+  }
+
+  function handleTabKey(event, index) {
+    const target = { ArrowLeft: (index - 1 + tabs.length) % tabs.length, ArrowRight: (index + 1) % tabs.length, Home: 0, End: tabs.length - 1 }[event.key];
+    if (target === undefined) return;
+    event.preventDefault();
+    event.currentTarget.parentElement.children[target].focus();
+    selectTab(tabs[target]);
+  }
 
   const download = async () => {
     if (!profileId || !year.trim()) { setError("Enter an academic year before downloading a transcript."); return; }
@@ -70,11 +99,20 @@ export function StudentRecordsPage({ token, profile, profileId: targetProfileId,
     } catch (requestError) { setError(explainApiError(requestError, "Transcript download")); }
   };
 
-  return <div className="page-stack"><PageTitle eyebrow={isStaffViewer ? "ADVISING STUDENT RECORD" : "STUDENT SERVICES"} title="Academic records" description={subjectName ? `Academic history, yearly transcripts, and failed courses for ${subjectName}.` : "Review your academic history, yearly transcripts, failed courses, and wallet."} action={onClose ? <button className="outline-button" type="button" onClick={onClose}>← Back to advising</button> : undefined} />
-    <div className="tabs" role="tablist" aria-label="Academic records">{tabs.map((item) => <button type="button" role="tab" aria-selected={tab === item} key={item} onClick={() => setTab(item)}>{({ history: "History", transcript: "Transcript", failed: "Failed courses", wallet: "Wallet" })[item]}</button>)}</div>
-    {tab === "transcript" && <div className="inline-controls"><label className="field compact-field"><span>Attended academic year</span><select value={year} onChange={(event) => { setYear(event.target.value); setData(null); setError(""); }}><option value="">{academicYears.length ? "Select a year" : "No attended years"}</option>{academicYears.map((item) => <option key={item} value={item}>{item}</option>)}</select></label><button className="primary-button" type="button" disabled={!year} onClick={() => load("transcript", year)}>View transcript</button><button className="outline-button" type="button" disabled={!year} onClick={download}>Download PDF ↓</button></div>}
-    {error && <div className="feedback error" role="alert">{error}</div>}
-    <section className="panel" aria-busy={loading}>{loading ? <Loading /> : data ? <RecordData data={data} tab={tab} /> : !error && <EmptyState title={tab === "transcript" ? "Select an academic year" : "Select a record"} text={tab === "transcript" ? "Choose an attended year, then view its transcript." : "Choose a record type to load your information."} icon="▤" />}</section>
+  const transcriptMessage = year ? "Select View transcript to see the courses and grades for the selected year." : "Yearly transcripts appear after an academic year has course attempts.";
+  return <div className="academic-records">
+    {!isStaffViewer && <div className="page-title-row"><h1>Academic records</h1></div>}
+    <div className="tabs" role="tablist" aria-label="Academic records">{tabs.map((item, index) =>
+      <button type="button" role="tab" id={`${tabsId}-${item}`} aria-controls={`${tabsId}-panel`} aria-selected={tab === item} tabIndex={tab === item ? 0 : -1} key={item} onClick={() => selectTab(item)} onKeyDown={(event) => handleTabKey(event, index)}>{recordTabs[item]}</button>)}</div>
+    <section className="records-panel" role="tabpanel" id={`${tabsId}-panel`} aria-labelledby={`${tabsId}-${tab}`} aria-busy={loading || (tab === "transcript" && yearsLoading)} tabIndex={0}>
+      {tab === "transcript" && <div className="inline-controls records-transcript-controls">
+        <label className="field compact-field"><span>Attended academic year</span><select disabled={yearsLoading || !academicYears.length} value={year} onChange={(event) => { request.current?.abort(); setYear(event.target.value); setData(null); setError(""); setLoading(false); }}><option value="">{academicYears.length ? "Select a year" : yearsLoading ? "Loading years…" : "No attended years"}</option>{academicYears.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+        <button className="primary-button" type="button" disabled={!year || yearsLoading || loading} onClick={() => load("transcript", year)}>View transcript</button>
+        <button className="outline-button" type="button" disabled={!year || yearsLoading} onClick={download}>Download PDF</button>
+      </div>}
+      {(error || (tab === "transcript" && yearsError)) && <div className="feedback error" role="alert">{error || yearsError}</div>}
+      {loading || (tab === "transcript" && yearsLoading) ? <Loading /> : data ? <RecordData data={data} tab={tab} /> : tab === "transcript" && !error && !yearsError && <p className="records-empty">{transcriptMessage}</p>}
+    </section>
   </div>;
 }
 
@@ -253,9 +291,7 @@ function PageTitle({ eyebrow, title, description, action }) {
   return <div className="page-title-row"><div><p className="eyebrow">{eyebrow}</p><h1>{title}</h1><p className="page-description">{description}</p></div>{action}</div>;
 }
 
-function Detail({ label, value }) { return <div className="detail-item"><span>{label}</span><strong>{value ?? "—"}</strong></div>; }
 function Loading() { return <div className="loading-state"><span className="loader" />Loading…</div>; }
-function EmptyState({ title, text, icon = "◌" }) { return <div className="empty-state"><span>{icon}</span><h3>{title}</h3><p>{text}</p></div>; }
 
 function RecordData({ data, tab }) {
   if (tab === "wallet") {
@@ -282,39 +318,83 @@ function RecordData({ data, tab }) {
         </td>
         <td>{amountLabel(txn.resultingBalance)} {data.currency || "EGP"}</td>
       </tr>;
-    })}</tbody></table></div> : <EmptyState title="No transactions yet" text="Wallet activity will appear here." />}</>;
+    })}</tbody></table></div> : <p className="records-empty">Wallet transactions will appear here when you add or use funds.</p>}</>;
   }
   if (tab === "failed") {
     const records = Array.isArray(data) ? data : [];
-    return records.length ? <div className="table-scroll"><table><thead><tr><th>Course</th><th>Term</th><th>Attempt</th><th>Attendance</th><th>Result</th><th>Grade</th></tr></thead><tbody>{records.map((item) => <tr key={item._id}><td><strong>{item.course?.code || "—"}</strong><span className="secondary-text">{item.course?.name}</span></td><td>{termLabel(item.term)}</td><td>{item.attemptNumber || "—"}</td><td>{humanize(item.attendance)}</td><td>{humanize(item.result)}</td><td>{item.grade || "—"}</td></tr>)}</tbody></table></div> : <EmptyState title="No failed or unattended courses" text={data.message || "There are no records to display."} icon="✓" />;
+    return records.length ? <div className="table-scroll"><table><thead><tr><th>Course</th><th>Term</th><th>Attempt</th><th>Attendance</th><th>Result</th><th>Grade</th></tr></thead><tbody>{records.map((item) => <tr key={item._id}><td><strong>{item.course?.code || "—"}</strong><span className="secondary-text">{item.course?.name}</span></td><td>{termLabel(item.term)}</td><td>{item.attemptNumber || "—"}</td><td>{humanize(item.attendance)}</td><td>{humanize(item.result)}</td><td>{item.grade || "—"}</td></tr>)}</tbody></table></div> : <p className="records-empty">No failed or unattended courses are listed in this record.</p>;
   }
   if (tab === "transcript") {
     const terms = data.terms || {};
     const courses = Object.entries(terms).flatMap(([name, rows]) => (rows || []).map((entry) => ({ ...entry, termLabel: humanize(name) })));
-    return <><div className="results-heading"><div><p className="eyebrow">ACADEMIC YEAR {data.year}</p><h2>Yearly transcript</h2></div><span>{courses.length} course attempts</span></div>{courses.length ? <div className="table-scroll"><table><thead><tr><th>Term</th><th>Course</th><th>Credits</th><th>Grade</th><th>Result</th><th>Attendance</th></tr></thead><tbody>{courses.map((row, index) => <tr key={row._id || `${row.termLabel}-${index}`}><td>{row.termLabel}</td><td><strong>{row.course?.code || "—"}</strong><span className="secondary-text">{row.course?.name}</span></td><td>{row.course?.creditHours ?? "—"}</td><td>{row.grade || "—"}</td><td>{humanize(row.result)}</td><td>{humanize(row.attendance)}</td></tr>)}</tbody></table></div> : <EmptyState title="No transcript courses for this year" text="Choose a different academic year to view another transcript." />}</>;
+    return <><div className="results-heading"><div><h2>Yearly transcript</h2><p className="records-caption">{data.year} · {courses.length} {courses.length === 1 ? "course attempt" : "course attempts"}</p></div></div>{courses.length ? <div className="table-scroll"><table><thead><tr><th>Term</th><th>Course</th><th>Credits</th><th>Grade</th><th>Result</th><th>Attendance</th></tr></thead><tbody>{courses.map((row, index) => <tr key={row._id || `${row.termLabel}-${index}`}><td>{row.termLabel}</td><td><strong>{row.course?.code || "—"}</strong><span className="secondary-text">{row.course?.name}</span></td><td>{row.course?.creditHours ?? "—"}</td><td>{row.grade || "—"}</td><td>{humanize(row.result)}</td><td>{humanize(row.attendance)}</td></tr>)}</tbody></table></div> : <p className="records-empty">There are no course attempts for this year. Select another academic year to view its transcript.</p>}</>;
   }
-  const completed = data.completedCourses || [];
-  const current = data.currentCourses || [];
-  const remaining = data.remainingCourses || [];
+  return <AcademicHistory data={data} />;
+}
+
+function AcademicHistory({ data }) {
   const summary = data.studentProfile || {};
-  const courseName = (course) => <><strong>{course?.code || "—"}</strong><span className="secondary-text">{course?.name || ""}</span></>;
-  const termName = termLabel;
-  return <div className="page-stack">
-    <div className="results-heading"><div><p className="eyebrow">STUDENT ID {summary.studentId || ""}</p><h2>Academic history</h2></div></div>
-    <div className="detail-grid">
-      <Detail label="Advisor" value={summary.advisor} />
-      <Detail label="Major" value={summary.major} />
-      <Detail label="GPA" value={summary.gpa} />
-      <Detail label="Completed hours" value={summary.completedHours ?? 0} />
-      <Detail label="Current semester" value={summary.currentSemester} />
+  const groups = [
+    {
+      title: "Current courses", empty: "No courses are marked as current.",
+      items: (data.currentCourses || []).map((item) => ({
+        id: item._id, course: item.course, details: { Term: termLabel(item.term) },
+      })),
+    },
+    {
+      title: "Completed courses", empty: "No passing grades have been recorded yet.",
+      items: (data.completedCourses || []).map((item) => ({
+        id: item._id, course: item.course, details: { Term: termLabel(item.term), Grade: item.grade },
+      })),
+    },
+    {
+      title: "Remaining courses", empty: "The catalogue lists no remaining courses for this major.",
+      items: (data.remainingCourses || []).map((course) => ({
+        id: course._id, course, details: {
+          "Offering season": course.offeringSeasons?.map(humanize).join(", ") || "Not specified",
+          Prerequisites: course.prerequisites?.map((item) => [item.code, item.name].filter(Boolean).join(" · ")).join(", ") || "None",
+        },
+      })),
+    },
+  ];
+  return <div className="records-history">
+    <div className="records-summary">
+      <img src="/portal-studio/images/academic-transcript.svg" alt="" width="64" height="64" />
+      <div className="records-summary-copy"><h2>Academic history</h2>{summary.studentId && <p className="records-caption">Student ID {summary.studentId}</p>}</div>
+      <dl className="records-standing">
+        {Object.entries({ GPA: summary.gpa, "Completed credits": summary.completedHours ?? 0, "Current semester": summary.currentSemester }).map(([label, value]) =>
+          <div key={label}><dt>{label}</dt><dd>{value ?? "—"}</dd></div>)}
+      </dl>
+      <dl className="records-program">
+        <div><dt>Major</dt><dd>{summary.major || "—"}</dd></div>
+        <div><dt>Advisor</dt><dd>{summary.advisor || "Unassigned"}</dd></div>
+      </dl>
     </div>
-    <div><div className="results-heading"><h3>Completed courses</h3><span>{completed.length}</span></div>
-      {completed.length ? <div className="table-scroll"><table><thead><tr><th>Course</th><th>Term</th><th>Grade</th><th>Credit hours</th></tr></thead><tbody>{completed.map((item) => <tr key={item._id}><td>{courseName(item.course)}</td><td>{termName(item.term)}</td><td>{item.grade}</td><td>{item.course?.creditHours ?? "—"}</td></tr>)}</tbody></table></div> : <p className="helper-text">No completed courses recorded.</p>}</div>
-    <div><div className="results-heading"><h3>Current courses</h3><span>{current.length}</span></div>
-      {current.length ? <div className="table-scroll"><table><thead><tr><th>Course</th><th>Term</th><th>Credit hours</th></tr></thead><tbody>{current.map((item) => <tr key={item._id}><td>{courseName(item.course)}</td><td>{termName(item.term)}</td><td>{item.course?.creditHours ?? "—"}</td></tr>)}</tbody></table></div> : <p className="helper-text">No current courses recorded.</p>}</div>
-    <div><div className="results-heading"><h3>Remaining courses</h3><span>{remaining.length}</span></div>
-      {remaining.length ? <div className="table-scroll"><table><thead><tr><th>Course</th><th>Credit hours</th><th>Prerequisites</th><th>Offering season</th></tr></thead><tbody>{remaining.map((course) => <tr key={course._id}><td>{courseName(course)}</td><td>{course.creditHours ?? "—"}</td><td>{course.prerequisites?.length ? course.prerequisites.map((item) => item.name ? `${item.code} · ${item.name}` : item.code || "—").join(", ") : "None"}</td><td>{course.offeringSeasons?.length ? course.offeringSeasons.map(humanize).join(", ") : "Not specified"}</td></tr>)}</tbody></table></div> : <p className="helper-text">No remaining courses found in the catalogue for this major.</p>}</div>
+    {groups.map((group) => <CourseRecordGroup key={group.title} {...group} />)}
   </div>;
+}
+
+function CourseRecordGroup({ title, items, empty }) {
+  const id = useId();
+  const [expanded, setExpanded] = useState(false);
+  const previewLength = 4;
+  const visibleItems = expanded ? items : items.slice(0, previewLength);
+  return <section className="records-course-group" aria-labelledby={id}>
+    <header className="records-course-heading">
+      <div><h3 id={id}>{title}</h3><span>{items.length}</span></div>
+      {items.length > previewLength && <button type="button" className="outline-button" aria-controls={`${id}-list`} aria-expanded={expanded} aria-label={`${expanded ? "Show fewer" : `Show all ${items.length}`} ${title.toLowerCase()}`} onClick={() => setExpanded(!expanded)}>{expanded ? "Show fewer" : `Show all ${items.length}`}</button>}
+    </header>
+    {items.length === 0 ? <p className="records-empty">{empty}</p> :
+      <ul className="records-courses" id={`${id}-list`} aria-labelledby={id} role="list">{visibleItems.map(({ id: key, course, details }) =>
+        <li key={key}>
+          <div className="records-course-identity">
+            <OfferingCourseIcon code={course?.code} />
+            <div><strong>{course?.name || "Course unavailable"}</strong><small>{[course?.code, course?.creditHours != null && `${course.creditHours} ${course.creditHours === 1 ? "credit" : "credits"}`].filter(Boolean).join(" · ") || "—"}</small></div>
+          </div>
+          <dl className="records-course-details">{Object.entries(details).map(([label, value]) =>
+            <div key={label}><dt>{label}</dt><dd>{value || "—"}</dd></div>)}</dl>
+        </li>)}</ul>}
+  </section>;
 }
 
 function moveRankedItem(items, index, direction) {

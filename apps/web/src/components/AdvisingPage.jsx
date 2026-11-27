@@ -2,6 +2,7 @@ import { StudentRegister, RegisterRow, StudentIdentity, RecordActions, RegisterE
 import { useCallback, useEffect, useState } from "react";
 import { api, explainApiError } from "../api.js";
 import { StudentRecordsPage } from "./BasicPages.jsx";
+import { Modal } from "./AcademicWorkspace.jsx";
 import RequestRemovalModal from "./RequestRemovalModal.jsx";
 import GraduationPlans from "./GraduationPlans.jsx";
 import FilterDisclosure from "./FilterDisclosure.jsx";
@@ -144,7 +145,9 @@ export default function AdvisingPage({ token, role, notify, onOpenPreferences, g
 
     </>}
     {selected && <StudentModal coordinator={coordinator} student={selected} onClose={() => setSelected(null)} onOpenGraduationPlans={role === "advisor" ? () => { setGraduationStudent(selected.profile); setSelected(null); } : undefined} />}
-    {recordsStudent && <div className="modal-backdrop" onClick={() => setRecordsStudent(null)}><section className="modal-card wide-modal" role="dialog" aria-modal="true" aria-label="Academic records" onClick={(event) => event.stopPropagation()}><StudentRecordsPage token={token} profile={{ role }} profileId={recordsStudent._id} viewerRole={role} subjectName={recordsStudent.user?.fullName || recordsStudent.studentId} onClose={() => setRecordsStudent(null)} notify={notify} /></section></div>}
+    {recordsStudent && <Modal title="Academic records" description={recordsStudent.user?.fullName || recordsStudent.studentId} closeLabel="Back to advising" onClose={() => setRecordsStudent(null)} wide>
+      <StudentRecordsPage token={token} profile={{ role }} profileId={recordsStudent._id} notify={notify} />
+    </Modal>}
     {assigning && <AssignModal token={token} student={assigning} advisors={advisors} onClose={() => setAssigning(null)} onSaved={() => {
       notify("success", assigning.assignedAdvisor?._id ? "Advisor reassignment saved." : "Advisor assignment saved.");
       setAssigning(null);
