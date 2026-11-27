@@ -123,28 +123,6 @@
 .signin-actions .auth-recovery {justify-self:center;padding-inline:4px;font-size:13px;color:var(--muted)}
 .auth-feedback {margin:0;color:var(--muted);font-size:13px;line-height:1.5}
 .auth-feedback.error {color:var(--danger, #b14b3c)}
-.preview-role-picker {
-  min-inline-size: 0;
-  margin: 22px 0 0;
-  padding: 10px 0 0;
-  border: 0;
-  border-top: 1px solid var(--line);
-}
-.preview-role-picker legend { padding: 0 10px 0 0; color: var(--muted); font-size: 13px; }
-.preview-role-options { display: flex; flex-wrap: wrap; gap: 8px; }
-.preview-role-button {
-  min-height: 40px;
-  padding: 7px 11px;
-  border: 1px solid var(--control);
-  border-radius: 7px;
-  background: var(--raised);
-  color: var(--ink);
-  font: inherit;
-  font-size: 13px;
-  cursor: pointer;
-}
-.preview-role-button:hover { background: var(--ink); color: var(--canvas); }
-.preview-role-button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 @media(max-width:760px){.auth:has(> .signin-print) .signin-print img{width:min(100%,38vh,400px)}}
 
 .portal-studio .auth:has(> .signin-print) .signin-copy {
@@ -226,7 +204,6 @@ body > .portal-focus-ring[data-service-ink] {z-index:4}
 
 @media (forced-colors:none) {
   [data-portal-focus]:focus-visible {outline:none!important}
-  .preview-role-button[data-portal-focus]:focus-visible {border-color:transparent}
 }
 @media (prefers-reduced-motion:no-preference) {
   .portal-focus-ring path {
