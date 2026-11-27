@@ -110,7 +110,7 @@ window.mountPortalControlInk = function (shadow, { coordinator = false } = {}) {
     const active = shadow.activeElement;
     const drawFocus = active?.matches(`:focus-visible:is(${selector})`) ||
       (coordinator && active?.matches(`:is(${fields})`));
-    const next = drawFocus ? active : null;
+    const next = drawFocus && !active?.hasAttribute('data-no-control-ink') ? active : null;
     if (focused !== next) {
       focused?.removeAttribute('data-service-ink-focus');
       focused = next;
@@ -123,7 +123,7 @@ window.mountPortalControlInk = function (shadow, { coordinator = false } = {}) {
       else if (pointerTarget?.matches(':hover')) pointed = pointerTarget;
     }
     const hovered = pointed?.closest(hoverSelector);
-    const nextHover = hovered && hovered !== focused && !hovered.matches(':disabled,[aria-disabled=true],.removal-record-link') ? hovered : null;
+    const nextHover = hovered && hovered !== focused && !hovered.matches(':disabled,[aria-disabled=true],[data-no-control-ink],.removal-record-link') ? hovered : null;
     if (coordinator && paintedHover !== nextHover) {
       paintedHover?.removeAttribute('data-service-ink-hover');
       paintedHover = nextHover;

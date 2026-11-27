@@ -175,6 +175,18 @@
     return `<svg class="staff-desk-art ${size}" viewBox="4 0 78 60" aria-hidden="true" focusable="false" fill="none" stroke="#433d35" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
   }
   window.addStaffArt = function (page,root) {
+    root.querySelectorAll('.notice-symbol').forEach(symbol => {
+      const art = {
+        advisorAssigned: pass, advisorRemoved: pass, slotChangeSubmitted: clipboard,
+        slotChangeWithdrawn: clipboard, slotChangeDecision: clipboard, scheduleReadyForReview: clipboard,
+        scheduleProcessed: clipboard, scheduleReopened: clipboard, scheduleSwapOpened: copies, scheduleSwapCompleted: copies,
+        extraHoursRequested: catalogue, extraHoursDecision: catalogue, paymentUpdated: activityJournal,
+        refundIssued: activityJournal, deferredChargeUpdated: activityJournal, financialReversalRequested: activityJournal,
+        graduationPlanSubmitted: templates, graduationPlanDecision: templates, exitExamRequested: offerings, exitExamDecision: offerings,
+        mandatoryCourseRemovalRequested: eraser, advisingDeadlineReminder: calendar, probationWarning: pass,
+      }[symbol.dataset.kind] || inbox;
+      symbol.innerHTML = drawing(art(), 'desk-small');
+    });
     const head = root?.querySelector('.page-head');
     if (root?.querySelector('.campus-id')) return;
     if (!head || !Object.hasOwn(scenes,page) || head.querySelector('.staff-heading')) return;
@@ -193,18 +205,6 @@
     if (page === 'terms') root.querySelectorAll('.semester-identity').forEach(term => {
       const month = term.querySelector('h2').textContent.startsWith('Winter') ? 11 : 2;
       term.insertAdjacentHTML('afterbegin',`<span class="desk-season" aria-hidden="true">${seasonDrawing(month)}</span>`);
-    });
-    if (page === 'notifications') root.querySelectorAll('.notice-symbol').forEach(symbol => {
-      const art = {
-        advisorAssigned: pass, advisorRemoved: pass, slotChangeSubmitted: clipboard,
-        slotChangeWithdrawn: clipboard, slotChangeDecision: clipboard, scheduleReadyForReview: clipboard,
-        scheduleProcessed: clipboard, scheduleReopened: clipboard, scheduleSwapOpened: copies, scheduleSwapCompleted: copies,
-        extraHoursRequested: catalogue, extraHoursDecision: catalogue, paymentUpdated: activityJournal,
-        refundIssued: activityJournal, deferredChargeUpdated: activityJournal, financialReversalRequested: activityJournal,
-        graduationPlanSubmitted: templates, graduationPlanDecision: templates, exitExamRequested: offerings, exitExamDecision: offerings,
-        mandatoryCourseRemovalRequested: eraser, advisingDeadlineReminder: calendar, probationWarning: pass,
-      }[symbol.dataset.kind] || inbox;
-      symbol.innerHTML = drawing(art(), 'desk-small');
     });
     if (page === 'courses') root.querySelectorAll('.academic-emblem').forEach(emblem => {
       if (['ELCT 701','MATH 701'].includes(emblem.dataset.course)) {

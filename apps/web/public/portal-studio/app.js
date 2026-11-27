@@ -647,25 +647,38 @@ function notificationTime(item) {
   return `<time datetime="${escapeHtml(item.createdAt)}">${escapeHtml(time)}</time>`;
 }
 
+function notificationRows(entries) {
+  return entries.map(item => {
+      const subject = item.subjectStudent;
+      // Older coordinator notices use this stock sentence in place of request details.
+      const queueAction = { graduationPlanSubmitted:'review', exitExamRequested:'review',
+        mandatoryCourseRemovalRequested:'review', financialReversalRequested:'process' }[item.type];
+      const stockMessage = subject && queueAction && item.message === `Student ${subject.studentId} has a request for you to ${queueAction}.`;
+      const emailStatus = item.channels?.includes('email') && item.deliveryStatus;
+      return `<article class="inbox-item ${item.isRead ? '' : 'unread'}">
+        ${subject ? avatar(subject.fullName) : `<span class="notice-symbol" data-kind="${escapeHtml(item.type)}" aria-hidden="true"></span>`}
+        <div class="inbox-text">${subject ? `<span class="notice-person">${escapeHtml(subject.fullName)}${subject.studentId ? ` <small>${escapeHtml(subject.studentId)}</small>` : ''}</span>` : ''}
+          <h3>${escapeHtml(item.title)}</h3>${stockMessage ? '' : `<p>${escapeHtml(item.message)}</p>`}${notificationTime(item)}</div>
+        <div class="notification-meta">
+          ${emailStatus ? `<small>Email: ${escapeHtml(emailStatus)}</small>` : ''}
+          ${item.isRead ? '<small>Read</small>' : button('Mark as read','read-one','btn desk-action', `data-notification="${escapeHtml(item._id)}"`)}
+      </article>`;
+    }).join('');
+}
+
 function studentNotificationPanel(){
   const unread = notificationEntries().filter(item => !item.isRead);
-  const expanded = app.querySelector('.student-inbox-list details[open]')?.dataset.notification;
-  const inboxStatus = liveInbox?.error ? 'Couldn’t load notifications.'
-    : liveInbox?.data ? 'No unread notifications.' : 'Loading notifications…';
-  return `<section class="student-inbox" aria-labelledby="student-inbox-heading">
+  const inboxStatus = liveInbox?.error ? 'Couldn’t load notifications.' : 'Loading notifications…';
+  return `<section class="home-notifications" aria-labelledby="home-notifications-heading">
     <div class="section-head">
-      <div class="student-inbox-title">${icon('inbox')}
-        <h2 id="student-inbox-heading">Notifications${unread.length ? ` <span class="student-inbox-count">${unread.length} unread</span>` : ''}</h2>
-      </div>
+      <h2 id="home-notifications-heading">Notifications${unread.length ? ` <span class="home-notification-count">${unread.length} unread</span>` : ''}</h2>
       ${link('notifications','Open inbox','quiet-link')}
     </div>
     ${unread.length
-      ? `<ul class="student-inbox-list" role="list">${unread.slice(0,3).map(item => `
-        <li><details name="home-notifications" data-notification="${escapeHtml(item._id)}"${item._id===expanded ? ' open' : ''}>
-          <summary><span>${escapeHtml(item.title)}</span>${icon('chevron')}</summary>
-          <div class="student-notice-detail"><p>${escapeHtml(item.message)}</p><small>${notificationTime(item)}</small></div>
-        </details></li>`).join('')}</ul>`
-      : `<p class="student-inbox-empty" role="status">${inboxStatus}</p>`}
+      ? `<div class="notification-list">${notificationRows(unread.slice(0,3))}</div>`
+      : liveInbox?.data && !liveInbox?.error
+        ? `<div class="notification-home-empty" role="status">${notificationScenes('coffee',false)}<h3>You’re all caught up.</h3><p>No unread notifications.</p></div>`
+        : `<p role="${liveInbox?.error ? 'alert' : 'status'}">${inboxStatus}</p>`}
   </section>`;
 }
 
@@ -725,22 +738,7 @@ function notifications(){
   return head('Notifications', '',
     (unread.length ? button('Mark all as read','read-all','btn primary') : ''), '')+strip+
     `<section id="notice-results" role="tabpanel" aria-labelledby="notice-view-${tab}">`+
-    (inboxStatus || (visible.length ? `<div class="notification-list">${visible.map(item => {
-      const subject = item.subjectStudent;
-      // Older coordinator notices use this stock sentence in place of request details.
-      const queueAction = { graduationPlanSubmitted:'review', exitExamRequested:'review',
-        mandatoryCourseRemovalRequested:'review', financialReversalRequested:'process' }[item.type];
-      const stockMessage = subject && queueAction && item.message === `Student ${subject.studentId} has a request for you to ${queueAction}.`;
-      const emailStatus = item.channels?.includes('email') && item.deliveryStatus;
-      return `<article class="inbox-item ${item.isRead ? '' : 'unread'}">
-        ${subject ? avatar(subject.fullName) : `<span class="notice-symbol" data-kind="${escapeHtml(item.type)}" aria-hidden="true"></span>`}
-        <div class="inbox-text">${subject ? `<span class="notice-person">${escapeHtml(subject.fullName)}${subject.studentId ? ` <small>${escapeHtml(subject.studentId)}</small>` : ''}</span>` : ''}
-          <h3>${escapeHtml(item.title)}</h3>${stockMessage ? '' : `<p>${escapeHtml(item.message)}</p>`}${notificationTime(item)}</div>
-        <div class="notification-meta">
-          ${emailStatus ? `<small>Email: ${escapeHtml(emailStatus)}</small>` : ''}
-          ${item.isRead ? '<small>Read</small>' : button('Mark as read','read-one','btn desk-action', `data-notification="${escapeHtml(item._id)}"`)}
-      </article>`;
-    }).join('')}</div>` : `<div class="empty">${notificationScenes('coffee',false)}<h2>You’re all caught up.</h2><p>${tab === 'unread' ? 'No unread notifications.' : 'No notifications yet.'}</p></div>`))+'</section>';
+    (inboxStatus || (visible.length ? `<div class="notification-list">${notificationRows(visible)}</div>` : `<div class="empty">${notificationScenes('coffee',false)}<h2>You’re all caught up.</h2><p>${tab === 'unread' ? 'No unread notifications.' : 'No notifications yet.'}</p></div>`))+'</section>';
 }
 
 async function markPortalNotifications(ids, control) {
@@ -753,10 +751,6 @@ async function markPortalNotifications(ids, control) {
     const updated = new Map(results.filter(result => result.status === 'fulfilled')
       .map(({value}) => [value.notification._id, value.notification]));
     state.data = state.data.map(entry => updated.has(entry._id) ? { ...entry, ...updated.get(entry._id) } : entry);
-    if (page !== 'notifications') {
-      updateNotificationBadge();
-      return;
-    }
     if (results.some(result => result.status === 'rejected')) {
       render();
       toast('Some notifications could not be marked as read.', 'error');
