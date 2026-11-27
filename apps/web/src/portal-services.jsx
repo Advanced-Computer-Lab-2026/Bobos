@@ -51,6 +51,9 @@ export function mount(host) {
   const serviceParams = new URLSearchParams(host.dataset.portalService);
   surface.dataset.portalRole = serviceParams.get("role") || "";
   surface.dataset.service = serviceParams.get("screen") || "";
+  const staffPresentation = ["coordinator", "administrator"].includes(surface.dataset.portalRole)
+    || (surface.dataset.portalRole === "advisor" && ["advising", "graduation-plans", "student-schedules", "extra-hours"].includes(surface.dataset.service));
+  surface.toggleAttribute("data-staff-presentation", staffPresentation);
   const polishedServices = ["advising", "preferences", "graduation-plans", "graduation-review", "my-submitted-plans", "slot-changes", "offerings"];
   surface.classList.toggle("portal-advising-services", polishedServices.includes(serviceParams.get("screen")));
   if (serviceParams.get("section") === "academic-services"
@@ -85,7 +88,7 @@ export function mount(host) {
   observer.observe(document.documentElement, { attributeFilter: ["data-theme"] });
   host.replaceChildren();
   shadow.append(style, surface);
-  const disposeInk = window.mountPortalControlInk?.(shadow, { coordinator: surface.dataset.portalRole === "coordinator" });
+  const disposeInk = window.mountPortalControlInk?.(shadow, { coordinator: staffPresentation });
   const root = createRoot(surface);
   root.render(<App service={host.dataset.portalService} />);
   return () => {

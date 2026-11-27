@@ -34,9 +34,15 @@ export function RecordPages({ page, size, total, onChange, label = "Records", bu
   </nav>;
 }
 
-export function RecordActions({ name, children }) {
+export function RecordActions({ name, children, burst = false }) {
   const id = useId();
-  return <div className="record-actions"><button type="button" className="outline-button record-more" popoverTarget={id} aria-label={'More actions for ' + name}>•••</button>
+  return <div className={`record-actions${burst ? " record-burst" : ""}`}>
+    <button type="button" className="outline-button record-more" popoverTarget={id} aria-label={`More actions for ${name}`}
+      onClick={burst ? event => { event.currentTarget.parentElement.toggleAttribute("data-pointer-motion", event.detail > 0); } : undefined}><span aria-hidden="true">
+        <svg className="record-dots" viewBox="0 0 20 12" width="20" height="12" focusable="false" fill="currentColor">
+          <circle cx="3" cy="6" r="1.7" /><circle cx="10" cy="6" r="1.7" /><circle cx="17" cy="6" r="1.7" />
+        </svg>
+      </span></button>
     <div id={id} className="record-menu" popover="auto" onClick={(event) => {
       if (event.target.closest("button")) event.currentTarget.hidePopover();
     }}>{children}</div></div>;

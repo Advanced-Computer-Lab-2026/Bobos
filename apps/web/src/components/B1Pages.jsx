@@ -267,7 +267,7 @@ export function ScheduleActivityPage({ token, studentId }) {
           <span className={`status-pill ${row.action === "processed" ? "completed" : "draft"}`}>
             <span>Schedule {displayLabel(row.action).toLowerCase()}<small>Version {row.scheduleVersion}</small></span>
           </span>
-          <span className="activity-staff"><span>{row.staffName} <small>· {displayLabel(row.staffRole)}</small></span><small>{row.staffEmail}</small></span>
+          <span className="activity-staff"><strong>{row.staffName}</strong><span>{displayLabel(row.staffRole)}</span><small>{row.staffEmail}</small></span>
           <time dateTime={row.occurredAt}>{dateValue(row.occurredAt)}</time>
           <span className="activity-reason">{row.reason || "—"}</span>
         </RegisterRow>)}

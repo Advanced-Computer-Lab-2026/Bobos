@@ -1,33 +1,40 @@
 /* The staff brief groups ranked teaching days and times by intent. */
 .staff-preferences { container: staff-preferences / inline-size; }
-.staff-preferences > :is(.preference-context, .preference-reading) { width: 100%; max-width: 840px; }
+.staff-preferences > :is(.preference-context, .preference-reading, .preference-lookup-results) { width: 100%; max-width: 960px; }
 .staff-preferences .preference-context {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 18px 32px;
-  padding-block: 3px 22px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(200px, 260px);
+  align-items: end;
+  gap: 14px 32px;
+  padding-block: 3px 6px;
 }
-.preference-identify { min-width: 0; }
+.preference-identify { min-width: 0; max-width: 540px; }
 .preference-student-selected { display: flex; align-items: center; flex-wrap: wrap; gap: 2px 22px; }
 .staff-preferences .preference-student-selected .register-person { gap: 14px; }
 .staff-preferences .preference-student-selected .register-person strong { font-size: 21px; line-height: 1.35; font-weight: 500; }
 .staff-preferences .preference-student-selected .register-person small { font-size: 13px; }
 .staff-preferences .preference-student-selected .portal-person-avatar { width: 52px; height: 52px; flex-basis: 52px; font-size: 18px; }
 .staff-preferences .preference-change { min-height: 36px; padding-inline: 12px; font-size: 13px; }
-.preference-student-lookup { display: grid; grid-template-columns: minmax(0, 320px) auto; gap: 8px; align-items: end; }
-.preference-term { width: min(100%, 235px); }
+.preference-student-lookup { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: end; }
+.preference-student-lookup .outline-button { align-self: end; min-height: 40px; }
+.preference-term { min-width: 0; }
 .staff-preferences .preference-context .field { min-width: 0; }
 .staff-preferences .preference-context .field > span { color: var(--muted); }
 .staff-preferences .preference-student-results {
-  list-style: none; margin: 12px 0 0; padding: 0; max-height: 260px; overflow: auto;
+  margin-block-start: 12px;
 }
-.preference-student-result {
-  display: flex; align-items: center; width: 100%; padding: 8px; border: 0;
-  border-radius: 5px; background: transparent; cursor: pointer; color: var(--ink); text-align: start;
+.staff-preferences .preference-student-results :is(th, td):last-child { width: 1%; white-space: nowrap; }
+.staff-preferences .preference-student-results .register-person strong { font-size: 15px; }
+.staff-preferences .preference-student-results .register-person small { overflow-wrap: anywhere; }
+.staff-preferences .preference-reading > .register-empty {
+  min-height: 0; padding: 22px 18px; align-items: center; justify-items: start; text-align: start;
+  grid-template-columns: auto minmax(0, 1fr); gap: 4px 16px; border-radius: 10px; background: var(--raised);
 }
-.preference-student-result:hover { background: var(--raised); }
+.staff-preferences .preference-reading > .register-empty img {
+  grid-row: 1 / span 2; width: 66px; height: 52px; margin: 0;
+}
+.staff-preferences .preference-reading > .register-empty :is(h3,p) { grid-column: 2; }
+.staff-preferences > .preference-reading:empty { display: none; }
 .staff-preferences .preference-reading-heading h2 { margin: 0; font-size: 20px; font-weight: 500; }
 .preference-reading-heading { display: flex; align-items: baseline; flex-wrap: wrap; gap: 5px 20px; }
 .preference-reading-heading p, .preference-missing { margin: 0; font-size: 13px; line-height: 1.5; color: var(--muted); }
@@ -50,8 +57,11 @@
 }
 .preference-day-off-cup { width: 26px; height: 25px; color: var(--muted); flex: none; }
 .preference-choices, .preferred-group-reading { margin: 0; padding: 0; list-style: none; }
-.preference-choices { display: flex; flex-wrap: wrap; gap: 3px 14px; }
-.preference-choices li { display: inline-flex; align-items: baseline; gap: 4px; line-height: 26px; font-variant-numeric: tabular-nums; }
+.preference-choices { display: flex; flex-wrap: wrap; gap: 5px 8px; }
+.preference-choices li {
+  display: inline-flex; align-items: baseline; gap: 6px; padding-inline: 8px;
+  border-radius: 6px; background: var(--raised); line-height: 26px; font-variant-numeric: tabular-nums;
+}
 /* Use the teaching week's clock next to a submitted time range. */
 .preference-priorities td:last-child .preference-choices li::before {
   content: ""; width: 10px; height: 10px; flex: none; align-self: center; margin-inline-end: 2px;
@@ -65,10 +75,10 @@
 .staff-preferences :is(.preference-group-register,.preference-note-detail) h3,
 .staff-preferences .preference-empty h3 { margin: 0; color: var(--ink); font-size: 19px; font-weight: 500; }
 .preference-group-register { margin-top: 23px; }
-.preferred-group-reading { margin-top: 12px; border-top: 1px solid var(--line); }
+.preferred-group-reading { margin-top: 12px; border: 1px solid var(--line); border-radius: 10px; }
 .preferred-group-reading > li {
   display: grid; grid-template-columns: auto minmax(0,1fr) minmax(0,.8fr); gap: 12px;
-  align-items: center; padding-block: 11px; border-bottom: 1px solid var(--line);
+  align-items: center; padding: 11px 14px;
 }
 .preferred-group-reading .offering-course-emblem { width: 36px; height: 36px; border-radius: 8px; }
 .preferred-group-reading .offering-course-emblem :is(img,svg) { width: 23px; height: 20px; }
@@ -83,7 +93,10 @@
 .preference-empty p, .preference-read-progress { margin: 5px 0 0; color: var(--muted); }
 .preference-read-error { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .preference-read-error .feedback, .preference-identify .feedback { margin-block-end: 0; }
-@container staff-preferences (max-width: 540px) {
+@container staff-preferences (max-width: 620px) {
+  .staff-preferences .preference-context { grid-template-columns: minmax(0, 1fr); }
+  .staff-preferences .preference-student-results td:last-child { width: auto; }
+  .preference-term { max-width: 380px; }
   .staff-preferences .preference-priorities :is(th,td) { padding-inline: 5px; }
   .staff-preferences .preference-priorities thead th:first-child { width: 28%; }
   .staff-preferences .preference-priorities thead th:nth-child(2) { width: 37%; }
@@ -177,7 +190,9 @@
 
 /* Course removals uses the open, course-first register. */
 .academic-services-embedded .removal-page .directory-filters { padding-block: 0; border: 0; }
-.academic-services-embedded .removal-page .directory-filters .filter-bar { max-width: 520px; }
+.academic-services-embedded .removal-page .directory-filters .filter-bar { max-width: none; }
+.removal-page .filter-bar .filter-search { max-width: 420px; }
+.removal-page .removal-create-action { margin-inline-start: auto; }
 .academic-services-embedded .removal-page .removal-results { padding: 0; border: 0; }
 .removal-request-list .portal-request-row {
   grid-template-areas: "course student context status actions";
@@ -248,49 +263,81 @@
 .portal-request-note p, .slot-current-meeting p { margin: 0; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
 .portal-note-attribution { margin-top: 12px; }
 .portal-note-attribution strong { display: block; font-size: 13px; font-weight: 500; }
+.removal-explanation { min-width:0; padding-block:6px; }
+.removal-explanation h3 { margin:0 0 8px; font-size:15px; font-weight:550; }
+.removal-explanation p { margin:0; font-size:15px; line-height:1.55; white-space:pre-wrap; overflow-wrap:anywhere; }
+.removal-explanation-author { display:flex; align-items:center; gap:9px; margin-top:12px; }
+.removal-explanation-author .portal-person-avatar { width:30px; height:30px; flex-basis:30px; }
+.removal-explanation-author strong, .removal-explanation-author small { display:block; overflow-wrap:anywhere; }
+.removal-explanation-author small { color:var(--muted); }
 .removal-detail-card .removal-detail-kicker { margin: 0 0 4px; color: var(--muted); font-size: 12px; }
 .removal-detail-card .modal-heading h2 { margin: 0; font-size: 20px; }
 .removal-detail-course { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .removal-detail-course-meta { display: flex; flex-wrap: wrap; gap: 0 8px; margin-top: 3px; color: var(--muted); font-size: 12px; }
 .removal-detail-card .request-detail-actions, .slot-review-actions { gap: 8px; justify-content: end; }
 
-.slot-review { display: grid; gap: 16px; }
+.slot-review { display: grid; gap: 22px; container-type: inline-size; }
 .slot-review-back { justify-self: start; }
-.slot-review .slot-review-heading h2 { margin: 0; font-size: 20px; }
-.slot-review-record { display: grid; grid-template-columns: minmax(155px, .75fr) minmax(0, 2fr); gap: 12px 22px; padding-block: 14px; border-block: 1px solid var(--line); }
-.slot-review-notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 255px), 1fr)); gap: 12px; }
-.slot-current-meeting { min-width: 0; padding: 15px 17px; border: 1px solid var(--line); border-radius: 8px; }
-.slot-review-form .slot-alternatives legend { margin: 0 0 5px; padding: 0; color: var(--ink); font-size: 16px; font-weight: 500; }
-.slot-review .slot-alternative {
-  display: grid;
-  grid-template-columns: 17px minmax(0, 1fr) minmax(0, .5fr);
-  align-items: center;
-  gap: 10px 14px;
-  padding: 10px 8px;
-  border-bottom: 1px solid var(--line);
-  cursor: pointer;
+.slot-case-heading { display:flex; align-items:center; gap:12px; }
+.slot-case-heading .offering-course-emblem { flex: none; width: 48px; height: 48px; }
+.slot-case-heading .offering-course-emblem :is(img,svg) { width: 36px; height: 36px; }
+.slot-case-heading > div { min-width:0; }
+.slot-review .slot-case-heading h1 { margin: 3px 0 0; color: var(--ink); font: 500 clamp(21px, 3vw, 28px)/1.18 Styrene,system-ui,sans-serif; }
+.slot-review .slot-case-heading h1:focus { outline: none; }
+.slot-case-heading .status-pill { margin-inline-start: auto; }
+.slot-case-context, .slot-review .slot-review-form { display:grid; grid-template-columns:minmax(0,1.3fr) minmax(0,1fr); gap:clamp(18px,3vw,40px); align-items:start; }
+.slot-case-context { padding:clamp(16px,2.3vw,26px); border-radius:10px; background:color-mix(in srgb,var(--paper) 95%,var(--ink)); }
+.slot-case-student { min-width:0; }
+.slot-case-student .register-person { display:flex; align-items:center; gap:10px; }
+.slot-case-student .register-person strong { color:var(--ink); font-weight:500; }
+.slot-case-student h2 { margin:14px 0 3px; color:var(--muted); font-size:13px; font-weight:500; }
+.slot-case-student p { margin:0 0 9px; max-width:55ch; white-space:pre-wrap; overflow-wrap:anywhere; font-size:15px; line-height:1.55; }
+.slot-case-assignment { justify-self:start; width:min(100%,320px); box-sizing:border-box; padding:14px 18px; border-radius:5px 8px 7px 5px; background:color-mix(in srgb,var(--paper) 85%,#a8bdaf); }
+.slot-case-assignment h2, .slot-case-decision h2, .slot-review-form .slot-alternatives legend { margin:0 0 11px; padding:0; font:500 17px/1.35 Styrene,system-ui,sans-serif; }
+.slot-case-assignment > strong { font-size:15px; font-weight:500; }
+.slot-case-assignment p { margin:4px 0 0; font-size:14px; line-height:1.5; }
+.slot-review .slot-alternative { display:grid; grid-template-columns:18px 1fr; gap:5px 10px; align-items:center; margin:0 0 8px; padding:12px 16px; border:1px solid var(--line); border-radius:7px; background:var(--paper); cursor:pointer; }
+.slot-review .slot-alternative:has(input:checked) { border-color:var(--ready-ink); background:color-mix(in srgb,var(--paper) 88%,var(--ready-ink)); }
+.slot-review .slot-alternative:has(input:enabled):hover { border-color:var(--muted); }
+.slot-review .slot-alternative:has(input:disabled) { cursor:default; }
+.slot-review .slot-alternative input { width:15px; height:15px; margin:0; accent-color:var(--ready-ink); }
+.slot-alternative-group strong { font-weight:500; }
+.slot-alternative-meetings, .slot-alternative-state { grid-column:2; }
+.slot-alternative-meetings { display:grid; gap:6px; }
+.slot-alternative-meetings strong { font-size:14px; font-weight:400; }
+.slot-review .slot-alternative-state { display:flex; align-items:baseline; gap:6px; font-size:12px; color:var(--success-ink); overflow-wrap:anywhere; }
+.slot-review .slot-alternative-state.is-unavailable { color:var(--danger-ink); }
+.slot-case-decision { min-width:0; }
+.slot-review .slot-response-field textarea { min-height:76px; font-size:14px; }
+.slot-case-decision .slot-review-actions { margin-top:12px; display:flex; flex-wrap:wrap; justify-content:start; }
+.slot-changes-page .filter-disclosure :is(.filter-panel,.slot-request-filters,.field,input,select) { min-width:0; max-width:100%; }
+.slot-changes-page .filter-disclosure .filter-search { flex-basis: min(100%, 240px); }
+.slot-changes-page .filter-disclosure .filter-bar { padding-inline-end: 4px; }
+@container (max-width:610px) {
+  .slot-case-context, .slot-review .slot-review-form { grid-template-columns:minmax(0,1fr); gap:18px; }
+  .slot-case-heading { flex-wrap:wrap; }
+  .slot-case-heading .status-pill { margin-inline-start:0; }
 }
-.slot-review .slot-alternative:has(input:checked) {
-  background: color-mix(in srgb, var(--paper) 90%, #a3bea7);
-  border-radius: 5px;
-  border-color: var(--line);
-}
-.slot-review .slot-alternative:has(input:disabled) { cursor: default; }
-.slot-review .slot-alternative:has(input:enabled):hover { background: var(--raised); }
-.slot-review .slot-alternative input {
-  margin: 0;
-  width: 16px;
-  height: 16px;
-  accent-color: var(--ink);
-}
-.slot-review .slot-alternative-meetings strong { font-weight: 500; }
-.slot-review .slot-alternative-state { justify-self: end; color: var(--muted); text-align: end; font-size: 12px; overflow-wrap: anywhere; }
-.slot-review .slot-alternative-state.is-unavailable { color: var(--ink); }
-.slot-review .slot-response-field textarea { min-height: 82px; padding: 9px 11px; font-size: 14px; }
 @media (max-width: 680px) {
-  .slot-review-record { grid-template-columns: minmax(0, 1fr); }
-  .slot-review .slot-alternative { grid-template-columns: 17px minmax(0, 1fr); }
-  .slot-review .slot-alternative-state { grid-column: 2; justify-self: start; text-align: start; }
   .removal-page .workspace-header { flex-wrap: wrap; }
-  .removal-page .workspace-header-actions { flex-wrap: wrap; }
+  .removal-page .removal-create-action { margin-inline-start: 0; }
+}
+
+.academic-services-embedded .removal-create-dialog > .modal-card { width: min(100%, 656px); }
+.removal-create-dialog .modal-heading > div { padding-inline-start: 60px; min-height: 48px; background: url("/portal-studio/images/course-removal-slip.svg") left center / 52px auto no-repeat; }
+.removal-create-dialog .modal-description { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+.removal-create-dialog .feedback { margin-block-end: 14px; }
+.removal-create-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.removal-create-form .field, .removal-create-form select { min-width: 0; }
+.removal-create-form .removal-wide-field { grid-column: 1/-1; }
+.removal-create-form .removal-course-field { margin-block: 3px 4px; }
+.removal-create-form .removal-course-field > span { color: var(--ink); font-size: 15px; font-weight: 550; }
+.removal-create-form .removal-course-field > small { margin-block-start: 3px; color: var(--muted); line-height: 1.5; }
+.removal-create-dialog .removal-character-count { color: var(--muted); text-align: end; font-size: 12px; }
+.removal-create-dialog .form-footer { margin-top: 14px; }
+.service-surface:not([data-staff-presentation]) .removal-create-dialog :is(button, select, textarea):focus-visible { outline: 2px solid var(--ink) !important; outline-offset: -2px; }
+.removal-create-form select:enabled:hover { border-color: var(--muted); }
+@media (max-width: 580px) {
+  .removal-create-fields { grid-template-columns: minmax(0,1fr); }
+  .removal-create-dialog .modal-heading > div { padding-inline-start: 0; background: none; }
 }

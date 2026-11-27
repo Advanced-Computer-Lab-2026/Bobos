@@ -178,35 +178,6 @@ body:has(.extra-hours-embedded) { background: transparent; }
 }
 .extra-hours-toolbar-actions { margin-inline-start: auto; }
 
-.extra-request-details { margin-block: 20px 12px; }
-.extra-request-details h3,
-.extra-request-history summary {
-  font-size: 17px;
-  font-weight: 600;
-}
-.extra-request-details h3 { margin: 0 0 8px; }
-.extra-hours-page .extra-request-history ol {
-  list-style: none;
-  border-inline-start: 1px solid var(--line);
-  margin: 8px 0 10px 8px;
-  padding-inline-start: 16px;
-}
-.extra-hours-page .extra-request-history li { position: relative; padding-block: 5px; }
-.extra-hours-page .extra-request-history li::before {
-  content: "";
-  position: absolute;
-  inset-inline-start: -21px;
-  top: 12px;
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--accent);
-}
-.extra-history-event { display: flex; flex-wrap: wrap; align-items: baseline; gap: 3px 12px; }
-.extra-history-event strong { color: var(--ink); }
-.extra-history-event time { font-size: 12px; }
-.extra-request-history li p { margin: 4px 0; }
-
 :root[data-embedded="true"] body { min-width: 0; min-height: 0; background: transparent; }
 :root[data-embedded="true"] .app-loading { min-height: 100px; }
 
@@ -265,11 +236,6 @@ body:has(.extra-hours-embedded) { background: transparent; }
   padding-top: 12px;
   border-top: 1px solid var(--line);
 }
-.extra-hours-page .extra-request-details,
-.extra-hours-page .extra-request-history {
-  border-top: 1px solid var(--line);
-  padding-top: 14px;
-}
 .extra-hours-page .extra-financial {
   padding-bottom: 12px;
 }
@@ -287,58 +253,10 @@ body:has(.extra-hours-embedded) { background: transparent; }
 
 .extra-eligibility-summary { margin: 0 0 10px; }
 .extra-eligibility-summary span,
-.extra-course-facts dt,
-.extra-course-list p { color: var(--muted); }
-.extra-course-facts {
-  max-width: 36rem;
-  margin: 12px 0 0;
-  font-size: 13px;
-}
-.extra-course-facts > div {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, auto);
-  align-items: baseline;
-  gap: 4px 14px;
-  padding: 6px 0;
-  border-top: 1px solid var(--line);
-}
-.extra-course-facts dd {
-  margin: 0;
-  text-align: end;
-  font-variant-numeric: tabular-nums;
-}
-.extra-course-facts small {
-  display: block;
-  color: var(--muted);
-}
-.extra-request-details .extra-course-list {
-  max-width: 36rem;
-}
-.extra-request-details .extra-course-list li {
-  flex-wrap: nowrap;
-  align-items: start;
-}
-.extra-request-details .extra-course-list li > strong {
-  white-space: nowrap;
-  color: var(--ink);
-}
-.extra-course-list { list-style: none; margin: 0; padding: 0; }
-.extra-course-list li {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 4px 16px;
-  padding-block: 7px;
-}
-.extra-course-list p { margin: 2px 0 0; }
-.extra-course-list li + li { border-top: 1px solid var(--line); }
-.extra-course-list li > strong {
-  color: var(--muted);
-  font-size: 14px;
-  font-variant-numeric: tabular-nums;
-}
-
+.extra-register .extra-course-preview { display:flex; align-items:center; gap:8px; margin-top:5px; }
+.extra-register .extra-course-preview .offering-course-emblem { flex:0 0 26px; width:26px; height:26px; border-radius:6px; }
+.extra-register .extra-course-preview .offering-course-emblem :is(img,svg) { width:20px; height:20px; }
+.extra-register .extra-course-preview small { margin:0; }
 @media (max-width: 680px) {
   .extra-hours-page .extra-financial :is(th, td) { padding-inline: 4px; }
   .extra-hours-page .extra-financial .text-button { padding-inline: 0; }
@@ -365,56 +283,57 @@ body:has(.extra-hours-embedded) { background: transparent; }
 .extra-sample-list { display:grid;gap:18px; }
 .extra-sample-list h2 small { font-size:13px;color:var(--muted);font-weight:400; }
 .extra-hours-empty .outline-button { width:max-content;max-width:100%; }
-.extra-record-desk {
-  display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
-  gap: clamp(18px, 3vw, 36px);
-  margin-top: 16px;
-}
-.extra-record-content > :is(.feedback, .form-stack, .form-actions) { margin-top: 12px; }
-.extra-hours-page .extra-record-desk .extra-request-history { margin-top: 0; }
-.extra-record-ticket {
-  position: relative;
-  margin: 8px 0 14px;
-  padding: 14px 16px 23px;
-  border: 1px solid var(--line);
-  border-inline-start: 3px solid #68816e;
-  border-radius: 1px 10px 2px 3px;
-  background: transparent;
+
+.extra-review-sheet {
+  margin: 4px 0 14px;
+  padding: clamp(16px, 2.5vw, 30px);
+  border-radius: 6px 12px 9px 7px;
+  background: color-mix(in srgb,var(--paper) 94%,var(--ink));
   color: var(--ink);
+  text-align: start;
+  white-space: normal;
   overflow-wrap: anywhere;
+  container-type: inline-size;
 }
-.extra-record-ticket .extra-record-number {
-  padding-bottom: 6px;
-  border-bottom: 1px dashed var(--line);
-  font-size: 12px;
+.extra-sheet-heading, .extra-sheet-total, .extra-sheet-load dl > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 6px 16px;
 }
-.extra-hours-page .extra-record-ticket ol { border-color: #68816e; color: var(--muted); }
-.extra-record-ticket .extra-history-event strong { color: var(--ink); }
-.extra-hours-page .extra-record-ticket li::before { background: #68816e; }
-.extra-hours-page .extra-record-ticket li:last-child::before { background: #39382d; }
-.extra-record-punch {
-  position: absolute;
-  inset-inline-end: 6px;
-  bottom: -16px;
-  width: 78px;
-  pointer-events: none;
+.extra-review-sheet :is(h3, h4, p, ul, dl, dd, ol) { margin: 0; }
+.extra-review-sheet h3 { font: 500 21px/1.25 Styrene, system-ui, sans-serif; }
+.extra-review-sheet h4, .extra-sheet-history summary { font: 500 15px/1.45 Styrene, system-ui, sans-serif; }
+.extra-review-sheet .extra-sheet-heading p, .extra-review-sheet small,
+.extra-sheet-load p, .extra-sheet-load dt, .extra-sheet-history time, .extra-reference { color: var(--muted); font-size: 12px; line-height: 1.55; }
+.extra-sheet-heading p { margin-top: 4px; }
+.extra-sheet-heading { flex-wrap: wrap; margin-bottom: 24px; }
+.extra-review-sheet summary { cursor: pointer; width: fit-content; }
+.extra-reference code { user-select: all; display: block; margin-top: 4px; }
+.extra-sheet-columns { display: grid; grid-template-columns: minmax(0,1.4fr) minmax(0,.9fr); align-items: start; gap: clamp(18px,4vw,52px); }
+.extra-sheet-courses ul { padding: 0; list-style: none; }
+.extra-sheet-courses li { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 10px; padding-block: 12px; }
+.extra-sheet-courses li strong, .extra-review-sheet .extra-sheet-history strong { font-size: 14px; font-weight: 500; }
+.extra-sheet-courses li small { display: block; }
+.extra-sheet-courses li > span:last-child, .extra-sheet-total { font-size: 13px; font-variant-numeric: tabular-nums; }
+.extra-sheet-total { border-top: 1px solid var(--line); padding-top: 10px; }
+.extra-sheet-total strong { font-size: 16px; font-weight: 500; }
+.extra-sheet-load { background: color-mix(in srgb,var(--paper) 82%, #b6aa83); border-radius: 6px; padding: 15px 18px; }
+.extra-load-value { margin-top: 9px; font: 500 27px/1.2 Styrene, system-ui, sans-serif; }
+.extra-sheet-load dl { display: grid; gap: 4px; margin-top: 12px; }
+.extra-sheet-load dd { font-size: 13px; }
+.extra-sheet-history { margin-top: 21px; }
+.extra-review-sheet .extra-sheet-history ol { list-style: none; padding: 0 0 0 13px; margin: 10px 0 0 4px; border-left: 1px solid var(--line); }
+.extra-sheet-history li { position: relative; }
+.extra-sheet-history li::before { content: ""; position: absolute; top: 6px; left: -17px; width: 6px; height: 6px; border-radius: 50%; background: var(--muted); }
+.extra-sheet-history li + li { margin-top: 12px; }
+.extra-sheet-history li > div { display: flex; align-items: baseline; gap: 4px 10px; flex-wrap: wrap; }
+.extra-sheet-history p, .extra-sheet-response p { font-size: 13px; line-height: 1.55; white-space: pre-wrap; }
+.extra-review-sheet > :is(.form-stack,.form-actions,.feedback,.extra-sheet-response) { margin-top: 18px; }
+@container (max-width: 570px) {
+  .extra-sheet-columns { grid-template-columns: minmax(0,1fr); gap: 16px; }
 }
-.extra-punch-lever { transform-origin: 82px 36px; }
-@media (prefers-reduced-motion: no-preference) {
-  .extra-request-history[open] .extra-punch-lever { animation: extra-punch-press .72s both; }
-  .extra-request-history[open] .extra-record-ticket { animation: extra-paper-yield .72s both; }
-}
-@keyframes extra-punch-press {
-  0%, 100% { transform: rotate(0); }
-  18% { transform: rotate(4deg); }
-  47%, 56% { transform: rotate(-16deg); }
-  78% { transform: rotate(3deg); }
-}
-@keyframes extra-paper-yield {
-  0%, 44%, 100% { transform: none; }
-  50%, 59% { transform: translateY(2px) rotate(.3deg); }
-}
-@media (max-width: 760px) {
-  .extra-record-desk { grid-template-columns: minmax(0, 1fr); }
+@container (max-width: 340px) {
+  .extra-sheet-courses li { grid-template-columns: auto minmax(0,1fr); }
+  .extra-sheet-courses li > span:last-child { grid-column: 2; }
 }

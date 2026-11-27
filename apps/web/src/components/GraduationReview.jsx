@@ -1,7 +1,7 @@
 import { termLabel } from "../term-label.js";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, explainApiError } from "../api.js";
-import { StudentIdentity } from "./CoordinatorRecords.jsx";
+import { RegisterRow, StudentIdentity, StudentRegister } from "./CoordinatorRecords.jsx";
 import FilterDisclosure from "./FilterDisclosure.jsx";
 import OfferingCourseIcon from "./OfferingCourseIcon.jsx";
 import { GraduationEmpty, WorkspaceHeader } from "./WorkspaceUI.jsx";
@@ -21,17 +21,12 @@ function Status({ status }) {
 
 function PlanCourses({ plan }) {
   return <>
-    {plan.termPlans.length > 0 && <div className="table-scroll"><table>
-      <thead><tr><th>Term</th><th>Courses</th><th>Credit hours</th></tr></thead>
-      <tbody>{orderedTerms(plan)
-        .map(({ term, courses }, index) => <tr key={term?._id ?? index}>
-          <td>{term ? termLabel(term) : "Archived term"}</td>
-          <td>{courses.map((course) => `${course.code} · ${course.name}`).join(", ") || "—"}</td>
-          <td>{courses.reduce((sum, course) => sum + course.creditHours, 0)}</td>
-        </tr>)}</tbody>
-    </table></div>}
-    {plan.exitExamRequest && <p>Approved exit exam · {plan.exitExamRequest.course?.code ?? "Archived course"}</p>}
-    {plan.responseNote && <p><strong>Coordinator response</strong> {plan.responseNote}</p>}
+    <StudentPlanTerms plan={plan} />
+    {plan.exitExamRequest && <div className="graduation-exam-course">
+      {plan.exitExamRequest.course && <OfferingCourseIcon code={plan.exitExamRequest.course.code} />}
+      <p>Approved exit exam · {plan.exitExamRequest.course?.code ?? "Archived course"}</p>
+    </div>}
+    <GraduationResponse note={plan.responseNote} />
   </>;
 }
 
@@ -61,6 +56,8 @@ function DecisionForm({ kind, disabled, decide }) {
 }
 
 export default function GraduationReview({ token, role }) {
+  const detail = useRef(null);
+  const openedPlan = useRef(null);
   const coordinator = role === "coordinator";
   const [kind, setKind] = useState(() => coordinator && new URLSearchParams(window.location.search).get("queue") === "exams" ? "exit-exams" : "plans");
   const [inputs, setInputs] = useState(emptyFilters);
@@ -102,7 +99,7 @@ export default function GraduationReview({ token, role }) {
   }, [token, kind, filters, page, refresh]);
 
   useEffect(() => {
-    if (coordinator && selected) document.querySelector("[data-portal-service]")?.shadowRoot?.getElementById("review-decision")?.focus();
+    if (selected) detail.current?.focus();
   }, [selected]);
 
   function changeView(nextKind) {
@@ -144,10 +141,21 @@ export default function GraduationReview({ token, role }) {
     setIssues([]);
     setRefresh((value) => value + 1);
   }
+  function open(row) {
+    openedPlan.current = row._id;
+    setSelected(row);
+    setIssues([]);
+    setError("");
+  }
+  function close(event) {
+    const surface = event.currentTarget.getRootNode();
+    setSelected(null);
+    requestAnimationFrame(() => surface.querySelector(`[data-open-plan="${openedPlan.current}"]`)?.focus());
+  }
   const plans = kind === "plans";
   const rows = (plans ? result?.plans : result?.requests) ?? [];
   return <div className="page-stack workspace-page graduation-review-page">
-    <WorkspaceHeader description={coordinator ? undefined : "Track the graduation plans you have submitted for coordinator review."} title={coordinator ? "Graduation review" : "My submitted plans"} action={!(coordinator && plans) && <button className="outline-button" disabled={loading || busy} onClick={reload}>Refresh</button>} />
+    <WorkspaceHeader title={coordinator ? "Graduation review" : "My submitted plans"} action={!(coordinator && plans) && !(selected && !coordinator) && <button className="outline-button" disabled={loading || busy} onClick={reload}>Refresh</button>} />
     {coordinator && <div className="tabs" role="group" aria-label="Review queue">
       <button aria-pressed={plans}
         disabled={busy} onClick={() => changeView("plans")}>Graduation plans</button>
@@ -191,22 +199,39 @@ export default function GraduationReview({ token, role }) {
     {notice && <div className="feedback success" role="status">{notice}</div>}
     {error && <div className="feedback error" role="alert">{error}{issues.length > 0 &&
       <ul>{issues.map((issue, index) => <li key={index}>{issue}</li>)}</ul>}</div>}
-    <section aria-busy={loading}>
-      {loading ? <p role="status">Loading…</p> : !rows.length ? !error && <GraduationEmpty heading="h2" submitted={plans}
+    {(!selected || coordinator) && <section aria-busy={loading}>
+      {loading ? <p role="status">Loading {plans ? "submitted plans" : "exit-exam requests"}…</p> : !rows.length ? !error && <GraduationEmpty heading="h2" submitted={plans}
         title={plans && Object.values(filters).some(Boolean) ? "No matching plans" : plans ? "No submitted plans" : "No exit-exam requests"}
         description={plans && Object.values(filters).some(Boolean) ? "Try another student, advisor or submission date." : plans
           ? coordinator ? "Plans will appear here when advisors submit them." : "Plans you send for coordinator review will appear here."
           : "Requests will appear here when advisors submit them."} /> :
+        !coordinator ? <div className="advisor-submissions">
+          <div className="graduation-section-heading"><h2>Submitted plans</h2><span className="graduation-meta">{result.total} {result.total === 1 ? "plan" : "plans"}</span></div>
+          {result.total === 1 ? <article className="single-submission">
+            <StudentIdentity name={rows[0].student?.user?.fullName} id={rows[0].student?.studentId} />
+            <div className="single-plan-progress"><Status status={rows[0].status} />
+              {rows[0].submittedAt && <span className="graduation-meta">Submitted on {studentDate.format(new Date(rows[0].submittedAt))}</span>}
+            </div>
+            <button type="button" className="outline-button" data-open-plan={rows[0]._id} onClick={() => open(rows[0])}>Open plan</button>
+          </article> : <StudentRegister columns={["Student", "Status", "Submitted", "Action"]} label="My submitted plans">
+            {rows.map(row => <RegisterRow key={row._id}>
+              <StudentIdentity name={row.student?.user?.fullName} id={row.student?.studentId} />
+              <Status status={row.status} />
+              <span>{row.submittedAt ? studentDate.format(new Date(row.submittedAt)) : "—"}</span>
+              <button type="button" className="outline-button" data-open-plan={row._id} onClick={() => open(row)}>Open plan</button>
+            </RegisterRow>)}
+          </StudentRegister>}
+        </div> :
         <div className={`table-scroll graduation-register${coordinator ? " register-with-actions" : ""}`}><table>
           <thead><tr><th>Student</th>{coordinator && <th>Advisor</th>}{!plans && <th>Course</th>}
             <th>Status</th><th>Submitted</th><th>Action</th></tr></thead>
           <tbody>{rows.map((row) => <tr key={row._id}>
-            <td>{coordinator ? <StudentIdentity name={row.student?.user?.fullName} id={row.student?.studentId} /> : <>{row.student?.user?.fullName ?? "Student"}<span className="secondary-text">{row.student?.studentId}</span></>}</td>
+            <td><StudentIdentity name={row.student?.user?.fullName} id={row.student?.studentId} /></td>
             {coordinator && <td>{row.advisor?.fullName ?? "Former advisor"}</td>}
             {!plans && <td>{row.course?.code ?? "Archived course"}</td>}
             <td><Status status={row.status} /></td>
             <td>{dateLabel(plans ? row.submittedAt : row.createdAt)}</td>
-            <td><button className="text-button" disabled={busy} onClick={() => { setSelected(row); setIssues([]); setError(""); }}>
+            <td><button className="text-button" disabled={busy} data-open-plan={row._id} onClick={() => open(row)}>
               {plans ? "Open plan" : "Open request"}
             </button></td>
           </tr>)}</tbody>
@@ -218,13 +243,17 @@ export default function GraduationReview({ token, role }) {
         <button className="outline-button" disabled={loading || busy || page * result.limit >= result.total}
           onClick={() => { setSelected(null); setPage(page + 1); }}>Next</button>
       </div>}
-    </section>
-    {selected && <section className="panel review-decision" id="review-decision" tabIndex={-1}>
+    </section>}
+    {selected && <section ref={detail} className="panel review-decision" id="review-decision" tabIndex={-1}>
       <div className="results-heading">
-        <h2>{plans ? "Graduation plan" : "Exit-exam request"} · {selected.student?.studentId}</h2>
-        <button className="outline-button" disabled={busy} onClick={() => setSelected(null)}>Close</button>
+        <div><h2>{plans ? "Graduation plan" : "Exit-exam request"}</h2><StudentIdentity name={selected.student?.user?.fullName} id={selected.student?.studentId} /></div>
+        <button className="outline-button" disabled={busy} onClick={close}>{coordinator ? "Close" : "Back to submitted plans"}</button>
       </div>
-      <Status status={selected.status} />
+      <div className="plan-review-status"><Status status={selected.status} />
+        {!coordinator && (selected.status === "accepted" && selected.decidedAt
+          ? <span>Accepted on {studentDate.format(new Date(selected.decidedAt))}</span>
+          : selected.submittedAt && <span>Submitted on {studentDate.format(new Date(selected.submittedAt))}</span>)}
+      </div>
       {plans ? <PlanCourses plan={selected} /> : <>
         <p><strong>Course</strong> {selected.course?.code} {selected.course?.name}</p>
         <p><strong>Advisor’s reason</strong> {selected.reason}</p>

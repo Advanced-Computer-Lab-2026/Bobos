@@ -1,6 +1,8 @@
 import { termLabel } from "../term-label.js";
 import { useEffect, useState } from "react";
 import { api, explainApiError } from "../api.js";
+import { StudentIdentity } from "./CoordinatorRecords.jsx";
+import OfferingCourseIcon from "./OfferingCourseIcon.jsx";
 import { GraduationEmpty } from "./WorkspaceUI.jsx";
 import PaperTossButton, { waitForPaperToss } from "./PaperTossButton.jsx";
 
@@ -9,7 +11,7 @@ function assignmentsFor(plan) {
     courses.map((course) => [course, term])));
 }
 
-export default function GraduationPlans({ student, token, onBack }) {
+export default function GraduationPlans({ student, token, onBack, backLabel }) {
   const path = `/api/advisor/students/${student._id}/graduation-plans`;
   const [workspace, setWorkspace] = useState(null);
   const [plan, setPlan] = useState(null);
@@ -141,16 +143,16 @@ export default function GraduationPlans({ student, token, onBack }) {
     <div className="workspace-header">
       <div>
         <h1>Graduation plans</h1>
-        <p className="page-description">{student.user?.fullName || student.studentId} · {student.studentId}</p>
+        <StudentIdentity name={student.user?.fullName} id={student.studentId} />
       </div>
-      <button className="outline-button" type="button" onClick={onBack}>Back to advising students</button>
+      <button className="outline-button" type="button" onClick={onBack}>{backLabel}</button>
     </div>
     {notice && <div className="feedback success" role="status">{notice}</div>}
     {error && <div className="feedback error" role="alert">{error}
       {issues.length > 0 && <ul>{issues.map((issue, index) => <li key={index}>{issue}</li>)}</ul>}
     </div>}
     {!workspace && !error && <div className="loading-state" role="status">Loading graduation plans…</div>}
-    {workspace && <>
+    {workspace && <div className={`planner-sections${!editing && !workspace.plans.length ? " planner-sections-empty" : ""}`}>
       {!editing && <section>
         <div className="results-heading">
           <h2>Your plans</h2>
@@ -256,22 +258,26 @@ export default function GraduationPlans({ student, token, onBack }) {
           </div>}
         </>}
       </section>}
-      <section className="panel">
+      <section className="panel planner-exams">
         <h2>Exit-exam requests</h2>
-        {workspace.exams.map((exam) => <div key={exam._id}>
-          <p>{courseNames.get(exam.course) || "Exit exam"} · {exam.status}</p>
+        {!workspace.exams.length && <p className="exam-empty">No exit exam requested</p>}
+        {workspace.exams.map((exam) => <div className="planner-exam-record" key={exam._id}>
+          <div className="graduation-exam-course"><OfferingCourseIcon code={courseNames.get(exam.course)} />
+            <strong>{courseNames.get(exam.course) || "Exit exam"}</strong>
+            <span className={`status-pill ${exam.status === "approved" ? "good" : exam.status === "rejected" ? "danger" : "warning"}`}>{exam.status === "pending" ? "Awaiting review" : exam.status === "approved" ? "Approved" : "Rejected"}</span>
+          </div>
           {exam.responseNote && <p><strong>Coordinator response</strong> {exam.responseNote}</p>}
         </div>)}
-        {workspace.examEligibility.message && <p>{workspace.examEligibility.message}</p>}
+        {workspace.examEligibility.message && <div className="exam-eligibility"><strong>Exit exam unavailable</strong><p>{workspace.examEligibility.message}</p></div>}
         {currentExamCourse && !workspace.examEligibility.message && !examAlreadyRequested &&
           <form className="form-stack" onSubmit={requestExam}>
-            <p>{currentExamCourse.code} · {currentExamCourse.name}</p>
+            <div className="graduation-exam-course"><OfferingCourseIcon code={currentExamCourse.code} /><div><strong>Eligible for an exit exam</strong><p>{currentExamCourse.code} · {currentExamCourse.name}</p></div></div>
             <label className="field"><span>Why can’t this course be repeated before graduation?</span>
               <textarea value={reason} onChange={(event) => setReason(event.target.value)} maxLength={2000} required disabled={busy} />
             </label>
             <div className="form-actions"><button className="primary-button" disabled={busy || !reason.trim()}>Request exit exam</button></div>
           </form>}
       </section>
-    </>}
+    </div>}
   </div>;
 }

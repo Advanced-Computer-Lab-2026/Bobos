@@ -1,7 +1,8 @@
+import { Modal } from "./AcademicWorkspace.jsx";
 import FilterDisclosure from "./FilterDisclosure.jsx";
 import OfferingCourseIcon from "./OfferingCourseIcon.jsx";
 import PortalAvatar from "./PortalAvatar.jsx";
-import { RegisterRow, StudentRegister, StudentIdentity, scheduleTone } from "./CoordinatorRecords.jsx";
+import { RecordActions, RegisterRow, StudentRegister, StudentIdentity, scheduleTone } from "./CoordinatorRecords.jsx";
 import { termLabel } from "../term-label.js";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { api } from "../api.js";
@@ -401,16 +402,18 @@ export function StaffSchedulesPage({ token, role, notify, initialStudent = null,
   const [students, setStudents] = useState([]);
   const [selected, setSelected] = useState(null);
   const [schedule, setSchedule] = useState(null);
+  const [scheduleError, setScheduleError] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const bookmark = new URLSearchParams(window.location.search);
-  const folderStudent = useRef(role === "coordinator" ? bookmark.get("student") : null);
+  const administrator = role === "administrator";
+  const staffRegister = ["coordinator", "advisor", "administrator"].includes(role);
+  const folderStudent = useRef(administrator ? null : bookmark.get("student"));
   const [termId, setTermId] = useState(initialTermId || (folderStudent.current && bookmark.get("term")) || "");
   const [terms, setTerms] = useState([]);
   const [draftStudent, setDraftStudent] = useState(initialStudent);
   const [overviewStudent, setOverviewStudent] = useState(null);
   const [overview, setOverview] = useState(null);
-  const scheduleResultRef = useRef(null);
   const overviewRef = useRef(null);
 
   useEffect(() => {
@@ -442,9 +445,14 @@ export function StaffSchedulesPage({ token, role, notify, initialStudent = null,
   }, [token, termId, search]);
 
   useEffect(() => {
-    if (!selected || !schedule?.schedule) return;
-    scheduleResultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [selected, schedule]);
+    if (!selected) return;
+    const controller = new AbortController();
+    const query = termId ? `?termId=${encodeURIComponent(termId)}` : "";
+    api(`/api/schedules/student/${encodeURIComponent(selected._id)}${query}`, { token, signal: controller.signal })
+      .then((data) => { if (!controller.signal.aborted) setSchedule(data); })
+      .catch((err) => { if (!controller.signal.aborted) setScheduleError(err.message); });
+    return () => controller.abort();
+  }, [selected, termId, token]);
 
   async function openOverview(student) {
     setOverviewStudent(student); setOverview(null); setError("");
@@ -455,15 +463,14 @@ export function StaffSchedulesPage({ token, role, notify, initialStudent = null,
     } catch (err) { setError(err.message); }
   }
 
-  async function openStudent(student) {
-    setSelected(student); setSchedule(null); setError("");
-    const query = termId ? `?termId=${encodeURIComponent(termId)}` : "";
-    try { setSchedule(await api(`/api/schedules/student/${encodeURIComponent(student._id)}${query}`, { token })); }
-    catch (err) { setError(err.message); }
+  function openStudent(student) {
+    setSchedule(null);
+    setScheduleError("");
+    setSelected(student);
   }
 
   function closeDraft() {
-    if (role === "coordinator" && bookmark.has("student")) {
+    if (!administrator && bookmark.has("student")) {
       const url = new URL(window.location.href);
       url.searchParams.delete("student");
       url.searchParams.delete("term");
@@ -475,31 +482,45 @@ export function StaffSchedulesPage({ token, role, notify, initialStudent = null,
   if (draftStudent) return <AdvisingDraftEditor token={token} role={role} student={draftStudent} termId={termId} notify={notify} onBack={closeDraft} onSaved={(status = "draft") => setStudents((current) => current.map((row) => row._id === draftStudent._id ? { ...row, scheduleStatus: status } : row))} />;
 
   return <div className="page-stack scheduling-page workspace-page">
-    <div className="workspace-header"><div><h1>Student schedules</h1><p className="page-description">Find a student to create, review or manage their advising schedule.</p></div>
+    <div className="workspace-header"><div><h1>Student schedules</h1><p className="page-description">{administrator ? "View student schedules and advising overviews." : "Find a student to create, review or manage their advising schedule."}</p></div>
     </div>
     {error && <Feedback tone="error">{error}</Feedback>}
     <section className="student-roster-register" aria-label="Student roster">
       <div className="register-controls"><label className="field roster-search"><span>Search students</span><input type="search" name="roster-search" autoComplete="off" value={search} onChange={(event) => setSearch(event.target.value)} maxLength={100} placeholder="Student ID, name or email…" /></label>
         {terms.length > 0 && <label className="field term-picker"><span>Academic term</span><select value={termId} onChange={(event) => { setTermId(event.target.value); setSelected(null); setSchedule(null); setOverviewStudent(null); setOverview(null); }}>{terms.map((term) => <option key={term._id} value={term.code}>{termLabel(term)}</option>)}</select></label>}</div>
       <div className="register-list-heading"><h2>Student roster</h2><span className="register-count" aria-live="polite">{students.length} {students.length === 1 ? "student" : "students"}</span></div>
-      {loading ? <Loading /> : students.length ? <div className={role === "coordinator" ? "table-scroll graduation-register student-register schedule-register register-with-actions" : "table-scroll roster-table"}><table role="table" aria-label="Student roster"><thead role="rowgroup"><tr role="row"><th role="columnheader" scope="col">Student</th><th role="columnheader" scope="col">Type</th><th role="columnheader" scope="col">Programme</th><th role="columnheader" scope="col">Schedule status</th><th role="columnheader" scope="col">Actions</th></tr></thead><tbody role="rowgroup">{students.map((student) => {
-        const viewSchedule = student.scheduleStatus && <button className="small-button outline-button" type="button" onClick={() => openStudent(student)}>View schedule</button>;
+      {loading ? <Loading /> : students.length ? <div className={staffRegister ? "table-scroll graduation-register student-register schedule-register register-with-actions" : "table-scroll roster-table"}><table role="table" aria-label="Student roster"><thead role="rowgroup"><tr role="row"><th role="columnheader" scope="col">Student</th><th role="columnheader" scope="col">Type</th><th role="columnheader" scope="col">Programme</th><th role="columnheader" scope="col">Schedule status</th><th role="columnheader" scope="col">Actions</th></tr></thead><tbody role="rowgroup">{students.map((student) => {
+        const canEdit = student.studentType === "advising" && ["advisor", "coordinator"].includes(role);
+        const canView = Boolean(student.scheduleStatus);
+        const canOpenOverview = administrator && student.studentType === "advising";
+        const editLabel = !canView ? "Create draft" :
+          ({ draft: "Edit draft", readyForStudentReview: "Review & Process" })[student.scheduleStatus] || "Manage schedule";
+        const viewSchedule = canView && <button className="outline-button" type="button" onClick={() => openStudent(student)}>View schedule</button>;
+        const advisingOverview = canOpenOverview && <button className="outline-button" type="button" onClick={() => openOverview(student)}>Advising overview</button>;
+        const secondaryAction = canEdit ? viewSchedule : canView && advisingOverview;
         return <tr key={student._id} role="row">
           <td role="cell"><StudentIdentity name={student.fullName} id={student.studentId} /></td>
           <td role="cell" className="schedule-student-type">{student.studentType}</td>
           <td role="cell"><strong>{student.major}</strong><span className="secondary-text">Semester {student.currentSemester}</span></td>
           <td role="cell"><span className={`status-pill ${scheduleTone(student.scheduleStatus)}`}>{prettyStatus(student.scheduleStatus)}</span></td>
           <td role="cell"><div className="roster-actions">
-            {role === "coordinator" && viewSchedule}
-            {student.studentType === "advising" && ["advisor", "coordinator"].includes(role) && <button className="small-button outline-button" type="button" onClick={() => { setSelected(null); setSchedule(null); setDraftStudent(student); }}>{student.scheduleStatus === "draft" ? "Edit draft" : !student.scheduleStatus ? "Create draft" : student.scheduleStatus === "readyForStudentReview" ? "Review & Process" : "Manage schedule"}</button>}
-            {role !== "coordinator" && viewSchedule}
-            {role === "administrator" && student.studentType === "advising" && <button className="small-button outline-button" type="button" onClick={() => openOverview(student)}>Advising overview</button>}
+            {canEdit ? <button className="outline-button" type="button" onClick={() => setDraftStudent(student)}>{editLabel}</button> : viewSchedule || advisingOverview}
+            {secondaryAction && <RecordActions name={student.fullName} burst={staffRegister}>{secondaryAction}</RecordActions>}
           </div></td>
         </tr>;
       })}</tbody></table></div> : <div className="student-roster-empty" role="status"><img src="/portal-studio/images/extra-hours-folder.svg" alt="" width="104" height="80" /><h3>{search.trim() ? "No matching students" : "No students in this term"}</h3><p>{search.trim() ? "Check the student ID, name or email, or clear your search to see the roster." : "Choose another academic term to view its students."}</p>{search.trim() && <button className="outline-button" type="button" onClick={() => setSearch("")}>Clear search</button>}</div>}
     </section>
     {overviewStudent && overview && <div ref={overviewRef} aria-label={`${overviewStudent.fullName} advising overview`}><AdvisingOverviewPanel overview={overview} token={token} student={overviewStudent} termQuery={termId ? `?termId=${encodeURIComponent(termId)}` : ""} canEdit={false} notify={notify} onChanged={() => openOverview(overviewStudent)} /></div>}
-    {selected && schedule?.schedule && <section className="panel staff-schedule-result" ref={scheduleResultRef} tabIndex={-1} aria-label={`${schedule.student?.fullName ?? "Student"} schedule`}><div className="results-heading"><div><p className="eyebrow">{schedule.student?.studentId} · {schedule.term?.season} {schedule.term?.academicYear}</p><h2>{schedule.student?.fullName}’s schedule</h2></div><span className="status-pill">{prettyStatus(schedule.schedule.status)}</span></div>{schedule.schedule.courses?.length ? <WeeklySchedule week={schedule.schedule.week} daysOff={schedule.schedule.daysOff} /> : <Feedback tone="info">{schedule.schedule.status === "readyForStudentReview" ? "This schedule is empty and is not processed, so it cannot be reopened. Select a schedule marked Processed, or complete a valid schedule and process it first." : schedule.schedule.status === "processed" ? "This processed schedule has no course details." : "This draft is empty. Choose “Edit draft” in the student list to add course groups."}</Feedback>}</section>}
+    {selected && <Modal title={`${schedule?.student?.fullName || selected.fullName}’s schedule`}
+      description={[selected.studentId, schedule?.term && termLabel(schedule.term)].filter(Boolean).join(" · ")}
+      className="staff-schedule-dialog" onClose={() => setSelected(null)} wide>
+      {scheduleError ? <Feedback tone="error">{scheduleError}</Feedback> : !schedule ? <Loading /> : schedule.schedule ? <>
+        <p className={`status-pill schedule-dialog-status ${scheduleTone(schedule.schedule.status)}`}>{prettyStatus(schedule.schedule.status)}</p>
+        {Object.values(schedule.schedule.week || {}).some(slots => slots.length) ?
+          <WeeklySchedule week={schedule.schedule.week} daysOff={schedule.schedule.daysOff} /> :
+          <Feedback tone="info">There are no classes in this schedule yet.</Feedback>}
+      </> : <Feedback tone="info">There is no schedule for this term.</Feedback>}
+    </Modal>}
   </div>;
 }
 

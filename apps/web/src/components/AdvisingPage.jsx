@@ -69,9 +69,9 @@ export default function AdvisingPage({ token, role, notify, onOpenPreferences, g
     } finally {
       if (!signal.aborted) setLoading(false);
     }
-  }, [token, search, advisorFilter, majorFilter, reason, status, pendingType, page]);
+  }, [token, coordinator, search, advisorFilter, majorFilter, reason, status, pendingType, page]);
   const clearDropdownFilters = () => {
-    if (coordinator) setSearch("");
+    setSearch("");
     setPage(1);
     setAdvisorFilter("");
     setMajorFilter("");
@@ -95,24 +95,26 @@ export default function AdvisingPage({ token, role, notify, onOpenPreferences, g
   ].filter(Boolean);
 
   if (graduationStudent) {
-    return <GraduationPlans student={graduationStudent} token={token} onBack={() => setGraduationStudent(null)} />;
+    return <GraduationPlans student={graduationStudent} token={token} backLabel={graduationOnly ? "Back to student list" : "Back to advising students"} onBack={() => setGraduationStudent(null)} />;
   }
   const openDetails = async (student) => {
     try { setSelected(await api(`/api/advisor/students/${student._id}`, { token })); }
     catch (requestError) { setError(explainApiError(requestError, "Student details")); }
   };
-  return <div className="page-stack">
-    {coordinator ? <div className="page-title-row"><div><h1>{graduationOnly ? "Graduation plans" : pendingType === "scheduleSwap" ? "Schedule swap requests" : "Advising students"}</h1></div></div> : <div className="page-title-row"><div><p className="eyebrow">ADVISING</p><h1>{pendingType === "scheduleSwap" ? "Schedule swap requests" : "Advising students"}</h1><p className="page-description">{pendingType === "scheduleSwap" ? "Normal students with open whole schedule swap requests." : "Review assigned advising students and their current workflow status."}</p></div><button className="outline-button" type="button" onClick={reload}>↻ Refresh</button></div>}
-    <section className="panel directory-filters advising-filter-section"><FilterDisclosure floating={coordinator} onClear={!coordinator && filterChips.length ? clearDropdownFilters : undefined}
-      search={<label className="field filter-search"><span>{coordinator ? "Search students" : "Search by student, ID, or email"}</span><input type="search" value={search} onChange={(event) => changeFilter(setSearch, event.target.value)} placeholder={coordinator ? "Student ID, name or email" : "Type to search"} /></label>}
-      chips={filterChips} actions={coordinator && <><button className="text-button" type="button" disabled={!search && !filterChips.length} onClick={clearDropdownFilters}>Clear</button>
-      <button className="text-button" type="button" onClick={reload}>Refresh</button></>}
+  const swaps = pendingType === "scheduleSwap";
+  const title = swaps ? "Schedule swap requests" : graduationOnly ? "Graduation plans" : "Advising students";
+  return <div className="page-stack advising-roster">
+    <div className="page-title-row"><div><h1>{title}</h1></div></div>
+    <section className="panel directory-filters advising-filter-section"><FilterDisclosure floating
+      search={<label className="field filter-search"><span>Search students</span><input type="search" value={search} onChange={(event) => changeFilter(setSearch, event.target.value)} placeholder="Student ID, name or email" /></label>}
+      chips={filterChips} actions={<><button className="text-button" type="button" disabled={!search && !filterChips.length} onClick={clearDropdownFilters}>Clear</button>
+        <button className="text-button" type="button" onClick={reload}>Refresh</button></>}
     ><div className="filter-grid advisor-filters"><label className="field"><span>Advisor</span><select value={advisorFilter} disabled={pendingType === "scheduleSwap"} onChange={(event) => changeFilter(setAdvisorFilter, event.target.value)}><option value="">All advisors</option>{advisors.map((advisor) => <option key={advisor._id} value={advisor._id}>{advisor.fullName}</option>)}</select></label><label className="field"><span>Major</span><select value={majorFilter} onChange={(event) => changeFilter(setMajorFilter, event.target.value)}><option value="">All majors</option>{majors.map((item) => <option key={item} value={item}>{item}</option>)}</select></label><label className="field"><span>Advising reason</span><select value={reason} disabled={pendingType === "scheduleSwap"} onChange={(event) => changeFilter(setReason, event.target.value)}><option value="">All reasons</option>{reasons.map((item) => <option key={item} value={item}>{pretty(item)}</option>)}</select></label><label className="field"><span>Schedule status</span><select value={status} onChange={(event) => changeFilter(setStatus, event.target.value)}><option value="">All statuses</option>{statuses.map((item) => <option key={item} value={item}>{pretty(item)}</option>)}</select></label><label className="field"><span>Pending request type</span><select value={pendingType} onChange={(event) => { const next = event.target.value; changeFilter(setPendingType, next); if ((next === "scheduleSwap") !== (pendingType === "scheduleSwap")) { setStatus(""); setMajorFilter(""); } if (next === "scheduleSwap") { setAdvisorFilter(""); setReason(""); } }}><option value="">All request types</option>{pendingRequestTypes.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label></div></FilterDisclosure></section>
     {error && <div className="feedback error" role="alert">{error}</div>}
-    {coordinator ? <section className="register-panel" aria-busy={loading}>
-      <div className="register-heading"><h2>{pendingType === "scheduleSwap" ? "Open swaps" : "Student roster"}</h2><span>{loading ? "Loading…" : `${pagination.total} students`}</span></div>
+    <section className="register-panel" aria-busy={loading}>
+      <div className="register-heading"><h2>{swaps ? "Open swaps" : "Student roster"}</h2><span role="status">{loading ? "Loading…" : `${pagination.total} ${pagination.total === 1 ? "student" : "students"}`}</span></div>
       {loading ? <div className="loading-state"><span className="loader" />Loading advising students…</div> : rows.length === 0 ? <RegisterEmpty title={pendingType === "scheduleSwap" ? "No open schedule swaps" : "No advising students found"} description={search || filterChips.length ? "Try another name, ID or filter." : undefined} /> :
-        <StudentRegister label="Advising students" columns={["Student", "Programme / advisor", "Schedule status", "Last updated", "Actions"]}>{rows.map((student) => <RegisterRow className="advising-student-row" key={student._id}>
+        <StudentRegister className={`advising-register${graduationOnly ? " graduation-plan-register" : ""}`} label={title} columns={["Student", "Programme / advisor", "Schedule status", "Last updated", "Actions"]}>{rows.map((student) => <RegisterRow className="advising-student-row" key={student._id}>
           <StudentIdentity name={student.user?.fullName} id={student.studentId} />
           <p className="student-register-meta">{student.major || "Undeclared major"}<small>{student.studentType === "normal" ? "Normal student" : student.assignedAdvisor?.fullName || "Advisor unassigned"}</small></p>
           <div className="student-register-meta">
@@ -122,29 +124,19 @@ export default function AdvisingPage({ token, role, notify, onOpenPreferences, g
           {student.lastActivityAt ? <time dateTime={student.lastActivityAt}>{new Date(student.lastActivityAt).toLocaleDateString(undefined, { dateStyle: "medium" })}</time> : "—"}
           {student.studentType === "normal" ? <span className="helper-text">Read only</span> : <div className="student-register-actions">
             {graduationOnly ? <button className="outline-button" type="button" onClick={() => setGraduationStudent(student)}>Graduation plan</button> : <>
-              <button className="outline-button" type="button" onClick={() => setRecordsStudent(student)}>Profile</button>
-              <RecordActions name={student.user?.fullName || student.studentId}>
+              <button className="outline-button" type="button" onClick={() => setRecordsStudent(student)}>{coordinator ? "Profile" : "Academic records"}</button>
+              <RecordActions name={student.user?.fullName || student.studentId} burst>
                 <button type="button" onClick={() => openDetails(student)}>Advising details</button>
-                <button type="button" onClick={() => setAssigning(student)}>{student.assignedAdvisor?._id ? "Reassign advisor" : "Assign advisor"}</button>
-                <button type="button" onClick={() => onOpenPreferences?.(student)}>Preferences</button>
+                {coordinator && <button type="button" onClick={() => setAssigning(student)}>{student.assignedAdvisor?._id ? "Reassign advisor" : "Assign advisor"}</button>}
+                {onOpenPreferences && <button type="button" onClick={() => onOpenPreferences(student)}>Schedule preferences</button>}
                 <button type="button" onClick={() => setRemovalStudent(student)}>Request course removal</button>
                 {role === "advisor" && <button type="button" onClick={() => setGraduationStudent(student)}>Graduation plan</button>}
               </RecordActions></>}
           </div>}
         </RegisterRow>)}</StudentRegister>}
       <RecordPages page={page} size={pagination.limit || 8} total={pagination.total} onChange={setPage} busy={loading} label="Advising students" />
-    </section> : <>
-    <section className="panel results-panel" aria-busy={loading}><div className="results-heading"><div><p className="eyebrow">ADVISOR WORKSPACE</p><h2>{pendingType === "scheduleSwap" ? "Students with open swaps" : "Assigned students"}</h2></div><span className="result-count">{loading ? "Loading" : `${pagination.total} ${pagination.total === 1 ? "student" : "students"}`}</span></div>{loading ? <div className="loading-state"><span className="loader" />Loading advising students…</div> : rows.length === 0 ? <div className="empty-state"><span>♧</span><h3>{pendingType === "scheduleSwap" ? "No open schedule swaps" : "No advising students found"}</h3><p>{error || "Change your filters to see more students."}</p></div> : <div className="table-scroll"><table><thead><tr><th>Student</th><th>Major</th><th>Advisor</th><th>Workflow status</th><th>Blocking step</th><th>Last update</th><th>Actions</th></tr></thead><tbody>{rows.map((student) => <tr key={student._id}><td className="advising-identity"><StudentIdentity name={student.user?.fullName} id={student.studentId} email={student.user?.email} /></td><td>{student.major || "—"}</td><td>{student.studentType === "normal" ? "Not applicable" : student.assignedAdvisor?.fullName || "Unassigned"}</td><td>{student.workflowStatus ? pretty(student.workflowStatus) : hasActiveTerm ? "Not Started" : "No Active Term"}</td><td>{pretty(student.blockingStep)}</td><td>{student.lastActivityAt ? new Date(student.lastActivityAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "—"}</td><td>{student.studentType === "normal" ? <span className="helper-text">Read only</span> : <div className="table-actions">{!graduationOnly && <><button className="text-button" type="button" onClick={() => setRecordsStudent(student)}>Profile</button><button className="text-button" type="button" onClick={async () => { try { setSelected(await api(`/api/advisor/students/${student._id}`, { token })); } catch (requestError) { setError(explainApiError(requestError, "Student details")); } }}>Details</button><button className="text-button" type="button" onClick={() => setAssigning(student)}>{student.assignedAdvisor?._id ? "Reassign" : "Assign"}</button><button className="text-button" type="button" onClick={() => onOpenPreferences?.(student)}>Preferences</button><button className="text-button" type="button" onClick={() => setRemovalStudent(student)}>Removal</button></>}{role === "advisor" && <button className="text-button" type="button" onClick={() => setGraduationStudent(student)}>Graduation plan</button>}</div>}</td></tr>)}</tbody></table></div>}</section>
-    {pagination.pages > 1 && <nav className="pagination-bar" aria-label="Advising students pages">
-      <span>Page {page} of {pagination.pages}</span>
-      <div className="table-actions">
-        <button className="outline-button" type="button" disabled={loading || page <= 1} onClick={() => setPage(page - 1)}>Previous page</button>
-        <button className="outline-button" type="button" disabled={loading || page >= pagination.pages} onClick={() => setPage(page + 1)}>Next page</button>
-      </div>
-    </nav>}
-
-    </>}
-    {selected && <StudentModal coordinator={coordinator} student={selected} onClose={() => setSelected(null)} onOpenGraduationPlans={role === "advisor" ? () => { setGraduationStudent(selected.profile); setSelected(null); } : undefined} />}
+    </section>
+    {selected && <StudentModal student={selected} onClose={() => setSelected(null)} onOpenGraduationPlans={role === "advisor" ? () => { setGraduationStudent(selected.profile); setSelected(null); } : undefined} />}
     {recordsStudent && <Modal title="Academic records" description={recordsStudent.user?.fullName || recordsStudent.studentId} closeLabel="Back to advising" onClose={() => setRecordsStudent(null)} wide>
       <StudentRecordsPage token={token} profile={{ role }} profileId={recordsStudent._id} notify={notify} />
     </Modal>}
@@ -169,9 +161,33 @@ function AssignModal({ token, student, advisors, onClose, onSaved }) {
   return <div className="modal-backdrop" onClick={onClose}><section className="modal-card narrow-modal" role="dialog" aria-modal="true" aria-labelledby="assign-heading" onClick={(event) => event.stopPropagation()}><div className="modal-heading"><div><p className="eyebrow">ADVISOR ASSIGNMENT</p><h2 id="assign-heading">{isReassign ? "Reassign advisor" : "Assign advisor"}</h2></div><button className="icon-button" type="button" onClick={onClose} aria-label="Close">×</button></div><p className="page-description">Student: <strong>{student.user?.fullName || student.studentId}</strong> · {student.studentId}</p>{error && <div className="feedback error" role="alert">{error}</div>}<form className="form-stack" onSubmit={save}><label className="field"><span>Advisor</span><select required value={advisorId} onChange={(event) => setAdvisorId(event.target.value)}><option value="">Choose an advisor</option>{advisors.map((advisor) => <option key={advisor._id} value={advisor._id}>{advisor.fullName} ({advisor.email})</option>)}</select></label><div className="form-actions"><button type="button" className="outline-button" onClick={onClose} disabled={busy}>Cancel</button><button className="primary-button" disabled={busy || !advisorId}>{busy ? "Saving…" : (isReassign ? "Save reassignment" : "Save assignment")}</button></div></form></section></div>;
 }
 
-function StudentModal({ student, coordinator, onClose, onOpenGraduationPlans }) {
+function StudentModal({ student, onClose, onOpenGraduationPlans }) {
   const profile = student.profile || student;
   const history = student.assignmentHistory || [];
-  return <div className="modal-backdrop" onClick={onClose}><section className="modal-card" role="dialog" aria-modal="true" aria-labelledby="advising-details-title" onClick={(event) => event.stopPropagation()}><div className="modal-heading"><div><p className="eyebrow">STUDENT RECORD</p><h2 id="advising-details-title">Advising details</h2></div><button className="icon-button" type="button" onClick={onClose} aria-label="Close">×</button></div><div className="detail-grid modal-details">{coordinator ? <StudentIdentity name={profile.user?.fullName} id={profile.studentId} /> : <><Detail label="Student ID" value={profile.studentId} /><Detail label="Name" value={profile.user?.fullName} /></>}<Detail label="Email" value={profile.user?.email} /><Detail label="Major" value={profile.major} /><Detail label="Current semester" value={profile.currentSemester} /><Detail label="Academic standing" value={pretty(profile.academicStanding)} /><Detail label="Advising reason" value={pretty(profile.advisingReason)} /><Detail label="Enrollment" value={pretty(profile.enrollmentStatus)} /><Detail label="Advisor" value={profile.assignedAdvisor?.fullName} /><Detail label="Workflow status" value={pretty(student.workflowState?.status || student.workflowStatus || (student.activeTerm ? "notStarted" : "No Active Term"))} /><Detail label="Blocking step" value={student.workflowState?.blockingStep || student.blockingStep} /></div>{onOpenGraduationPlans && <div className="form-actions"><button className="primary-button" type="button" onClick={onOpenGraduationPlans}>Graduation plans</button></div>}<h3 className="section-heading">Advisor history</h3>{history.length === 0 ? <p className="helper-text">No advisor assignment history.</p> : <div className="table-scroll"><table><thead><tr><th>Advisor</th><th>Assigned</th><th>Status</th></tr></thead><tbody>{history.map((entry) => <tr key={entry._id}><td>{entry.advisor?.fullName || "—"}</td><td>{entry.createdAt ? new Date(entry.createdAt).toLocaleDateString() : "—"}</td><td>{entry.endedAt ? new Date(entry.endedAt).toLocaleDateString() : "Active"}</td></tr>)}</tbody></table></div>}</section></div>;
+  const workflow = student.workflowState?.status || student.workflowStatus || (student.activeTerm ? "notStarted" : "No active term");
+  const blockingStep = student.workflowState?.blockingStep || student.blockingStep;
+  return <Modal title="Advising details" className="advising-summary-dialog" onClose={onClose}>
+    <div className="advising-detail-person"><StudentIdentity name={profile.user?.fullName} id={profile.studentId} email={profile.user?.email} /></div>
+    <section className="advising-workflow-summary" aria-label="Schedule workflow">
+      <div><span>Schedule status</span><strong className={`status-pill ${scheduleTone(workflow)}`}>{pretty(workflow)}</strong></div>
+      {blockingStep && <div><span>Next step</span><strong>{pretty(blockingStep)}</strong></div>}
+    </section>
+    <h3 className="section-heading">Academic details</h3>
+    <dl className="advising-detail-facts">
+      <Detail label="Major" value={profile.major} />
+      <Detail label="Current semester" value={profile.currentSemester} />
+      <Detail label="Academic standing" value={pretty(profile.academicStanding)} />
+      <Detail label="Advising reason" value={pretty(profile.advisingReason)} />
+      <Detail label="Enrollment" value={pretty(profile.enrollmentStatus)} />
+      <Detail label="Advisor" value={profile.assignedAdvisor?.fullName} />
+    </dl>
+    <h3 className="section-heading">Advisor history</h3>
+    {history.length === 0 ? <p className="helper-text">No advisor assignment history.</p> :
+      <div className="table-scroll"><table><thead><tr><th>Advisor</th><th>Assigned</th><th>Ended</th></tr></thead>
+        <tbody>{history.map((entry) => <tr key={entry._id}><td>{entry.advisor?.fullName || "—"}</td><td>{entry.createdAt ? new Date(entry.createdAt).toLocaleDateString() : "—"}</td><td>{entry.endedAt ? new Date(entry.endedAt).toLocaleDateString() : "Active"}</td></tr>)}</tbody>
+      </table></div>}
+    {onOpenGraduationPlans && <div className="form-footer"><button className="outline-button" type="button" onClick={onOpenGraduationPlans}>Graduation plans</button></div>}
+  </Modal>;
 }
-function Detail({ label, value }) { return <div className="detail-item"><span>{label}</span><strong>{value ?? "—"}</strong></div>; }
+
+function Detail({ label, value }) { return <div><dt>{label}</dt><dd>{value ?? "—"}</dd></div>; }

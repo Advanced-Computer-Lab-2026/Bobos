@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api, explainApiError } from "../api.js";
 import { minutesToTime, preferenceGroupOptions, preferenceMeetingLabel } from "../preference-groups.js";
 import { termLabel } from "../term-label.js";
-import { RegisterEmpty, StudentIdentity } from "./CoordinatorRecords.jsx";
+import { RegisterEmpty, RegisterRow, StudentIdentity, StudentRegister } from "./CoordinatorRecords.jsx";
 import OfferingCourseIcon from "./OfferingCourseIcon.jsx";
 
 const updatedAtFormat = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short", timeZone: "Africa/Cairo" });
@@ -15,6 +15,11 @@ export default function StaffPreferences({ token, profile, profileId, studentTar
   const [selectedStudent, setSelectedStudent] = useState(studentTarget || (profileId ? { _id: profileId } : null));
   const [search, setSearch] = useState(studentTarget?.studentId || "");
   const [matches, setMatches] = useState([]);
+  const [assignedStudents, setAssignedStudents] = useState(null);
+  const [linkedStudentPending, setLinkedStudentPending] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return !studentTarget && !profileId && Boolean(params.get("student")?.trim() && params.get("term"));
+  });
   const [searching, setSearching] = useState(false);
   const [lookupError, setLookupError] = useState("");
   const [terms, setTerms] = useState([]);
@@ -44,9 +49,8 @@ export default function StaffPreferences({ token, profile, profileId, studentTar
     api("/api/academic-terms/academicTerm", { token, signal }).then((result) => {
       if (signal.aborted) return;
       const rows = Array.isArray(result) ? result : [];
-      const active = rows.filter((term) => term.isActive);
       setTerms(rows);
-      setTermId((current) => current || (active.length === 1 ? active[0]._id : ""));
+      setTermId((current) => current || rows.find((term) => term.isActive)?._id || "");
     }).catch((error) => {
       if (!signal.aborted) setTermError(explainApiError(error, "Academic terms"));
     }).finally(() => {
@@ -54,6 +58,20 @@ export default function StaffPreferences({ token, profile, profileId, studentTar
     });
     return () => controller.abort();
   }, [termAttempt, token]);
+
+  useEffect(() => {
+    if (profile.role !== "advisor" || selectedId || linkedStudentPending) return;
+    const controller = new AbortController();
+    api("/api/schedules/students", { token, signal: controller.signal }).then(({ students = [] }) => {
+      if (!controller.signal.aborted) {
+        setAssignedStudents(students.filter(student => student.isActive)
+          .sort((a, b) => studentName(a).localeCompare(studentName(b))));
+      }
+    }).catch(() => {
+      if (!controller.signal.aborted) setAssignedStudents([]);
+    });
+    return () => controller.abort();
+  }, [linkedStudentPending, profile.role, selectedId, token]);
 
   useEffect(() => () => {
     lookupRequest.current?.abort();
@@ -132,10 +150,14 @@ export default function StaffPreferences({ token, profile, profileId, studentTar
     const termKey = bookmarkParams.get("term");
     if (!student || !termKey) return;
     const term = terms.find(({ _id, code }) => _id === termKey || code === termKey);
-    if (!term) { setReadError("The linked academic term is unavailable."); return; }
+    if (!term) {
+      setReadError("The linked academic term is unavailable.");
+      setLinkedStudentPending(false);
+      return;
+    }
     setTermId(term._id);
     setSearch(student);
-    findStudent(student, true);
+    findStudent(student, true).finally(() => setLinkedStudentPending(false));
   }, [findStudent, profileId, studentTarget, termError, terms, termsLoading]);
 
   useEffect(() => {
@@ -161,12 +183,18 @@ export default function StaffPreferences({ token, profile, profileId, studentTar
   }
 
   function selectMatch(student) {
+    clearRecord();
     setSelectedStudent(student);
     setSearch(student.studentId);
     setMatches([]);
     requestAnimationFrame(() => termSelect.current?.focus());
   }
 
+  const showAssigned = profile.role === "advisor" && !selectedStudent && !linkedStudentPending && !search.trim();
+  const quickStudents = showAssigned ? assignedStudents ?? [] : [];
+  const lookupStudents = matches.length ? matches : quickStudents;
+  const waitingForRecord = !readError && (loading || (canLoad && !record));
+  const waitingForSelection = !termError && (linkedStudentPending || (selectedId && termsLoading));
   return <div className="page-stack schedule-preferences-page staff-preferences">
     <div className="page-title-row"><div><h1>Student preferences</h1></div></div>
     <section className="preference-context" aria-label="Student and term">
@@ -174,17 +202,12 @@ export default function StaffPreferences({ token, profile, profileId, studentTar
         {selectedStudent ? <div className="preference-student-selected">
           <StudentIdentity name={studentName(selectedStudent)} id={selectedStudent.studentId} email={studentEmail(selectedStudent)} />
           <button className="outline-button preference-change" type="button" onClick={changeStudent}>Change student</button>
-        </div> : <>
+        </div> : linkedStudentPending ? <p className="preference-read-progress" role="status">Opening linked student…</p> : <>
           <form className="preference-student-lookup" onSubmit={(event) => { event.preventDefault(); findStudent(search.trim()); }}>
             <label className="field"><span>Find advising student</span><input ref={studentSearch} type="search" autoComplete="off" value={search} onChange={(event) => { setSearch(event.target.value); setMatches([]); setLookupError(""); }} placeholder="Student ID, name, or email" disabled={searching} /></label>
             <button className="outline-button" type="submit" disabled={searching}>{searching ? "Searching…" : "Find student"}</button>
           </form>
           {lookupError && <p className="feedback error" role="alert">{lookupError}</p>}
-          {matches.length > 0 && <ul className="preference-student-results" aria-label="Matching students" role="list">
-            {matches.map((student) => <li key={studentProfileId(student)}><button className="preference-student-result" type="button" onClick={() => selectMatch(student)}>
-              <StudentIdentity name={studentName(student)} id={student.studentId} email={studentEmail(student)} />
-            </button></li>)}
-          </ul>}
         </>}
       </div>
       <div className="preference-term">
@@ -195,16 +218,26 @@ export default function StaffPreferences({ token, profile, profileId, studentTar
         {termError && <div className="preference-read-error"><p className="feedback error" role="alert">{termError}</p><button className="outline-button" type="button" onClick={() => setTermAttempt((attempt) => attempt + 1)}>Retry terms</button></div>}
       </div>
     </section>
+    {showAssigned && assignedStudents === null && <p className="preference-read-progress" role="status">Loading assigned students…</p>}
+    {lookupStudents.length > 0 && <section className="preference-lookup-results">
+      <header className="preference-reading-heading"><h2>{showAssigned ? "Assigned students" : "Matching students"}</h2><p>{lookupStudents.length} {lookupStudents.length === 1 ? "student" : "students"}</p></header>
+      <StudentRegister className="preference-student-results" label={showAssigned ? "Assigned students" : "Matching students"} columns={["Student", "Action"]}>
+        {lookupStudents.map((student) => <RegisterRow key={studentProfileId(student)}>
+          <StudentIdentity name={studentName(student)} id={student.studentId} email={studentEmail(student)} />
+          <button className="outline-button" type="button" onClick={() => selectMatch(student)} aria-label={`View preferences for ${studentName(student)}`}>View preferences</button>
+        </RegisterRow>)}
+      </StudentRegister>
+    </section>}
     <section className="preference-reading" aria-label="Submitted preferences">
-      {(readError || loading) && <div className="preference-read-error">
-        {loading ? <p className="preference-read-progress" role="status">{record ? "Refreshing saved preferences…" : "Loading saved preferences…"}</p> : <>
+      {(readError || waitingForRecord || (waitingForSelection && selectedId)) && <div className="preference-read-error">
+        {!readError ? <p className="preference-read-progress" role="status">{record ? "Refreshing saved preferences…" : "Loading saved preferences…"}</p> : <>
           <p className="feedback error" role="alert">{readError}</p>
           {canLoad && <button className="outline-button" type="button" onClick={() => load(selectedId, termId)}>Retry</button>}
         </>}
       </div>}
-      {record ? record.submitted && record.preferences ? <PreferenceSubmission preferences={record.preferences} offerings={record.offerings} updatedAt={record.lastUpdatedAt} /> : <div className="preference-empty" role="status">
-        <h3>No preferences submitted</h3><p>The student can still receive a schedule for this term.</p>
-      </div> : !loading && !readError && <RegisterEmpty art="submitted-plan.svg" title={selectedStudent ? "Choose an academic term" : "Find a student to review"} description={selectedStudent ? "Select the term to see this student’s saved preferences." : "Search the advising roster by name, student ID, or email."} />}
+      {record ? record.submitted && record.preferences ? <PreferenceSubmission preferences={record.preferences} offerings={record.offerings} updatedAt={record.lastUpdatedAt} /> :
+        <RegisterEmpty art="submitted-plan.svg" title="No preferences submitted" description={`${studentName(selectedStudent)} hasn’t shared scheduling preferences for ${termLabel(selectedTerm)}. You can still start a draft.`} /> :
+        !waitingForRecord && !waitingForSelection && !termsLoading && !canLoad && !readError && !lookupError && !termError && !searching && !lookupStudents.length && !(showAssigned && assignedStudents === null) && <RegisterEmpty art="submitted-plan.svg" title={selectedStudent ? "Choose an academic term" : "Find a student to review"} description={selectedStudent ? "Select the term to see this student’s saved preferences." : "Search the advising roster by name, student ID, or email."} />}
       {canOpenDraft && <footer className="preference-draft-handoff">
         <button className="outline-button" type="button" onClick={() => onOpenDraftSchedule?.({ ...selectedStudent, fullName: studentName(selectedStudent) }, selectedTerm.code || termId)}>Create or update draft schedule <span aria-hidden="true">→</span></button>
       </footer>}

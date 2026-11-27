@@ -175,7 +175,7 @@ test("Req 6–10: student directory finds the matching profile and changes the a
   await signIn(page, "regression@guc.edu.eg", password);
   await page.getByRole("link", { name: "Student directory" }).click();
   await expect(page.getByRole("heading", { name: "Student directory" })).toBeVisible();
-  const student = page.getByRole("button", { name: /^Regression Student\s+28-90001\b/i });
+  const student = page.getByRole("button", { name: /^Open profile for 28-90001\b/i });
   await expect(student).toBeVisible();
   const filterSemester = async (semester) => {
     await page.getByRole("button", { name: /^Filters\b/i }).click();
@@ -218,6 +218,7 @@ test("Req 100 and 127: the Portal ledger and downloaded CSV use the same date an
   await expect(matching).toBeVisible();
   await expect(otherMethod).toBeVisible();
   await expect(otherDate).toBeVisible();
+  await page.getByRole("button", { name: /^Filters\b/i }).click();
   await page.getByRole("combobox", { name: /settlement option/i }).selectOption("wallet");
   await page.getByLabel("From date").fill("2025-09-15");
   await page.getByLabel("To date").fill("2025-09-15");
@@ -280,7 +281,7 @@ test("Req 15: My advisor uses the illustrated page for navigation, bookmarks, an
   await expect(main.getByRole("heading", { name: "Academic history" })).toBeVisible();
   await page.getByRole("tab", { name: "Transcript" }).click();
   await expect(main.getByText(/Yearly transcripts appear after an academic year has course attempts/)).toBeVisible();
-  await expect(main.getByRole("button", { name: "Download PDF" })).toBeDisabled();
+  await expect(main.getByRole("button", { name: "Download PDF" })).toHaveCount(0);
   await page.getByRole("tab", { name: "Wallet" }).click();
   await expect(main).toContainText("1,234.56");
   await page.goto(baseURL + "/workspace.html?screen=records");
@@ -311,8 +312,17 @@ test("retired Portal paths cannot serve design studies or alternate workflow scr
     name: "portal-audit.csv", mimeType: "text/csv",
     buffer: Buffer.from("Course Code,Course Name,Credit Hours,Course Type,Faculty/Major,Recommended Semester,Offering Season,Prerequisites\nAUD910,Live Audit Course,3,core,CS,5,winter,"),
   };
-  await page.getByLabel("CSV file").setInputFiles(file);
-  await page.getByRole("button", { name: "Validate and import" }).click();
+  await page.getByRole("button", { name: "Import CSV", exact: true }).click();
+  const importer = page.getByRole("dialog", { name: "Import courses from CSV" });
+  await expect(importer.getByRole("link", { name: "Download template" })).toBeVisible();
+  await importer.getByLabel("CSV file").setInputFiles({
+    ...file, buffer: Buffer.from(file.buffer.toString().replace(",3,core,", ",invalid,core,")),
+  });
+  await importer.getByRole("button", { name: "Validate and import" }).click();
+  await expect(importer.getByRole("alert")).toBeVisible();
+  await importer.getByLabel("CSV file").setInputFiles(file);
+  await importer.getByRole("button", { name: "Validate and import" }).click();
+  await expect(importer).toHaveCount(0);
   await expect(page.getByRole("button", { name: /AUD910.*Live Audit Course/ })).toBeVisible();
   await page.goto(baseURL + "/portal-studio/index.html?page=manage-courses");
   await expect(page).toHaveURL(/[?&]page=courses(?:&|$)/);
@@ -320,6 +330,32 @@ test("retired Portal paths cannot serve design studies or alternate workflow scr
 
   await nav.getByRole("link", { name: "Academic terms", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Academic terms", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Create term", exact: true }).click();
+  const termEditor = page.getByRole("dialog", { name: "Create academic term" });
+  try {
+    await termEditor.getByLabel("Academic year").fill("2041/2042");
+    await termEditor.getByLabel("Season").selectOption("winter");
+    for (const [label, date] of [
+      ["Term start", "2041-09-01"], ["Term end", "2042-01-31"],
+      ["Teaching start", "2041-09-10"], ["Teaching end", "2042-01-15"],
+      ["Registration start", "2041-08-15"], ["Registration end", "2041-08-31"],
+      ["Advising deadline", "2041-09-15"], ["Whole schedule swap deadline", "2041-09-20"],
+    ]) await termEditor.getByLabel(new RegExp(`^${label}$`, "i")).fill(date);
+    await termEditor.getByRole("button", { name: "Create term" }).click();
+    await expect(termEditor).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Dates and deadlines" })).toBeVisible();
+    await expect(page.getByText("Inactive term", { exact: true })).toBeVisible();
+
+    await page.getByRole("button", { name: "Edit term", exact: true }).click();
+    const editTerm = page.getByRole("dialog", { name: "Edit academic term" });
+    await expect(editTerm.getByLabel("Academic year")).toHaveValue("2041/2042");
+    await editTerm.getByLabel("Advising deadline").fill("2041-09-16");
+    await editTerm.getByRole("button", { name: "Update term" }).click();
+    await expect(editTerm).toHaveCount(0);
+    expect((await AcademicTerm.findOne({ code: "winter-20412042" })).advisingDeadline.toISOString()).toContain("2041-09-16");
+  } finally {
+    await AcademicTerm.deleteOne({ code: "winter-20412042" });
+  }
   await page.goto(baseURL + "/portal-studio/index.html?page=student-detail&student=0");
   await expect(page).toHaveURL(/[?&]page=directory(?:&|$)/);
   await expect(page.getByRole("heading", { name: "Student directory", exact: true })).toBeVisible();
@@ -436,9 +472,19 @@ test("Req 31, 33, 81–82: student meeting details and read-only Administrator a
   await mainNavigation(page).getByRole("link", { name: "Student schedules", exact: true }).click();
   const row = page.getByRole("row", { name: /46-00131/ });
   await expect(row).toBeVisible();
+  await expect(page.locator(".schedule-register").getByRole("row", { name: /46-00131/ })).toBeVisible();
+  const moreActions = row.getByRole("button", { name: /More actions/ });
+  await moreActions.click();
+  await expect(row.getByRole("button", { name: "Advising overview" })).toBeVisible();
+  await page.keyboard.press("Escape");
   await expect(row.getByRole("button", { name: /manage|process|reopen/i })).toHaveCount(0);
-  await row.getByRole("button", { name: "View schedule", exact: true }).click();
-  await expect(page.getByRole("main")).toContainText("09:30–10:45");
+  const view = row.getByRole("button", { name: "View schedule", exact: true });
+  await view.click();
+  const scheduleDialog = page.getByRole("dialog", { name: /schedule$/ });
+  await expect(scheduleDialog).toContainText("09:30–10:45");
+  await page.keyboard.press("Escape");
+  await expect(scheduleDialog).toHaveCount(0);
+  await expect(view).toBeFocused();
 });
 
 test("Req 50, 52: browse beyond the first 20 students and filter by real payment status", async ({ page }) => {
@@ -460,18 +506,19 @@ test("Req 50, 52: browse beyond the first 20 students and filter by real payment
   await page.goto(baseURL);
   await signIn(page, advisor.email, password);
   await mainNavigation(page).getByRole("link", { name: "Advising students", exact: true }).click();
-  await expect(page.getByText("Page 1 of 2")).toBeVisible();
+  const rosterPages = page.getByRole("navigation", { name: "Advising students pages" });
+  await expect(rosterPages).toContainText(/^1–20 of/);
   const finalStudent = page.getByRole("row", { name: /47-00021/ });
   await expect(finalStudent).toHaveCount(0);
-  await page.getByRole("button", { name: "Next page" }).click();
+  await rosterPages.getByRole("button", { name: "Next", exact: true }).click();
   await expect(finalStudent).toBeVisible();
-  await expect(page.getByText("Page 2 of 2")).toBeVisible();
+  await expect(rosterPages).toContainText(/^21–/);
   await page.getByRole("button", { name: /^Filters\b/i }).click();
   await page.getByRole("combobox", { name: "Schedule status" }).selectOption("awaitingPaymentChoice");
   await page.getByRole("combobox", { name: "Major", exact: true }).selectOption("undeclared");
   await expect(page.getByText("1 student", { exact: true })).toBeVisible();
   await expect(finalStudent).toContainText(/awaiting payment choice/i);
-  await expect(page.getByRole("button", { name: "Next page" })).toHaveCount(0);
+  await expect(rosterPages.getByRole("button", { name: "Next", exact: true })).toHaveCount(0);
 });
 
 test("Req 92, 94, 102, 120: confirm, download and cancel an installment charge through the Portal", async ({ page }) => {
@@ -600,8 +647,24 @@ test("Catalogue editing preserves filtered prerequisites, seasons and legacy maj
   expect(saved.prerequisites.map(String)).toEqual([String(first._id), String(second._id)]);
   expect(saved.facultyMajors).toEqual(["CS", "DMET"]);
   expect(saved.offeringSeasons).toEqual(["winter", "spring"]);
-  await page.getByRole("button", {name:"Delete course CAT803"}).click();
-  await sheet.getByRole("button", {name:"Delete course", exact:true}).click();
+  const deleteCourse = page.getByRole("button", { name: "Delete course CAT803" });
+  await deleteCourse.click();
+  await expect(sheet).toContainText(course.name);
+  await sheet.getByRole("button", { name: "Cancel" }).click();
+  await expect(deleteCourse).toBeFocused();
+  const dependent = await Course.create({
+    code: "CAT804", name: "Dependent course", creditHours: 4, courseType: "core", prerequisites: [course._id],
+  });
+  await deleteCourse.click();
+  const confirm = sheet.getByRole("button", { name: "Delete course", exact: true });
+  try {
+    await confirm.click();
+    await expect(sheet.getByRole("alert")).toContainText(/prerequisite/i);
+    expect(await Course.exists({ _id: course._id })).toBeTruthy();
+  } finally {
+    await Course.deleteOne({ _id: dependent._id });
+  }
+  await confirm.click();
   await expect(sheet).toHaveCount(0);
   expect(await Course.findById(course._id)).toBeNull();
 });
@@ -618,8 +681,20 @@ test("Coordinator can read ranked preferences, change term and review a removal 
   const submission = await SchedulingPreference.create({student:student._id, term:term._id, preferredDays:[{day:"Thursday",priority:4},{day:"Monday",priority:1}], preferredTimes:[{startMinute:390,endMinute:465,priority:3}], note:"Please keep the morning lab."});
   const course = await Course.create({code:"CAT805", name:"Research Methods", creditHours:3, courseType:"core"});
   const removal = await MandatoryCourseRemovalRequest.create({student:student._id, advisor:advisor._id, term:term._id, course:course._id, reason:"other", explanation:"Review this requirement against the transfer record."});
+  let releasePreferences;
+  const preferencesReady = new Promise(resolve => { releasePreferences = resolve; });
+  await page.route(`**/api/identity/students/${student._id}/preferences?*`, async route => {
+    await preferencesReady;
+    await route.continue();
+  }, { times: 1 });
   await page.goto(baseURL + `/portal-studio/index.html?page=preferences&student=${student.studentId}&term=${term.code}`);
   await signIn(page, coordinator.email, password);
+  try {
+    await expect(page.getByRole("status", { name: "", exact: true }).filter({ hasText: "Loading saved preferences" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /find a student to review|choose an academic term|no preferences submitted/i })).toHaveCount(0);
+  } finally {
+    releasePreferences();
+  }
   await expect(page.locator(".preference-reading")).toContainText("Please keep the morning lab.");
   await expect(page.locator(".preference-reading time")).toHaveAttribute("datetime", submission.updatedAt.toISOString());
   await page.getByRole("button", {name:"Change student",exact:true}).click();
@@ -675,8 +750,20 @@ test("Coordinator can read ranked preferences, change term and review a removal 
   try {
     await advisorPage.goto(baseURL + "/portal-studio/index.html?page=advising");
     await signIn(advisorPage, advisor.email, password);
-    await advisorPage.getByRole("searchbox", {name:"Search by student, ID, or email"}).fill(student.studentId);
-    await advisorPage.getByRole("row").filter({hasText:student.studentId}).getByRole("button", {name:"Preferences",exact:true}).click();
+    await advisorPage.getByRole("searchbox", {name:"Search students"}).fill(student.studentId);
+    const advisorRow = advisorPage.getByRole("row").filter({ hasText: student.studentId });
+    await expect(advisorRow.getByRole("button", { name: "Academic records", exact: true })).toBeVisible();
+    const more = advisorRow.getByRole("button", { name: /More actions for/ });
+    await more.press("Enter");
+    for (const name of ["Advising details", "Request course removal", "Graduation plan", "Schedule preferences"]) {
+      await expect(advisorRow.getByRole("button", { name, exact: true })).toBeVisible();
+    }
+    await expect(advisorRow.getByRole("button", { name: /assign advisor/i })).toHaveCount(0);
+    await advisorRow.getByRole("button", { name: "Advising details", exact: true }).click();
+    await expect(advisorPage.getByRole("dialog", { name: "Advising details" })).toContainText(student.studentId);
+    await advisorPage.keyboard.press("Escape");
+    await more.click();
+    await advisorRow.getByRole("button", { name: "Schedule preferences", exact: true }).click();
     await expect(advisorPage.locator(".preference-student-selected")).toContainText(student.studentId);
     await advisorPage.getByLabel("Academic term").selectOption(String(term._id));
     await expect(advisorPage.locator(".preference-reading blockquote")).toHaveText(submission.note);

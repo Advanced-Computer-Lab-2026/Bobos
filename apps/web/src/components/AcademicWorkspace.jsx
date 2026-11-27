@@ -16,31 +16,46 @@ export default function AcademicWorkspace({ token, role, section, notify }) {
   return null;
 }
 
+const courseImportColumns = "Course Code,Course Name,Credit Hours,Course Type,Faculty/Major,Recommended Semester,Offering Season,Prerequisites\n";
+
 function CoursesWorkspace({ token, role, notify }) {
   const canManage = role === "administrator";
   const [courses, setCourses] = useState([]); const [loading, setLoading] = useState(true); const [error, setError] = useState("");
   const [query, setQuery] = useState(""); const [editing, setEditing] = useState(null); const [saving, setSaving] = useState(false);
   const [editError, setEditError] = useState("");
   const [confirmingDelete, setConfirmingDelete] = useState(null); const [deleting, setDeleting] = useState(false); const [deleteError, setDeleteError] = useState("");
+  const [importOpen, setImportOpen] = useState(false);
+  const [importError, setImportError] = useState("");
   const [csvFile, setCsvFile] = useState(null); const [importing, setImporting] = useState(false); const [importErrors, setImportErrors] = useState([]);
   const [curriculumOfferingSeasons, setCurriculumOfferingSeasons] = useState(["winter", "spring"]);
   const load = useCallback(async () => { setLoading(true); setError(""); try { setCourses(await api("/api/catalogue/courses", { token })); } catch (e) { setError(explainApiError(e, "Course catalogue")); } finally { setLoading(false); } }, [token]);
   useEffect(() => { load(); }, [load]);
+  const resetImportErrors = () => {
+    setImportError("");
+    setImportErrors([]);
+  };
+  const closeImport = () => {
+    if (importing) return;
+    setCsvFile(null);
+    resetImportErrors();
+    setImportOpen(false);
+  };
   const importCsv = async (event) => {
     event.preventDefault();
     if (!csvFile) return;
-    const formElement = event.currentTarget;
-    setImporting(true); setImportErrors([]); setError("");
+    resetImportErrors();
+    setImporting(true);
     try {
       const result = await api("/api/catalogue/courses/import", { token, method: "POST", body: { csvText: await csvFile.text(), curriculumOfferingSeasons } });
-      setCsvFile(null); formElement.reset();
+      setCsvFile(null);
+      setImportOpen(false);
       const skipped = result.skippedPlaceholders ? ` Skipped ${result.skippedPlaceholders} unnumbered elective placeholders.` : "";
       const seasonNote = result.format === "curriculum" ? ` Default seasons applied: ${curriculumOfferingSeasons.map(pretty).join(", ")}.` : "";
       notify("success", `Imported ${result.total} courses: ${result.created} created, ${result.updated} updated.${skipped}${seasonNote}`);
       await load();
     } catch (e) {
       setImportErrors(e.data?.errors || []);
-      setError(e.data?.message || (e.data?.errors?.length ? "The CSV has errors. Correct every listed row and upload it again; no courses were imported." : e.message));
+      setImportError(e.data?.message || (e.data?.errors?.length ? "Correct the listed rows and try again. No courses were imported." : explainApiError(e, "Import courses")));
     } finally { setImporting(false); }
   };
   const removeCourse = async () => {
@@ -49,10 +64,10 @@ function CoursesWorkspace({ token, role, notify }) {
     try {
       await waitForPaperToss();
       await api(`/api/catalogue/courses/${confirmingDelete._id}`, { token, method: "DELETE" });
-      notify("success", `${confirmingDelete.code} deleted.`);
+      notify("success", `${confirmingDelete.code} was removed from the catalogue.`);
       setConfirmingDelete(null);
       await load();
-    } catch (e) { setDeleteError(e.message); return false; }
+    } catch (e) { setDeleteError(explainApiError(e, "Delete course")); }
     finally { setDeleting(false); }
   };
   const [viewing, setViewing] = useState(null);
@@ -64,7 +79,7 @@ function CoursesWorkspace({ token, role, notify }) {
     if (target) setViewing(target);
   }, [courses]);
   const openCourseEditor = (course) => { setEditError(""); setEditing(course); };
-  const visible = courses.filter((course) => `${course.code} ${course.name} ${course.courseType} ${(course.facultyMajors || []).join(" ")}`.toLowerCase().includes(query.toLowerCase()));
+  const visible = courses.filter((course) => `${course.code} ${course.name} ${course.courseType} ${(course.facultyMajors || []).join(" ")}`.toLowerCase().includes(query.trim().toLowerCase()));
   const saveCourse = async (event) => {
     event.preventDefault(); setSaving(true); setEditError("");
     const form = new FormData(event.currentTarget);
@@ -84,13 +99,16 @@ function CoursesWorkspace({ token, role, notify }) {
     } catch (e) { setEditError(e.message); }
     finally { setSaving(false); }
   };
-  return <div className="page-stack course-register"><PageTitle title="Course catalogue" description="Course requirements, teaching hours and offering seasons." action={canManage && <button className="primary-button" type="button" onClick={() => openCourseEditor({})}>＋ Add course</button>} />
+  return <div className="page-stack course-register">
+    <PageTitle title="Course catalogue" description="Course requirements, teaching hours and offering seasons." action={canManage && <div className="catalogue-tools">
+      <button className="outline-button" type="button" onClick={() => setImportOpen(true)}>Import CSV</button>
+      <button className="primary-button" type="button" onClick={() => openCourseEditor({})}>Add course</button>
+    </div>} />
     {error && <div className="feedback error" role="alert">{error}</div>}
-    {role === "administrator" && <section className="panel course-import-panel"><div className="results-heading"><div><p className="eyebrow">ADMINISTRATOR</p><h2>Import courses from CSV</h2></div></div><p className="helper-text">Upload the standard course template or a MET/DMET curriculum export. For curriculum exports, the importer reads semester and major sections, course codes, contact hours, and prerequisites. It infers English/German course semesters from their code level. Unnumbered elective placeholders are skipped. If any course row is invalid, nothing is imported.</p><form className="form-stack" onSubmit={importCsv}><label className="field"><span>CSV file</span><input type="file" accept=".csv,text/csv" onChange={(event) => { setCsvFile(event.target.files?.[0] || null); setImportErrors([]); }} required /></label><fieldset className="course-import-seasons"><legend>Default offering seasons for curriculum exports</legend><p className="helper-text">This curriculum CSV does not include offering seasons. These defaults apply only to that format; a standard template uses its Offering Season column.</p><div className="season-checkboxes">{seasons.map((season) => <label key={season}><input type="checkbox" checked={curriculumOfferingSeasons.includes(season)} onChange={(event) => setCurriculumOfferingSeasons((current) => event.target.checked ? [...current, season] : current.filter((item) => item !== season))} />{pretty(season)}</label>)}</div></fieldset><div className="inline-controls"><button className="primary-button" disabled={importing || !csvFile}>{importing ? "Validating and importing…" : "Validate and import"}</button><a className="text-button" download="course-import-template.csv" href={`data:text/csv;charset=utf-8,${encodeURIComponent("Course Code,Course Name,Credit Hours,Course Type,Faculty/Major,Recommended Semester,Offering Season,Prerequisites\n")}`}>Download CSV template</a></div></form>{importErrors.length > 0 && <div className="course-import-errors" role="alert"><h3>Fix these CSV errors</h3><div className="table-scroll"><table><thead><tr><th>Row</th><th>Column</th><th>Error</th></tr></thead><tbody>{importErrors.map((item, index) => <tr key={`${item.row}-${item.field}-${index}`}><td>{item.row}</td><td>{item.field}</td><td>{item.message}</td></tr>)}</tbody></table></div></div>}</section>}
     <section className="catalogue-register" aria-label="Catalogue courses">
-      <div className="register-controls">
+      <div className="register-controls catalogue-search">
         <label className="field"><span>Search courses</span><input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Course code, name or major" /></label>
-        <span className="register-count" role="status">{visible.length} {visible.length === 1 ? "course" : "courses"}</span>
+        <span className="register-count" role="status">{loading ? "Loading courses…" : query.trim() ? `${visible.length} of ${courses.length} courses` : `${courses.length} ${courses.length === 1 ? "course" : "courses"}`}</span>
       </div>
       {loading ? <Loading /> : visible.length ? <table className="catalogue-table" role="table">
         <thead role="rowgroup"><tr role="row">
@@ -110,10 +128,51 @@ function CoursesWorkspace({ token, role, notify }) {
     </section>
     {viewing && <CourseDetailsModal course={viewing} allCourses={courses} onClose={() => setViewing(null)} onEdit={canManage ? () => { setViewing(null); openCourseEditor(viewing); } : undefined} />}
     {editing && <CourseEditor course={editing} courses={courses} onSave={saveCourse} onClose={() => !saving && setEditing(null)} saving={saving} error={editError} />}
-    {confirmingDelete && <Modal title="Delete this course?" eyebrow="REMOVE FROM CATALOGUE" onClose={() => !deleting && setConfirmingDelete(null)}>
-      <div className="confirmation-content"><OfferingCourseIcon code={confirmingDelete.code} /><div><p>Delete <strong>{confirmingDelete.code} · {confirmingDelete.name}</strong> from the course catalogue?</p><p className="helper-text">A course cannot be deleted while another course lists it as a prerequisite.</p></div></div>
-      {deleteError && <div className="feedback error" role="alert">{deleteError}</div>}
-      <div className="form-footer"><button type="button" className="outline-button" disabled={deleting} onClick={() => setConfirmingDelete(null)}>Cancel</button><PaperTossButton disabled={deleting} tossing={deleting} onClick={removeCourse}>{deleting ? "Deleting…" : "Delete course"}</PaperTossButton></div>
+    {importOpen && <Modal title="Import courses from CSV" onClose={closeImport}>
+      <form className="form-stack catalogue-import" onSubmit={importCsv}>
+        <p className="catalogue-dialog-copy">Use the catalogue CSV template or upload a MET/DMET curriculum export.</p>
+        <label className="field">
+          <span>CSV file</span>
+          <input type="file" accept=".csv,text/csv" disabled={importing} required onChange={event => {
+            setCsvFile(event.target.files?.[0] || null);
+            resetImportErrors();
+          }} />
+        </label>
+        <fieldset className="catalogue-import-seasons" disabled={importing}>
+          <legend>Offering seasons for curriculum exports</legend>
+          <p className="catalogue-dialog-copy">The standard template uses its own Offering Season column.</p>
+          <div className="season-checkboxes">{seasons.map(season => <label key={season}>
+            <input type="checkbox" checked={curriculumOfferingSeasons.includes(season)}
+              onChange={event => setCurriculumOfferingSeasons(current => event.target.checked ? [...current, season] : current.filter(item => item !== season))} />
+            {pretty(season)}
+          </label>)}</div>
+        </fieldset>
+        {importError && <p className="feedback error" role="alert">{importError}</p>}
+        {importErrors.length > 0 && <div className="course-import-errors">
+          <h3>Rows to correct</h3>
+          <div className="table-scroll"><table><thead><tr><th>Row</th><th>Field</th><th>Error</th></tr></thead>
+            <tbody>{importErrors.map((item, index) => <tr key={`${item.row}-${item.field}-${index}`}><td>{item.row}</td><td>{item.field}</td><td>{item.message}</td></tr>)}</tbody>
+          </table></div>
+        </div>}
+        <div className="form-footer catalogue-import-actions">
+          <a className="outline-button" download="course-import-template.csv" href={`data:text/csv;charset=utf-8,${encodeURIComponent(courseImportColumns)}`}>Download template</a>
+          <button className="primary-button" disabled={importing || !csvFile}>{importing ? "Validating and importing…" : "Validate and import"}</button>
+        </div>
+      </form>
+    </Modal>}
+    {confirmingDelete && <Modal title="Delete course?" onClose={() => !deleting && setConfirmingDelete(null)}>
+      <div className="catalogue-delete" aria-busy={deleting}>
+        <div className="catalogue-delete-course">
+          <OfferingCourseIcon code={confirmingDelete.code} />
+          <div><strong>{confirmingDelete.name}</strong><small>{confirmingDelete.code}</small></div>
+        </div>
+        <p className="catalogue-dialog-copy">This permanently removes the course from the catalogue.</p>
+        {deleteError && <p className="feedback error" role="alert">{deleteError}</p>}
+        <div className="form-footer">
+          <button type="button" className="outline-button" disabled={deleting} onClick={() => setConfirmingDelete(null)}>Cancel</button>
+          <PaperTossButton disabled={deleting} tossing={deleting} onClick={removeCourse}>{deleting ? "Deleting…" : "Delete course"}</PaperTossButton>
+        </div>
+      </div>
     </Modal>}
   </div>;
 }
@@ -169,6 +228,9 @@ function TermCalendar({ term }) {
 }
 
 function TermsWorkspace({ token, role, notify }) {
+  const canManage = role === "administrator";
+  const [editor, setEditor] = useState("");
+  const [formError, setFormError] = useState("");
   const [form, setForm] = useState(blankTerm);
   const [termId, setTermId] = useState("");
   const [terms, setTerms] = useState([]);
@@ -233,28 +295,30 @@ function TermsWorkspace({ token, role, notify }) {
 
   const submit = async (event) => {
     event.preventDefault();
-    setError("");
+    setFormError("");
     setMessage("");
 
     const clientValidation = validateDates();
     if (clientValidation) {
-      setError(clientValidation);
+      setFormError(clientValidation);
       return;
     }
 
+    const editingId = editor === "edit" ? termId : "";
     setLoading(true);
     try {
       const data = await api(
-        termId.trim()
-          ? `/api/academic-terms/academicTerm/${encodeURIComponent(termId.trim())}`
+        editingId
+          ? `/api/academic-terms/academicTerm/${encodeURIComponent(editingId)}`
           : "/api/academic-terms/academicTerm",
         {
           token,
-          method: termId.trim() ? "PUT" : "POST",
+          method: editingId ? "PUT" : "POST",
           body: toPayload(),
         }
       );
       setTermId(data._id || data.code);
+      setEditor("");
       const next = [data, ...terms.filter((term) => term._id !== data._id && term.code !== data.code)].slice(0, 8);
       window.localStorage.setItem("bobos.recentTerms", JSON.stringify(next));
       window.localStorage.setItem("bobos.lastTermId", data.code || data._id);
@@ -262,17 +326,10 @@ function TermsWorkspace({ token, role, notify }) {
       notify("success", `${termLabel(data)} saved.`);
       loadTerms();
     } catch (e) {
-      setError(e.message);
+      setFormError(explainApiError(e, "Save academic term"));
     } finally {
       setLoading(false);
     }
-  };
-
-  const useTerm = (term) => {
-    setTermId(term._id || term.code);
-    setForm(termToForm(term));
-    setMessage("");
-    setError("");
   };
 
   const standingSaved = ({ warningEmailStatus }) => {
@@ -282,167 +339,100 @@ function TermsWorkspace({ token, role, notify }) {
     if (warningEmailStatus === "pending") setMessage("Semester standing saved. The probation warning check is pending.");
   };
 
-  if (role !== "administrator") {
-    const selectedTerm = terms.find(term => (term._id || term.code) === termId) || terms.find(term => term.isActive) || terms[0];
-    return <div className="page-stack term-register">
-      <PageTitle title="Academic terms" description="Teaching dates, registration windows and scheduling deadlines." />
-      {error && <div className="feedback error" role="alert">{error}</div>}
-      {fetchingTerms ? <Loading /> : !selectedTerm ? <EmptyState title="No academic terms" text="Configured terms and their dates will appear here." /> : <>
-        <div className="term-read-layout">
+  const selectedTerm = terms.find(term => (term._id || term.code) === termId) || terms.find(term => term.isActive) || terms[0];
+  const openEditor = (mode) => {
+    if (mode === "edit") setTermId(selectedTerm._id || selectedTerm.code);
+    setForm(mode === "edit" ? termToForm(selectedTerm) : blankTerm);
+    setFormError("");
+    setEditor(mode);
+  };
+  const closeEditor = () => { if (!loading) setEditor(""); };
+  const editorTitle = editor === "edit" ? "Edit academic term" : "Create academic term";
+
+  return <div className="page-stack term-register">
+    <PageTitle title="Academic terms" description="Teaching dates, registration windows and scheduling deadlines."
+      action={canManage && <div className="term-management-actions">
+        {terms.length > 0 && <button className="outline-button" type="button" onClick={() => { setMessage(""); setError(""); setRecordingStanding(true); }}>Record standing</button>}
+        <button className="primary-button" type="button" onClick={() => openEditor("create")}>Create term</button>
+      </div>} />
+    {message && <div className="feedback success" role="status">{message}</div>}
+    {error && <div className="feedback error" role="alert">{error}</div>}
+    {fetchingTerms ? <Loading /> : !selectedTerm ? <EmptyState title="No academic terms" text="Configured terms and their dates will appear here." /> : <>
+      <div className="term-read-layout">
+        <div className="term-picker-row">
           <label className="field term-selection"><span>Academic term</span><select value={selectedTerm._id || selectedTerm.code} onChange={event => setTermId(event.target.value)}>{terms.map(term => <option key={term._id || term.code} value={term._id || term.code}>{termLabel(term)}{term.isActive ? " · Active" : ""}</option>)}</select></label>
-          <section className="term-milestones" aria-labelledby="term-dates-heading">
-            <div className="term-milestones-heading"><h2 id="term-dates-heading">Dates and deadlines</h2><span className={`status-pill ${selectedTerm.isActive ? "good" : "muted"}`}>{selectedTerm.isActive ? "Active term" : "Inactive term"}</span></div>
-            <dl className="term-dates">{Object.entries(termDateGroups).map(([label, fields]) => <div className={fields.length === 1 ? "term-deadline" : undefined} key={label}><dt>{label}</dt><dd><TermDates dates={fields.map(field => selectedTerm[field])} /></dd></div>)}</dl>
-          </section>
-          <TermCalendar key={selectedTerm._id || selectedTerm.code} term={selectedTerm}/>
+          {canManage && <button className="outline-button" type="button" onClick={() => openEditor("edit")}>Edit term</button>}
         </div>
-      </>}
-    </div>;
-  }
-
-  return (
-    <div className="page-stack">
-      <PageTitle
-        eyebrow="ACADEMIC CALENDAR"
-        title="Academic terms"
-        description="Define term dates and deadlines used by offerings and scheduling."
-        action={role === "administrator" && terms.length > 0 && (
-          <button className="outline-button" type="button" onClick={() => { setMessage(""); setError(""); setRecordingStanding(true); }}>
-            Record standing
-          </button>
-        )}
-      />
-      {message && <div className="feedback success" role="status">{message}</div>}
-      {error && <div className="feedback error" role="alert">{error}</div>}
-      <div className="content-grid term-grid">
-        <section className="panel">
-          <div className="panel-heading">
-            <div>
-
-              <h2>{termId ? "Update term" : "Create a term"}</h2>
-            </div>
-
-          </div>
-          <form className="form-stack" onSubmit={submit}>
-            <div className="form-grid">
-              <Field label="Academic year">
-                <input
-                  required
-                  value={form.academicYear}
-                  onChange={(e) => update("academicYear", e.target.value)}
-                  placeholder="2026/2027"
-                />
-              </Field>
-              <Field label="Season">
-                <select value={form.season} onChange={(e) => update("season", e.target.value)}>
-                  {seasons.map((season) => (
-                    <option key={season} value={season}>{pretty(season)}</option>
-                  ))}
-                </select>
-              </Field>
-              <label className="check-field term-active">
-                <input
-                  type="checkbox"
-                  checked={form.isActive}
-                  onChange={(e) => update("isActive", e.target.checked)}
-                /> Active term
-              </label>
-            </div>
-            {Object.entries(termDateGroups).slice(0,3).map(([group, fields]) => <fieldset className="term-date-pair" key={group}><legend>{group}</legend><div className="form-grid">
-              {fields.map((field) => (
-                <Field key={field} label={pretty(field)}>
-                  <input
-                    type="date"
-                    required
-                    value={form[field]}
-                    min={
-                      field === "teachingStart" && form.termStart
-                        ? form.termStart
-                        : field === "termEnd" && form.termStart
-                        ? form.termStart
-                        : undefined
-                    }
-                    max={
-                      field === "teachingEnd" && form.termEnd
-                        ? form.termEnd
-                        : undefined
-                    }
-                    onChange={(e) => update(field, e.target.value)}
-                  />
-                </Field>
-              ))}
-            </div></fieldset>)}
-            <fieldset className="term-date-pair"><legend>Scheduling deadlines</legend><div className="form-grid">{termDateFields.slice(-2).map(field => <Field key={field} label={pretty(field)}><input type="date" required value={form[field]} onChange={event => update(field, event.target.value)} /></Field>)}</div></fieldset>
-            <div className="form-footer">
-              <button
-                className="text-button"
-                type="button"
-                onClick={() => {
-                  setForm(blankTerm);
-                  setTermId("");
-                  setMessage("");
-                  setError("");
-                }}
-              >
-                Clear form
-              </button>
-              <button className="primary-button" disabled={loading}>
-                {loading ? "Saving…" : termId ? "Update term" : "Create term"}
-                <span>→</span>
-              </button>
-            </div>
-          </form>
+        <section className="term-milestones" aria-labelledby="term-dates-heading">
+          <div className="term-milestones-heading"><h2 id="term-dates-heading">Dates and deadlines</h2><span className={`status-pill ${selectedTerm.isActive ? "good" : "muted"}`}>{selectedTerm.isActive ? "Active term" : "Inactive term"}</span></div>
+          <dl className="term-dates">{Object.entries(termDateGroups).map(([label, fields]) => <div className={fields.length === 1 ? "term-deadline" : undefined} key={label}><dt>{label}</dt><dd><TermDates dates={fields.map(field => selectedTerm[field])} /></dd></div>)}</dl>
         </section>
-        <section className="panel">
-          <div className="panel-heading">
-            <div>
-              <p className="eyebrow">ACADEMIC TERMS</p>
-              <h2>Configured terms</h2>
-            </div>
-            <span className="panel-count">{terms.length.toString().padStart(2, "0")}</span>
-          </div>
-          {fetchingTerms ? (
-            <Loading />
-          ) : terms.length ? (
-            <div className="recent-terms">
-              {terms.map((term) => (
-                <button
-                  className={`recent-term ${(term._id === termId || term.code === termId) ? "selected" : ""}`}
-                  key={term._id || term.code}
-                  onClick={() => useTerm(term)}
-                  aria-pressed={term._id === termId || term.code === termId}
-                  type="button"
-                >
-                  <span className="term-calendar-mark" aria-hidden="true">{term.termStart ? new Date(term.termStart).getUTCDate() : "–"}</span>
-                  <span>
-                    <strong>{termLabel(term)}</strong>
-                    <small><TermDates dates={[term.termStart, term.termEnd]} /></small>
-                  </span>
-                  <span className={`status-pill ${term.isActive ? "good" : "muted"}`}>{term.isActive ? "Active" : "Inactive"}</span>
-                </button>
-              ))}
-            </div>
-          ) : (
-            <EmptyState
-              title="No terms found"
-              text="Create an academic term to begin scheduling."
-              icon="◷"
-            />
-          )}
-
-        </section>
+        <TermCalendar key={selectedTerm._id || selectedTerm.code} term={selectedTerm}/>
       </div>
-      {recordingStanding && (
-        <TermStandingModal
-          token={token}
-          terms={terms}
-          selectedTerm={terms.find(term => term._id === termId || term.code === termId)}
-          onClose={() => setRecordingStanding(false)}
-          onSaved={standingSaved}
-        />
-      )}
-    </div>
-  );
+    </>}
+    {canManage && editor && <Modal title={editorTitle} onClose={closeEditor} wide>
+      <form className="form-stack" onSubmit={submit}>
+        <div className="form-grid">
+          <Field label="Academic year">
+            <input
+              required
+              value={form.academicYear}
+              onChange={(e) => update("academicYear", e.target.value)}
+              placeholder="2026/2027"
+            />
+          </Field>
+          <Field label="Season">
+            <select value={form.season} onChange={(e) => update("season", e.target.value)}>
+              {seasons.map((season) => (
+                <option key={season} value={season}>{pretty(season)}</option>
+              ))}
+            </select>
+          </Field>
+          <label className="check-field term-active">
+            <input
+              type="checkbox"
+              checked={form.isActive}
+              onChange={(e) => update("isActive", e.target.checked)}
+            /> Active term
+          </label>
+        </div>
+        {Object.entries(termDateGroups).slice(0,3).map(([group, fields]) => <fieldset className="term-date-pair" key={group}><legend>{group}</legend><div className="form-grid">
+          {fields.map((field) => (
+            <Field key={field} label={pretty(field)}>
+              <input
+                type="date"
+                required
+                value={form[field]}
+                min={
+                  field === "teachingStart" && form.termStart
+                    ? form.termStart
+                    : field === "termEnd" && form.termStart
+                    ? form.termStart
+                    : undefined
+                }
+                max={
+                  field === "teachingEnd" && form.termEnd
+                    ? form.termEnd
+                    : undefined
+                }
+                onChange={(e) => update(field, e.target.value)}
+              />
+            </Field>
+          ))}
+        </div></fieldset>)}
+        <fieldset className="term-date-pair"><legend>Scheduling deadlines</legend><div className="form-grid">{termDateFields.slice(-2).map(field => <Field key={field} label={pretty(field)}><input type="date" required value={form[field]} onChange={event => update(field, event.target.value)} /></Field>)}</div></fieldset>
+        {formError && <div className="feedback error" role="alert">{formError}</div>}
+        <FormFooter onCancel={closeEditor} busy={loading} submitText={editor === "edit" ? "Update term" : "Create term"} />
+      </form>
+    </Modal>}
+    {canManage && recordingStanding && <TermStandingModal
+      token={token}
+      terms={terms}
+      selectedTerm={selectedTerm}
+      onClose={() => setRecordingStanding(false)}
+      onSaved={standingSaved}
+    />}
+  </div>;
 }
 
 function TermStandingModal({ token, terms, selectedTerm, onClose, onSaved }) {
@@ -896,14 +886,14 @@ function SlotFields({ index, slot, onChange, onRemove, canRemove }) {
 
 function PageTitle({ eyebrow, title, description, action }) { return <div className="page-title-row"><div><p className="eyebrow">{eyebrow}</p><h1>{title}</h1><p className="page-description">{description}</p></div>{action}</div>; }
 function Field({ label, children, className = "" }) { return <label className={`field ${className}`}><span>{label}</span>{children || <input />}</label>; }
-export function Modal({ title, eyebrow, description, onClose, closeLabel, children, wide = false }) {
+export function Modal({ title, eyebrow, description, onClose, closeLabel, children, wide = false, className = "" }) {
   const ref = useRef(null);
   useLayoutEffect(() => {
     const dialog = ref.current;
     dialog.showModal();
     return () => dialog.close();
   }, []);
-  return <dialog ref={ref} className="academic-dialog modal-backdrop" aria-label={title}
+  return <dialog ref={ref} className={`academic-dialog modal-backdrop ${className}`} aria-label={title}
     onCancel={event => { event.preventDefault(); onClose(); }}
     onClick={event => { if (event.target === ref.current) onClose(); }}>
     <section className={`modal-card ${wide ? "wide-modal" : ""}`}>

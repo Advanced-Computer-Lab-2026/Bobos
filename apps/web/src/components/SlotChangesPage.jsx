@@ -11,7 +11,7 @@ import { WorkspaceEmpty } from "./WorkspaceUI.jsx";
 const path = "/api/slot-changes";
 const statuses = { pending: "Pending", approved: "Approved", rejected: "Rejected", withdrawn: "Withdrawn" };
 const date = (value) => value ? new Date(value).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "—";
-const submittedAt = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short", timeZone: slotSubmissionTimeZone });
+const submittedAt = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: slotSubmissionTimeZone });
 const submittedHeading = new Intl.DateTimeFormat(undefined, { dateStyle: "long", timeZone: slotSubmissionTimeZone });
 const component = (type = "") => type.replace(/^./, (letter) => letter.toUpperCase());
 const meetingText = (slot) => `${slot.day} ${slot.startTime}–${slot.endTime} · ${slot.room}`;
@@ -128,10 +128,10 @@ export default function SlotChangesPage({ token, role, onOpenSchedule }) {
   </StudentRegister>;
 
   return <div className="page-stack scheduling-page slot-changes-page workspace-page" ref={pageRef}>
-    <div className="workspace-header"><div><h1>Slot change requests</h1>
+    {!currentRequest && <div className="workspace-header"><div><h1>Slot change requests</h1>
       <p>{mine ? "Ask your advising team to change an assigned lecture, tutorial, or lab." : "Review advising students’ requests and compare replacement slots."}</p></div>
       {mine && <button type="button" className="outline-button" onClick={onOpenSchedule}>My schedule</button>}
-    </div>
+    </div>}
     {error && <div className="feedback error" role="alert">{error}</div>}
     {message && <div className="feedback success" role="status">{message}</div>}
     {!data && !error && <p role="status">Loading requests…</p>}
@@ -228,35 +228,26 @@ export default function SlotChangesPage({ token, role, onOpenSchedule }) {
         setDetail(null); setError(""); setMessage("");
         requestAnimationFrame(() => pageRef.current?.getRootNode().getElementById(`slot-request-${currentRequest._id}`)?.focus());
       }}><span aria-hidden="true">← </span>Back to requests</button>
-      <div className="slot-review-heading request-detail-identity">
-        <div className="portal-person-cell">
-          <OfferingCourseIcon code={currentRequest.course?.code} />
-          <div>
-            <h2 id="slot-review-title" ref={heading} tabIndex={-1}>{currentRequest.course?.name || currentRequest.course?.code || "Slot change request"}</h2>
-            <small>{currentRequest.course?.name && currentRequest.course?.code ? `${currentRequest.course.code} · ` : ""}{component(currentRequest.componentType)} change</small>
-          </div>
+      <header className="slot-case-heading">
+        <OfferingCourseIcon code={currentRequest.course?.code} />
+        <div><small>{[currentRequest.course?.code, component(currentRequest.componentType) + " change", termLabel(currentRequest.term)].filter(Boolean).join(" · ")}</small>
+          <h1 id="slot-review-title" ref={heading} tabIndex={-1}>{currentRequest.course?.name || currentRequest.course?.code || "Slot change request"}</h1>
         </div>
         <Status status={currentRequest.status} />
-      </div>
-      <div className="slot-review-record">
-        <div className="portal-person-cell">
-          <PortalAvatar name={currentRequest.student?.user?.fullName} />
-          <div><strong>{currentRequest.student?.user?.fullName || "Unknown student"}</strong><small>{currentRequest.student?.studentId}</small></div>
-        </div>
-        <dl className="request-detail-facts">
-          <div><dt>Advisor</dt><dd>{currentRequest.student?.assignedAdvisor?.fullName || "Unassigned"}</dd></div>
-          <div><dt>Academic term</dt><dd>{termLabel(currentRequest.term)}</dd></div>
-          <div><dt>Submitted</dt><dd><time dateTime={currentRequest.createdAt}>{coordinator && currentRequest.createdAt ? submittedAt.format(new Date(currentRequest.createdAt)) : date(currentRequest.createdAt)}</time></dd></div>
-        </dl>
-      </div>
-      <div className="slot-review-notes">
-        <section className="slot-current-meeting">
-          <h3>Current assigned slot</h3>
-          <p>{currentRequest.currentSlotLabel || (detail.current ? slotText(detail.current) : "Slot no longer listed")}</p>
-        </section>
-        <section className="portal-request-note">
-          <h3>Student’s preferred group or day</h3>
+      </header>
+      <div className="slot-case-context">
+        <section className="slot-case-student">
+          <StudentIdentity name={currentRequest.student?.user?.fullName} id={currentRequest.student?.studentId} />
+          <h2>Student’s preference</h2>
           <p>{currentRequest.preferenceNote || "No preference provided."}</p>
+          <small>Submitted <time dateTime={currentRequest.createdAt}>{currentRequest.createdAt ? submittedAt.format(new Date(currentRequest.createdAt)) : "—"}</time> · Advisor {currentRequest.student?.assignedAdvisor?.fullName || "unassigned"}</small>
+        </section>
+        <section className="slot-case-assignment">
+          <h2>Current assigned slot</h2>
+          {detail.current && currentRequest.status === "pending" ? <>
+            <strong>Group {detail.current.groupNumber}</strong>
+            {detail.current.meetings.map(meeting => <p key={meeting.slotId}>{meeting.day} · {meeting.startTime}–{meeting.endTime}<small>{meeting.room}</small></p>)}
+          </> : <p>{currentRequest.currentSlotLabel || (detail.current ? slotText(detail.current) : "Slot no longer listed")}</p>}
         </section>
       </div>
       {currentRequest.status === "pending" ? <form className="form-stack slot-review-form" onSubmit={(event) => {
@@ -276,22 +267,26 @@ export default function SlotChangesPage({ token, role, onOpenSchedule }) {
               setReplacement((selected) => selected === slot.slotId ? "" : selected);
             }}>
               <input type="radio" name="replacement" value={slot.slotId} checked={replacementSlotId === slot.slotId} onChange={() => setReplacement(slot.slotId)} disabled={busy || noSeats || hasClash} />
-              <span className="slot-alternative-meetings"><strong>{component(slot.type)} {slot.groupNumber}</strong>
-                {slot.meetings.map((meeting) => <small key={meeting.slotId}>{meetingText(meeting)} · {meeting.remainingSeats} {meeting.remainingSeats === 1 ? "seat" : "seats"} left</small>)}
-              </span>
+              <span className="slot-alternative-group"><strong>Group {slot.groupNumber}</strong></span>
+              <span className="slot-alternative-meetings">{slot.meetings.map(meeting => <span key={meeting.slotId}>
+                <strong>{meeting.day} <span>{meeting.startTime}–{meeting.endTime}</span></strong>
+                <small>{meeting.room} · {meeting.remainingSeats} {meeting.remainingSeats === 1 ? "seat" : "seats"} left</small>
+              </span>)}</span>
               <span className={`slot-alternative-state ${hasClash || noSeats ? "is-unavailable" : ""}`}>
+                <span aria-hidden="true">{hasClash || noSeats ? "!" : "✓"}</span>
                 {hasClash ? `Clashes with ${slot.clashes.join("; ")}` : noSeats ? "Group full" : "No timetable clash"}
               </span>
             </label>;
           })}
+          {replacementSlotId && <button type="button" className="text-button slot-clear-selection" disabled={busy} onClick={() => setReplacement("")}>Clear selected slot</button>}
         </fieldset>
-        {replacementSlotId && <button type="button" className="text-button slot-clear-selection" disabled={busy} onClick={() => setReplacement("")}>Clear selected slot</button>}
+        <section className="slot-case-decision"><h2>Decision</h2>
         <NoteField label="Response to student" value={responseNote} onChange={setResponse} className="slot-response-field" />
         <div className="form-actions slot-review-actions">
           <button type="button" className="outline-button" disabled={busy} onClick={() => action(`${path}/${currentRequest._id}/decision`, { decision: "rejected", responseNote })}>Reject request</button>
           <button type="submit" className="primary-button" disabled={busy || !replacementSlotId}>Approve change</button>
-        </div>
-      </form> : <div className="slot-review-notes">
+        </div></section>
+      </form> : <div className="slot-case-context">
         {currentRequest.replacementSlotLabel && <section className="slot-current-meeting"><h3>Approved replacement</h3><p>{currentRequest.replacementSlotLabel}</p></section>}
         <section className="portal-request-note">
           <h3>Response to student</h3>

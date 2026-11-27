@@ -66,15 +66,16 @@ export function StudentRecordsPage({ token, profile, profileId: targetProfileId,
     return () => controller.abort();
   }, [profileId, token]);
 
+  const transcriptYear = tab === "transcript" ? year : "";
   useEffect(() => {
-    if (tab !== "transcript") load(tab);
+    if (tab !== "transcript" || transcriptYear) load(tab, transcriptYear);
     return () => request.current?.abort();
-  }, [tab, load]);
+  }, [tab, load, transcriptYear]);
 
   function selectTab(item) {
     if (item === tab) return;
     request.current?.abort();
-    setData(null); setError(""); setLoading(item !== "transcript"); setTab(item);
+    setData(null); setError(""); setLoading(item !== "transcript" || Boolean(year)); setTab(item);
   }
 
   function handleTabKey(event, index) {
@@ -99,19 +100,18 @@ export function StudentRecordsPage({ token, profile, profileId: targetProfileId,
     } catch (requestError) { setError(explainApiError(requestError, "Transcript download")); }
   };
 
-  const transcriptMessage = year ? "Select View transcript to see the courses and grades for the selected year." : "Yearly transcripts appear after an academic year has course attempts.";
   return <div className="academic-records">
     {!isStaffViewer && <div className="page-title-row"><h1>Academic records</h1></div>}
     <div className="tabs" role="tablist" aria-label="Academic records">{tabs.map((item, index) =>
       <button type="button" role="tab" id={`${tabsId}-${item}`} aria-controls={`${tabsId}-panel`} aria-selected={tab === item} tabIndex={tab === item ? 0 : -1} key={item} onClick={() => selectTab(item)} onKeyDown={(event) => handleTabKey(event, index)}>{recordTabs[item]}</button>)}</div>
     <section className="records-panel" role="tabpanel" id={`${tabsId}-panel`} aria-labelledby={`${tabsId}-${tab}`} aria-busy={loading || (tab === "transcript" && yearsLoading)} tabIndex={0}>
-      {tab === "transcript" && <div className="inline-controls records-transcript-controls">
-        <label className="field compact-field"><span>Attended academic year</span><select disabled={yearsLoading || !academicYears.length} value={year} onChange={(event) => { request.current?.abort(); setYear(event.target.value); setData(null); setError(""); setLoading(false); }}><option value="">{academicYears.length ? "Select a year" : yearsLoading ? "Loading years…" : "No attended years"}</option>{academicYears.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-        <button className="primary-button" type="button" disabled={!year || yearsLoading || loading} onClick={() => load("transcript", year)}>View transcript</button>
+      {tab === "transcript" && academicYears.length > 0 && <div className="inline-controls records-transcript-controls">
+        <label className="field compact-field"><span>Academic year</span><select disabled={yearsLoading} value={year} onChange={(event) => { request.current?.abort(); setYear(event.target.value); setData(null); setError(""); setLoading(true); }}>{academicYears.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
         <button className="outline-button" type="button" disabled={!year || yearsLoading} onClick={download}>Download PDF</button>
       </div>}
       {(error || (tab === "transcript" && yearsError)) && <div className="feedback error" role="alert">{error || yearsError}</div>}
-      {loading || (tab === "transcript" && yearsLoading) ? <Loading /> : data ? <RecordData data={data} tab={tab} /> : tab === "transcript" && !error && !yearsError && <p className="records-empty">{transcriptMessage}</p>}
+      {loading || (tab === "transcript" && yearsLoading) ? <Loading /> : data ? <RecordData data={data} tab={tab} /> : tab === "transcript" && !error && !yearsError &&
+        <RecordsEmpty title="No transcript yet" description="Yearly transcripts appear after an academic year has course attempts." />}
     </section>
   </div>;
 }
@@ -322,12 +322,20 @@ function RecordData({ data, tab }) {
   }
   if (tab === "failed") {
     const records = Array.isArray(data) ? data : [];
-    return records.length ? <div className="table-scroll"><table><thead><tr><th>Course</th><th>Term</th><th>Attempt</th><th>Attendance</th><th>Result</th><th>Grade</th></tr></thead><tbody>{records.map((item) => <tr key={item._id}><td><strong>{item.course?.code || "—"}</strong><span className="secondary-text">{item.course?.name}</span></td><td>{termLabel(item.term)}</td><td>{item.attemptNumber || "—"}</td><td>{humanize(item.attendance)}</td><td>{humanize(item.result)}</td><td>{item.grade || "—"}</td></tr>)}</tbody></table></div> : <p className="records-empty">No failed or unattended courses are listed in this record.</p>;
+    return records.length ? <CourseRecordGroup title="Failed or unattended courses" previewLength={records.length} items={records.map(item => ({
+      id: item._id, course: item.course,
+      details: { Term: termLabel(item.term), Attempt: item.attemptNumber, Attendance: humanize(item.attendance), Result: humanize(item.result), Grade: item.grade },
+    }))} /> : <RecordsEmpty title="No failed or unattended courses" description="Courses appear here when a failed or unattended attempt is recorded." />;
   }
   if (tab === "transcript") {
-    const terms = data.terms || {};
-    const courses = Object.entries(terms).flatMap(([name, rows]) => (rows || []).map((entry) => ({ ...entry, termLabel: humanize(name) })));
-    return <><div className="results-heading"><div><h2>Yearly transcript</h2><p className="records-caption">{data.year} · {courses.length} {courses.length === 1 ? "course attempt" : "course attempts"}</p></div></div>{courses.length ? <div className="table-scroll"><table><thead><tr><th>Term</th><th>Course</th><th>Credits</th><th>Grade</th><th>Result</th><th>Attendance</th></tr></thead><tbody>{courses.map((row, index) => <tr key={row._id || `${row.termLabel}-${index}`}><td>{row.termLabel}</td><td><strong>{row.course?.code || "—"}</strong><span className="secondary-text">{row.course?.name}</span></td><td>{row.course?.creditHours ?? "—"}</td><td>{row.grade || "—"}</td><td>{humanize(row.result)}</td><td>{humanize(row.attendance)}</td></tr>)}</tbody></table></div> : <p className="records-empty">There are no course attempts for this year. Select another academic year to view its transcript.</p>}</>;
+    const terms = Object.entries(data.terms || {}).filter(([, rows]) => rows?.length);
+    return terms.length ? <div className="records-transcript">
+      <h2>Transcript for {data.year}</h2>
+      {terms.map(([name, rows]) => <CourseRecordGroup key={name} title={humanize(name)} previewLength={rows.length} items={rows.map((row, index) => ({
+        id: row._id || index, course: row.course,
+        details: { Grade: row.grade, Result: humanize(row.result), Attendance: humanize(row.attendance) },
+      }))} />)}
+    </div> : <RecordsEmpty title="No course attempts for this year" description="Select another academic year to view its transcript." />;
   }
   return <AcademicHistory data={data} />;
 }
@@ -336,7 +344,7 @@ function AcademicHistory({ data }) {
   const summary = data.studentProfile || {};
   const groups = [
     {
-      title: "Current courses", empty: "No courses are marked as current.",
+      title: "Current courses", empty: "Courses appear here once they’re recorded as in progress.",
       items: (data.currentCourses || []).map((item) => ({
         id: item._id, course: item.course, details: { Term: termLabel(item.term) },
       })),
@@ -374,17 +382,23 @@ function AcademicHistory({ data }) {
   </div>;
 }
 
-function CourseRecordGroup({ title, items, empty }) {
+function RecordsEmpty({ title, description }) {
+  return <div className="records-blank">
+    <img src="/portal-studio/images/academic-transcript.svg" alt="" width="44" height="44" />
+    <div><strong>{title}</strong>{description && <p>{description}</p>}</div>
+  </div>;
+}
+
+function CourseRecordGroup({ title, items, empty, previewLength = 4 }) {
   const id = useId();
   const [expanded, setExpanded] = useState(false);
-  const previewLength = 4;
   const visibleItems = expanded ? items : items.slice(0, previewLength);
   return <section className="records-course-group" aria-labelledby={id}>
     <header className="records-course-heading">
       <div><h3 id={id}>{title}</h3><span>{items.length}</span></div>
       {items.length > previewLength && <button type="button" className="outline-button" aria-controls={`${id}-list`} aria-expanded={expanded} aria-label={`${expanded ? "Show fewer" : `Show all ${items.length}`} ${title.toLowerCase()}`} onClick={() => setExpanded(!expanded)}>{expanded ? "Show fewer" : `Show all ${items.length}`}</button>}
     </header>
-    {items.length === 0 ? <p className="records-empty">{empty}</p> :
+    {items.length === 0 ? <RecordsEmpty title={`No ${title.toLowerCase()}`} description={empty} /> :
       <ul className="records-courses" id={`${id}-list`} aria-labelledby={id} role="list">{visibleItems.map(({ id: key, course, details }) =>
         <li key={key}>
           <div className="records-course-identity">

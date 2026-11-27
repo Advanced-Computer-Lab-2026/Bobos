@@ -79,4 +79,10 @@ The root URL opens the illustrated Portal Studio. Sidebar links go to live workf
 
 Run `npm run seed:b1 --workspace @bobos/api` after the evaluation seed to add dedicated B1 accounts, seven request categories and 120 history events without clearing existing data. See [B1 seed scenarios and logins](docs/b1-seed.md). All initial B1 passwords are `Password123!`.
 
+Run `npm run seed:advisor-preview --workspace @bobos/api` against the populated local database to add assigned students, saved preferences, requests, and a submitted graduation plan for the standard Advisor account.
+
+Run `npm run seed:admin-preview --workspace @bobos/api` against the populated local demo database to add tuition and fee records and a mix of read and unread Administrator notifications. The command adds missing records without resetting existing data or read status.
+
 Run `npm run seed:group4 --workspace @bobos/api` to set the local default Layla and Karim demo accounts to the illustrated Group 4 processed timetable (CSEN 701, CSEN 703, CSEN 704, DMET 701; 19 credits). This explicitly replaces only those two accounts’ active-term schedules, records processing history, reconciles seat counts and preserves other students. Meetings use the illustrated start times and rooms with 90-minute durations. Rerunning retains matching processed schedules.
+
+See [Production readiness](docs/production-readiness.md) for release data, sign-in, and payment presentation tasks.

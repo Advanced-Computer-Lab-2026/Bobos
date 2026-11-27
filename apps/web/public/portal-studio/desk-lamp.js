@@ -123,7 +123,7 @@ window.mountPortalControlInk = function (shadow, { coordinator = false } = {}) {
       else if (pointerTarget?.matches(':hover')) pointed = pointerTarget;
     }
     const hovered = pointed?.closest(hoverSelector);
-    const nextHover = hovered && hovered !== focused && !hovered.matches(':disabled,[aria-disabled=true]') ? hovered : null;
+    const nextHover = hovered && hovered !== focused && !hovered.matches(':disabled,[aria-disabled=true],.removal-record-link') ? hovered : null;
     if (coordinator && paintedHover !== nextHover) {
       paintedHover?.removeAttribute('data-service-ink-hover');
       paintedHover = nextHover;

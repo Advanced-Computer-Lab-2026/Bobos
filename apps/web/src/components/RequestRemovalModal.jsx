@@ -1,5 +1,6 @@
+import { Modal } from "./AcademicWorkspace.jsx";
 import { termLabel } from "../term-label.js";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { api, explainApiError } from "../api.js";
 
 const REASON_OPTIONS = [
@@ -19,7 +20,7 @@ export default function RequestRemovalModal({
 }) {
   const [students, setStudents] = useState([]);
   const [terms, setTerms] = useState([]);
-  const [failedCourses, setFailedCourses] = useState([]);
+  const [failedCourses, setFailedCourses] = useState(null);
 
   const [studentProfileId, setStudentProfileId] = useState(initialStudent?._id || "");
   const [termId, setTermId] = useState(initialTermId || "");
@@ -40,8 +41,8 @@ export default function RequestRemovalModal({
       setError("");
       try {
         const [studentRes, termRes] = await Promise.all([
-          api("/api/advisor/students?limit=100", { token }).catch(() => ({ data: [] })),
-          api("/api/academic-terms", { token }).catch(() => []),
+          initialStudent?._id ? Promise.resolve([]) : api("/api/advisor/students?limit=100", { token }),
+          api("/api/academic-terms", { token }),
         ]);
 
         if (!alive) return;
@@ -53,11 +54,7 @@ export default function RequestRemovalModal({
         setTerms(termList);
 
         const activeTerm = termList.find((t) => t.isActive);
-        if (!termId && activeTerm) {
-          setTermId(activeTerm._id);
-        } else if (!termId && termList.length > 0) {
-          setTermId(termList[0]._id);
-        }
+        setTermId(current => current || activeTerm?._id || termList[0]?._id || "");
       } catch (err) {
         if (alive) setError(explainApiError(err, "Initial data"));
       } finally {
@@ -68,52 +65,28 @@ export default function RequestRemovalModal({
     return () => {
       alive = false;
     };
-  }, [token, termId]);
-
-  const loadFailedCourses = useCallback(async (sid, tid) => {
-    if (!sid) {
-      setFailedCourses([]);
-      setCourseId("");
-      return;
-    }
-    setLoadingCourses(true);
-    setError("");
-    try {
-      const termQuery = tid ? `?term=${encodeURIComponent(tid)}` : "";
-      const res = await api(`/api/identity/students/${encodeURIComponent(sid)}/failed-courses${termQuery}`, {
-        token,
-      });
-      const list = Array.isArray(res) ? res : res.failedCourses || [];
-      setFailedCourses(list);
-      setCourseId((prev) => {
-        const exists = list.some((item) => {
-          const cId = String(item.course?._id || item.course || item._id);
-          return cId === String(prev);
-        });
-        if (exists) return prev;
-        if (list.length === 1) {
-          const first = list[0].course && typeof list[0].course === "object" ? list[0].course : list[0];
-          return String(first._id || list[0]._id);
-        }
-        return "";
-      });
-    } catch (err) {
-      setFailedCourses([]);
-      setCourseId("");
-      setError(explainApiError(err, "Failed courses"));
-    } finally {
-      setLoadingCourses(false);
-    }
-  }, [token]);
+  }, [token, initialStudent?._id]);
 
   useEffect(() => {
-    if (studentProfileId) {
-      loadFailedCourses(studentProfileId, termId);
-    } else {
-      setFailedCourses([]);
-      setCourseId("");
-    }
-  }, [studentProfileId, termId, loadFailedCourses]);
+    setFailedCourses(null);
+    setCourseId("");
+    setLoadingCourses(Boolean(studentProfileId));
+    if (!studentProfileId) return;
+    const controller = new AbortController();
+    const { signal } = controller;
+    setError("");
+    const termQuery = termId ? `?term=${encodeURIComponent(termId)}` : "";
+    api(`/api/identity/students/${encodeURIComponent(studentProfileId)}/failed-courses${termQuery}`, { token, signal })
+      .then(res => {
+        if (signal.aborted) return;
+        const list = Array.isArray(res) ? res : res.failedCourses || [];
+        setFailedCourses(list);
+        if (list.length === 1) setCourseId(String(list[0].course?._id || list[0].course || list[0]._id));
+      })
+      .catch(err => { if (!signal.aborted) setError(explainApiError(err, "Failed courses")); })
+      .finally(() => { if (!signal.aborted) setLoadingCourses(false); });
+    return () => controller.abort();
+  }, [studentProfileId, termId, token]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -164,48 +137,26 @@ export default function RequestRemovalModal({
     }
   };
 
-  const hasNoMandatoryCourses = Boolean(studentProfileId && !loadingCourses && failedCourses.length === 0);
+  const hasNoMandatoryCourses = Boolean(studentProfileId && !loadingCourses && failedCourses?.length === 0);
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div
-        className="modal-card"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Request Mandatory-Course Removal"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="modal-heading">
-          <div>
-            <p className="eyebrow">MANDATORY COURSE REMOVAL</p>
-            <h2>Request Course Removal</h2>
-          </div>
-          <button className="icon-button" type="button" aria-label="Close" onClick={onClose}>
-            ×
-          </button>
+    <Modal title="Request course removal" description="Remove a mandatory course from a student’s advising schedule." className="removal-create-dialog" onClose={() => { if (!submitting) onClose(); }}>
+      {error && (
+        <div className="feedback error" role="alert">
+          {error}
         </div>
+      )}
 
-        {error && (
-          <div className="feedback error" role="alert" style={{ marginBottom: "14px" }}>
-            {error}
-          </div>
-        )}
-
-        {hasNoMandatoryCourses && (
-          <div className="feedback warning" role="alert" style={{ marginBottom: "14px" }}>
-            This student has no mandatory (failed or unattended) courses to remove.
-          </div>
-        )}
-
-        {loadingInitial ? (
-          <div className="loading-state">
-            <span className="loader" />
-            Loading request options…
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="page-stack">
+      {loadingInitial ? (
+        <div className="loading-state">
+          <span className="loader" />
+          Loading request options…
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="removal-create-form">
+          <div className="removal-create-fields">
             <label className="field">
-              <span>Advising student *</span>
+              <span>Advising student</span>
               <select
                 value={studentProfileId}
                 onChange={(e) => {
@@ -215,7 +166,7 @@ export default function RequestRemovalModal({
                 required
                 disabled={Boolean(initialStudent?._id) || submitting}
               >
-                <option value="">— Select an advising student —</option>
+                <option value="">Choose a student</option>
                 {initialStudent && !students.some((s) => s._id === initialStudent._id) && (
                   <option value={initialStudent._id}>
                     {initialStudent.studentId} — {initialStudent.user?.fullName || initialStudent.fullName}
@@ -230,7 +181,7 @@ export default function RequestRemovalModal({
             </label>
 
             <label className="field">
-              <span>Academic term *</span>
+              <span>Academic term</span>
               <select
                 value={termId}
                 onChange={(e) => {
@@ -240,7 +191,7 @@ export default function RequestRemovalModal({
                 required
                 disabled={submitting}
               >
-                <option value="">— Select an academic term —</option>
+                <option value="">Choose a term</option>
                 {terms.map((t) => (
                   <option key={t._id} value={t._id}>
                     {termLabel(t)} {t.isActive ? "(Active)" : ""}
@@ -249,27 +200,22 @@ export default function RequestRemovalModal({
               </select>
             </label>
 
-            <label className="field">
-              <span>
-                Mandatory course to remove *{" "}
-                {loadingCourses && <small>(loading failed/unattended courses…)</small>}
-              </span>
+            <label className="field removal-wide-field removal-course-field">
+              <span>Mandatory course to remove</span>
               <select
                 value={courseId}
                 onChange={(e) => setCourseId(e.target.value)}
                 required
-                disabled={submitting || loadingCourses || hasNoMandatoryCourses || !studentProfileId}
+                disabled={submitting || loadingCourses || !failedCourses?.length || !studentProfileId}
               >
                 <option value="">
-                  {loadingCourses
-                    ? "— Loading mandatory courses… —"
-                    : !studentProfileId
-                    ? "— Select a student first —"
-                    : hasNoMandatoryCourses
-                    ? "— No mandatory courses available —"
-                    : "— Select failed or unattended course —"}
+                  {loadingCourses ? "Loading mandatory courses…"
+                    : !studentProfileId ? "Choose a student first"
+                    : !failedCourses ? "Course list unavailable"
+                    : hasNoMandatoryCourses ? "No mandatory courses available"
+                    : "Choose a failed or unattended course"}
                 </option>
-                {failedCourses.map((item) => {
+                {failedCourses?.map((item) => {
                   const c = item.course && typeof item.course === "object" ? item.course : item;
                   const cId = String(c._id || item._id);
                   const code = c.code || "Course";
@@ -284,10 +230,11 @@ export default function RequestRemovalModal({
                   );
                 })}
               </select>
+              {hasNoMandatoryCourses && <small role="status">This student has no failed or unattended courses to request for removal this term.</small>}
             </label>
 
-            <label className="field">
-              <span>Removal reason *</span>
+            <label className={reason === "makeupEligibility" ? "field" : "field removal-wide-field"}>
+              <span>Removal reason</span>
               <select
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
@@ -311,53 +258,49 @@ export default function RequestRemovalModal({
               </select>
             </label>}
 
-            <label className="field">
-              <span>Detailed explanation *</span>
+            <label className="field removal-wide-field">
+              <span>Detailed explanation</span>
               <textarea
                 value={explanation}
                 onChange={(e) => setExplanation(e.target.value)}
                 rows={4}
                 maxLength={2000}
-                placeholder="Explain the academic justification for removing this course from the student's mandatory schedule for this term..."
+                placeholder="Why should this course be removed for this term?"
                 required
                 disabled={submitting || hasNoMandatoryCourses}
               />
-              <small className="secondary-text" style={{ textAlign: "right" }}>
+              <small className="removal-character-count">
                 {explanation.length} / 2000 characters
               </small>
             </label>
-
-            <div
-              className="form-actions"
-              style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "10px" }}
+          </div>
+          <div className="form-footer">
+            <button
+              type="button"
+              className="outline-button"
+              onClick={onClose}
+              disabled={submitting}
             >
-              <button
-                type="button"
-                className="outline-button"
-                onClick={onClose}
-                disabled={submitting}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="primary-button"
-                disabled={
-                  submitting ||
-                  loadingCourses ||
-                  hasNoMandatoryCourses ||
-                  !studentProfileId ||
-                  !termId ||
-                  !courseId ||
-                  !explanation.trim()
-                }
-              >
-                {submitting ? "Submitting…" : "Submit Removal Request"}
-              </button>
-            </div>
-          </form>
-        )}
-      </div>
-    </div>
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="primary-button"
+              disabled={
+                submitting ||
+                loadingCourses ||
+                hasNoMandatoryCourses ||
+                !studentProfileId ||
+                !termId ||
+                !courseId ||
+                !explanation.trim()
+              }
+            >
+              {submitting ? "Submitting…" : "Submit request"}
+            </button>
+          </div>
+        </form>
+      )}
+    </Modal>
   );
 }

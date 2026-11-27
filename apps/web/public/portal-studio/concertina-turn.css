@@ -73,6 +73,12 @@
   transform: rotateX(14.9deg) rotateY(11.5deg);
   transform-style: preserve-3d;
 }
+/* Every role uses the face-on binder and the original sheet turn. */
+.teaching-pad[data-concertina=true][data-face-on] .binder-body {
+  --binder-plane:none;
+  margin:24px 5% 28px 3%;
+  transform:var(--binder-plane);
+}
 .teaching-pad[data-concertina=true] .binder-body > .calendar-feature { margin-top:0; }
 .teaching-pad[data-concertina=true] .binder-body.binder-measuring {
   transform: none;

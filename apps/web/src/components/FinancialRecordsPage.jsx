@@ -1,5 +1,4 @@
 import { termLabel } from "../term-label.js";
-import { WorkspaceEmpty } from "./WorkspaceUI.jsx";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, explainApiError } from "../api.js";
 import { StudentIdentity, RegisterEmpty, RecordPages } from "./CoordinatorRecords.jsx";
@@ -71,9 +70,7 @@ function DetailItem({ label, value }) {
   );
 }
 
-export default function FinancialRecordsPage({ token, role, notify }) {
-  const coordinator = role === "coordinator";
-  const Empty = coordinator ? RegisterEmpty : WorkspaceEmpty;
+export default function FinancialRecordsPage({ token, notify }) {
   // Query & filter states
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -93,8 +90,6 @@ export default function FinancialRecordsPage({ token, role, notify }) {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
-  const totalPages = Math.max(1, Math.ceil(total / limit));
 
   // Modal states
   const [viewRecord, setViewRecord] = useState(null);
@@ -295,7 +290,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
   };
 
   const recordTerm = viewRecord && terms.find(item => [viewRecord.term, viewRecord.term?._id, viewRecord.term?.code, viewRecord.extraHoursRequest?.term?.code].some(key => item._id === key || item.code === key));
-  const searchField = <label className={coordinator ? "field filter-search" : "field span-two"}>
+  const searchField = <label className="field filter-search">
             <span>Search records</span>
             <input
               type="search"
@@ -313,7 +308,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
             <select value={type} onChange={handleTypeChange}>
               {TYPE_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
-                  {coordinator && opt.value ? ledgerLabel(opt.value) : opt.label}
+                  {opt.value ? ledgerLabel(opt.value) : opt.label}
                 </option>
               ))}
             </select>
@@ -324,7 +319,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
             <select value={status} onChange={handleStatusChange}>
               {STATUS_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
-                  {coordinator && opt.value ? ledgerLabel(opt.value) : opt.label}
+                  {opt.value ? ledgerLabel(opt.value) : opt.label}
                 </option>
               ))}
             </select>
@@ -344,7 +339,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
               <option value="">All terms</option>
               {terms.map((option) => (
                 <option key={option._id} value={option.code}>
-                  {coordinator ? termLabel(option) : option.code}
+                  {termLabel(option)}
                 </option>
               ))}
             </select>
@@ -365,7 +360,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
       {/* Title & Top Export Action */}
       <div className="workspace-header">
         <div>
-          <h1>Financial records</h1>{!coordinator && <p className="page-description">Review student payments, deferred charges and refunds in one place.</p>}
+          <h1>Financial records</h1>
 
         </div>
         <button
@@ -381,9 +376,8 @@ export default function FinancialRecordsPage({ token, role, notify }) {
 
       {/* Filters Toolbar */}
       <section className="panel directory-filters">
-        {coordinator ? <FilterDisclosure floating actions={<>
+        <FilterDisclosure floating actions={<>
           <button className="text-button" type="button" disabled={!hasFilters} onClick={handleClearFilters}>Clear</button>
-          <button className="text-button" type="button" onClick={() => loadRecords()}>Refresh</button>
         </>} chips={[
           [type, setType], [status, setStatus], [term, setTerm], [settlementOption, setSettlementOption],
           [startDate && "From " + startDate, setStartDate], [endDate && "Through " + endDate, setEndDate],
@@ -391,8 +385,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
           search={searchField}>
           <div className="filter-grid ledger-filter-grid">{filterFields}<div className="ledger-date-range">{dateFields}</div></div>
 
-        </FilterDisclosure> : <><div className="panel-heading"><h2>Find a transaction</h2></div><div className="filter-grid">{searchField}{filterFields}{dateFields}</div>
-          <div className="filter-actions"><button type="button" className="text-button" onClick={handleClearFilters}>Clear filters</button><button type="button" className="text-button push-right" onClick={() => loadRecords()}>Refresh</button></div></>}
+        </FilterDisclosure>
       </section>
 
       {/* Error Feedback */}
@@ -406,7 +399,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
       <section className="panel results-panel ledger-results" aria-busy={loading} aria-labelledby="transactions-heading">
         <div className="results-heading">
           <h2 id="transactions-heading">Transactions</h2>
-          <span className="result-count">
+          <span className="result-count" role="status">
             {loading ? "Loading…" : `${total} ${total === 1 ? "transaction" : "transactions"}`}
           </span>
         </div>
@@ -417,35 +410,27 @@ export default function FinancialRecordsPage({ token, role, notify }) {
             Loading financial records…
           </div>
         ) : records.length === 0 ? (
-          <Empty art="payment-ledger.svg" title={hasFilters ? "No matching transactions" : "No transactions yet"}
+          <RegisterEmpty art="payment-ledger.svg" title={hasFilters ? "No matching transactions" : "No transactions yet"}
             description={hasFilters ? "Try another search or clear the filters." : "Payments, deferred charges and refunds will appear here when they are recorded."}
             action={hasFilters ? <button className="outline-button" type="button" onClick={handleClearFilters}>Clear filters</button> : undefined} />
         ) : (
           <>
-            <div className={coordinator ? "finance-register table-scroll graduation-register student-register register-with-actions" : "table-scroll"}>
+            <div className="finance-register table-scroll graduation-register student-register register-with-actions">
               <table>
                 <thead>
                   <tr>
-                    {coordinator ? <><th>Student</th><th>Transaction</th><th className="ledger-balance">Amount</th></> : <><th>Date</th><th>Student ID</th><th>Student Name</th><th>Type</th><th>Request / Reference</th><th>Amount</th><th>Status</th></>}
-                    <th>Actions</th>
+                    <th>Student</th><th>Transaction</th><th className="ledger-balance">Amount</th>
+                    <th>Payment status</th><th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {records.map((r) => (
-                    <tr key={r._id} aria-label={coordinator ? [r.student?.name, ledgerLabel(r.type || r.kind), formatCurrency(r.amount, r.currency), r.deferredChargeReference || r.referenceNumber].filter(Boolean).join(" · ") : undefined}>
-                      {coordinator ? <>
+                    <tr key={r._id} aria-label={[r.student?.name, ledgerLabel(r.type || r.kind), formatCurrency(r.amount, r.currency), r.deferredChargeReference || r.referenceNumber].filter(Boolean).join(" · ")}>
                         <td className="ledger-student"><StudentIdentity name={r.student?.name || r.student?.user?.fullName} id={r.student?.studentId} /></td>
                         <td className="ledger-transaction"><strong>{ledgerLabel(r.type || r.kind)}</strong>
                           <small>{[SETTLEMENT_LABELS[r.settlementOption], (r.occurredAt || r.createdAt) && new Date(r.occurredAt || r.createdAt).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })].filter(Boolean).join(" · ")}</small></td>
-                        <td className="ledger-balance"><strong className="record-amount">{formatAmount(r.amount)} <span className="ledger-currency">{r.currency ?? "EGP"}</span></strong>
-                          <span className={`status-pill ${formatStatusClass(r.status)}`}>{ledgerLabel(r.status)}</span></td>
-                      </> : <>
-                        <td>{formatDate(r.occurredAt || r.createdAt)}</td>
-                        <td><strong>{r.student?.studentId || "—"}</strong></td><td>{r.student?.name || r.student?.user?.fullName || "—"}</td>
-                        <td><span className="role-pill">{r.type || r.kind || "—"}</span>{r.settlementOption && <div className="secondary-text">{SETTLEMENT_LABELS[r.settlementOption]}</div>}</td>
-                        <td>{r.deferredChargeReference || r.referenceNumber || "—"}{r.extraHoursRequest?._id && <div className="secondary-text">Request {r.extraHoursRequest._id.slice(-8)}</div>}</td>
-                        <td><strong className="badge-currency">{formatCurrency(r.amount, r.currency)}</strong></td><td><span className={`status-pill ${formatStatusClass(r.status)}`}>{String(r.status || "—").toUpperCase()}</span></td>
-                      </>}
+                        <td className="ledger-balance"><strong className="record-amount">{formatAmount(r.amount)} <span className="ledger-currency">{r.currency ?? "EGP"}</span></strong></td>
+                        <td><span className={`status-pill ${formatStatusClass(r.status)}`}>{ledgerLabel(r.status)}</span></td>
                       <td>
                         <div className="ledger-actions">
                           <button
@@ -459,7 +444,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
                           {(r.availableReversal || r.requestableReversal) && (
                             <button
                               type="button"
-                              className="outline-button danger-button"
+                              className="outline-button danger-button ledger-reversal"
                               onClick={() => openRefundModal(r)}
                             >
                               {r.availableReversal ? (r.availableReversal === "cancelDeferredCharge" ? "Cancel charge" : "Refund") : r.requestableReversal === "cancelDeferredCharge" ? "Request cancellation" : "Request refund"}
@@ -473,37 +458,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
               </table>
             </div>
 
-{coordinator ? <>
             <RecordPages page={page} size={limit} total={total} busy={loading} onChange={setPage} label="Financial records" />
-</> : <>
-            <div className="pagination-bar">
-              <span>
-                Showing {Math.min((page - 1) * limit + 1, total)} to{" "}
-                {Math.min(page * limit, total)} of {total} records
-              </span>
-              <div className="pagination-actions">
-                <button
-                  type="button"
-                  className="outline-button"
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page <= 1 || loading}
-                >
-                  ← Previous
-                </button>
-                <span>
-                  Page {page} of {totalPages || 1}
-                </span>
-                <button
-                  type="button"
-                  className="outline-button"
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page >= totalPages || loading}
-                >
-                  Next →
-                </button>
-              </div>
-            </div>
-</>}
           </>
         )}
       </section>
@@ -521,7 +476,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
             <div className="modal-heading">
               <div>
                 <p className="eyebrow">TRANSACTION BREAKDOWN</p>
-                <h2 id="financial-details-title">{coordinator ? "Transaction details" : "Record Details"}</h2>
+                <h2 id="financial-details-title">Transaction details</h2>
               </div>
               <button
                 className="icon-button"
@@ -548,7 +503,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
                     label="Reference Number"
                     value={viewRecord.referenceNumber || viewRecord.transactionReference || "—"}
                   />
-                  {coordinator && viewRecord.deferredChargeReference && <DetailItem label="Deferred charge reference" value={viewRecord.deferredChargeReference} />}
+                  {viewRecord.deferredChargeReference && <DetailItem label="Deferred charge reference" value={viewRecord.deferredChargeReference} />}
                   <DetailItem label="Receipt ID" value={viewRecord.receiptId || "—"} />
                   <DetailItem
                     label="Student Name"
@@ -557,7 +512,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
                   <DetailItem label="Student ID" value={viewRecord.student?.studentId || "—"} />
                   <DetailItem label="Student Email" value={viewRecord.student?.email || viewRecord.student?.user?.email || "—"} />
                   <DetailItem label="Faculty / Major" value={`${viewRecord.student?.faculty || "—"} / ${viewRecord.student?.major || "—"}`} />
-                  <DetailItem label="Transaction Type" value={coordinator ? ledgerLabel(viewRecord.type || viewRecord.kind) : viewRecord.type || viewRecord.kind || "—"} />
+                  <DetailItem label="Transaction Type" value={ledgerLabel(viewRecord.type || viewRecord.kind)} />
                   <DetailItem
                     label="Total Amount"
                     value={formatCurrency(viewRecord.amount, viewRecord.currency)}
@@ -566,7 +521,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
                     label="Status"
                     value={
                       <span className={`status-pill ${formatStatusClass(viewRecord.status)}`}>
-                        {coordinator ? ledgerLabel(viewRecord.status) : String(viewRecord.status || "—").toUpperCase()}
+                        {ledgerLabel(viewRecord.status)}
                       </span>
                     }
                   />
@@ -576,7 +531,7 @@ export default function FinancialRecordsPage({ token, role, notify }) {
                   />
                   <DetailItem
                     label="Academic Term"
-                    value={coordinator && recordTerm
+                    value={recordTerm
                       ? termLabel(recordTerm)
                       : viewRecord.term?.code ||
                       viewRecord.extraHoursRequest?.term?.code ||

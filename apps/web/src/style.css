@@ -174,16 +174,6 @@ td strong, td .secondary-text { display: block; }
 .profile-hero h2 { margin: 0; font-size: 16px; }
 .profile-hero p { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
 .inline-controls { display: flex; align-items: end; gap: 11px; flex-wrap: wrap; }
-.course-import-panel .helper-text { margin-bottom: 12px; }
-.course-import-seasons { margin: 0; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; }
-.course-import-seasons legend { padding: 0 5px; color: var(--ink); font-size: 11px; font-weight: 700; }
-.course-import-seasons .helper-text { margin: 0 0 9px; }
-.season-checkboxes { display: flex; flex-wrap: wrap; gap: 8px 16px; }
-.season-checkboxes label { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 11px; }
-.season-checkboxes input { accent-color: var(--green); }
-.course-import-errors { margin-top: 16px; }
-.course-import-errors h3 { margin: 0 0 10px; color: var(--danger-ink); font-size: 12px; }
-.course-import-errors .table-scroll { max-height: 260px; overflow: auto; }
 .compact-field { width: min(235px, 100%); }
 .wallet-balance { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding: 18px; border-radius: 9px; color: white; background: var(--paper); }
 .wallet-balance p { margin: 0 0 5px; color: rgba(255,255,255,.75); font-size: 12px; }
@@ -287,15 +277,8 @@ td strong, td .secondary-text { display: block; }
 .offering-actions { display: flex; gap: 9px; margin-top: 12px; padding-top: 9px; border-top: 1px solid var(--line); }
 .term-picker .inline-controls .field { flex: 1; max-width: 500px; }
 .term-picker .helper-text { margin-top: 9px; }
-.term-grid { grid-template-columns: minmax(0,1.25fr) minmax(280px,.8fr); }
 .term-active { align-self: end; min-height: 36px; padding: 0 5px 8px; }
-.recent-terms { display: grid; gap: 7px; }
-.recent-term { display: grid; grid-template-columns: 30px minmax(0,1fr) auto; align-items: center; gap: 10px; padding: 10px; border: 1px solid var(--line); border-radius: 7px; background: white; cursor: pointer; text-align: left; }
-.recent-term:hover, .recent-term.selected { border-color: var(--line); background: var(--raised); }
 .term-icon { display: grid; width: 29px; height: 29px; place-items: center; border-radius: 8px; color: var(--green); background: var(--success-bg); }
-.recent-term strong, .recent-term small { display: block; }
-.recent-term strong { color: var(--ink); font-size: 12px; }
-.recent-term small { margin-top: 3px; color: var(--muted); font-size: 12px; }
 .term-id { max-width: 110px; overflow: hidden; color: var(--muted); font: 12px monospace; text-overflow: ellipsis; }
 .term-id-field { margin-top: 19px; }
 .template-grid { grid-template-columns: minmax(0,1.1fr) minmax(280px,.9fr); }
@@ -360,7 +343,6 @@ td strong, td .secondary-text { display: block; }
 .weekly-schedule.compact { grid-template-columns: repeat(3, minmax(110px, 1fr)); gap: 6px; margin-top: 13px; }
 .weekly-schedule.compact .schedule-day { min-width: 110px; padding: 7px; }
 .weekly-schedule.compact .schedule-slot { padding: 6px; }
-.staff-schedule-result { overflow: hidden; scroll-margin-top: 120px; }
 .scheduling-page tfoot th { padding: 12px 11px; border-top: 1px solid var(--line); color: var(--ink); background: var(--paper); font-size: 12px; }
 .draft-summary { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
 .draft-summary h2 { margin: 0; color: var(--ink); font-size: 15px; }
@@ -447,7 +429,7 @@ td strong, td .secondary-text { display: block; }
   .panel { padding: 16px; }
   .page-title-row { align-items: start; flex-direction: column; }
   .page-title-row > .primary-button, .page-title-row > .outline-button { align-self: flex-start; }
-  .content-grid, .overview-grid, .term-grid, .template-grid { grid-template-columns: minmax(0,1fr); }
+  .content-grid, .overview-grid, .template-grid { grid-template-columns: minmax(0,1fr); }
   .scheduling-filters { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .scheduling-filters .field:first-child { grid-column: span 2; }
   .swap-group-grid { grid-template-columns: minmax(0,1fr); }
@@ -641,6 +623,6 @@ td { color: var(--ink); }
 .filter-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 4px 3px 10px; border-radius: 20px; background: var(--draft-bg); color: var(--draft-ink); font-size: 12px; font-weight: 600; }
 .filter-chip button { display: grid; width: 20px; height: 20px; place-items: center; border: 0; border-radius: 50%; background: transparent; color: inherit; cursor: pointer; font-size: 15px; line-height: 1; }
 .filter-chip button:hover { background: color-mix(in srgb, var(--draft-ink) 18%, transparent); }
-.filter-panel { display: grid; gap: 14px; padding: 16px; border: 1px solid var(--feature); border-radius: 10px; background: var(--paper); box-shadow: 0 10px 28px rgba(0,0,0,.12); }
+.filter-panel { display: grid; gap: 14px; padding-block-start: 8px; }
 .filter-panel .filter-grid, .filter-panel .slot-request-filters { grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr)); }
 .filter-panel-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px; }

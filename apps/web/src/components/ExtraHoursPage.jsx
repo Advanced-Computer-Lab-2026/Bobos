@@ -4,6 +4,7 @@ import { api } from "../api.js";
 import { WorkspaceHeader } from "./WorkspaceUI.jsx";
 import { RegisterRow, StudentIdentity, StudentRegister, RecordPages } from "./CoordinatorRecords.jsx";
 import FilterDisclosure from "./FilterDisclosure.jsx";
+import OfferingCourseIcon from "./OfferingCourseIcon.jsx";
 import ExtraHoursRequestForm from "./ExtraHoursRequestForm.jsx";
 
 const emptyFilters = { studentId: "", advisorId: "", decisionStatus: "", settlementOption: "", settlementStatus: "" };
@@ -13,7 +14,7 @@ const pretty = (value = "—") =>
     .replace(/^./, (s) => s.toUpperCase());
 const money = (amount) =>
   `${Number(amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EGP`;
-const date = (value) => (value ? new Date(value).toLocaleString() : "—");
+const date = (value) => (value ? new Date(value).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "Africa/Cairo" }) : "—");
 const paymentStates = {
   awaitingChoice: { label: "Awaiting payment choice", tone: "warning" },
   paid: { label: "Payment received", tone: "good" },
@@ -31,6 +32,8 @@ export default function ExtraHoursPage({
   embedded = false,
 }) {
   const coordinator = role === "coordinator";
+  const advisor = role === "advisor";
+  const staff = coordinator || advisor;
   const student = role === "advisingStudent";
   const [composing, setComposing] = useState(false);
   const [rows, setRows] = useState([]);
@@ -47,6 +50,7 @@ export default function ExtraHoursPage({
   const pendingCheckouts = new Set(history.filter((item) =>
     item.kind === "gatewayPayment" && item.status === "pending" && item.metadata?.stripeCheckout
   ).map((item) => String(item.extraHoursRequest?._id)));
+  const query = coordinator ? new URLSearchParams(Object.entries(filters).filter(([, value]) => value)).toString() : "";
   const load = useCallback(async (signal) => {
     setLoading(true);
     setError("");
@@ -60,14 +64,11 @@ export default function ExtraHoursPage({
         setRows(requests);
         setHistory(records);
         setWalletBalance(Number(wallet.balance || 0));
-      } else if (role === "advisor") {
+      } else if (advisor) {
         setRows(await api("/api/extra-hours/advisor/mine", { token, signal }));
       } else {
-        const params = new URLSearchParams(
-          Object.entries(filters).filter(([, value]) => value),
-        );
         const [requests, advisorRows] = await Promise.all([
-          api(`/api/extra-hours?${params}`, { token, signal }),
+          api(`/api/extra-hours?${query}`, { token, signal }),
           api("/api/extra-hours/requesting-advisors", { token, signal }),
         ]);
         setRows(requests);
@@ -78,7 +79,7 @@ export default function ExtraHoursPage({
     } finally {
       if (!signal?.aborted) setLoading(false);
     }
-  }, [token, student, role, filters]);
+  }, [token, student, advisor, query]);
   useEffect(() => {
     const controller = new AbortController();
     load(controller.signal);
@@ -211,28 +212,13 @@ export default function ExtraHoursPage({
       setError(e.message || "Unable to download confirmation.");
     }
   };
-  const toolbar = (
-    <>
-      {role === "advisor" && (
-        <button
-          type="button"
-          className="primary-button"
-          aria-expanded={composing}
-          onClick={() => setComposing(true)}
-        >
-          New request
-        </button>
-      )}
-      {role !== "coordinator" && <button
-        className="outline-button"
-        type="button"
-        disabled={loading}
-        onClick={() => load()}
-      >
-        {loading ? "Refreshing…" : "Refresh"}
-      </button>}
-    </>
-  );
+  const refresh = <button type="button" className={staff ? "text-button" : "outline-button"}
+    disabled={loading} onClick={() => load()}>{loading ? "Refreshing…" : "Refresh"}</button>;
+  function updateFilters(next) {
+    setFilters(next);
+    setPage(1);
+    setOpened(null);
+  }
 
   const walletSummary = student && (
     <dl className="extra-wallet-summary">
@@ -241,19 +227,23 @@ export default function ExtraHoursPage({
     </dl>
   );
 
-  const Queue = coordinator ? StudentRegister : Fragment;
+  const Queue = staff ? StudentRegister : Fragment;
   const filtered = Object.values(filters).some(Boolean);
-  const visibleRows = [...rows].sort((a, b) => Number(b.decisionStatus === "pending") - Number(a.decisionStatus === "pending"));
+  const matchingRows = advisor ? rows.filter(row =>
+    String(row.student?.studentId || "").includes(filters.studentId.trim()) &&
+    ["decisionStatus", "settlementOption", "settlementStatus"].every(key => !filters[key] || row[key] === filters[key])
+  ) : rows;
+  const visibleRows = [...matchingRows].sort((a, b) => Number(b.decisionStatus === "pending") - Number(a.decisionStatus === "pending"));
   const size = 8;
-  const currentPage = Math.min(page, Math.max(1, Math.ceil(rows.length / size)));
+  const currentPage = Math.min(page, Math.max(1, Math.ceil(visibleRows.length / size)));
   return (
     <div className="page-stack workspace-page extra-hours-page">
       {embedded ? (
-        <div className="extra-hours-toolbar" hidden={role === "coordinator"}>
+        <div className="extra-hours-toolbar" hidden={staff}>
           <div className="extra-hours-account">
             {walletSummary}
           </div>
-          <div className="extra-hours-toolbar-actions">{toolbar}</div>
+          <div className="extra-hours-toolbar-actions">{student && refresh}</div>
         </div>
       ) : (
         <WorkspaceHeader
@@ -265,23 +255,11 @@ export default function ExtraHoursPage({
                 ? "Track the extra-hours requests you have submitted for your students."
                 : "Review eligibility and costs before deciding an extra-hours request."
           }
-          action={toolbar}
-        />
-      )}
-      {composing && (
-        <ExtraHoursRequestForm
-          token={token}
-          advisorId={advisorId}
-          onClose={() => setComposing(false)}
-          onSubmitted={() => {
-            setComposing(false);
-            notify("success", "Request submitted for coordinator review.");
-            load();
-          }}
+          action={student && refresh}
         />
       )}
       {!embedded && walletSummary}
-      {role === "coordinator" && (
+      {staff && !composing && (
         <section className="extra-filters" aria-label="Filter requests">
           <FilterDisclosure floating search={<label className="field filter-search">
               <span>Student ID</span>
@@ -290,24 +268,26 @@ export default function ExtraHoursPage({
                 autoComplete="off"
                 value={filters.studentId}
                 onChange={(e) =>
-                  setFilters({ ...filters, studentId: e.target.value })
+                  updateFilters({ ...filters, studentId: e.target.value })
                 }
                 placeholder="e.g. 64-12345…"
               />
             </label>} actions={<>
-            <button type="button" className="text-button" disabled={!filtered} onClick={() => setFilters(emptyFilters)}>Clear</button>
-            <button type="button" className="text-button" disabled={loading} onClick={() => load()}>Refresh</button></>}
+            <button type="button" className="text-button" disabled={!filtered} onClick={() => updateFilters(emptyFilters)}>Clear</button>
+            {refresh}
+            {advisor && <button type="button" className="primary-button"
+              onClick={() => setComposing(true)}>New request</button>}</>}
             chips={Object.entries(filters).filter(([key,value]) => key !== "studentId" && value).map(([key,value]) => ({
               key, label: pretty(key === "advisorId" ? advisors.find(a => a._id === value)?.fullName || "Advisor" : value),
-              onRemove: () => setFilters({ ...filters, [key]: "" }),
+              onRemove: () => updateFilters({ ...filters, [key]: "" }),
             }))}>
           <div className="filter-grid">
-            <label className="field">
+            {coordinator && <label className="field">
               <span>Requesting advisor</span>
               <select
                 value={filters.advisorId}
                 onChange={(e) =>
-                  setFilters({ ...filters, advisorId: e.target.value })
+                  updateFilters({ ...filters, advisorId: e.target.value })
                 }
               >
                 <option value="">All advisors</option>
@@ -317,13 +297,13 @@ export default function ExtraHoursPage({
                   </option>
                 ))}
               </select>
-            </label>
+            </label>}
             <label className="field">
               <span>Decision</span>
               <select
                 value={filters.decisionStatus}
                 onChange={(e) =>
-                  setFilters({ ...filters, decisionStatus: e.target.value })
+                  updateFilters({ ...filters, decisionStatus: e.target.value })
                 }
               >
                 <option value="">All decisions</option>
@@ -339,7 +319,7 @@ export default function ExtraHoursPage({
               <select
                 value={filters.settlementOption}
                 onChange={(e) =>
-                  setFilters({ ...filters, settlementOption: e.target.value })
+                  updateFilters({ ...filters, settlementOption: e.target.value })
                 }
               >
                 <option value="">All options</option>
@@ -355,7 +335,7 @@ export default function ExtraHoursPage({
               <select
                 value={filters.settlementStatus}
                 onChange={(e) =>
-                  setFilters({ ...filters, settlementStatus: e.target.value })
+                  updateFilters({ ...filters, settlementStatus: e.target.value })
                 }
               >
                 <option value="">All statuses</option>
@@ -378,6 +358,18 @@ export default function ExtraHoursPage({
           </FilterDisclosure>
         </section>
       )}
+      {composing && (
+        <ExtraHoursRequestForm
+          token={token}
+          advisorId={advisorId}
+          onClose={() => setComposing(false)}
+          onSubmitted={() => {
+            setComposing(false);
+            notify("success", "Request submitted for coordinator review.");
+            load();
+          }}
+        />
+      )}
       {error && (
         <div className="feedback error" role="alert">
           {error}
@@ -388,22 +380,22 @@ export default function ExtraHoursPage({
           <span className="loader" />
           Loading requests…
         </section>
-      ) : rows.length === 0 ? (
+      ) : visibleRows.length === 0 ? (
         <section className="extra-hours-empty" aria-labelledby="extra-empty-title">
           <img className="extra-empty-art" src="/portal-studio/images/extra-hours-inbox.svg" width="100" height="74" alt="" />
           <h3 id="extra-empty-title">{filtered ? "No matching requests" : "No extra-hours requests"}</h3>
-          <p>{filtered ? "Try another student ID or clear your filters." : student ? "Requests from your advisor will appear here." : "Requests will appear here when they’re ready for your review."}</p>
+          <p>{filtered ? "Try another student ID or clear your filters." : student ? "Requests from your advisor will appear here." : advisor ? "Use New request to request extra hours for an assigned student." : "Requests will appear here when they’re ready for your review."}</p>
         </section>
       ) : (
-        <Queue {...(coordinator ? { label: "Extra-hours requests", className: "extra-register", columns: ["Student", "Request", "Amount / status", "Action"] } : {})}>
-          {(coordinator ? visibleRows.slice((currentPage - 1) * size, currentPage * size) : rows).map(row => {
-            const payment = coordinator && paymentStates[row.settlementStatus];
+        <Queue {...(staff ? { label: "Extra-hours requests", className: "extra-register", columns: ["Student", "Request", "Amount / status", "Action"] } : {})}>
+          {(staff ? visibleRows.slice((currentPage - 1) * size, currentPage * size) : rows).map(row => {
+            const payment = staff && paymentStates[row.settlementStatus];
             const summary = <div className="extra-request-summary">
                 <span
                   className={`status-pill ${row.decisionStatus === "approved" ? "good" : row.decisionStatus === "rejected" ? "danger" : row.decisionStatus === "pending" ? "warning" : "muted"}`}
                 >
                   {pretty(row.decisionStatus)}
-                  {!coordinator && row.settlementStatus && row.settlementStatus !== "none"
+                  {student && row.settlementStatus && row.settlementStatus !== "none"
                     ? ` · ${pretty(row.settlementStatus)}`
                     : ""}
                 </span>
@@ -413,19 +405,46 @@ export default function ExtraHoursPage({
                 </dl>
                 {payment && <span className="extra-payment-state" data-tone={payment.tone}>{payment.label}</span>}
               </div>;
-            const detail = (!coordinator || opened === row._id) && <div className="extra-record-desk" id={"extra-detail-" + row._id}>
-              <div className="extra-record-content">
-                {coordinator && <dl className="request-provenance">
-                  <div><dt>Request</dt><dd>{row._id}</dd></div>
-                  <div><dt>Term</dt><dd>{termLabel(row.term)}</dd></div>
-                  <div><dt>Advisor</dt><dd>{row.advisor?.fullName || "—"}</dd></div>
-                  <div><dt>Submitted</dt><dd>{date(row.createdAt)}</dd></div>
-                </dl>}
-                {row.decisionNote && (
-                  <p className="feedback info">
-                    Coordinator response: {row.decisionNote}
-                  </p>
-                )}
+            const events = row.history?.length ? row.history : [
+              row.createdAt && { action: "submitted", occurredAt: row.createdAt },
+              row.decidedAt && { action: row.decisionStatus, occurredAt: row.decidedAt },
+            ].filter(Boolean);
+            const detail = (!staff || opened === row._id) && <div className="extra-review-sheet" id={"extra-detail-" + row._id}>
+              {staff && <header className="extra-sheet-heading">
+                <div><h3>Request breakdown</h3><p>{termLabel(row.term)} · Requested by {row.advisor?.fullName || "unknown advisor"}</p></div>
+                <details className="extra-reference"><summary>Request reference</summary><code>{row._id}</code></details>
+              </header>}
+              <div className="extra-sheet-columns">
+                <section className="extra-sheet-courses">
+                  <h4>Requested courses</h4>
+                  <ul>{row.courses?.map(item => <li key={item.course?._id || item._id || item.course}>
+                    <OfferingCourseIcon code={item.course?.code} />
+                    <div><strong>{item.course?.name || item.course?.code || "Course"}</strong>
+                      <small>{[item.course?.code, `${item.hours} ${item.hours === 1 ? "hour" : "hours"} × ${money(item.pricePerHour)}`, item.isRepeated && "Repeated course"].filter(Boolean).join(" · ")}</small></div>
+                    <span>{money(item.subtotal)}</span>
+                  </li>)}</ul>
+                  <div className="extra-sheet-total"><span>Request total</span><strong>{money(row.totalCost)}</strong></div>
+                </section>
+                <section className="extra-sheet-load">
+                  <h4>Study load</h4>
+                  <div className="extra-load-value">{row.eligibilitySnapshot?.hoursAfterRequest ?? "—"} <small>hours after request</small></div>
+                  <p>{row.eligibilitySnapshot?.hoursBeforeRequest ?? "—"} current + {row.requestedHours} requested</p>
+                  <dl>
+                    <div><dt>Standard allowance</dt><dd>{row.eligibilitySnapshot?.standardAllowance ?? "—"} hours</dd></div>
+                    <div><dt>Graduating within one year</dt><dd>{row.eligibilitySnapshot?.graduatingWithinOneYear == null ? "—" : row.eligibilitySnapshot.graduatingWithinOneYear ? "Yes" : "No"}</dd></div>
+                  </dl>
+                  {row.eligibilitySnapshot?.isProbation && <p className="feedback error">Ineligible due to academic probation</p>}
+                </section>
+              </div>
+              <details className="extra-sheet-history" open>
+                <summary>Request history</summary>
+                {events.length ? <ol>{events.map(entry => <li key={entry._id || entry.action}>
+                  <div><strong>{pretty(entry.action)}</strong><time dateTime={entry.occurredAt}>{date(entry.occurredAt)}</time></div>
+                  {entry.settlementStatus && paymentStates[entry.settlementStatus] && <small>{paymentStates[entry.settlementStatus].label}</small>}
+                  {entry.note && entry.note !== row.decisionNote && <p>{entry.note}</p>}
+                </li>)}</ol> : <p>No history recorded yet.</p>}
+              </details>
+              {row.decisionNote && <section className="extra-sheet-response"><h4>Coordinator response</h4><p>{row.decisionNote}</p></section>}
                 {role === "coordinator" && row.decisionStatus === "pending" && (
                   <div className="form-stack">
                     <label className="field">
@@ -452,7 +471,7 @@ export default function ExtraHoursPage({
                         disabled={busyId === row._id || !notes[row._id]?.trim()}
                         onClick={() => decision(row, "approved")}
                       >
-                        Approve · makes available to settle
+                        Approve request
                       </button>
                     </div>
                   </div>
@@ -534,95 +553,19 @@ export default function ExtraHoursPage({
                       </button>
                     </div>
                   )}
-                <section className="extra-request-details">
-                  <h3>Requested courses</h3>
-                  <ul className="extra-course-list" aria-label="Requested courses">
-                    {row.courses?.map((item) => (
-                      <li key={item.course?._id || item.course}>
-                        <div>
-                          <strong>
-                            {item.course?.name || item.course?.code || "Course"}
-                          </strong>
-                          <p>
-                            {item.course?.name && item.course?.code && (
-                              <>{item.course.code} · </>
-                            )}
-                            {item.hours} {item.hours === 1 ? "hour" : "hours"} at{" "}
-                            {money(item.pricePerHour)} per hour
-                            {item.isRepeated && " · Repeated course"}
-                          </p>
-                        </div>
-                        <strong>{money(item.subtotal)}</strong>
-                      </li>
-                    ))}
-                  </ul>
-                  <dl className="extra-course-facts">
-                    <div>
-                      <dt>Hours after request</dt>
-                      <dd>{row.eligibilitySnapshot?.hoursAfterRequest ?? "—"} hours <small>({row.eligibilitySnapshot?.hoursBeforeRequest ?? "—"} current + {row.requestedHours} extra)</small></dd>
-                    </div>
-                    <div>
-                      <dt>Standard allowance</dt>
-                      <dd>{row.eligibilitySnapshot?.standardAllowance ?? "—"} hours</dd>
-                    </div>
-                    <div>
-                      <dt>Graduating within one year</dt>
-                      <dd>{row.eligibilitySnapshot?.graduatingWithinOneYear ? "Yes" : "No"}</dd>
-                    </div>
-                  </dl>
-                  {row.eligibilitySnapshot?.isProbation && (
-                    <p className="feedback error">Ineligible due to academic probation</p>
-                  )}
-                </section>
-              </div>
-              <details className="extra-request-history" open>
-                <summary>Request history</summary>
-                <div className="extra-record-ticket" key={row.history?.at(-1)?._id}>
-                  <div className="extra-record-number">Request {row._id.slice(-8)}</div>
-                  {row.history?.length ? (
-                    <ol>
-                      {(row.history || []).map((entry) => (
-                        <li key={entry._id}>
-                          <div className="extra-history-event">
-                            <strong>{pretty(entry.action)}</strong>
-                            {entry.settlementStatus &&
-                              entry.settlementStatus !== "none" && (
-                                <span>{pretty(entry.settlementStatus)}</span>
-                              )}
-                            <time dateTime={entry.occurredAt}>
-                              {date(entry.occurredAt)}
-                            </time>
-                          </div>
-                          {entry.note && <p>{entry.note}</p>}
-                        </li>
-                      ))}
-                    </ol>
-                  ) : (
-                    <p>No history recorded yet.</p>
-                  )}
-                  <svg className="extra-record-punch" viewBox="0 0 116 65" aria-hidden="true"
-                    stroke="#302e28" strokeWidth="2.3" strokeLinejoin="round">
-                    <path fill="#707d71" d="m9 50 83-5 11 8-2 7-88 2-6-6z" />
-                    <path fill="#bbc4ad" d="m12 49 79-5 10 8-88 4z" />
-                    <path fill="#657970" d="m73 47 3-16q5-7 12 0l4 14z" />
-                    <g className="extra-punch-lever">
-                      <path fill="#b97859" d="m10 12 74 17 7 8-7 5-75-19q-6-6 1-11z" />
-                      <path stroke="#e3ab83" d="m14 16 63 15" />
-                      <path fill="#c7bc9f" d="m29 28 8 2-1 10-6-1z" />
-                    </g>
-                    <circle cx="82" cy="36" r="3.5" fill="#dccdaa" />
-                  </svg>
-                </div>
-              </details>
             </div>;
-            if (coordinator) return <Fragment key={row._id}>
+            if (staff) return <Fragment key={row._id}>
               <RegisterRow className="extra-student-row">
                 <StudentIdentity name={row.student?.user?.fullName} id={row.student?.studentId} />
-                <div className="extra-request-subject"><strong>{row.requestedHours} extra credit {row.requestedHours === 1 ? "hour" : "hours"}</strong>
-                  <small>{row.courses?.map(item => item.course?.name || item.course?.code).filter(Boolean).join(", ")}</small></div>
+                <div className="extra-request-subject">
+                  <strong>{row.requestedHours} extra credit {row.requestedHours === 1 ? "hour" : "hours"}</strong>
+                  {row.courses?.map(item => <span className="extra-course-preview" key={item.course?._id || item._id}>
+                    <OfferingCourseIcon code={item.course?.code} /><small>{item.course?.name || item.course?.code || "Course"}</small>
+                  </span>)}
+                </div>
                 {summary}
                 <button type="button" className="outline-button" aria-expanded={opened === row._id} aria-controls={"extra-detail-" + row._id}
-                onClick={() => setOpened(opened === row._id ? null : row._id)}>{opened === row._id ? "Close details" : row.decisionStatus === "pending" ? "Review request" : "View request"}</button>
+                onClick={() => setOpened(opened === row._id ? null : row._id)}>{opened === row._id ? "Close details" : coordinator && row.decisionStatus === "pending" ? "Review request" : "View request"}</button>
               </RegisterRow>
               {detail && <tr className="register-detail-row"><td colSpan={4}>{detail}</td></tr>}
             </Fragment>;
@@ -639,7 +582,7 @@ export default function ExtraHoursPage({
           })}
         </Queue>
       )}
-      {coordinator && <RecordPages page={currentPage} size={size} total={rows.length} onChange={setPage} label="Requests" />}
+      {staff && <RecordPages page={currentPage} size={size} total={visibleRows.length} onChange={setPage} label="Requests" />}
       {student && (
         <section className="extra-financial">
           <h2>Payments and deferred charges</h2>

@@ -10,18 +10,19 @@ import { getPreferences, savePreferences } from "../controllers/preferences.cont
 const router = express.Router();
 
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
+  windowMs: 60 * 1000,
   limit: 30,
+  skipSuccessfulRequests: true,
   standardHeaders: "draft-8",
   legacyHeaders: false,
-  message: { success: false, message: "Too many authentication attempts. Please try again in 15 minutes." },
+  message: { success: false, message: "Too many unsuccessful attempts. Please wait a moment and try again." },
 });
 const resetRequestLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 10,
   standardHeaders: "draft-8",
   legacyHeaders: false,
-  message: { success: false, message: "Too many reset requests. Please try again in 15 minutes." },
+  message: { success: false, message: "Too many reset emails requested. Please try again later." },
 });
 
 // Sprint 1 - Req 1 (Login dependency)

@@ -1,4 +1,4 @@
-.service-surface[data-portal-role="coordinator"] {
+.service-surface[data-staff-presentation] {
 --coordinator-filter-border:var(--control);
 .record-secondary { display:block; color:var(--muted); font-size:12px; line-height:1.5; overflow-wrap:anywhere; }
 .record-amount { white-space:nowrap; overflow-wrap:normal; font-variant-numeric:tabular-nums; }
@@ -9,7 +9,6 @@
 .record-menu > button { padding:10px 12px; color:inherit; font:inherit; text-align:start; border:0; background:none; cursor:pointer; border-radius:5px; }
 .record-menu > button:is(:hover,:focus-visible) { background:var(--raised); }
 .floating-filters { position:relative; }
-& .floating-filters > .filter-panel { position:absolute; top:100%; margin-top:8px; right:0; z-index:14; width:min(620px,100%); max-height:min(56vh,435px); overflow:auto; padding:20px; border:1px solid var(--line); border-radius:10px; background:var(--paper); box-shadow:0 8px 30px #0002; }
 & .floating-filters .filter-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(210px,100%),1fr)); gap:14px; }
 & .floating-filters .filter-bar { justify-content:flex-start; align-items:end; }
 & .floating-filters .filter-search { flex:1 1 230px; max-width:460px; }
@@ -147,7 +146,6 @@
 .register-heading > span { color:var(--muted); font-size:13px; }
 @media (max-width:600px) {
  .register-person { gap:8px; }
- & .floating-filters > .filter-panel { max-height:55vh; }
  & .floating-filters .filter-bar { gap:6px; }
  & .floating-filters .filter-search { flex-basis:100%; max-width:none; }
 }
@@ -213,25 +211,25 @@
 }
 
 /* Match the Graduation review frame across the academic and extra-hours workspaces. */
-.service-surface:is([data-portal-role="coordinator"],[data-service="group-assignments"],[data-service="directory"]) :is(.academic-services-embedded,.extra-hours-page) .student-register {
+.service-surface:is([data-staff-presentation],[data-service="group-assignments"],[data-service="directory"]) :is(.academic-services-embedded,.extra-hours-page) .student-register {
   border: 1px solid color-mix(in srgb,var(--line) 80%,var(--muted));
   border-radius: 10px;
   container-type: inline-size;
   width: 100%;
   overflow: clip;
 }
-.service-surface:is([data-portal-role="coordinator"],[data-service="group-assignments"],[data-service="directory"]) :is(.academic-services-embedded,.extra-hours-page) .student-register > table {
+.service-surface:is([data-staff-presentation],[data-service="group-assignments"],[data-service="directory"]) :is(.academic-services-embedded,.extra-hours-page) .student-register > table {
   width: 100%;
   min-width: 0;
 }
-.service-surface:is([data-portal-role="coordinator"],[data-service="group-assignments"],[data-service="directory"]) .student-register.table-scroll > table > thead > tr > th {
+.service-surface:is([data-staff-presentation],[data-service="group-assignments"],[data-service="directory"]) .student-register.table-scroll > table > thead > tr > th {
   padding: 13px 16px;
   border: 0;
   background: color-mix(in srgb,var(--raised) 60%,var(--canvas));
   color: var(--muted);
   font: 500 12px/1.5 Styrene,system-ui,sans-serif;
 }
-.service-surface:is([data-portal-role="coordinator"],[data-service="group-assignments"],[data-service="directory"]) .student-register.table-scroll > table > tbody > tr > td {
+.service-surface:is([data-staff-presentation],[data-service="group-assignments"],[data-service="directory"]) .student-register.table-scroll > table > tbody > tr > td {
   padding: 13px 16px;
   border: 0;
   vertical-align: middle;
@@ -276,36 +274,41 @@
 .extra-payment-state[data-tone="good"] { color:var(--success-ink); }
 .extra-payment-state[data-tone="warning"] { color:var(--draft-ink); }
 .extra-payment-state[data-tone="danger"] { color:var(--danger-ink); }
-.finance-register { --column-2: "Transaction"; --column-3: "Amount"; }
-.finance-register .ledger-balance .status-pill { display: flex; justify-content: end; }
-.academic-services-embedded .finance-register > table :is(th,td).ledger-balance { text-align: end; }
+.finance-register { --column-2: "Transaction"; --column-3: "Amount"; --column-4: "Payment status"; }
+.service-surface[data-staff-presentation] .academic-services-embedded .ledger-results .results-heading {
+  justify-content:start;
+  align-items:baseline;
+  gap:12px;
+}
+.service-surface[data-staff-presentation] .academic-services-embedded .ledger-results .result-count {
+  color:var(--ink);
+  font-size:14px;
+  font-weight:500;
+  font-variant-numeric:tabular-nums;
+}
+.finance-register .ledger-balance .record-amount { font-size:18px; font-weight:550; }
+.academic-services-embedded .finance-register > table :is(th,td).ledger-balance { text-align:end; }
+.finance-page .finance-register .ledger-actions { display:flex; justify-content:start; gap:8px; }
+.finance-register .ledger-actions > button { min-height:38px; padding-inline:10px; }
+.finance-register .ledger-reversal { width:136px; }
 .schedule-register { --column-2: "Type"; --column-3: "Programme"; --column-4: "Schedule status"; }
-.schedule-register .schedule-student-type { text-transform: capitalize; }
-.service-surface[data-portal-role="coordinator"] .schedule-register .roster-actions {
-  --roster-action-gap:8px;
-  flex-wrap:nowrap;
-  justify-content:flex-end;
-  gap:var(--roster-action-gap);
-  width:min(100%,272px);
-  margin-inline-start:auto;
+.schedule-register .schedule-student-type { text-transform:capitalize; }
+.service-surface[data-staff-presentation] .schedule-register .roster-actions {
+  justify-content:start;
+  gap:8px;
 }
-.service-surface[data-portal-role="coordinator"] .schedule-register .roster-actions > button {
-  flex:0 0 calc((100% - var(--roster-action-gap)) / 2);
-  min-width:0;
-  min-height:38px;
-  padding:6px 4px;
-  border-color:color-mix(in srgb,var(--muted) 50%,var(--line));
-  background:var(--paper);
-  font-size:12px;
-  white-space:nowrap;
+.service-surface[data-staff-presentation] .schedule-register .roster-actions > .outline-button {
+  min-inline-size:132px;
+  padding-inline:9px;
 }
-.service-surface[data-portal-role="coordinator"] .schedule-register .roster-actions > button:hover {
-  background:var(--raised);
-}
+.service-surface[data-staff-presentation] .schedule-register :is(.roster-actions > button,.roster-actions > .record-actions > button) { min-height:38px; }
 .student-register:is(.removal-register,.slot-register) .request-review-action { margin-inline:0; }
 .student-register.removal-register .request-row-actions > div { display:grid; grid-template-columns:repeat(2,1fr); }
-.service-surface[data-portal-role="coordinator"] :is(.academic-services-embedded,.extra-hours-page) .register-with-actions.table-scroll > table > :is(thead,tbody) > tr > :is(th,td):last-child:not([colspan]) {
+.service-surface[data-staff-presentation] :is(.academic-services-embedded,.extra-hours-page) .register-with-actions.table-scroll > table > :is(thead,tbody) > tr > :is(th,td):last-child:not([colspan]) {
   text-align:center; vertical-align:middle;
+}
+.service-surface[data-staff-presentation] .academic-services-embedded :is(.schedule-register,.finance-register).register-with-actions.table-scroll > table > :is(thead,tbody) > tr > :is(th,td):last-child {
+  text-align:start;
 }
 .extra-register tr.register-detail-row > td { grid-column:1 / -1; }
 .slot-register-days { display:grid; gap:20px; }
@@ -315,11 +318,16 @@
 .activity-register :is(.activity-staff,.status-pill small) { display:block; }
 .activity-register small { color:var(--muted); font-size:12px; line-height:1.35; }
 .activity-register :is(.activity-staff > small,.status-pill small) { margin-block-start:2px; }
-.activity-register .activity-staff > span > small { display:inline; margin:0; }
+.activity-register .activity-staff strong { display:block; font-size:15px; font-weight:550; }
+.activity-register .activity-staff > span { display:block; color:var(--muted); font-size:13px; }
+.service-surface[data-staff-presentation] .academic-services-embedded .group-roster > table td:not(:first-child,:last-child) {
+  font-size:15px;
+  font-variant-numeric:tabular-nums;
+}
 .activity-register .activity-entry time { font-variant-numeric:tabular-nums; }
 .activity-register .activity-reason { text-wrap:pretty; }
 .assignment-unavailable { display:inline-flex; position:relative; }
-.service-surface[data-portal-role="coordinator"] .group-roster .assignment-unavailable > button[aria-disabled="true"] {
+.service-surface[data-staff-presentation] .group-roster .assignment-unavailable > button[aria-disabled="true"] {
   border-color:var(--line); color:var(--muted); background:transparent; cursor:not-allowed;
 }
 .assignment-unavailable > [role="tooltip"] {
@@ -337,22 +345,23 @@
 .service-surface .removal-register .register-person { min-width:0; }
 .removal-register .register-person .offering-course-emblem { flex:0 0 34px; width:34px; height:34px; }
 .student-register.removal-register .register-person small { margin:0; line-height:1.35; }
-.service-surface[data-portal-role="coordinator"] .removal-register .removal-approve { color:var(--success-ink); }
-.service-surface[data-portal-role="coordinator"] .removal-register .removal-reject { color:var(--danger-ink); }
+.service-surface[data-staff-presentation] .removal-register .removal-approve { color:var(--success-ink); }
+.service-surface[data-staff-presentation] .removal-register .removal-reject { color:var(--danger-ink); }
 
 @container (width > 790px) {
   .student-register:is(.directory-register,.finance-register,.schedule-register,.slot-register,.activity-register,.removal-register) > table { table-layout:fixed; }
   .directory-register th:nth-child(1) { width:27%; }
   .directory-register th:nth-child(2) { width:26%; }
   .directory-register th:nth-child(3) { width:29%; }
-  .service-surface[data-portal-role="coordinator"] .academic-services-embedded .directory-register.table-scroll > table :is(th,td):first-child { padding-inline-start:24px; }
-  .finance-register th:nth-child(1) { width:26%; }
-  .finance-register th:nth-child(2) { width:26%; }
-  .finance-register th:nth-child(3) { width:16%; }
+  .service-surface[data-staff-presentation] .academic-services-embedded .directory-register.table-scroll > table :is(th,td):first-child { padding-inline-start:24px; }
+  .finance-register th:nth-child(1) { width:21%; }
+  .finance-register th:nth-child(2) { width:21%; }
+  .finance-register th:nth-child(3) { width:13%; }
+  .finance-register th:nth-child(4) { width:17%; }
   .schedule-register th:nth-child(1) { width:22%; }
   .schedule-register th:nth-child(2) { width:10%; }
   .schedule-register th:nth-child(3) { width:15%; }
-  .schedule-register th:last-child { width:288px; }
+  .schedule-register th:last-child { width:226px; }
   .slot-register th:nth-child(1) { width:20%; }
   .slot-register th:nth-child(2) { width:26%; }
   .slot-register th:nth-child(3) { width:22%; }
@@ -368,7 +377,7 @@
 }
 
 @container (max-width: 790px) {
-  .service-surface:is([data-portal-role="coordinator"],[data-service="group-assignments"],[data-service="directory"]) :is(.academic-services-embedded,.extra-hours-page) .student-register > table,
+  .service-surface:is([data-staff-presentation],[data-service="group-assignments"],[data-service="directory"]) :is(.academic-services-embedded,.extra-hours-page) .student-register > table,
   .student-register > table > tbody { display: block; }
   .student-register > table > thead { position: absolute; width: 1px; height: 1px; clip-path: inset(50%); overflow: hidden; }
   .student-register > table > tbody > tr {
@@ -378,7 +387,7 @@
     gap: 8px 16px;
     padding: 14px 16px 20px;
   }
-  .service-surface:is([data-portal-role="coordinator"],[data-service="group-assignments"],[data-service="directory"]) :is(.academic-services-embedded,.extra-hours-page) .student-register > table > tbody > tr > td {
+  .service-surface:is([data-staff-presentation],[data-service="group-assignments"],[data-service="directory"]) :is(.academic-services-embedded,.extra-hours-page) .student-register > table > tbody > tr > td {
     display: block;
     min-width: 0;
     padding: 0;
@@ -401,7 +410,7 @@
   .student-register > table > tbody > tr > td:not(:last-child):nth-child(5)::before { content: var(--column-5); }
   .activity-register > table > tbody > tr > td:last-child::before { content:var(--column-5); }
   .academic-services-embedded .finance-register > table td.ledger-balance { text-align:start; }
-  .finance-register .ledger-balance .status-pill { justify-content: start; }
+  .finance-register .ledger-balance .record-amount { font-size:16px; }
 }
 @container (max-width: 470px) {
   .student-register > table > tbody > tr { grid-template-columns: repeat(2,minmax(0,1fr)); }
@@ -409,12 +418,154 @@
   .activity-register > table > tbody > tr > td:nth-child(4) { grid-column:1 / -1; }
   .schedule-register > table > tbody > tr > td:nth-child(4) { grid-column:1 / -1; }
   .student-register :is(.outline-button,.text-button) { min-height: 44px; }
-  .service-surface[data-portal-role="coordinator"] .schedule-register .roster-actions > button { min-height:44px; }
+  .service-surface[data-staff-presentation] .schedule-register :is(.roster-actions > button,.roster-actions > .record-actions > button) { min-height:44px; }
   .extra-register .register-person .portal-person-avatar { flex-basis: 32px; width: 32px; height: 32px; }
 }
-@container (max-width: 280px) {
-  .service-surface[data-portal-role="coordinator"] .schedule-register .roster-actions > button {
-    min-height:48px;
-    white-space:normal;
+
+.service-surface[data-staff-presentation] .advising-roster .register-heading {
+  justify-content:start;
+  align-items:baseline;
+}
+.advising-register .advising-student-row time { font-variant-numeric:tabular-nums; }
+.student-register .advising-student-row .student-register-actions { justify-content:start; gap:8px; }
+.service-surface[data-staff-presentation] .academic-services-embedded .advising-register.register-with-actions.table-scroll > table > thead > tr > th:last-child:not([colspan]) {
+  text-align:start;
+}
+.advising-detail-person { margin-block:4px 18px; }
+.advising-detail-person .register-person strong { font-size:17px; }
+.advising-summary-dialog .section-heading { margin:18px 0 10px; font-size:16px; }
+.advising-workflow-summary, .advising-detail-facts {
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,145px),1fr)); gap:12px 18px; margin:0;
+}
+.advising-workflow-summary { padding:13px 15px; border-radius:8px; background:var(--raised); }
+.advising-workflow-summary > div, .advising-detail-facts > div { display:grid; align-content:start; gap:4px; }
+.advising-workflow-summary :is(span,dt), .advising-detail-facts dt { font-size:13px; color:var(--muted); }
+.advising-workflow-summary strong, .advising-detail-facts dd { margin:0; font-size:14px; font-weight:500; }
+
+@container (width > 790px) {
+  .advising-register > table { table-layout:fixed; }
+  .advising-register th:nth-child(1) { width:25%; }
+  .advising-register th:nth-child(2) { width:20%; }
+  .advising-register th:nth-child(4) { width:16%; }
+  .advising-register th:last-child { width:244px; }
+  .graduation-plan-register > table { table-layout:auto; }
+  .graduation-plan-register th:last-child { width:1%; white-space:nowrap; }
+  .graduation-plan-register .student-register-actions > button { white-space:nowrap; }
+}
+
+.service-surface[data-staff-presentation] :is(.roster-actions,.student-register-actions) {
+  &:has(.record-burst .record-menu:popover-open) > .outline-button { translate:var(--action-travel,-12px) 0; }
+  &:has(.record-burst[data-pointer-motion] .record-menu:popover-open) > .outline-button {
+    animation:row-action-skid 290ms both;
   }
+}
+.service-surface[data-staff-presentation] .record-burst > .record-more { min-inline-size:44px; padding-inline:10px; }
+.record-more > span, .record-dots { display:block; }
+.advising-register .record-burst:has(.record-menu:popover-open) .record-dots circle:nth-child(2) { translate:0 -3px; }
+@media (prefers-reduced-motion:no-preference) {
+  .advising-register .record-burst[data-pointer-motion] .record-dots circle { transition:translate 150ms ease-out; }
+}
+.record-burst[data-pointer-motion]:has(.record-menu:popover-open) > .record-more > span {
+  animation:row-action-impulse 220ms both;
+}
+.service-surface[data-staff-presentation] .record-burst .record-menu {
+  position-area:block-end span-inline-start;
+  position-try-fallbacks:flip-block,flip-inline;
+  margin:8px 0 0;
+  padding:0;
+  inline-size:max-content;
+  max-inline-size:calc(100vw - 32px);
+  min-width:0;
+  overflow:visible;
+  border:0;
+  background:transparent;
+  box-shadow:none;
+}
+.service-surface[data-staff-presentation] .record-burst .record-menu:popover-open { gap:6px; }
+.service-surface[data-staff-presentation] .record-burst .record-menu > button {
+  min-height:40px;
+  padding:8px 11px;
+  border:1px solid var(--control);
+  border-radius:8px;
+  background:var(--paper);
+  color:var(--ink);
+  box-shadow:0 3px 12px #0003;
+  cursor:pointer;
+}
+.service-surface[data-staff-presentation] .record-burst .record-menu > button:is(:hover,:focus-visible) { background:var(--raised); }
+.record-burst[data-pointer-motion] .record-menu:popover-open > button {
+  transform-origin:100% 50%;
+  animation:row-action-release 230ms cubic-bezier(.23,1,.32,1) both;
+}
+.record-burst[data-pointer-motion] .record-menu > button:nth-child(2) { animation-delay:16ms; }
+.record-burst[data-pointer-motion] .record-menu > button:nth-child(3) { animation-delay:32ms; }
+.record-burst[data-pointer-motion] .record-menu > button:nth-child(4) { animation-delay:48ms; }
+.service-surface[data-staff-presentation] .advising-register .record-burst .record-menu {
+  min-inline-size:min(218px,calc(100vw - 32px));
+  padding:6px;
+  border:1px solid var(--line);
+  border-radius:11px;
+  background:var(--paper);
+  box-shadow:0 5px 18px #0002;
+}
+.service-surface[data-staff-presentation] .advising-register .record-burst .record-menu:popover-open { gap:2px; }
+.service-surface[data-staff-presentation] .advising-register .record-burst .record-menu > button {
+  --release-x:7px;
+  --release-y:-3px;
+  border-color:transparent;
+  border-radius:6px;
+  box-shadow:none;
+}
+.advising-register .record-burst:has(.record-menu:popover-open) > .record-more { background:var(--raised); }
+@media (prefers-reduced-motion:no-preference) {
+  .advising-register .record-burst[data-pointer-motion] .record-menu:popover-open {
+    transform-origin:top right;
+    animation:advising-actions-unfold 210ms cubic-bezier(.2,.78,.2,1) both;
+  }
+}
+@keyframes advising-actions-unfold {
+  from { scale:.9 .84; }
+  72% { scale:1.008 1.018; }
+}
+
+@media (max-width:600px) {
+  .service-surface[data-staff-presentation] .advising-register .record-burst .record-menu {
+    position-area:block-end span-all;
+    justify-self:center;
+  }
+}
+
+.schedule-register .roster-actions {
+  --action-travel:-7px;
+}
+.service-surface[data-staff-presentation] .schedule-register .record-burst .record-menu {
+  margin-block:5px;
+  inline-size:calc(132px + 8px + 44px);
+}
+.service-surface[data-staff-presentation] .schedule-register .record-burst .record-menu > button {
+  min-height:38px;
+  padding-inline:12px;
+  text-align:start;
+}
+
+@keyframes row-action-skid {
+  0%, 13% { translate:0 0; rotate:0deg; }
+  52% { translate:calc(var(--action-travel,-12px) - 9px) -4px; rotate:-3deg; }
+  75% { translate:calc(var(--action-travel,-12px) + 3px) 1px; rotate:1deg; }
+  100% { translate:var(--action-travel,-12px) 0; rotate:0deg; }
+}
+@keyframes row-action-impulse {
+  0% { transform:scale(.72,1.18); }
+  48% { transform:translateX(3px) scale(1.09,.94); }
+  100% { transform:scale(1); }
+}
+@keyframes row-action-release {
+  0% { opacity:0; transform:translate(var(--release-x,28px),var(--release-y,-8px)) scale(.55,.9) rotate(4deg); }
+  60% { opacity:1; transform:translate(-5px,1px) scale(1.02,1) rotate(-1.6deg); }
+  100% { opacity:1; transform:translate(0) scale(1) rotate(0); }
+}
+@media (prefers-reduced-motion:reduce) {
+  .service-surface[data-staff-presentation] :is(.roster-actions,.student-register-actions):has(.record-burst[data-pointer-motion] .record-menu:popover-open) > .outline-button,
+  .record-burst[data-pointer-motion] .record-menu:popover-open > button,
+  .record-burst[data-pointer-motion]:has(.record-menu:popover-open) > .record-more > span { animation:none; }
 }

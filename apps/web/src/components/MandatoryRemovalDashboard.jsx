@@ -214,24 +214,10 @@ export default function MandatoryRemovalDashboard({ token, role, notify }) {
             Review requests to remove a mandatory course from a student’s advising schedule.
           </p>
         </div>
-        <div className="workspace-header-actions">
-          {canRequest && (
-            <button
-              className="primary-button"
-              type="button"
-              onClick={() => setRequestModalOpen(true)}
-            >
-              Request removal
-            </button>
-          )}
-          <button className="outline-button" type="button" onClick={fetchRequests}>
-            Refresh
-          </button>
-        </div>
       </div>
 
       <section className="panel directory-filters">
-        <FilterDisclosure search={<label className="field filter-search">
+        <FilterDisclosure actions={canRequest && <button className="primary-button removal-create-action" type="button" onClick={() => setRequestModalOpen(true)}>Request removal</button>} search={<label className="field filter-search">
             <span>Search student, ID, course, or advisor</span>
             <input
               type="search"
@@ -307,7 +293,7 @@ export default function MandatoryRemovalDashboard({ token, role, notify }) {
         ) : requests.length === 0 ? (
           <WorkspaceEmpty icon="document" title={filtered ? "No matching removal requests" : "No removal requests"} description={filtered ? "Try another student, course or advisor." : "Mandatory course removal requests will appear here for review."} action={filtered && <button className="outline-button" type="button" onClick={clearFilters}>Clear filters</button>} />
         ) : (
-          <StudentRegister label="Course removal requests" className="removal-register" columns={["Student", "Course", "Reason / advisor", "Status", "Actions"]} listClassName={role !== "coordinator" && "portal-request-list removal-request-list"}>
+          <StudentRegister label="Course removal requests" className="removal-register" columns={["Student", "Course", "Reason / advisor", "Status", "Actions"]} listClassName={!canDecide && "portal-request-list removal-request-list"}>
             {requests.map((item) => {
               const courseName = item.course?.name || item.course?.code || "Unknown course";
               const studentName = item.student?.user?.fullName || item.student?.studentId || "Unknown student";
@@ -315,8 +301,8 @@ export default function MandatoryRemovalDashboard({ token, role, notify }) {
               const studentLink = item.student?._id && <button className="removal-record-link" type="button"
                 aria-label={`Open profile for ${studentName}`} aria-disabled={loadingRecord || loadingDetail}
                 onClick={event => openRelatedRecord("student", item.student._id, event.currentTarget)}>{studentName}</button>;
-              return <RegisterRow listItem={role !== "coordinator"} key={item._id}>
-                {role === "coordinator" ? <StudentIdentity name={studentName} id={studentId} nameAction={studentLink} /> :
+              return <RegisterRow listItem={!canDecide} key={item._id}>
+                {canDecide ? <StudentIdentity name={studentName} id={studentId} nameAction={studentLink} /> :
                   <div className="request-row-student portal-person-cell"><PortalAvatar name={studentName} />
                     <div>{studentLink || <strong>{studentName}</strong>}<small>{studentId}</small></div>
                   </div>}
@@ -333,7 +319,7 @@ export default function MandatoryRemovalDashboard({ token, role, notify }) {
                 </div>
                 <div className="request-row-status">
                   <RemovalStatus status={item.status} />
-                  {role !== "coordinator" && <small><time dateTime={item.createdAt}>{formatDate(item.createdAt)}</time></small>}
+                  {!canDecide && <small><time dateTime={item.createdAt}>{formatDate(item.createdAt)}</time></small>}
                   <small>{termLabel(item.term)}</small>
                 </div>
                 <div className="request-row-actions">
@@ -391,14 +377,7 @@ export default function MandatoryRemovalDashboard({ token, role, notify }) {
                 <div><dt>Academic term</dt><dd>{termLabel(selectedDetail.term)}</dd></div>
                 <div><dt>Submitted</dt><dd><time dateTime={selectedDetail.createdAt}>{formatDate(selectedDetail.createdAt)}</time></dd></div>
               </dl>
-              <section className="portal-request-note">
-                <h3>Advisor explanation</h3>
-                <p>{selectedDetail.explanation || "No explanation provided."}</p>
-                <div className="portal-note-attribution">
-                  <strong>{selectedDetail.advisor?.fullName || "Requesting advisor"}</strong>
-                  {selectedDetail.advisor?.email && <small>{selectedDetail.advisor.email}</small>}
-                </div>
-              </section>
+              <RemovalExplanation request={selectedDetail} />
 
               {selectedDetail.status !== "pending" && <section className="portal-request-note">
                 <h3>Coordinator decision</h3>
@@ -459,10 +438,7 @@ export default function MandatoryRemovalDashboard({ token, role, notify }) {
                 <div><dt>Academic term</dt><dd>{termLabel(reviewingRequest.term)}</dd></div>
                 <div><dt>Removal reason</dt><dd>{formatReason(reviewingRequest.reason, reviewingRequest.makeupAttempt)}</dd></div>
               </dl>
-              <section className="portal-request-note">
-                <h3>Advisor explanation</h3>
-                <p>{reviewingRequest.explanation || "No explanation provided."}</p>
-              </section>
+              <RemovalExplanation request={reviewingRequest} />
 
               <label className="field">
                 <span>Response / Decision Note *</span>
@@ -532,4 +508,17 @@ export default function MandatoryRemovalDashboard({ token, role, notify }) {
       )}
     </div>
   );
+}
+
+
+function RemovalExplanation({ request }) {
+  return <section className="removal-explanation">
+    <h3>Advisor explanation</h3>
+    <p>{request.explanation || "No explanation provided."}</p>
+    {request.advisor && <div className="removal-explanation-author">
+      <PortalAvatar name={request.advisor.fullName} />
+      <div><strong>{request.advisor.fullName || "Requesting advisor"}</strong>
+        {request.advisor.email && <small>{request.advisor.email}</small>}</div>
+    </div>}
+  </section>;
 }

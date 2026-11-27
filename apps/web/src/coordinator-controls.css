@@ -1,6 +1,6 @@
 :where(:has(> .portal-focus-ring[data-service-ink])) { position:relative; }
 /* The shared Portal contour replaces the native edge during pointer and keyboard interaction. */
-.service-surface[data-portal-role=coordinator] {
+.service-surface[data-staff-presentation] {
   &[data-service="pending-work"] { --empty-art: url("/portal-studio/images/extra-hours-inbox.svg"); }
   &[data-service="schedule-activity"] { --empty-art: url("/portal-studio/images/student-schedules-calendar.png"); }
   :is(.outline-button, .primary-button, .text-button, .filter-toggle, .small-button) {
@@ -48,18 +48,6 @@
   }
   .filter-toggle[aria-expanded="true"] { background: var(--raised); color: var(--ink); }
   .filter-count { background: var(--raised); color: var(--ink); }
-  .filter-disclosure > .filter-panel {
-    position: static;
-    width: 100%;
-    max-height: none;
-    overflow: visible;
-    margin: 0;
-    padding: 8px 0 0;
-    border: 0;
-    border-radius: 0;
-    background: transparent;
-    box-shadow: none;
-  }
   @supports (position-anchor: --service-control) {
     [data-service-ink-hover] { anchor-name: --service-hover; }
     [data-service-ink-focus] { anchor-name: --service-focus; }
@@ -89,10 +77,6 @@
   @media (prefers-reduced-motion:no-preference) {
     .filter-toggle > svg { transition:transform 160ms ease-out; }
     .filter-toggle:active > svg { transform:scale(.92); }
-    .filter-disclosure > .filter-panel {
-      transition:opacity 150ms ease-out, transform 150ms ease-out;
-      @starting-style { opacity:.55; transform:translateY(-3px); }
-    }
     .portal-focus-ring path { animation: service-ink-exposure .51s steps(1,end) infinite; }
     .portal-focus-ring path:nth-child(2) { animation-delay: -.17s; }
     .portal-focus-ring path:nth-child(3) { animation-delay: -.34s; }
@@ -118,12 +102,12 @@
 }
 @keyframes service-ink-exposure { 0% { opacity: 1; } 33.333%, 100% { opacity: 0; } }
 @supports (appearance:base-select) {
-  .service-surface[data-portal-role=coordinator] select:not([multiple]):is(:not([size]),[size="1"]) {
+  .service-surface[data-staff-presentation] select:not([multiple]):is(:not([size]),[size="1"]) {
     appearance: base-select; background-image: none; padding-inline-end: 12px;
   }
-  .service-surface[data-portal-role=coordinator] select::picker(select) {
+  .service-surface[data-staff-presentation] select::picker(select) {
     appearance: base-select; color: var(--ink); background: var(--paper); border: 1px solid var(--muted); outline: none;
     border-radius: 8px; padding: 4px;
   }
-  .service-surface[data-portal-role=coordinator] select option::checkmark { background: currentColor; }
+  .service-surface[data-staff-presentation] select option::checkmark { background: currentColor; }
 }

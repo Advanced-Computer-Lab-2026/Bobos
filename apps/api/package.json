@@ -10,6 +10,8 @@
     "seed:historical-offerings": "node --env-file-if-exists=../../.env src/seed/historical-offerings.js",
     "seed:group4": "node --env-file-if-exists=../../.env src/seed/group4.js",
     "seed:advising-manual": "node --env-file-if-exists=../../.env src/seed/advising-manual.js",
+    "seed:advisor-preview": "node --env-file-if-exists=../../.env src/seed/advisor-preview.js",
+    "seed:admin-preview": "node --env-file-if-exists=../../.env src/seed/admin-preview.js",
     "seed:b1": "node --env-file-if-exists=../../.env src/seed/b1.js",
     "seed:evaluation": "node --env-file-if-exists=../../.env src/seed/evaluation.js",
     "seed:coordinator-workspace": "node --env-file-if-exists=../../.env src/seed/coordinator-workspace.js",
