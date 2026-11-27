@@ -12,6 +12,7 @@ import {
 } from "../models/index.js";
 import { standardCreditAllowance } from "../utils/credit-allowance.js";
 import { notifyStudents } from "../services/student-notifications.js";
+import { createStripeCheckout, expireStripeCheckout, getStripeCheckout, stripeCheckoutConfigured } from "../services/stripe-checkout.js";
 
 const { Types } = mongoose;
 const walletKinds = ["walletTopUp", "refund", "extraHoursWalletPayment"];
@@ -388,25 +389,184 @@ export async function listAdvisorExtraHoursRequests(req, res) {
   } catch (err) { return res.status(500).json({ message: err.message }); }
 }
 
-/** Req. 90-94: Student confirms payment now or defers to the next installment. */
+/** Req. 91, 93: Pay or retry through hosted card checkout. */
+const pendingStripe = { kind: "gatewayPayment", status: "pending", "metadata.stripeCheckout": true };
+
+function settlementRequest(request) {
+  if (!request) throw Object.assign(new Error("Extra-hours request not found."), { status: 404 });
+  if (request.decisionStatus !== "approved" || request.settlementStatus !== "awaitingChoice") {
+    throw Object.assign(new Error("This request is no longer awaiting payment."), { status: 409 });
+  }
+}
+
+async function reconcileStripeCheckout(attempt, checkout, declinedBeforeClosing = false) {
+  if (checkout.livemode !== false || checkout.id !== attempt.metadata.stripeSessionId ||
+      checkout.client_reference_id !== attempt.id || checkout.currency !== "egp" ||
+      checkout.amount_total !== Math.round(attempt.amount * 100)) {
+    throw Object.assign(new Error("Stripe checkout did not match the payment request."), { status: 502 });
+  }
+  const paid = checkout.status === "complete" && checkout.payment_status === "paid";
+  const closed = checkout.status === "expired" || checkout.status === "complete";
+  if (!paid && !closed) return "pending";
+  const declined = declinedBeforeClosing || Boolean(checkout.payment_intent?.last_payment_error);
+  const status = paid ? "succeeded" : (declined || checkout.status === "complete" ? "failed" : "cancelled");
+  const session = await mongoose.startSession();
+  try {
+    return await session.withTransaction(async () => {
+      const transaction = await FinancialTransaction.findById(attempt.id).session(session);
+      if (transaction.status !== "pending") return transaction.status;
+      const request = await ExtraHoursRequest.findById(transaction.extraHoursRequest).session(session);
+      settlementRequest(request);
+      transaction.status = status;
+      transaction.occurredAt = new Date();
+      if (paid) {
+        transaction.transactionReference = checkout.payment_intent?.id || checkout.id;
+        request.settlementStatus = "paid";
+        request.settlementOption = "gateway";
+      }
+      request.history.push({
+        action: paid ? "paid" : "paymentAttempt",
+        actor: attempt.metadata.actor,
+        note: `Card payment ${status}.`,
+        settlementOption: "gateway", settlementStatus: paid ? "paid" : status, amount: transaction.amount,
+      });
+      await transaction.save({ session });
+      await request.save({ session });
+      await notifyExtraHoursSettlement(transaction, session);
+      return status;
+    });
+  } finally {
+    await session.endSession();
+  }
+}
+
+async function reserveStripeCheckout(id, student, actor) {
+  const session = await mongoose.startSession();
+  try {
+    return await session.withTransaction(async () => {
+      const request = await ExtraHoursRequest.findOne({ _id: id, student }).session(session);
+      settlementRequest(request);
+      const existing = await FinancialTransaction.findOne({ ...pendingStripe, extraHoursRequest: id }).session(session);
+      if (existing) return existing;
+      // Serialize checkout starts with wallet payments and installment deferrals.
+      await ExtraHoursRequest.updateOne({ _id: id }, { $inc: { __v: 1 } }, { session });
+      const [attempt] = await FinancialTransaction.create([{
+        student, extraHoursRequest: id, kind: "gatewayPayment", amount: request.totalCost,
+        status: "pending", settlementOption: "gateway", metadata: { stripeCheckout: true, actor },
+      }], { session });
+      return attempt;
+    });
+  } finally {
+    await session.endSession();
+  }
+}
+
+export async function startExtraHoursCheckout(req, res) {
+  try {
+    if (!stripeCheckoutConfigured()) return res.status(503).json({ message: "Card payments are temporarily unavailable." });
+    if (!Types.ObjectId.isValid(req.params.id)) return res.status(400).json({ message: "Invalid request ID." });
+    const profile = await StudentProfile.findOne({ user: req.user._id }).select("_id");
+    if (!profile) return res.status(404).json({ message: "Student profile not found." });
+    let attempt = await reserveStripeCheckout(req.params.id, profile.id, req.user._id);
+    if (attempt.metadata.stripeSessionId) {
+      const existing = await getStripeCheckout(attempt.metadata.stripeSessionId);
+      const status = await reconcileStripeCheckout(attempt, existing);
+      if (status === "pending") return res.json({ checkoutUrl: existing.url });
+      if (status === "succeeded") return res.json({ status });
+      attempt = await reserveStripeCheckout(req.params.id, profile.id, req.user._id);
+    }
+    let checkout;
+    try {
+      checkout = await createStripeCheckout(attempt);
+    } catch (err) {
+      // Stripe rejected these parameters before creating a Checkout session.
+      if (err.stripeStatus === 400 && err.stripeErrorType === "invalid_request_error") {
+        await FinancialTransaction.updateOne(
+          { _id: attempt.id, status: "pending", "metadata.stripeSessionId": { $exists: false } },
+          { $set: { status: "failed" } },
+        );
+      }
+      throw err;
+    }
+    if (checkout.livemode !== false || checkout.client_reference_id !== attempt.id ||
+        !/^cs_test_/.test(checkout.id || "") || !checkout.url?.startsWith("https://checkout.stripe.com/")) {
+      throw Object.assign(new Error("Stripe did not return a valid checkout."), { status: 502 });
+    }
+    await FinancialTransaction.updateOne({ _id: attempt.id }, { $set: { "metadata.stripeSessionId": checkout.id } });
+    return res.status(201).json({ checkoutUrl: checkout.url });
+  } catch (err) {
+    return res.status(err.status || 502).json({ message: err.message || "Could not start Stripe checkout." });
+  }
+}
+
+export async function checkExtraHoursCheckout(req, res) {
+  try {
+    if (!Types.ObjectId.isValid(req.params.id)) return res.status(400).json({ message: "Invalid request ID." });
+    const profile = await StudentProfile.findOne({ user: req.user._id }).select("_id");
+    if (!profile) return res.status(404).json({ message: "Student profile not found." });
+    const attemptId = req.body?.attemptId;
+    if (attemptId !== undefined && !Types.ObjectId.isValid(attemptId)) return res.status(400).json({ message: "Invalid checkout ID." });
+    const attempt = await FinancialTransaction.findOne({
+      kind: "gatewayPayment", "metadata.stripeCheckout": true, student: profile.id, extraHoursRequest: req.params.id,
+      ...(attemptId && { _id: attemptId }),
+    }).sort({ createdAt: -1, _id: -1 });
+    if (!attempt) return res.status(404).json({ message: "No Stripe checkout found." });
+    if (attempt.status !== "pending" || !attempt.metadata.stripeSessionId) return res.json({ status: attempt.status });
+    let checkout = await getStripeCheckout(attempt.metadata.stripeSessionId);
+    const declinedBeforeClosing = Boolean(checkout.payment_intent?.last_payment_error);
+    if (req.body?.cancel === true && checkout.status === "open") {
+      try {
+        await expireStripeCheckout(checkout.id);
+      } catch (err) {
+        if (err.stripeStatus !== 400) throw err;
+      }
+      checkout = await getStripeCheckout(checkout.id);
+    }
+    return res.json({ status: await reconcileStripeCheckout(attempt, checkout, declinedBeforeClosing) });
+  } catch (err) {
+    return res.status(err.status || 502).json({ message: err.message || "Could not verify Stripe checkout." });
+  }
+}
+
+export function startExtraHoursCheckoutReconciliation() {
+  if (!stripeCheckoutConfigured()) return;
+  async function check() {
+    try {
+      const attempts = FinancialTransaction.find({ ...pendingStripe, "metadata.stripeSessionId": { $exists: true } }).cursor();
+      for await (const attempt of attempts) {
+        try {
+          await reconcileStripeCheckout(attempt, await getStripeCheckout(attempt.metadata.stripeSessionId));
+        } catch {
+          console.warn("Could not reconcile a Stripe test checkout. It will be retried.");
+        }
+      }
+    } catch {
+      console.warn("Could not check pending Stripe test checkouts.");
+    } finally {
+      setTimeout(check, 60000).unref();
+    }
+  }
+  void check();
+}
+
+/** Req. 90-94: Student pays from their wallet or defers to the next installment. */
 export async function chooseExtraHoursSettlement(req, res) {
   const session = await mongoose.startSession();
   try {
     const { id } = req.params;
-    const { option, method, gatewayResult = "succeeded" } = req.body || {};
+    const { option, method } = req.body || {};
     if (!Types.ObjectId.isValid(id)) return res.status(400).json({ message: "Invalid request ID." });
     const profile = await StudentProfile.findOne({ user: req.user._id });
     if (!profile) return res.status(404).json({ message: "Student profile not found." });
     let paymentId;
     await session.withTransaction(async () => {
       const request = await ExtraHoursRequest.findOne({ _id: id, student: profile._id }).session(session);
-      if (!request) throw Object.assign(new Error("Extra-hours request not found."), { status: 404 });
-      if (request.decisionStatus !== "approved") throw Object.assign(new Error("Only an approved request can be settled."), { status: 409 });
-      if (request.settlementStatus === "paid" || request.settlementStatus === "deferred") throw Object.assign(new Error("This request has already been settled."), { status: 409 });
-      if (["cancelled", "refunded"].includes(request.settlementStatus)) throw Object.assign(new Error("This request is no longer available for settlement."), { status: 409 });
+      settlementRequest(request);
+      if (await FinancialTransaction.exists({ ...pendingStripe, extraHoursRequest: id }).session(session)) {
+        throw Object.assign(new Error("Finish or cancel the open Stripe checkout first."), { status: 409 });
+      }
       let transaction;
       if (option === "deferred") {
-        if (request.settlementStatus !== "awaitingChoice") throw Object.assign(new Error("This request is not awaiting a payment choice."), { status: 409 });
         const installment = `${(await AcademicTerm.findById(request.term).session(session))?.academicYear || "Next"} next installment`;
         const reference = `DEF-${request._id}`;
         [transaction] = await FinancialTransaction.create([{ student: profile._id, extraHoursRequest: request._id, kind: "deferredCharge", amount: request.totalCost, status: "pending", settlementOption: "deferred", deferredChargeReference: reference, installment, idempotencyKey: `extra-hours:${request._id}:deferred` }], { session });
@@ -414,35 +574,19 @@ export async function chooseExtraHoursSettlement(req, res) {
         request.settlementStatus = "deferred";
         request.history.push({ action: "deferred", actor: req.user._id, note: `Deferred to ${installment}.`, settlementOption: "deferred", settlementStatus: "deferred", amount: request.totalCost });
       } else if (option === "now") {
-        if (!["wallet", "gateway"].includes(method)) throw Object.assign(new Error("Choose wallet or gateway payment."), { status: 400 });
-        let status = "succeeded";
-        const kind = method === "wallet" ? "extraHoursWalletPayment" : "gatewayPayment";
-        const transactionReference = `GW-${new mongoose.Types.ObjectId()}`;
-        const previousChoice = request.settlementOption;
-        request.settlementOption = method;
-        if (method === "wallet") {
-          // Payments for different requests share one wallet.
-          await StudentProfile.updateOne({ _id: profile._id }, { $inc: { __v: 1 } }, { session });
-          const entries = await FinancialTransaction.find({ student: profile._id, kind: { $in: walletKinds } }).session(session).select("kind amount status").lean();
-          const balance = entries.reduce((sum, txn) => sum + walletDelta(txn), 0);
-          if (balance < Math.round(request.totalCost * 100)) throw Object.assign(new Error("Your wallet balance is not sufficient for this payment."), { status: 409 });
-        } else {
-          if (!["succeeded", "failed", "cancelled"].includes(gatewayResult)) throw Object.assign(new Error("Invalid sandbox gateway result."), { status: 400 });
-          status = gatewayResult;
-        }
-        if (status === "succeeded") {
-          const alreadyPaid = await FinancialTransaction.exists({ extraHoursRequest: request._id, status: "succeeded", kind: { $in: ["extraHoursWalletPayment", "gatewayPayment"] } }).session(session);
-          if (alreadyPaid) throw Object.assign(new Error("This request has already been paid."), { status: 409 });
-          const reference = method === "gateway" ? `GW-${new mongoose.Types.ObjectId()}` : `WAL-${new mongoose.Types.ObjectId()}`;
-          [transaction] = await FinancialTransaction.create([{ student: profile._id, extraHoursRequest: request._id, kind, amount: request.totalCost, status, settlementOption: method, transactionReference: reference, idempotencyKey: `extra-hours:${request._id}:${method}` }], { session });
-          request.settlementStatus = "paid";
-          request.history.push({ action: "paid", actor: req.user._id, note: `Paid using ${method}.`, settlementOption: method, settlementStatus: "paid", amount: request.totalCost });
-        } else {
-          [transaction] = await FinancialTransaction.create([{ student: profile._id, extraHoursRequest: request._id, kind, amount: request.totalCost, status, settlementOption: method, transactionReference, idempotencyKey: `extra-hours:${request._id}:${method}:${Date.now()}` }], { session });
-          request.settlementStatus = "awaitingChoice";
-          request.history.push({ action: "paymentAttempt", actor: req.user._id, note: `Sandbox gateway payment ${status}.`, settlementOption: method, settlementStatus: status, amount: request.totalCost });
-        }
-        if (status !== "succeeded" && !previousChoice) request.settlementOption = null;
+        if (method !== "wallet") throw Object.assign(new Error("Open Stripe Checkout for card payments."), { status: 400 });
+        // Payments for different requests share one wallet.
+        await StudentProfile.updateOne({ _id: profile._id }, { $inc: { __v: 1 } }, { session });
+        const entries = await FinancialTransaction.find({ student: profile._id, kind: { $in: walletKinds } }).session(session).select("kind amount status").lean();
+        const balance = entries.reduce((sum, txn) => sum + walletDelta(txn), 0);
+        if (balance < Math.round(request.totalCost * 100)) throw Object.assign(new Error("Your wallet balance is not sufficient for this payment."), { status: 409 });
+        const alreadyPaid = await FinancialTransaction.exists({ extraHoursRequest: request._id, status: "succeeded", kind: { $in: ["extraHoursWalletPayment", "gatewayPayment"] } }).session(session);
+        if (alreadyPaid) throw Object.assign(new Error("This request has already been paid."), { status: 409 });
+        const reference = `WAL-${new mongoose.Types.ObjectId()}`;
+        [transaction] = await FinancialTransaction.create([{ student: profile._id, extraHoursRequest: request._id, kind: "extraHoursWalletPayment", amount: request.totalCost, status: "succeeded", settlementOption: "wallet", transactionReference: reference, idempotencyKey: `extra-hours:${request._id}:wallet` }], { session });
+        request.settlementOption = "wallet";
+        request.settlementStatus = "paid";
+        request.history.push({ action: "paid", actor: req.user._id, note: "Paid using wallet.", settlementOption: "wallet", settlementStatus: "paid", amount: request.totalCost });
       } else throw Object.assign(new Error("Choose pay now or defer to your next university installment."), { status: 400 });
       await request.save({ session });
       await notifyExtraHoursSettlement(transaction, session);

@@ -14,6 +14,7 @@ import {
   FinancialTransaction,
   Notification,
 } from "../models/index.js";
+import { mockStripeCheckout } from "./stripe-checkout.fixture.js";
 import { generateToken } from "../middleware/auth.middleware.js";
 
 let database;
@@ -311,7 +312,8 @@ test("Req 96: Advisor can withdraw a pending extra-hours request", async () => {
   assert.equal(repeatWithdraw.status, 400);
 });
 
-test("Req 117 delivers extra-hours decisions, payment outcomes, deferred charges and reversals to the owner", async () => {
+test("Req 117 delivers extra-hours decisions, payment outcomes, deferred charges and reversals to the owner", async (t) => {
+  const stripe = mockStripeCheckout(t);
   await Promise.all([ExtraHoursRequest.deleteMany({}), Notification.deleteMany({}), FinancialTransaction.deleteMany({})]);
   const activeTerm = await AcademicTerm.findOne({ isActive: true }).lean();
   const alternateTerm = (code, season) => {
@@ -346,13 +348,18 @@ test("Req 117 delivers extra-hours decisions, payment outcomes, deferred charges
   const approvals = await Promise.all([decide(paidId, "approved", "Approved for this term."), decide(paidId, "approved", "Approved for this term.")]);
   assert.deepEqual(approvals.map(response => response.status).sort(), [200, 409]);
 
-  const gateway = { option: "now", method: "gateway" };
-  assert.equal((await settle(paidId, gateway, "probationStudent")).status, 404);
-  assert.equal((await settle(paidId, { ...gateway, gatewayResult: "failed" })).body.transaction.status, "failed");
-  const paid = await settle(paidId, gateway);
-  assert.equal(paid.status, 200, paid.body.message);
-  assert.equal(paid.body.transaction.status, "succeeded");
-  assert.equal((await settle(paidId, gateway)).status, 409);
+  const checkout = (suffix = "", userRole = "student", body = {}) => apiCall(`/extra-hours/${paidId}/checkout${suffix}`, {
+    method: "POST", userRole, body,
+  });
+  assert.equal((await checkout("", "probationStudent")).status, 404);
+  assert.equal((await checkout()).status, 201);
+  stripe.fail();
+  assert.equal((await checkout("/check", "student", { cancel: true })).body.status, "failed");
+  assert.equal((await checkout()).status, 201);
+  stripe.pay();
+  assert.equal((await checkout("/check")).body.status, "succeeded");
+  const paid = await FinancialTransaction.findOne({ extraHoursRequest: paidId, status: "succeeded" });
+  assert.equal((await checkout()).status, 409);
 
   const walletId = await submit(walletTerm._id);
   assert.equal((await decide(walletId, "approved", "Approved wallet scenario.")).status, 200);
@@ -371,8 +378,8 @@ test("Req 117 delivers extra-hours decisions, payment outcomes, deferred charges
 
   // The finance workflow publishes the outcome in the ledger when a reversal completes.
   await FinancialTransaction.create([
-    { student: profiles.regular._id, extraHoursRequest: paidId, kind: "refund", amount: paid.body.transaction.amount,
-      status: "succeeded", settlementOption: "wallet", relatedTransaction: paid.body.transaction._id },
+    { student: profiles.regular._id, extraHoursRequest: paidId, kind: "refund", amount: paid.amount,
+      status: "succeeded", settlementOption: "wallet", relatedTransaction: paid._id },
     { student: profiles.regular._id, extraHoursRequest: deferredId, kind: "deferredChargeCancellation",
       amount: deferred.body.transaction.amount, status: "succeeded", settlementOption: "deferred",
       relatedTransaction: deferred.body.transaction._id },

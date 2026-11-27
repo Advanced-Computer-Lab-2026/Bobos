@@ -89,12 +89,6 @@
   .workspace-page .slot-request-filters { grid-template-columns: minmax(0, 1fr); }
 }
 
-.portal-signin {background:var(--canvas);color:var(--ink);min-height:100svh}
-.portal-signin .auth-card {border:0;background:none;box-shadow:none}
-.portal-signin .auth .signin-copy header {display:block}
-.portal-signin .portal-auth-tools {position:absolute;top:1rem;right:1rem}
-.portal-signin .portal-demo {margin-top:1rem}
-
 .graduation-empty {
   display:flex;align-items:center;gap:16px;padding:22px 0;
   border-block-start:1px solid var(--line);

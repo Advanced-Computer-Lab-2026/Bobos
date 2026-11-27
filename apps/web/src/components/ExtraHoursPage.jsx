@@ -56,7 +56,9 @@ export default function ExtraHoursPage({
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState("");
   const [notes, setNotes] = useState({});
-  const [gateway, setGateway] = useState({});
+  const pendingCheckouts = new Set(history.filter((item) =>
+    item.kind === "gatewayPayment" && item.status === "pending" && item.metadata?.stripeCheckout
+  ).map((item) => String(item.extraHoursRequest?._id)));
   const load = useCallback(async () => {
     if (preview) return;
     setLoading(true);
@@ -93,6 +95,38 @@ export default function ExtraHoursPage({
   useEffect(() => {
     load();
   }, [load]);
+
+  const checkCheckout = useCallback(async (id, cancel, attemptId) => {
+    setBusyId(id);
+    try {
+      const { status } = await api(`/api/extra-hours/${id}/checkout/check`, {
+        token, method: "POST", body: { cancel, attemptId },
+      });
+      if (status === "succeeded") notify("success", "Payment complete. Your receipt is in Payments and deferred charges.");
+      if (status === "failed") notify("error", "The card payment failed. You can try again.");
+      if (status === "cancelled") notify("warning", "Checkout cancelled. You can choose a payment option again.");
+      if (status === "pending") notify("info", "Stripe checkout is still open.");
+      await load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusyId("");
+    }
+  }, [load, notify, token]);
+
+  useEffect(() => {
+    if (preview || !student) return;
+    const url = new URL(window.location.href);
+    const id = url.searchParams.get("stripeRequest");
+    const attemptId = url.searchParams.get("stripeAttempt");
+    const result = url.searchParams.get("stripeReturn");
+    if (!/^[a-f\d]{24}$/i.test(id || "") || !["success", "cancel"].includes(result)) return;
+    url.searchParams.delete("stripeRequest");
+    url.searchParams.delete("stripeAttempt");
+    url.searchParams.delete("stripeReturn");
+    window.history.replaceState(window.history.state, "", url);
+    void checkCheckout(id, result === "cancel", attemptId);
+  }, [checkCheckout, preview, student]);
 
   const decision = async (row, value) => {
     setBusyId(row._id);
@@ -136,39 +170,33 @@ export default function ExtraHoursPage({
   const settle = async (row, option, method) => {
     if (preview) {
       const deferred = option === "deferred";
-      const outcome = method === "gateway" ? gateway[row._id] || "succeeded" : "succeeded";
-      const succeeded = outcome === "succeeded";
-      const settlementStatus = succeeded ? (deferred ? "deferred" : "paid") : "awaitingChoice";
+      const settlementStatus = deferred ? "deferred" : "paid";
       const settlementOption = method || option;
       const occurredAt = new Date().toISOString();
-      const entry = { _id: occurredAt, action: succeeded ? settlementStatus : "paymentAttempt", settlementStatus, occurredAt };
+      const entry = { _id: occurredAt, action: settlementStatus, settlementStatus, occurredAt };
       setRows([{ ...row, settlementStatus, settlementOption, history: [...row.history, entry] }]);
-      if (succeeded && method === "wallet") setWalletBalance(balance => balance - row.totalCost);
+      if (method === "wallet") setWalletBalance(balance => balance - row.totalCost);
       setHistory(records => [...records, {
         _id: occurredAt, extraHoursRequest: row,
-        kind: deferred ? "deferredCharge" : method === "wallet" ? "extraHoursWalletPayment" : "gatewayPayment",
-        settlementOption, amount: row.totalCost, occurredAt, status: deferred ? "pending" : outcome,
+        kind: deferred ? "deferredCharge" : "extraHoursWalletPayment",
+        settlementOption, amount: row.totalCost, occurredAt, status: deferred ? "pending" : "succeeded",
       }]);
-      if (!succeeded) setError(outcome === "failed" ? "Demo payment failed. You can try again." : "Demo payment cancelled. You can choose another option.");
-      else setError("");
+      setError("");
       return;
     }
     setBusyId(row._id);
     setError("");
     try {
+      if (method === "gateway") {
+        const result = await api(`/api/extra-hours/${row._id}/checkout`, { token, method: "POST", body: {} });
+        if (result.checkoutUrl) window.location.assign(result.checkoutUrl);
+        else if (result.status === "succeeded") await load();
+        return;
+      }
       const result = await api(`/api/extra-hours/${row._id}/settlement`, {
         token,
         method: "POST",
-        body:
-          option === "now"
-            ? {
-                option,
-                method,
-                ...(method === "gateway"
-                  ? { gatewayResult: gateway[row._id] || "succeeded" }
-                  : {}),
-              }
-            : { option },
+        body: { option, method },
       });
       if (result.confirmation?.type === "paidReceipt")
         notify(
@@ -179,13 +207,6 @@ export default function ExtraHoursPage({
         notify(
           "success",
           `Deferred charge confirmed for ${result.confirmation.installment}.`,
-        );
-      if (result.transaction?.status === "failed")
-        notify("error", "The payment failed. You can retry from this request.");
-      if (result.transaction?.status === "cancelled")
-        notify(
-          "warning",
-          "Payment was cancelled. You can choose a payment option again.",
         );
       await load();
     } catch (e) {
@@ -505,6 +526,7 @@ export default function ExtraHoursPage({
                           className="primary-button"
                           disabled={
                             busyId === row._id ||
+                            pendingCheckouts.has(row._id) ||
                             walletBalance < Number(row.totalCost)
                           }
                           onClick={() => settle(row, "now", "wallet")}
@@ -516,37 +538,30 @@ export default function ExtraHoursPage({
                         </button>
                         <button
                           className="outline-button"
-                          disabled={busyId === row._id}
+                          disabled={busyId === row._id || pendingCheckouts.has(row._id)}
                           onClick={() => settle(row, "deferred")}
                         >
                           Add to next installment
                         </button>
                       </div>
                       <div className="inline-controls extra-gateway">
-                        <label className="field">
-                          <span>Sandbox gateway result</span>
-                          <select
-                            value={gateway[row._id] || "succeeded"}
-                            onChange={(e) =>
-                              setGateway({ ...gateway, [row._id]: e.target.value })
-                            }
-                          >
-                            <option value="succeeded">Successful</option>
-                            <option value="failed">Failed</option>
-                            <option value="cancelled">Cancelled</option>
-                          </select>
-                        </label>
                         <button
                           className="outline-button"
-                          disabled={busyId === row._id}
+                          disabled={preview || busyId === row._id}
                           onClick={() => settle(row, "now", "gateway")}
                         >
-                          {row.history?.some(
+                          {pendingCheckouts.has(row._id) ? "Resume card payment" : row.history?.some(
                             (item) => item.action === "paymentAttempt",
                           )
-                            ? "Retry gateway payment"
-                            : "Pay through sandbox gateway"}
+                            ? "Retry card payment"
+                            : "Pay by card"}
                         </button>
+                        {pendingCheckouts.has(row._id) && (
+                          <button className="outline-button" disabled={busyId === row._id}
+                            onClick={() => checkCheckout(row._id, true)}>
+                            Cancel checkout
+                          </button>
+                        )}
                       </div>
                     </section>
                   )}

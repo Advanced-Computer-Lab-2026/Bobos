@@ -43,40 +43,6 @@
   --accent: #8dbbfa;
 }
 
-.extra-hours-shell .sidebar { padding: 28px 16px 20px; }
-.extra-hours-shell .sidebar > .portal-home { align-self: flex-start; margin: 4px 16px 24px; }
-.extra-hours-shell .portal-wordmark { font: 400 36px/1.1 Tiempos, Georgia, serif; letter-spacing: -.052em; }
-.extra-hours-shell .portal-find { display: none; }
-.extra-hours-shell .sidebar .nav-group-title {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin: 0 0 4px;
-  padding: 6px 10px;
-  border-radius: 6px;
-  color: var(--ink);
-  font-size: 14px;
-  font-weight: 500;
-  list-style: none;
-  cursor: pointer;
-}
-.extra-hours-shell .nav-group-title::-webkit-details-marker { display: none; }
-.extra-hours-shell .nav-group-title:hover { background: var(--raised); }
-.extra-hours-shell .nav-group-title svg { width: 13px; height: 13px; }
-.extra-hours-shell details:not([open]) > .nav-group-title svg { transform: rotate(-90deg); }
-.extra-hours-shell .sidebar .nav-item { min-height: 32px; gap: 8px; color: var(--muted); font-size: 13px; }
-.extra-hours-shell .sidebar .nav-item:is(:hover, .active) { color: var(--ink); }
-.extra-hours-shell .nav-item svg { width: 15px; height: 15px; }
-.extra-hours-sidebar-footer { margin: 12px 10px 0; color: var(--muted); font-size: 12px; }
-
-.extra-hours-shell .topbar { min-height: 52px; padding-inline: var(--study-gutter); background: var(--sidebar); }
-.extra-hours-shell .portal-menu-button { display: inline-grid; }
-.extra-hours-crumb { margin-inline-end: 8px; color: var(--muted); }
-.extra-hours-crumb > span { margin-inline-start: 8px; }
-.extra-hours-shell .topbar-actions :is(.icon-button, .user-chip, .portal-theme) { border-color: transparent; background: transparent; }
-.extra-hours-shell .topbar-actions :is(.icon-button, .user-chip, .portal-theme):hover { background: var(--raised); }
-.extra-hours-shell .user-chip .avatar { background: #bcbdcf; color: #313532; }
 .extra-hours-shell .page-content { padding: clamp(28px, 4.5vw, 64px) var(--study-gutter) 48px; }
 
 .extra-hours-page .workspace-header { align-items: flex-end; margin-bottom: 8px; }

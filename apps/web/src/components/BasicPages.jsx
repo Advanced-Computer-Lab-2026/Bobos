@@ -3,7 +3,6 @@ import OfferingCourseIcon from "./OfferingCourseIcon.jsx";
 import { termLabel } from "../term-label.js";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api, explainApiError } from "../api.js";
-import { greetingName } from "../greeting.js";
 import { findPreferenceConflict, preferenceConflictMessage, preferenceGroupOptions, preferenceMeetingLabel } from "../preference-groups.js";
 
 const roleTitle = (role = "") => ({ normalStudent: "Normal student", advisingStudent: "Advising student", advisor: "Advisor", coordinator: "Coordinator", administrator: "Administrator" }[role] || role);
@@ -11,110 +10,6 @@ const humanize = (value = "") => String(value || "—").replace(/([a-z])([A-Z])/
 const formatDate = (value) => value ? new Date(value).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "—";
 const formatDateTime = (value) => value ? new Date(value).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : null;
 const initials = (value = "") => value.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "B";
-
-export function OverviewPage({ token, profile, onOpen }) {
-  const student = ["normalStudent", "advisingStudent"].includes(profile.role);
-  const coordinator = profile.role === "coordinator";
-  const managesTerms = coordinator || profile.role === "administrator";
-  const [work, setWork] = useState(null);
-  const [terms, setTerms] = useState(null);
-  const [unavailable, setUnavailable] = useState({});
-
-  useEffect(() => {
-    const controller = new AbortController();
-    const load = (key, path, apply) => api(path, { token, signal: controller.signal })
-      .then((data) => { if (!controller.signal.aborted) apply(data); })
-      .catch(() => {
-        if (!controller.signal.aborted) setUnavailable((current) => ({ ...current, [key]: true }));
-      });
-    if (coordinator) load("work", "/api/admin/pending-work", setWork);
-    if (managesTerms) {
-      load("terms", "/api/academic-terms/academicTerm", setTerms);
-    }
-    return () => controller.abort();
-  }, [token, coordinator, managesTerms]);
-
-  const term = Array.isArray(terms) ? terms.find((item) => item.isActive) : null;
-  const ready = (work?.students || []).filter((item) => item.workflowStatus === "readyToProcess");
-  const removals = work?.students?.reduce((total, item) => total + (item.requests || []).filter(
-    (request) => request.type === "mandatoryCourseRemoval" && request.status === "pending",
-  ).length, 0);
-  const queue = student
-    ? [
-      ["Registered courses", "Review the courses on your schedule.", "my-courses"],
-      profile.role === "advisingStudent"
-        ? ["Schedule preferences", "Choose preferred days off and course groups.", "preferences"]
-        : ["Eligible swap groups", "See other available schedule groups.", "schedule-swap"],
-    ]
-    : [
-      [removals > 0 ? `Review ${removals} course removal ${removals === 1 ? "request" : "requests"}` : "Course removal requests", "Mandatory courses", "mandatory-removals"],
-      managesTerms
-        ? ["Schedule group assignments", "Assign students to schedule groups.", "group-assignments"]
-        : ["Advising students", "Review preferences and advising progress.", "advising"],
-    ];
-
-  return <div className="page-stack folio-overview">
-    <header className="folio-greeting">
-      <h1>Good day, {greetingName(profile.fullName)}.</h1>
-      <p>{new Intl.DateTimeFormat(undefined, { dateStyle: "full" }).format(new Date())}</p>
-    </header>
-    <div className={managesTerms ? "folio-desk folio-desk-staff" : "folio-desk"}>
-      <section className="folio-feature">
-        <div>
-          <p className="folio-caption">{student ? "This semester" : "Advising review"}</p>
-          <h2>{student ? "Your weekly schedule" : ready.length ? `${ready.length} ${ready.length === 1 ? "schedule" : "schedules"} ready to process` : "Student schedules"}</h2>
-          <p>{student ? "See your classes, times, and rooms." : "Open a student’s schedule to review its status and next steps."}</p>
-          <button className="primary-button" type="button" onClick={() => onOpen(student ? "my-schedule" : "student-schedules")}>{student ? "View schedule" : "Review schedules"}</button>
-        </div>
-        {coordinator && <div className="folio-review-list">
-          {ready.slice(0, 3).map((item) => <div className="folio-review-person" key={item.id}>
-            <span className="avatar" aria-hidden="true">{initials(item.fullName)}</span>
-            <div><strong>{item.fullName || item.studentId}</strong><small>{item.studentId}</small></div>
-            <button className="outline-button" type="button" aria-label={`Review schedule for ${item.fullName || item.studentId}`} onClick={() => onOpen("student-schedules", {
-              draftStudent: { ...item, _id: item.id },
-              termId: work.term?.code,
-            })}>Review</button>
-          </div>)}
-          {!ready.length && <p>{unavailable.work ? "Schedule counts unavailable." : work ? "No schedules ready to process." : "Checking schedule status…"}</p>}
-        </div>}
-      </section>
-
-      <section className="folio-registration">
-        <h2>{managesTerms ? "Registration" : student ? "Academic details" : "My profile"}</h2>
-        {managesTerms ? <>
-          <p>{(term ? termLabel(term) : "") || (unavailable.terms ? "Registration dates unavailable." : terms ? "No active academic term." : "Loading the academic term…")}</p>
-          {term && <dl>
-            <div><dt>Opens</dt><dd>{formatDate(term.registrationStart)}</dd></div>
-            <div><dt>Closes</dt><dd>{formatDate(term.registrationEnd)}</dd></div>
-            <div><dt>Schedule swaps close</dt><dd>{formatDate(term.wholeScheduleSwapDeadline)}</dd></div>
-          </dl>}
-          <button type="button" className="outline-button folio-term-button" onClick={() => onOpen("terms")}>{coordinator ? "View academic term" : "Manage academic term"}</button>
-        </> : <>
-          <dl>
-            <div><dt>{student ? "Student ID" : "Role"}</dt><dd>{student ? profile.studentId || "—" : roleTitle(profile.role)}</dd></div>
-            {student && <div><dt>Semester</dt><dd>{profile.currentSemester || "—"}</dd></div>}
-            {profile.major && <div><dt>Major</dt><dd>{profile.major}</dd></div>}
-          </dl>
-          <button type="button" className="outline-button" onClick={() => onOpen("profile")}>View profile</button>
-        </>}
-      </section>
-
-      <section className="folio-queue">
-        <h2>{student ? "Student services" : "Work queue"}</h2>
-        {queue.map(([title, description, screen]) => <div className="folio-queue-row" key={screen}>
-          <div><strong>{title}</strong><p>{description}</p></div>
-          <button className="outline-button" type="button" aria-label={`Open ${title}`} onClick={() => onOpen(screen)}>Open</button>
-        </div>)}
-        {coordinator && <button type="button" className="outline-button" onClick={() => onOpen("pending-work")}>All pending work</button>}
-      </section>
-
-      {!managesTerms && <section className="folio-activity">
-        <h2>Notifications</h2>
-        <button className="outline-button" type="button" onClick={() => onOpen("notifications")}>Open notifications</button>
-      </section>}
-    </div>
-  </div>;
-}
 
 export function ProfilePage({ profile }) {
   const student = ["normalStudent", "advisingStudent"].includes(profile.role);

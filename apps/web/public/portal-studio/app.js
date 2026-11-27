@@ -1,9 +1,12 @@
 'use strict';
 // Portal Studio with authenticated calendar and student service integrations.
-const params = new URLSearchParams(location.search);
-const comparePageDesigns = params.get('designs') === 'compare';
-const requestedFeedLayout = params.get('feed-layout');
-const studentFeedLayout = /^(?:[1-9]|10)$/.test(requestedFeedLayout) ? requestedFeedLayout : '1';
+function normalizePortalLocation() {
+  const url = new URL(location.href);
+  BobosPortalRoutes.normalize(url.searchParams);
+  if (url.href !== location.href) history.replaceState(history.state, '', url);
+  return url.searchParams;
+}
+const params = normalizePortalLocation();
 const pages = {
   'academic-services':'Academic services', 'graduation-plans':'Graduation plans', 'my-submitted-plans':'My submitted plans', overview:'Overview', notifications:'Notifications', profile:'My profile',
   directory:'Student directory', 'extra-hours':'Extra-hours requests', 'student-detail':'Student details', advising:'Advising students',
@@ -13,6 +16,8 @@ const pages = {
   courses:'Course catalogue', 'course-detail':'Course details', terms:'Academic terms',
   offerings:'Course offerings', 'copy-offerings':'Copy offerings', templates:'Schedule templates',
   'template-detail':'Template editor', 'group-assignments':'Group assignments',
+  'manage-courses':'Manage course catalogue', 'manage-terms':'Manage academic terms', 'manage-templates':'Manage schedule templates',
+  'official-records':'Official student records', 'advisor-assignment':'Current advisor assignment', 'account-inbox':'University inbox', 'account-details':'University account details',
   'my-schedule':'My schedule', 'my-courses':'Registered courses',
   'schedule-swap':'Eligible swap groups', preferences:'Schedule preferences',
   records:'Academic records', 'my-advisor':'My advisor', 'calendar-sync':'Calendar sync',
@@ -37,7 +42,6 @@ let testCount = 0;
 const readNotifications = new Set();
 const notificationKey = id => `${role}:${id}`;
 const isNotificationUnread = id => !readNotifications.has(notificationKey(id));
-let connected = true;
 let returnFocus;
 const studentPreferences = new Map([[0,{days:['Thursday'],groups:Array(4).fill('Group 4'),notes:'I would prefer to keep Thursday free.'}]]);
 const preferenceDrafts = new Map();
@@ -71,10 +75,10 @@ const person = () => student() ? (liveStudent.data?.student?.fullName || 'Studen
 const href = (target,index=selectedStudent,course=selectedCourse) => {
   const destination = authPages.has(target) ? returnAfterSignIn : target;
   const preserveStudent = ['draft-schedule','student-detail'].includes(destination) || (destination === 'preferences' && !student());
-  const look = productionPreview ? '&preview=live' : `&layout=${lab.layout+1}&palette=${lab.palette+1}&mode=${lab.dark?'dark':'light'}`;
+  const look = '&preview=live';
   const current = new URLSearchParams(location.search);
-  const serviceScreen = destination === 'academic-services' && current.get('screen');
-  return `?page=${target}&role=${role}${look}${comparePageDesigns?'&designs=compare':''}${target==='login' && comparePageDesigns && params.has('image')?`&image=${signinImage.id}`:''}${authPages.has(target)&&destination!=='overview'?`&next=${destination}`:''}${preserveStudent?`&student=${index}`:''}${destination==='course-detail'?`&course=${encodeURIComponent(course[0])}`:''}${serviceScreen?`&screen=${encodeURIComponent(serviceScreen)}`:''}`;
+  const serviceScreen = destination === 'academic-services' && (current.get('screen') || history.state?.portalScreen);
+  return `?page=${target}&role=${role}${look}${authPages.has(target)&&destination!=='overview'?`&next=${destination}`:''}${preserveStudent?`&student=${index}`:''}${destination==='course-detail'?`&course=${encodeURIComponent(course[0])}`:''}${serviceScreen?`&screen=${encodeURIComponent(serviceScreen)}`:''}`;
 };
 
 const link = (target, text, cls='', index) => `<a class="${cls}" href="${href(target,index)}" data-page="${target}"${index===undefined?'':` data-student="${index}"`}>${text}</a>`;
@@ -413,17 +417,17 @@ const courseData = [
 ];
 const displayStudentCode = code => String(code).replace(/^([A-Z]+)\s*(\d+)$/, '$1 $2');
 function studentCourses() {
-  if (!student() || comparePageDesigns) return courseData.slice(0,4);
+  if (!student()) return courseData.slice(0,4);
   return (liveStudent.data?.schedule?.courses || []).map(c => [escapeHtml(displayStudentCode(c.courseCode)), escapeHtml(c.courseName), escapeHtml(liveStudent.data.student.major), c.creditHours, liveStudent.data.term.season]);
 }
 function studentWeek() {
-  if (!student() || comparePageDesigns) return weeklyMeetings;
+  if (!student()) return weeklyMeetings;
   const colors = ['ice','cherry','teal','clay'];
   const courses = studentCourses();
   return Object.entries(liveStudent.data?.schedule?.week || {}).filter(([day,meetings]) => day !== 'Friday').map(([day,meetings]) => [day, meetings.map(m => [m.startTime, displayStudentCode(m.courseCode), escapeHtml(`${m.type[0].toUpperCase()+m.type.slice(1)} · ${m.room}`), colors[Math.max(0,courses.findIndex(c => c[0]===displayStudentCode(m.courseCode))) % colors.length]])]);
 }
 function loadStudentSchedule() {
-  if (!student() || comparePageDesigns || authPages.has(page)) return;
+  if (!student() || authPages.has(page)) return;
   const token = localStorage.getItem(workspaceSessionKey);
   if (!token) { liveStudent = {token:null, loading:false, error:'Sign in to view your schedule.', data:null}; return; }
   if (token === liveStudent.token) return;
@@ -469,7 +473,7 @@ function groups(){
   ].filter(([, items]) => items.length);
 }
 function sidebar(){
-  const parent = {'student-detail':'directory','draft-schedule':'student-schedules','course-detail':'courses','copy-offerings':'offerings','template-detail':'templates'};
+  const parent = {'manage-courses':'courses','manage-terms':'terms','manage-templates':'templates','official-records':'records','advisor-assignment':'my-advisor','account-inbox':'notifications','account-details':'profile','student-detail':'directory','draft-schedule':'student-schedules','course-detail':'courses','copy-offerings':'offerings','template-detail':'templates'};
   const study = workspaces[lab.layout].name==='Claude Study';
   const sectionIcons = ['home','people','calendar','book'];
   return `<aside class="sidebar">
@@ -557,63 +561,12 @@ const registrationDates = termMilestones.map(([key,label,tone,short])=>{
   const date = currentAcademicTerm[key];
   return [date.slice(-2),formatCalendarDay(date,{month:'short'}),label,tone,short];
 });
-function workspaceTimetable(view,title,target,label) {
-  if (!view.inlineDates) return workspaceSection(title,target,label,weekly());
-  if (view.name==='Claude Study') {
-    return `<div class="timetable-heading"><h2>${title}</h2>${link(target,label,'quiet-link')}</div>
-      ${weekly()}`;
-  }
-  const dates = registrationDates.map(([day,month,name,tone,short])=>`<li data-tone="${tone}" title="${name}"><span>${short}</span> <strong>${Number(day)} ${month}</strong></li>`).join('');
-  return `<div class="timetable-heading"><h2>${title}</h2>${link(target,label,'quiet-link')}</div>
-    <ul class="term-dates-inline" aria-label="Registration dates"><li class="term-dates-label">Registration</li>${dates}</ul>${weekly()}`;
-}
-
-function draftProgress() {
-  const statusCounts = ['Ready for review','Draft','Not started'].map(label=>[label,scheduleStates.filter(status=>status===label).length]);
-  return `<div class="draft-meter" role="img" aria-label="${statusCounts.map(([label,count])=>`${count} ${label}`).join(', ')}">${statusCounts.map(([,count])=>`<span style="flex-grow:${count}"></span>`).join('')}</div>
-    <ul class="meter-key">${statusCounts.map(([label,count])=>`<li><i aria-hidden="true"></i><strong>${count}</strong> ${label}</li>`).join('')}</ul>`;
-}
-
-const recentScheduleEvents = [
-  {action:'Preferences submitted',subject:'Mariam Mostafa',author:'Mariam Mostafa',date:'2026-11-20',time:'10:42',tone:'ready',stamp:'letter',caption:'Mariam Mostafa',target:'student-detail',index:1},
-  {action:'Advising draft saved',subject:'Omar Hassan',author:'Dr. Salma Adel',date:'2026-11-20',time:'09:15',tone:'draft',stamp:'pen',caption:'Dr. Salma Adel · Omar Hassan',target:'draft-schedule',index:0},
-  {action:'Template published',subject:'Group 4',author:'Nadia Ahmed',date:'2026-11-19',time:'16:20',tone:'payment-complete',stamp:'press',caption:'Nadia Ahmed · Group 4',target:'template-detail'}
-];
-
-const dashboardViews = {
-  daybook:{label:'Daybook',columns:'1.45fr 1fr',rows:['intro intro','queue dates','review review']},
-  teaching:{label:'Work overview',columns:'1.5fr 1fr',rows:['intro intro','queue queue','review calendar']},
-  advising:{label:'Advising desk',columns:'1.25fr 1fr',rows:['intro intro','review tasks'],lanes:{tasks:['queue','dates']}},
-  almanac:{label:'Term almanac',columns:'1fr 1.5fr',rows:['intro intro','dates tasks'],lanes:{tasks:['queue','review']}},
-  handover:{label:'Staff handover',columns:'1fr 1.1fr',rows:['intro intro','tasks review'],lanes:{tasks:['queue','dates']}}
-};
-const dashboardViewKey='portal-studio-dashboard-view';
-const requestedView=new URLSearchParams(location.search).get('view');
-let dashboardView=Object.hasOwn(dashboardViews,requestedView) ? requestedView : localStorage.getItem(dashboardViewKey);
-if (productionPreview || !Object.hasOwn(dashboardViews,dashboardView)) dashboardView='teaching';
-
-function dashboardEdition(modules,greeting){
-  const view=dashboardViews[dashboardView];
-  const options=Object.entries(dashboardViews).map(([id,{label}])=>
-    `<option value="${id}" ${id===dashboardView?'selected':''}>${label}</option>`).join('');
-  return `<div class="dashboard-edition" data-edition="${dashboardView}">
-    ${productionPreview?'':`<div class="edition-filters"><label class="edition-picker">Dashboard view <select data-dashboard-view>${options}</select></label></div>`}
-    ${workspaceGrid(view,{...modules,intro:greeting,...(dashboardView==='teaching'?{calendar:deskCalendar(true)}:{})})}</div>`;
-}
-
 function overview(){
   if(student()) return studentOverview();
-  const view = workspaces[lab.layout];
-  const canManage = ['administrator','coordinator'].includes(role);
   const queueDestination = role==='coordinator' ? 'pending-work' : role==='advisor' ? 'advising' : 'courses';
   const queueLabel = role==='coordinator' ? 'All work' : role==='advisor' ? 'Advising students' : 'Course catalogue';
-  const formatDate = (day,month,label,tone) => `<li data-tone="${tone}"><time><strong>${day}</strong><span>${month}</span></time><span>${label}</span></li>`;
-  const reviewCircle = '<svg class="review-circle" aria-hidden="true" viewBox="0 0 68 30" preserveAspectRatio="none"><path pathLength="1" d="M50 5C36 1 10 3 5 12S12 26 32 26C51 27 66 22 64 14S54 4 40 4"/></svg>';
-  const advisingDesk = view.name==='Claude Study' && dashboardView==='advising';
-  const reviewRows = readyStudents.slice(0,advisingDesk ? readyStudents.length : 4).map(({name,index})=>`<div class="review-person">${avatar(name)}<div><strong>${name}</strong><span>${index === 0 ? '19 credits · Thursday off' : 'Semester 7 · Group 4'}</span></div>${link('draft-schedule','Review'+reviewCircle,'btn row-control',index)}</div>`).join('');
-  const teachingDesk = view.name==='Claude Study' && dashboardView==='teaching';
-  const reviewFiles = teachingDesk ? `<div class="draft-index">${readyStudents.map(({name,index})=>link('draft-schedule',
-    `<svg class="desktop-folder" viewBox="0 0 96 72" aria-hidden="true"><path fill="#bdbaaf" d="M5 15q0-6 6-6h22l8 7h43q6 0 6 6v39H5z"/><g class="folder-sheet"><path class="folder-leaf-edge" fill="#fffdf6" stroke="#b8b4a7" stroke-width=".85" d="M12 21Q45 19 82 20L84 59Q50 60 11 60Z"/><path class="folder-writing" stroke="#989383" fill="none" stroke-linecap="round" stroke-width="1.65" d="M19 27q13-.6 35 0m-35 5q16-.8 48 0"/><path class="folder-third" stroke="#aaa396" fill="none" stroke-linecap="round" stroke-width="1.4" d="M19 36.7q11-.4 24 .1"/></g><path class="folder-cover" fill="var(--console-ivory,#f0eee6)" stroke="#c7c3b7" d="M5 31q0-5 5-5h75q5 0 5 5l-2 28q0 5-5 5H12q-5 0-5-5z"/></svg><strong>${name}</strong><small>${index===0?'19 credits · Thursday off':'Semester 7 · Group 4'}</small>`,'draft-file',index)).join('')}</div>` : '';
+  const reviewFiles = `<div class="draft-index">${readyStudents.map(({name,index})=>link('draft-schedule',
+    `<svg class="desktop-folder" viewBox="0 0 96 72" aria-hidden="true"><path fill="#bdbaaf" d="M5 15q0-6 6-6h22l8 7h43q6 0 6 6v39H5z"/><g class="folder-sheet"><path class="folder-leaf-edge" fill="#fffdf6" stroke="#b8b4a7" stroke-width=".85" d="M12 21Q45 19 82 20L84 59Q50 60 11 60Z"/><path class="folder-writing" stroke="#989383" fill="none" stroke-linecap="round" stroke-width="1.65" d="M19 27q13-.6 35 0m-35 5q16-.8 48 0"/><path class="folder-third" stroke="#aaa396" fill="none" stroke-linecap="round" stroke-width="1.4" d="M19 36.7q11-.4 24 .1"/></g><path class="folder-cover" fill="var(--console-ivory,#f0eee6)" stroke="#c7c3b7" d="M5 31q0-5 5-5h75q5 0 5 5l-2 28q0 5-5 5H12q-5 0-5-5z"/></svg><strong>${name}</strong><small>${index===0?'19 credits · Thursday off':'Semester 7 · Group 4'}</small>`,'draft-file',index)).join('')}</div>`;
   const removalsTask = ['course-removal','rose',3,'Course removals','course removal requests','Credit load and scheduling decisions','mandatory-removals','Review'];
   const tasks = role==='coordinator' ? [
     removalsTask,
@@ -626,71 +579,22 @@ function overview(){
     ['group-assignment','iris',courseData.length,'Course offerings','courses in the winter catalogue','Review offerings and class groups','offerings','View offerings'],
     ['advisor-assignment','mint',registrationDates.length,'Academic terms','registration milestones','Review dates for the active term','terms','Manage terms'],
   ];
-  const actions = [
-    ['calendar','student-schedules','Review schedules'],
-    ['people', canManage ? 'directory' : 'advising','Find a student'],
-    ['clock',queueDestination,queueLabel]
-  ];
-  const distribution = draftProgress();
-  const activeStudent = readyStudents.find(({index})=>index===selectedStudent) || readyStudents[0];
-  const dispatch = `<div class="dispatch"><div class="dispatch-list"><h2>Ready for review <span>${readyStudents.length}</span></h2>${readyStudents.map(({name,index})=>`<button type="button" class="dispatch-person" aria-pressed="${index===activeStudent.index}" data-action="pick-review" data-student="${index}">${avatar(name)}<span><strong>${name}</strong><small>Semester 7</small></span>${icon('chevron')}</button>`).join('')}</div>
-    <div class="dispatch-detail"><p>Advising draft</p><h2>${activeStudent.name}</h2><p>Group 4 · 19 credits</p><dl>${courseData.slice(0,4).map(([code,name])=>`<div><dt>${name}</dt><dd>${code}</dd></div>`).join('')}</dl>${link('draft-schedule','Open advising draft','btn primary',activeStudent.index)}</div></div>`;
-
-  const modules = {
-    brief:`<div class="brief-message"><h2><span class="review-total">${readyStudents.length}</span> drafts to review</h2><p>Registration opens on 22 November.</p>${link('student-schedules','Review schedules','btn primary')}</div><div class="brief-status"><h3>Draft progress</h3>${distribution}</div>`,
-    cover:`<div><h2>Winter registration</h2><p>Registration opens on Sunday, 22 November.</p>${link('terms','Term settings','btn primary')}</div><img src="images/window-desk.webp" alt="Open books on a desk by a window">`,
-    command:`<div class="command-box"><button type="button" class="workspace-search" data-action="quick-find">${icon('search')}<span>Find a page or action</span><kbd>/</kbd>${icon('chevron')}</button>
-      <div class="task-shortcuts">${actions.map(([symbol,target,label])=>link(target,icon(symbol)+label,'btn')).join('')}</div></div>`,
-    capacity:workspaceSection('Draft progress','student-schedules','View schedules',distribution),
-    review:workspaceSection('Schedule review','student-schedules','All schedules',advisingDesk ? `<p class="review-summary">${readyStudents.length} student drafts ready</p>${reviewRows}` : teachingDesk ? reviewFiles : reviewRows),
-    queue:workspaceSection('Work queue',queueDestination,queueLabel,workQueue(tasks,view.name==='Claude Study')),
-    dates:workspaceSection('Registration dates',canManage?'terms':'student-schedules',icon('calendar')+(canManage?'Term settings':'Schedules'),`<ol class="milestones">${registrationDates.map(date=>formatDate(...date)).join('')}</ol>`,'btn date-action'),
-    dispatch,
-    register:workspaceSection('Student drafts','student-schedules','All schedules',table(['Student','Schedule',''],names.slice(0,8).map((name,index)=>[`<strong>${name}</strong><small>70-${71577+index}</small>`,badge(scheduleStates[index],statusTone(scheduleStates[index])),link('draft-schedule','Open','quiet-link',index)]),false)),
-    people:workspaceSection('Student directory',canManage?'directory':'advising','All students',names.slice(0,6).map((name,index)=>`<div class="review-person">${avatar(name)}<div><strong>${name}</strong><span>70-${71577+index} · Semester 7</span></div>${link('student-detail','Open','btn row-control',index)}</div>`).join('')),
-    courses:workspaceSection('Winter courses',canManage?'courses':'student-schedules',canManage?'View catalogue':'View schedules',`<div class="course-map">${courseData.map(([code,title,department,credits])=>`<article><span>${code}</span><h3>${title}</h3><p>${department} · ${credits} credits</p></article>`).join('')}</div>`),
-  };
-  const term = termContext(`${roleNames[role]} workspace`);
-  if(view.name==='Claude Study') return dashboardEdition(modules,head(studyGreeting(),term));
-  return head(view.name==='Claude Study' ? studyGreeting() : view.title,term,view.name==='Claude Study' ? '' : button(icon('search')+'Find a page','quick-find','btn mast-search')) + workspaceGrid(view,modules);
+  return `<div class="dashboard-edition" data-edition="teaching">${workspaceGrid({
+    columns: '1.5fr 1fr',
+    rows: ['intro intro', 'queue queue', 'review calendar'],
+  }, {
+    intro: head(studyGreeting(), termContext(`${roleNames[role]} workspace`)),
+    queue: workspaceSection('Work queue', queueDestination, queueLabel, workQueue(tasks, true)),
+    review: workspaceSection('Schedule review', 'student-schedules', 'All schedules', reviewFiles),
+    calendar: deskCalendar(true),
+  })}</div>`;
 }
-function studentOverview(){
-  const view = workspaces[lab.layout];
-  const coursesThisTerm = studentCourses();
-  const credits = coursesThisTerm.reduce((sum,course)=>sum+Number(course[3]),0);
-  const normal = role==='normalStudent';
-  const nextAction = normal?'schedule-swap':'preferences';
-  const nextLabel = normal?'Explore swap groups':'Set schedule preferences';
-  if (studentDashboard()) {
-    const heading = head(studyGreeting(),termContext('Computer Engineering'));
-    const timetable = `<div class="timetable-heading"><h2>Teaching week</h2></div>${weekly()}`;
-    const feed = studentFeed();
-    const study = params.get('feed-only');
-    const rows = studentFeedLayout==='10' ? ['week week','review review','activity activity'] : ['week week','review activity'];
-    return `<div class="student-dashboard"${study?' data-feed-only':''}>
-       ${study==='calendar' ? `<div class="notification-study-pair">${feed}${deskCalendar(true)}</div>` : study==='1' ? feed : heading + workspaceGrid({...view,rows},
-        {week:timetable,review:feed,activity:deskCalendar(true)})}
-    </div>`;
-  }
-  const advisorCard = `<div class="event">${avatar('Salma Adel')}<div><p><strong>Dr. Salma Adel</strong></p><time>Tuesday, 12:00–14:00 · C3.204</time></div></div>`;
-  const courseRows = coursesThisTerm.map(([code,name])=>`<div class="review-person"><div><strong>${name}</strong><span>${code}</span></div></div>`).join('');
-  const modules = {
-    brief:`<div class="brief-message"><p>Winter 2026 / 2027</p><h2>Your semester is ready</h2><p>Review your Group 4 timetable and the courses you’re taking.</p>${link('my-schedule','Open timetable','btn primary')}</div><div class="brief-status"><h3>Course load</h3><p>${coursesThisTerm.length} courses · ${credits} credit hours</p><p>Thursday free</p></div>`,
-    cover:`<div><h2>Winter semester</h2><p>${coursesThisTerm.length} registered courses · ${credits} credit hours</p>${link('my-schedule','My timetable','btn primary')}</div><img src="images/window-desk.webp" alt="Open books on a desk by a window">`,
-    command:`<div class="command-box"><button type="button" class="workspace-search" data-action="quick-find">${icon('search')}<span>Find a page or action</span><kbd>/</kbd>${icon('chevron')}</button><div class="task-shortcuts">${[['calendar','my-schedule','My timetable'],['book','my-courses','My courses'],['people','my-advisor','My advisor']].map(([symbol,target,label])=>link(target,icon(symbol)+label,'btn')).join('')}</div></div>`,
-    capacity:workspaceSection('Course load','my-courses','My courses',`<p>${coursesThisTerm.length} courses · ${credits} credit hours · Semester 7</p>`),
-    review:workspaceSection('Coming up','my-schedule','Full timetable',`<div class="review-person"><div><strong>Embedded Systems</strong><span>Sunday · 08:30 · Lecture · C2.301</span></div></div><div class="review-person"><div><strong>Analysis & Design of Algorithms</strong><span>Sunday · 12:00 · Tutorial · C3.104</span></div></div>`),
-    queue:workspaceSection('Schedule changes',nextAction,nextLabel,`<p>${normal?'Review swap groups before schedule swaps close on 13 December.':'Review your preferred days and groups with your advisor.'}</p>`),
-    dates:workspaceSection('Registration dates','my-schedule','My timetable',`<ol class="milestones"><li><time><strong>22</strong><span>Nov</span></time><span>Registration opens</span></li><li><time><strong>06</strong><span>Dec</span></time><span>Registration closes</span></li><li><time><strong>13</strong><span>Dec</span></time><span>Schedule swaps close</span></li></ol>`),
-    activity:`${deskCalendar(true)}<div class="student-calendar-action">${link('calendar-sync','Calendar sync','quiet-link')}</div>`,
-    dispatch:workspaceSection('Group 4 timetable','my-schedule','Full timetable',weekly()),
-    register:workspaceSection('Registered courses','my-courses','Course details',courseRows),
-    week:workspaceTimetable(view,'Teaching week','my-schedule','Full timetable'),
-    people:workspaceSection('Academic advisor','my-advisor','Advising details',advisorCard),
-    courses:workspaceSection('Winter courses','my-courses','My courses',`<div class="course-map">${coursesThisTerm.map(([code,name,,credit])=>`<article><span>${code}</span><h3>${name}</h3><p>${credit} credits</p></article>`).join('')}</div>`),
-  };
-  const title = ['Your semester','My courses','My timetable','Teaching week','My courses','Schedule changes','Student services','My timetable','Winter courses','Teaching week','What do you need today?','My timetable','Schedule overview','My courses','Calendar','My teaching week','Winter courses','Find a page','Schedule changes','Semester overview',studyGreeting()][lab.layout];
-  return head(title,termContext('Computer Engineering'),link('my-schedule','Open schedule','btn primary')) + workspaceGrid(view,modules);
+
+function studentOverview() {
+  const timetable = `<div class="timetable-heading"><h2>Teaching week</h2></div>${weekly()}`;
+  const view = { columns: '1fr 1fr', rows: ['week week', 'review activity'] };
+  return `<div class="student-dashboard">${head(studyGreeting(), termContext('Computer Engineering'))}
+    ${workspaceGrid(view, { week: timetable, review: studentFeed(), activity: deskCalendar(true) })}</div>`;
 }
 
 function staffIdentity(name, id) {
@@ -708,7 +612,7 @@ function rosterSection(title, indices, row) {
 }
 
 function advising() {
-  if (role === 'advisor' && productionPreview && !comparePageDesigns && localStorage.getItem(workspaceSessionKey)) {
+  if (role === 'advisor' && productionPreview && localStorage.getItem(workspaceSessionKey)) {
     return portalService('advising', 'academic-services');
   }
   const unassigned = [2,8];
@@ -743,7 +647,9 @@ function profile(detail=false){
     <div class="campus-owner">${avatar(name)}<div><h2>${name}</h2><p>${roleTitle}</p></div></div>
     <div class="campus-card-foot">${isStudent?'Student ID <strong>70-'+(71577+index)+'</strong>':'Faculty of Media Engineering &amp; Technology'}</div>
     </div>${detail?`<div class="profile-contact"><h3>University email</h3><a href="mailto:${email}">${email}</a></div>`:''}</aside>`;
-  const heading=head(detail?'Student details':'My profile','',detail?link('directory','Back to directory','btn'):'');
+  const heading = head(detail ? 'Student details' : 'My profile', '', detail
+    ? link('directory','Back to directory','btn')
+    : localStorage.getItem(workspaceSessionKey) ? link('account-details','View account details','btn') : '');
   if (!detail) {
     const shortcuts = student() ? ['my-schedule',role==='advisingStudent'?'preferences':'my-courses'] :
       role==='advisor' ? ['advising','student-schedules'] : role==='administrator' ? ['directory','financial-records'] : ['pending-work','student-schedules'];
@@ -795,7 +701,7 @@ function studentNotificationPanel(){
       <h2 id="student-inbox-heading">Notifications${unread.length ? ` <span class="student-inbox-count">${unread.length} unread</span>` : ''}</h2>
       ${link('notifications','Open inbox','quiet-link')}
     </div>
-    ${notificationScenes(params.get('notice-scene'),unread.length>0)}
+    ${notificationScenes(null,unread.length>0)}
     ${unread.length
       ? `<ul class="student-inbox-list" role="list">${unread.slice(0,3).map(([id,title])=>`
         <li data-kind="${id}">
@@ -822,7 +728,7 @@ function upcomingClasses(now = new Date()){
 
 function studentFeed(){
   const meetings = upcomingClasses();
-  return `<div class="student-feed" id="student-feed" data-feed-layout="${studentFeedLayout}">
+  return `<div class="student-feed" id="student-feed" data-feed-layout="1">
     <section class="student-upcoming" aria-labelledby="student-upcoming-heading">
       <div class="section-head"><h2 id="student-upcoming-heading">Coming up</h2></div>
       <ul class="student-upcoming-list" role="list">${meetings.map(({time,code,detail,date,day})=>`
@@ -852,7 +758,8 @@ function notifications(){
   const unread = entries.filter(([id]) => isNotificationUnread(id));
   const strip = notificationViews(unread.length);
   const visible = tab === 'unread' ? unread : entries;
-  return head('Notifications', '', (productionPreview?'':button('Create test notification','test-notification'))+
+  const accountInbox = localStorage.getItem(workspaceSessionKey) ? link('account-inbox','Open university inbox','btn') : '';
+  return head('Notifications', '', accountInbox+(productionPreview?'':button('Create test notification','test-notification'))+
     (unread.length ? button('Mark all as read','read-all','btn primary') : ''), '')+strip+
     `<section id="notice-results" role="tabpanel" aria-labelledby="notice-view-${tab}">`+
     (visible.length ? `<div class="notification-list">${visible.map(([id,title,description,time,subject]) => {
@@ -880,7 +787,9 @@ function academicStudent(name,index) {
   if (!academicStudy()) return `${name}<small>${id}</small>`;
   return `<span class="academic-person">${avatar(name)}<span><strong>${name}</strong><small>${id}</small></span></span>`;
 }
-function courses(){return head('Course catalogue',academicStudy() ? `${courseData.length} courses · ${new Set(courseData.map(c=>c[2])).size} departments` : '',button('Add course','add-course','btn primary')+button('Import CSV','import-csv'))+
+function courses(){return head('Course catalogue',academicStudy() ? `${courseData.length} courses · ${new Set(courseData.map(c=>c[2])).size} departments` : '',localStorage.getItem(workspaceSessionKey)
+  ? link('manage-courses','Manage catalogue','btn primary')
+  : button('Add course','add-course','btn primary')+button('Import CSV','import-csv'))+
   filterbar('Search courses',[['All departments',['Computer Engineering','Digital Media Engineering','Electronics Engineering']],['All seasons',['Winter','Spring']]])+
   table(academicStudy() ? ['Course','Department','Credits','Season',''] : ['Code','Course','Department','Credits','Season',''],courseData.map(c=>[
     ...(academicStudy() ? [academicCourse(c)] : [c[0],`<strong>${c[1]}</strong>`]),...c.slice(2),courseLink(c[0],'View course','btn row-control')]));}
@@ -958,11 +867,13 @@ function terms(){
     return [term.name,term.year,range,end,term.status,tone,term.status==='Archived'?'View':'Manage'];
   });
   if (academicStudy()) {
-    return head('Academic terms','Registration windows and schedule swap deadlines.',button('Create term','create-term','btn primary'))+
+    const live = Boolean(localStorage.getItem(workspaceSessionKey));
+    return head('Academic terms','Registration windows and schedule swap deadlines.',live
+      ? link('manage-terms','Manage academic terms','btn primary') : button('Create term','create-term','btn primary'))+
       `<div class="semester-ledger">${semesters.map(([name,year,registration,deadline,state,tone,action])=>`
         <article class="semester-line"><div class="semester-identity"><h2>${name}</h2><small>${year}</small></div>
           ${badge(state,tone)}<dl><div><dt>Registration</dt><dd>${registration}</dd></div><div><dt>Swap deadline</dt><dd>${deadline}</dd></div></dl>
-          ${button(action+' term','manage-term','btn desk-action',`data-term="${name}"`)}</article>`).join('')}</div>`;
+          ${live ? link('manage-terms',action+' term','btn desk-action') : button(action+' term','manage-term','btn desk-action',`data-term="${name}"`)}</article>`).join('')}</div>`;
   }
   return head('Academic terms','',button('Create term','create-term','btn primary'))+
   table(['Term','Academic year','Registration','Swap deadline','Status',''],semesters.map(([name,year,range,end,state,tone,action])=>
@@ -972,7 +883,8 @@ function offerings(){ return portalService('offerings', 'academic-services'); }
 function copyOfferings(){ return portalService('offerings', 'academic-services'); }
 function templates(){
   const groups = ['Group 1','Group 2','Group 3','Group 4'];
-  return head('Schedule templates',academicStudy() ? termContext('Computer Engineering') : '',link('template-detail','Create template','btn primary'))+
+  return head('Schedule templates',academicStudy() ? termContext('Computer Engineering') : '',localStorage.getItem(workspaceSessionKey)
+      ? link('manage-templates','Manage templates','btn primary') : link('template-detail','Create template','btn primary'))+
     filterbar('Search templates',[['All majors',['Computer Engineering','Digital Media Engineering']],['All statuses',['Published','Draft']]])+
     `<div class="template-library"><div class="template-course-set"><h2>Semester 7 courses</h2><ul>${courseData.slice(0,4).map(([code,title])=>`<li>${courseEmblem(code)}<span>${title}<small>${code}</small></span></li>`).join('')}</ul></div>
     <ul class="template-register">${groups.map((group,i)=>`<li data-search-row>
@@ -1027,7 +939,7 @@ const weeklyMeetings = [
   ['Thursday', []]
 ];
 function weekly(){
-  if (student() && !comparePageDesigns && !liveStudent.data) {
+  if (student() && !liveStudent.data) {
     const message = liveStudent.error || (localStorage.getItem(workspaceSessionKey) ? 'Loading your schedule…' : 'Sign in to view your schedule.');
     return `<div class="student-schedule-empty"><p role="status">${escapeHtml(message)}</p>${!localStorage.getItem(workspaceSessionKey) || liveStudent.error.includes("expired") ? link('login','Sign in to Portal','btn') : ''}</div>`;
   }
@@ -1055,7 +967,7 @@ function weekly(){
       <path d="M36 22c-7-7 5-11-1-17M46 22c-4-6 4-9 2-13"/>
       </g></svg><span>No classes scheduled</span></div>`;
   }
-  return `<div class="week-columns${illustrated ? ' compact-week' : ''}${student() && !comparePageDesigns ? ' live-student-week' : ''}" style="--teaching-days:${studentWeek().length}" aria-label="Weekly course schedule">${studentWeek().map(([day, meetings]) =>
+  return `<div class="week-columns${illustrated ? ' compact-week' : ''}${student() ? ' live-student-week' : ''}" style="--teaching-days:${studentWeek().length}" aria-label="Weekly course schedule">${studentWeek().map(([day, meetings]) =>
     `<section class="week-day" aria-label="${day}"><h2>${day}</h2>${dayContents(meetings)}</section>`).join('')}</div>`;
 }
 function schedule(staff=false){
@@ -1063,7 +975,7 @@ function schedule(staff=false){
     return portalService('student-schedules', 'academic-services');
   }
   const timetableContext = liveStudent.data ? `${escapeHtml(liveStudent.data.term.season)} ${escapeHtml(liveStudent.data.term.academicYear)} · ${escapeHtml(({readyForStudentReview:"Ready for student review", processed:"Processed", draft:"Draft"})[liveStudent.data.schedule.status] || liveStudent.data.schedule.status)}` : '';
-  if (!comparePageDesigns && !liveStudent.data) return head('My schedule') + `<p role="status">${escapeHtml(liveStudent.error || 'Loading your schedule…')}</p>`;
+  if (!liveStudent.data) return head('My schedule') + `<p role="status">${escapeHtml(liveStudent.error || 'Loading your schedule…')}</p>`;
   return head('Weekly schedule',timetableContext,button('Download schedule','download-my-schedule'),'')+
     tabs([['week','Week'],['list','Course list']],'week')+(tab==='list'?registeredTable():weekly())+
     '';
@@ -1098,7 +1010,7 @@ function courseEmblem(code) {
   return `<span class="student-course-emblem" data-course-tone="${globalThis.BobosCourseIcons?.[String(code).replace(/\s/g, '').toUpperCase()]?.tone || courseTone[code]}">${courseDrawing(code)}</span>`;
 }
 function registered(){
-  if (!comparePageDesigns && !liveStudent.data) return head('Registered courses') + `<p role="status">${escapeHtml(liveStudent.error || 'Loading your courses…')}</p>`;
+  if (!liveStudent.data) return head('Registered courses') + `<p role="status">${escapeHtml(liveStudent.error || 'Loading your courses…')}</p>`;
   const study = workspaces[lab.layout].name==='Claude Study';
   return head('Registered courses',study ? termContext(`${studentCourses().length} courses · ${studentCourses().reduce((n,c)=>n+Number(c[3]),0)} credit hours`) : `${studentCourses().length} courses · ${studentCourses().reduce((n,c)=>n+Number(c[3]),0)} credit hours`)+
     `<div class="course-list">${studentCourses().map(([code,title,,credits]) =>
@@ -1179,13 +1091,13 @@ function records(){
   const study = workspaces[lab.layout].name==='Claude Study';
   const performance = [['Cumulative GPA','1.70','Very good standing'],['Completed credits','116','Through semester 6'],['Current semester','07','Winter 2026']];
   const marks = study ? `<dl class="academic-standing">${performance.map(([label,value,detail])=>`<div><dt>${label}</dt><dd>${value}</dd><dd>${detail}</dd></div>`).join('')}</dl>` : stats(performance);
-  return head('Academic records','Omar Hassan · 70-71577',tab==='transcript'?button('Download transcript','transcript'): '', 'Computer Engineering')+
+  return head('Academic records','Omar Hassan · 70-71577',localStorage.getItem(workspaceSessionKey) ? link('official-records','Open official records','btn primary') : tab==='transcript'?button('Download transcript','transcript'): '', 'Computer Engineering')+
     marks+strip+
     (tab==='wallet'?table(['Date','Transaction','Amount','Balance'],[['14 Nov 2026','Course registration payment','− EGP 7,500','EGP 2,500'],['10 Nov 2026','Wallet deposit','+ EGP 10,000','EGP 10,000']]):table(['Course','Semester','Credits','Grade','Status'],courseData.slice(0,4).map(c=>[`${c[0]}<small>${c[1]}</small>`,'Winter 2025',c[3],'1.7',badge('Passed')])));
 }
 function advisor(){
   const study = workspaces[lab.layout].name==='Claude Study';
-  return head('Academic advising',study ? termContext('Semester 7') : '')+`
+  return head('Academic advising',study ? termContext('Semester 7') : '', localStorage.getItem(workspaceSessionKey) ? link('advisor-assignment','View current assignment','btn') : '')+`
     <div class="advising-layout">
       <section class="advisor-details">${study ? `<header class="advisor-identity">${avatar('Dr. Salma Adel')}<div><h2>Dr. Salma Adel</h2><p>Computer Engineering</p></div></header>` : '<h2>Dr. Salma Adel</h2><p>Computer Engineering</p>'}
         <dl class="details"><div><dt>Email</dt><dd><a href="mailto:salma.adel@guc.edu.eg">salma.adel@guc.edu.eg</a></dd></div>
@@ -1288,31 +1200,12 @@ function mountLiveCalendar(panel) {
     if (!document.hidden && !controls.querySelector(':disabled')) refresh().catch(error => { status.textContent = error.message; });
   }, 15000);
 }
-function calendarSync(){
+function calendarSync() {
   if (!student()) return head('Calendar sync') + '<p>Sign in with a student account to access Calendar sync.</p>';
-  if (!comparePageDesigns) {
-    return head('Calendar sync', 'Keep your processed timetable in Google Calendar.') +
-      '<section class="student-calendar" data-live-calendar aria-label="Google Calendar"><h2>Google Calendar</h2><p role="status">Loading connection…</p></section>';
-  }
-  if(workspaces[lab.layout].name==='Claude Study') {
-    return head('Calendar sync',termContext('Group 4 · Africa/Cairo'))+
-      `<div class="student-calendar"><section aria-label="Google Calendar"><div class="calendar-provider">${icon('calendar')}<div><h2>Google Calendar</h2><p>${connected?'Connected as omar.hassan@student.guc.edu.eg':'Connect an account to sync course meetings.'}</p></div>${button(connected?'Disconnect':'Connect account','toggle-calendar','btn row-control')}</div>
-      ${connected?`<div class="calendar-last-sync"><span>Last synced today at 09:15</span>${button('Sync now','sync-now','btn text')}</div>`:''}</section>
-      <section class="calendar-file"><h2>Calendar file</h2><p>Import your teaching week into Apple Calendar, Outlook, or another calendar app.</p>${button('Download .ics','export-calendar','btn row-control')}</section></div>`;
-  }
-  return head('Calendar sync','Keep your course schedule in your calendar.')+`<section class="panel calendar-connect"><div class="connection"><div><h2>Google Calendar</h2><p>${connected?'Connected as omar.hassan@student.guc.edu.eg':'Connect your Google account to sync course meetings.'}</p></div>${button(connected?'Disconnect':'Connect account', 'toggle-calendar', connected?'btn':'btn primary')}</div><div class="connection"><div><h3>Course schedule</h3><p>Last synced today at 09:15. Times use Africa/Cairo.</p></div>${button('Sync now','sync-now','btn')}</div></section><section class="panel"><h2>Use another calendar</h2><p>Download an .ics file for Apple Calendar, Outlook, or another calendar app.</p><div style="margin-top:20px">${button('Download calendar','export-calendar')}</div></section>`;}
-function swapWeek(daysOff) {
-  return `<ol class="swap-week" aria-label="Teaching days">${['Sunday','Monday','Tuesday','Wednesday','Thursday'].map(day=>
-    `<li class="${day===daysOff?'off':''}"><abbr title="${day}">${day.slice(0,3)}</abbr><span class="sr-only"> ${day===daysOff?'off':'classes'}</span></li>`
-  ).join('')}</ol>`;
+  return head('Calendar sync', 'Keep your processed timetable in Google Calendar.') +
+    '<section class="student-calendar" data-live-calendar aria-label="Google Calendar"><h2>Google Calendar</h2><p role="status">Loading connection…</p></section>';
 }
-function swap(){
-  const study = workspaces[lab.layout].name==='Claude Study';
-  const context = study ? termContext('Group 4 · Computer Engineering') : 'Exchange your full schedule with a student taking the same courses.';
-  return head('Eligible swap groups',context)+`<section class="panel"><div class="section-head"><h2>Your group: 4</h2><span class="count">Swap deadline · 13 December 2026</span></div><p>Computer Engineering · Semester 7 · 19 credit hours</p></section>`+
-  tabs([['groups','Available groups'],['open','Open requests'],['mine','My requests']],'groups')+
-  (tab==='mine'?table(['From','Requested groups','Submitted','Status',''],[['Group 4','Group 1, Group 2','13 Nov 2026',badge('Open','pending'),button('Withdraw','withdraw','btn text')]]):`<div class="course-options">${[1,2].map((n)=>`<section class="course-option"><div class="kicker">Computer Engineering</div><h2>Group ${n}</h2><p>Same 4 registered courses · 19 credits</p>${study?swapWeek(n===1?'Tuesday':'Sunday'):''}<dl class="details"><div><dt>Days off</dt><dd>${n===1?'Tuesday':'Sunday'}</dd></div><div><dt>Earliest class</dt><dd>${n===1?'10:00':'08:30'}</dd></div></dl><div class="form-footer">${button('View schedule','group-schedule')}${button(tab==='open'?'Exchange schedules':'Request swap',tab==='open'?'exchange':'request-swap','btn primary')}</div></section>`).join('')}</div>`);
-}
+
 function auth(){
   const title=page==='login'?'Sign in':page==='forgot'?'Reset your password':'Choose a new password';
   return `<main class="auth" id="content" tabindex="-1">
@@ -1325,9 +1218,11 @@ function auth(){
           ${page==='login' ? `<label>University email<input name="email" type="email" autocomplete="username" required value="${previewEmail}"></label>
             <label>Password<input name="password" type="password" autocomplete="current-password" required value="portal-demo"></label>
             <div class="signin-actions"><button type="submit" class="signin-continue">Continue <span aria-hidden="true">→</span></button>${link('forgot','Forgot password?','auth-recovery')}</div>` : `
-            <label>University email<input name="email" type="email" autocomplete="username" placeholder="${previewEmail}" required value="${page==='reset'?previewEmail:''}"></label>
-            ${page==='reset'?'<label>Reset code<input inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="000000" required></label><label>New password<input name="password" type="password" autocomplete="new-password" minlength="8" required></label>':''}
+            <label>University email<input name="email" type="email" autocomplete="username" placeholder="name@guc.edu.eg" required></label>
+            ${page==='reset'?'<label>Reset code<input name="otp" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required></label><label>New password<input name="password" type="password" autocomplete="new-password" minlength="8" required></label><label>Confirm new password<input name="confirmPassword" type="password" autocomplete="new-password" minlength="8" required></label>':''}
             <button type="submit" class="btn primary">${page==='forgot'?'Send reset code':'Update password'}</button>
+            <p class="auth-feedback" role="status" aria-live="polite" hidden></p>
+            ${page==='reset'?link('forgot','Request another code','auth-recovery'):''}
             ${link('login','Back to sign in','auth-recovery')}`}
         </form>
         ${page==='login' ? `<fieldset class="preview-role-picker">
@@ -1338,20 +1233,14 @@ function auth(){
       </section>
       ${productionPreview?'':'<footer><span>Design preview</span></footer>'}
     </div>
-    ${comparePageDesigns && params.has('image') ? signinGallery() : '<figure class="signin-print"><div class="desk-lamp-scene"><img src="images/borrowed-light.svg" alt="Desk lamp lighting a sheet of paper" fetchpriority="high"></div></figure>'}
+    <figure class="signin-print"><div class="desk-lamp-scene"><img src="images/borrowed-light.svg" alt="Desk lamp lighting a sheet of paper" fetchpriority="high"></div></figure>
   </main>`;
 }
 function extraHours(){
   if (!['advisor', 'coordinator', 'advisingStudent'].includes(role)) {
     return head('Extra-hours requests') + '<p>This page is unavailable for your role.</p>';
   }
-  if (role !== 'advisingStudent' && !localStorage.getItem(workspaceSessionKey)) {
-    const request = ['Winter 2026', '3', badge('Awaiting decision', 'pending')];
-    const sampleTable = student()
-      ? table(['Term', 'Credits', 'Status'], [request], false)
-      : table(['Student', 'Term', 'Credits', 'Status'], [['Omar Hassan', ...request]], false);
-    return head('Extra-hours requests', 'Demo preview · Sample requests') + sampleTable;
-  }
+
   return head('Extra-hours requests') + portalService('extra-hours');
 }
 
@@ -1362,8 +1251,7 @@ function portalService(screen, section = '') {
 }
 
 function academicServices() {
-  const screen = new URLSearchParams(location.search).get('screen') || 'overview';
-  return head('Academic services') + portalService(screen, 'academic-services');
+  return head('Academic services') + '<p role="status">This page is unavailable.</p>';
 }
 
 function graduationPlans() {
@@ -1374,7 +1262,15 @@ function graduationPlans() {
   return portalService('graduation-plans');
 }
 
-const renderers = {'academic-services':academicServices,'extra-hours':extraHours,overview,notifications,profile, directory, 'student-detail':()=>profile(true),advising,'pending-work':pending,'schedule-activity':activity,'financial-records':financial,'mandatory-removals':removals,'student-schedules':()=>schedule(true),'draft-schedule':()=>portalService('student-schedules','academic-services'),courses,'course-detail':courseDetail,terms,offerings,'copy-offerings':copyOfferings,templates,'template-detail':templateDetail,'group-assignments':assignments,'my-schedule':schedule,'my-courses':registered,'schedule-swap':swap,preferences,records,'my-advisor':advisor,'calendar-sync':calendarSync,'graduation-plans':graduationPlans,'my-submitted-plans':graduationPlans};
+const renderers = {'academic-services':academicServices,'extra-hours':extraHours,overview,notifications,profile, directory, 'student-detail':()=>profile(true),advising,'pending-work':pending,'schedule-activity':activity,'financial-records':financial,'mandatory-removals':removals,'student-schedules':()=>schedule(true),'draft-schedule':()=>portalService('student-schedules','academic-services'),courses,'course-detail':courseDetail,terms,offerings,'copy-offerings':copyOfferings,templates,'template-detail':templateDetail,'group-assignments':assignments,'my-schedule':schedule,'my-courses':registered,'schedule-swap':()=>portalService('schedule-swap','academic-services'),preferences,records,'my-advisor':advisor,'calendar-sync':calendarSync,'graduation-plans':graduationPlans,'my-submitted-plans':graduationPlans};
+for (const screen of ['courses', 'terms', 'templates']) {
+  renderers['manage-' + screen] = () => portalService(screen, 'academic-services');
+}
+for (const [page, screen] of Object.entries({
+  'official-records':'records', 'advisor-assignment':'my-advisor', 'account-inbox':'notifications', 'account-details':'profile'
+})) {
+  renderers[page] = () => portalService(screen, 'academic-services');
+}
 // Open the working academic services rather than the illustrated fixture pages.
 for (const screen of ['advising','financial-records','mandatory-removals','group-assignments','preferences','slot-changes']) {
   renderers[screen] = () => portalService(screen, 'academic-services');
@@ -1638,20 +1534,13 @@ function render(focus=false){
     page = 'my-submitted-plans';
     history.replaceState(history.state, '', href(page));
   }
-  if (!authPages.has(page) && (!signedIn() || (page === 'extra-hours' && !localStorage.getItem(workspaceSessionKey)))) {
+  if (!authPages.has(page) && !signedIn()) {
     returnAfterSignIn = page;
     page = 'login';
-    history.replaceState({},'',href(page));
-  }
-  if (page === 'schedule-swap' && role === 'normalStudent' && !comparePageDesigns && localStorage.getItem(workspaceSessionKey)) {
-    page = 'academic-services';
-    const destination = new URL(location.href);
-    destination.searchParams.set('page', page);
-    destination.searchParams.set('screen', 'schedule-swap');
-    history.replaceState(history.state, '', destination);
+    history.replaceState(history.state,'',href(page));
   }
   const pageLabel = navigationLabel(page);
-  document.title=productionPreview ? `Portal · ${pageLabel}` : `Portal — ${layoutNames[lab.layout]} · ${pageLabel}`;
+  document.title = `Portal · ${pageLabel}`;
   document.body.classList.toggle('auth-screen',authPages.has(page));
   const body=authPages.has(page)?auth():`<div class="shell">${sidebar()}<div class="workspace"><header class="topbar">${link('overview',portalWordmark(),'mobile-nav wordmark')}<span class="term">${workspaces[lab.layout].name==='Claude Study'?'<small class="study-crumb">Academic workspace &nbsp; / &nbsp;</small>':''}${pageLabel}<span>Winter 2026 / 2027</span></span><div class="topactions">${button(icon('menu')+'<span class="sr-only">Menu</span>','mobile-menu','mobile-menu')}${themeControl()}${accountControls()}</div></header><main class="content" data-screen="${page}" id="content" tabindex="-1">${renderers[page]()}</main></div></div>`;
   arrivalObserver?.disconnect();
@@ -1671,29 +1560,52 @@ function render(focus=false){
   }
   const liveCalendar = app.querySelector('[data-live-calendar]');
   if (liveCalendar) mountLiveCalendar(liveCalendar);
-  if (comparePageDesigns) attachPageDesign(page,role,render);
   const service = app.querySelector('[data-portal-service]');
   if (service) mountPortalService(service);
   observeNotificationPlate(app.querySelector('.notification-plate'));
   drawInputEdges(app);
   if (page === "preferences") syncPreferenceSaveButton();
   const main = app.querySelector('main');
-  if (main && !authPages.has(page) && (!comparePageDesigns || !Number(localStorage.getItem('portal-page-design:'+page)))) {
+  if (main && !authPages.has(page)) {
     window.addStudentArt?.(page,main,role);
     window.addStaffArt?.(page,main,role);
   }
-  syncControls(role, page);
   if(page==='overview' && workspaces[lab.layout].name==='Claude Study' && main.querySelector('.page-head')) stageOverview(main);
   const lamp = app.querySelector('.desk-lamp-scene');
   if (lamp) mountDeskLamp(lamp);
   binderMotion.mount(app.querySelector('[data-concertina=true] .folio-stack'));
   if(focus)document.querySelector('#content')?.focus({preventScroll:true});
 }
-function navigate(target,url){if(dialog.open)dialog.close();page=pageKey(target);tab='';history.pushState({},'',url || href(page));render(true);window.scrollTo(0,0);}
+function navigate(target, url, state = {}) {
+  if (dialog.open) dialog.close();
+  page = pageKey(target);
+  tab = '';
+  const destination = new URL(url || href(page), location.href);
+  BobosPortalRoutes.normalize(destination.searchParams);
+  page = pageKey(destination.searchParams.get('page'));
+  history.pushState(state, '', destination);
+  render(true);
+  window.scrollTo(0, 0);
+}
+document.addEventListener('portal:open-service', ({detail: {screen, context}}) => {
+  const target = BobosPortalRoutes.screenPage(screen, role);
+  const url = new URL(href(target), location.href);
+  if (target === 'academic-services') url.searchParams.set('screen', screen);
+  let portalContext = null;
+  if (screen === 'preferences' && context?._id) {
+    const { _id, studentId, fullName, user } = context;
+    portalContext = { _id, studentId, fullName, user: { fullName: user?.fullName } };
+  } else if (screen === 'student-schedules' && context?.draftStudent) {
+    const { _id, studentId, fullName } = context.draftStudent;
+    portalContext = { termId: context.termId, draftStudent: { _id, studentId, fullName } };
+  }
+  navigate(target, url, { portalScreen: screen, portalContext });
+});
 function startPreview(destination){
   localStorage.setItem(previewSessionKey,'1');
+  const url = href(destination);
   returnAfterSignIn = 'overview';
-  navigate(destination);
+  navigate(destination, url, history.state || {});
 }
 async function signInWorkspace(credentials, expectedRole){
   const response = await fetch('../api/identity/login', {
@@ -1707,6 +1619,7 @@ async function signInWorkspace(credentials, expectedRole){
   }
   if (expectedRole && data.user.role !== expectedRole) throw new Error('The demo account has a different role.');
   localStorage.setItem(workspaceSessionKey,data.token);
+  localStorage.setItem('portal-account-role', data.user.role);
   sessionStorage.setItem(workspaceAccountNameKey, data.user.fullName || roleNames[data.user.role]);
   return data.user.role;
 }
@@ -1819,6 +1732,7 @@ function action(name,el){
       {
         const token = localStorage.getItem(workspaceSessionKey);
         localStorage.removeItem(workspaceSessionKey);
+        localStorage.removeItem('portal-account-role');
         sessionStorage.removeItem(workspaceAccountNameKey);
         if (token) {
           void fetch('../api/identity/logout', {
@@ -1831,7 +1745,6 @@ function action(name,el){
       returnAfterSignIn = 'overview';
       navigate('login');
       break;
-    case 'pick-review':selectedStudent=Number(el.dataset.student);render();document.querySelector('.dispatch-person[aria-pressed=true]')?.focus();break;
     case 'quick-find':modal('Find a page',fields('<label>Search pages<input id="page-finder" type="search" placeholder="Schedule, students, courses…" autofocus></label>')+`<nav class="page-results">${groups().flatMap(([,ids])=>ids).map(id=>navigationLink(id,navigationLabel(id),'navlink')).join('')}</nav>`,'Close','close');break;
     case 'mobile-menu': {
       const sections = [...groups(), ['Account', ['profile']]];
@@ -1870,8 +1783,6 @@ function action(name,el){
       }
       break;
     }
-    case 'toggle-calendar':connected=!connected;render();toast(connected?'Sample calendar connected.':'Sample calendar disconnected.');break;
-    case 'sync-now':toast(connected?'Sample schedule synced.':'Connect your calendar first.', connected ? 'success' : 'warning');break;
     case 'export-csv':download('sample-financial-records.csv','Transaction,Student,Type,Amount,Status\n'+names.slice(0,6).map((name,i)=>`TXN-${1042+i},${name},${i===4?'Refund':'Payment'},${i===4?2500:7500},${[1,5].includes(i)?'Pending':'Completed'}`).join('\n'),'text/csv');break;
     case 'download-my-schedule':
       fetch('../api/schedules/me/download', {headers:{Authorization:'Bearer '+localStorage.getItem(workspaceSessionKey)}}).then(async response => {
@@ -1941,10 +1852,6 @@ function action(name,el){
       modal(`${courseData[i][0]} removal request`,`<p>${names[i]} · 70-${71577+i}<br>Reason: ${removalReasons[i]}.${i===0?'<br>Removing this course reduces the semester load from 19 to 14 credits.':''}</p>`+fields('<label>Decision<select><option>Approve removal</option><option>Reject request</option></select></label><label>Decision note<textarea required rows="3" placeholder="Explain the decision to the student."></textarea></label>'),'Submit decision');break;
     }
     case 'request-removal':modal('Request course removal',fields('<label>Course<select><option>CSEN 701 · Embedded Systems</option><option>CSEN 703 · Algorithms</option></select></label><label>Reason<textarea required rows="3" placeholder="Why do you need to remove this course?"></textarea></label>'),'Submit request');break;
-    case 'group-schedule':modal('Group 1 schedule',weekly(),'Close','close');break;
-    case 'request-swap':modal('Request a schedule swap?','<p>Your request will be visible to students in the selected group with the same registered courses.</p>','Submit swap request');break;
-    case 'exchange':modal('Exchange full schedules?','<p>Your Group 4 schedule will be exchanged with Group 1. Meeting times for all registered courses will change.</p>','Confirm exchange');break;
-    case 'withdraw':modal('Withdraw swap request?','<p>This request will no longer be available to other students.</p>','Withdraw request');break;
     default:toast('Updated in this preview.');
   }
 }
@@ -2159,16 +2066,7 @@ document.addEventListener('change',event=>{
     setFlipRate(Number(event.target.value));
   } else if(event.target.matches('[data-calendar-picker]')){
     chooseCalendarStyle(event.target.value);
-  } else if(event.target.matches('[data-dashboard-view]')){
-    dashboardView=event.target.value;
-    localStorage.setItem(dashboardViewKey,dashboardView);
-    const url=new URL(location.href);
-    url.searchParams.set('view',dashboardView);
-    history.replaceState(history.state,'',url);
-    render();
-    document.querySelector('[data-dashboard-view]').focus({preventScroll:true});
-  } else if(event.target.id==='role-select'){role=event.target.value;navigate('overview');}
-  else if(event.target.id==='page-select')navigate(event.target.value);
+  }
   else if(event.target.matches('[data-filter]'))filterRows();
   else if(event.target.matches('.dayoff')) {
     const count = document.querySelectorAll('.dayoff:checked').length;
@@ -2198,8 +2096,45 @@ document.addEventListener('submit',async event=>{
         if (submit) submit.disabled = false;
       }
     }
-    else if(page==='forgot'){navigate('reset');toast('Sample reset code: 123456.', 'info');}
-    else{navigate('login');toast('Reset preview complete.');}
+    else if(page==='forgot' || page==='reset'){
+      const form = event.target;
+      const submit = form.querySelector('button[type="submit"]');
+      const feedback = form.querySelector('.auth-feedback');
+      const values = Object.fromEntries(new FormData(form));
+      const showFeedback = (message, error = false) => {
+        feedback.textContent = message;
+        feedback.hidden = false;
+        feedback.classList.toggle('error', error);
+      };
+      if (page === 'reset' && values.password !== values.confirmPassword) {
+        showFeedback('The passwords do not match.', true);
+        return;
+      }
+      submit.disabled = true;
+      feedback.hidden = true;
+      try {
+        const response = await fetch(`../api/identity/${page === 'forgot' ? 'forgot-password' : 'reset-password'}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(page === 'forgot'
+            ? { email: values.email }
+            : { email: values.email, otp: values.otp, newPassword: values.password }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.success) throw new Error(data.message || 'Could not complete the password reset.');
+        if (page === 'forgot') {
+          navigate('reset');
+          toast(data.message || 'If an active account exists for this email, a reset code will be sent.', 'info');
+        } else {
+          navigate('login');
+          toast(data.message || 'Password reset successfully. Please sign in with your new password.', 'success');
+        }
+      } catch (error) {
+        showFeedback(error.message || 'Could not complete the password reset. Please try again.', true);
+      } finally {
+        if (submit.isConnected) submit.disabled = false;
+      }
+    }
   }else if(event.target.id==='modal-form'){
     const label=event.submitter?.textContent||'Saved';const close=event.target.dataset.submitAction==='close';closeDialog();if(!close)toast(label === 'Submit decision' ? 'Decision saved in this preview.' : `${label} — completed in this preview.`);
   }
@@ -2214,7 +2149,7 @@ document.addEventListener('keydown',event=>{
   i=event.key==='Home'?0:event.key==='End'?buttons.length-1:(i+(event.key==='ArrowRight'?1:-1)+buttons.length)%buttons.length;
   event.preventDefault();selectView(buttons[i].dataset.tab);
 });
-window.addEventListener('popstate',()=>{const p=new URLSearchParams(location.search);page=pageKey(p.get('page'));returnAfterSignIn=returnPage(p.get('next'));role=Object.hasOwn(roleNames,p.get('role'))?p.get('role'):'coordinator';tab='';selectedStudent=studentIndex(p);selectedCourse=resolveCourse(p.get('course'));restoreLook(p);render(true);});
+window.addEventListener('popstate',()=>{const p=normalizePortalLocation();page=pageKey(p.get('page'));returnAfterSignIn=returnPage(p.get('next'));role=Object.hasOwn(roleNames,p.get('role'))?p.get('role'):'coordinator';tab='';selectedStudent=studentIndex(p);selectedCourse=resolveCourse(p.get('course'));restoreLook();render(true);});
 window.addEventListener('storage',event=>{
   if (event.key === workspaceSessionKey) sessionStorage.removeItem(workspaceAccountNameKey);
   if (event.key===previewSessionKey && !signedIn() && !authPages.has(page)) {
@@ -2222,14 +2157,7 @@ window.addEventListener('storage',event=>{
     navigate('login');
   }
 });
-mountControls(roleNames, pages, () => {
-  if (authPages.has(page)) {
-    syncControls(role,page);
-    const mark = document.querySelector('.signin-copy .wordmark');
-    if (mark) mark.innerHTML=portalWordmark();
-  }
-  else render();
-});
+
 render();
 if (page === 'calendar-sync' && ['connected', 'error'].includes(params.get('calendar'))) {
   const success = params.get('calendar') === 'connected';
