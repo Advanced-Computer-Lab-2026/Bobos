@@ -10,6 +10,6 @@ Complete these items when preparing the production release or assessment deploym
 
 ## Presentation and payments
 
-- Remove Quick demo sign-in from the production UI and remove production access to any shortcut or fixtures-only controls. Audit every role for visible “demo only”, “test only”, developer copy, placeholder content and controls that disclose simulation mechanics.
+- Keep Quick demo sign-in and fixture-only controls limited to localhost. Audit every role for visible “demo only”, “test only”, developer copy, placeholder content and controls that disclose simulation mechanics.
 - Keep the sandbox payment gateway required by requirement 91. Present the normal **Pay** and payment status labels. Remove phrases such as “fake Stripe payment” from the customer-facing interface. Require a successful sandbox response before recording a payment or applying approved courses and hours. Never store card numbers, CVVs or gateway passwords.
 - Verify standard sign-in, sign-out, disabled-account handling and email OTP reset for every role. The requirements workbook’s items 1 and 2 cover normal login and OTP reset. Neither the workbook nor the assignment brief requires a 15-minute login lockout.

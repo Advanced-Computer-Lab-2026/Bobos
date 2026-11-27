@@ -194,7 +194,7 @@ Install **Git, Node.js 22.12 or later with npm, MongoDB Community 8.x, and Mongo
    npm run dev
    ~~~
 
-   Open [the portal](http://localhost:5173/) and check [API health](http://localhost:3000/api/health). The health response should include `"database":"connected"`. The frontend proxies `/api` requests locally. On macOS or Linux use `export BOBOS_PORTAL_DEMO=standard` before starting.
+   Open [the portal](http://localhost:5173/) and check [API health](http://localhost:3000/api/health). The health response should include `"database":"connected"`. The frontend proxies `/api` requests locally. Quick demo sign-in is available only on localhost; hosted deployments use university credentials. On macOS or Linux use `export BOBOS_PORTAL_DEMO=standard` before starting.
 
 4. On a **fresh local demo database**, open a third terminal in Bobos to load sample academic data and create the demo accounts. Keep `ALLOW_DEMO_SEED=true` in your local `.env` for this step.
 
