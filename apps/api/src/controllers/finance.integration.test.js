@@ -313,6 +313,23 @@ test("Req 99: dynamic filtering by type, status, term, settlementOption, and dat
   assert.equal(combined.records[0].referenceNumber, "REF-1002");
 });
 
+test("Req 100 and 127: listing and export use the transaction date and the same filters", async () => {
+  const filters = "settlementOption=wallet&status=completed&startDate=2025-09-15&endDate=2025-09-15";
+  const list = await (await req(`/records?${filters}`, coordinatorToken)).json();
+  assert.deepEqual(list.records.map(record => record.referenceNumber), ["REF-1002"]);
+  const csv = await (await req(`/export?${filters}`, coordinatorToken)).text();
+  assert.deepEqual(csv.trim().split("\n").slice(1).map(row => row.split(",")[0]), ["REF-1002"]);
+
+  const imported = await FinancialTransaction.findById(record2._id);
+  const importDate = imported.createdAt.toISOString().slice(0, 10);
+  const byImportDate = await (await req(`/records?search=REF-1002&startDate=${importDate}&endDate=${importDate}`, coordinatorToken)).json();
+  assert.equal(byImportDate.total, 0);
+  for (const path of ["/records", "/export"]) {
+    assert.equal((await req(`${path}?startDate=invalid`, coordinatorToken)).status, 400);
+    assert.equal((await req(`${path}?startDate=2025-09-16&endDate=2025-09-15`, coordinatorToken)).status, 400);
+  }
+});
+
 // ==========================================
 // Req 100: Detailed record breakdown
 // ==========================================

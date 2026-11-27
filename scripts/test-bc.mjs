@@ -14,13 +14,9 @@ const files = [
   "apps/api/src/models/models.test.js",
   "apps/web/src/slot-change-filters.test.js",
 ];
-const regression = process.argv.includes("--regression");
-console.log(regression
-  ? "B/C regression run: known unmet acceptance criteria execute as TODOs."
-  : "B/C strict acceptance run: unmet requirements fail the command.");
+console.log("Running Group B and C acceptance checks.");
 const child = spawn(process.execPath, ["--test", "--test-concurrency=1", ...files], {
   cwd: fileURLToPath(new URL("../", import.meta.url)),
-  env: { ...process.env, BC_AUDIT_STRICT: regression ? "0" : "1" },
   stdio: "inherit",
 });
 child.on("error", (error) => { console.error(error); process.exitCode = 1; });
