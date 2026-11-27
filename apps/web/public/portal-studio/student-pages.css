@@ -258,6 +258,17 @@
   display:block;width:100%;height:auto;max-height:210px;
   margin:0 auto 12px;overflow:hidden;
 }
+.student-inbox .notification-plate + .student-inbox-list {gap:10px}
+.student-inbox .notification-plate + .student-inbox-list li {background:transparent;padding:4px 0}
+.student-inbox .notification-plate + .student-inbox-empty {background:transparent;padding:8px 0}
+.notification-plate[data-scene=coffee] {width:min(320px,100%);max-height:210px}
+.portal-studio #notice-results .empty .notification-plate[data-scene=coffee] {width:min(320px,90%);margin:0 auto 18px}
+@media (prefers-reduced-motion:no-preference) {
+  .notification-plate[data-scene=coffee].arrived .scene-coffee-steam {animation:coffee-steam-arrive 1.8s ease-out}
+  .notification-plate[data-scene=coffee]:hover .scene-coffee-steam {animation:coffee-steam-hover 1.8s ease-out}
+}
+@keyframes coffee-steam-arrive {0%,100%{opacity:1;transform:translateY(0)}55%{opacity:.35;transform:translate(1px,-6px)}75%{opacity:0;transform:translate(1px,-8px)}76%{opacity:0;transform:translateY(3px)}}
+@keyframes coffee-steam-hover {0%,100%{opacity:1;transform:translateY(0)}55%{opacity:.35;transform:translate(1px,-6px)}75%{opacity:0;transform:translate(1px,-8px)}76%{opacity:0;transform:translateY(3px)}}
 .notification-study-pair {display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);align-items:start;gap:clamp(20px,4vw,52px)}
 @media (max-width:680px) {.notification-study-pair {grid-template-columns:minmax(0,1fr)}}
 @media (prefers-reduced-motion:no-preference) {

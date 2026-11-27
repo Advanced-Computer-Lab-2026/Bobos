@@ -1469,6 +1469,9 @@ function mountPortalService(host) {
 }
 
 function render(focus=false){
+  const previousRole = document.body.dataset.portalRole;
+  const sidebarScroll = app.querySelector('.sidebar')?.scrollTop || 0;
+  const navigationScroll = app.querySelector('.sidebar nav')?.scrollTop || 0;
   closeDeadline();
   if (page === 'graduation-plans' && role === 'advisor' && new URLSearchParams(location.search).get('view') === 'submitted') {
     page = 'my-submitted-plans';
@@ -1512,6 +1515,12 @@ function render(focus=false){
   const lamp = app.querySelector('.desk-lamp-scene');
   if (lamp) mountDeskLamp(lamp);
   binderMotion.mount(app.querySelector('[data-concertina=true] .folio-stack'));
+  if (!authPages.has(page) && previousRole === role) {
+    const sidebar = app.querySelector('.sidebar');
+    const navigation = sidebar?.querySelector('nav');
+    if (sidebar) sidebar.scrollTop = sidebarScroll;
+    if (navigation) navigation.scrollTop = navigationScroll;
+  }
   if(focus)document.querySelector('#content')?.focus({preventScroll:true});
 }
 function navigate(target, url, state = {}) {

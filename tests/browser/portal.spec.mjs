@@ -85,6 +85,37 @@ async function signIn(page, account, pass) {
   await page.getByRole("button", { name: /continue/i }).click();
 }
 
+test("Sidebar keeps lower navigation links in place across page changes and history", async ({ page }) => {
+  await page.setViewportSize({ width: 1100, height: 300 });
+  await page.goto(baseURL);
+  await signIn(page, "regression@guc.edu.eg", password);
+  const navigation = page.getByRole("navigation", { name: "Main navigation" });
+  const sidebar = page.locator('.sidebar');
+  await expect(navigation.locator('[data-page="group-assignments"]')).toBeVisible();
+  const readPosition = () => sidebar.evaluate(side => ({
+    sidebar: side.scrollTop, navigation: side.querySelector('nav').scrollTop,
+  }));
+  const expectPosition = position => expect.poll(readPosition).toEqual(position);
+  const follow = async target => {
+    const link = navigation.locator(`[data-page="${target}"]`);
+    await link.scrollIntoViewIfNeeded();
+    const position = await readPosition();
+    expect(position.sidebar + position.navigation).toBeGreaterThan(0);
+    await link.click();
+    await expect(page).toHaveURL(new RegExp(`page=${target}`));
+    await expectPosition(position);
+    return position;
+  };
+  await follow('terms');
+  const position = await follow('group-assignments');
+  await page.goBack();
+  await expect(page).toHaveURL(/page=terms/);
+  await expectPosition(position);
+  await page.goForward();
+  await expect(page).toHaveURL(/page=group-assignments/);
+  await expectPosition(position);
+});
+
 test("Req 1–5: reset through email, view your profile and inbox, and sign out", async ({ page }) => {
   await page.goto(baseURL);
   await page.getByRole("link", { name: /forgot password/i }).click();
@@ -203,6 +234,65 @@ test("Req 6–10: student directory finds the matching profile and changes the a
   await expect(details.getByRole("button", { name: "Activate account" })).toBeVisible();
   await details.getByRole("button", { name: "Activate account" }).click();
   await expect(details.getByRole("button", { name: "Deactivate account" })).toBeVisible();
+});
+
+test("Academic terms group browsing and editing, validate fields and retain failed saves", async ({ page }) => {
+  test.setTimeout(90_000);
+  const response = await page.request.post(baseURL + '/api/identity/login', { data: { email: 'regression@guc.edu.eg', password } });
+  const session = await response.json();
+  await page.addInitScript(token => { localStorage.setItem('bobos.token', token); localStorage.setItem('portal-account-role', 'administrator'); }, session.token);
+  await page.goto(baseURL + '/portal-studio/index.html?page=terms&role=administrator&preview=live');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Create term', exact: true }).first().click();
+  const form = page.getByRole('dialog', { name: 'Create term', exact: true });
+  await form.getByRole('button', { name: 'Create term', exact: true }).click();
+  await expect(form.getByRole('alert')).toHaveText('Complete 8 highlighted fields before saving.');
+  await expect(form.getByLabel('Term start', { exact: true })).toBeFocused();
+  const values = { termStart: '2093-02-01', termEnd: '2093-07-01', teachingStart: '2093-02-07', teachingEnd: '2093-06-20', registrationStart: '2093-01-01', registrationEnd: '2093-01-25', advisingDeadline: '2093-02-06', wholeScheduleSwapDeadline: '2093-02-10' };
+  await form.getByLabel('Academic year', { exact: true }).fill('2093/2094');
+  for (const [name, value] of Object.entries(values)) await form.locator(`input[name="${name}"]`).fill(value);
+  await form.getByLabel('Teaching end', { exact: true }).fill('2093-08-01');
+  await form.getByRole('button', { name: 'Create term', exact: true }).click();
+  await expect(form.getByText('Teaching must end on or before term end.', { exact: true })).toBeVisible();
+  await form.getByLabel('Teaching end', { exact: true }).fill(values.teachingEnd);
+  const endpoint = '**/api/academic-terms/academicTerm';
+  await page.route(endpoint, route => route.request().method() === 'POST' ? route.fulfill({status:503,json:{message:'Unavailable'}}) : route.continue());
+  await form.getByRole('button', { name: 'Create term', exact: true }).click();
+  await expect(form.getByRole('alert')).toHaveText('Could not save the term. Your entries are kept. Please try again.');
+  await expect(form.getByLabel('Term start', { exact: true })).toHaveValue(values.termStart);
+  await page.unroute(endpoint);
+  await page.route(endpoint, route => route.request().method() === 'POST' ? route.fulfill({status:409,json:{message:'Already exists'}}) : route.continue());
+  await form.getByRole('button', { name: 'Create term', exact: true }).click();
+  await expect(form.getByRole('alert')).toHaveText('This academic year and season already exist. Edit that term or choose a different season.');
+  await page.unroute(endpoint);
+  await form.getByRole('button', { name: 'Create term', exact: true }).click();
+  await expect(form).toHaveCount(0);
+  const register = page.getByRole('table', { name: 'Academic terms', exact: true });
+  await expect(register.getByRole('row', { name: /Spring 2093\/2094/ })).toBeVisible();
+  await page.getByLabel('Find a term').fill('no-such-term');
+  await expect(page.getByRole('heading', { name: 'No matching terms' })).toBeVisible();
+  await page.getByRole('button', { name: 'Clear filters', exact: true }).click();
+  await page.getByLabel('Status', { exact: true }).selectOption('active');
+  await expect(register.getByRole('row', { name: /Spring 2093\/2094/ })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Clear filters', exact: true }).click();
+  await register.getByRole('button', { name: 'Edit Spring 2093/2094', exact: true }).click();
+  const edit = page.getByRole('dialog', { name: 'Edit term', exact: true });
+  await expect(edit.getByLabel('Term start', { exact: true })).toHaveValue(values.termStart);
+  await edit.getByLabel('Academic year', { exact: true }).fill('2095/2096');
+  await edit.getByRole('button', { name: 'Save changes', exact: true }).click();
+  await expect(edit).toHaveCount(0);
+  await expect(register.getByRole('row', { name: /Spring 2095\/2096/ })).toBeVisible();
+  await page.getByRole('button', { name: 'Record standing', exact: true }).click();
+  const standing = page.getByRole('dialog', { name: 'Record semester standing' });
+  await standing.getByRole('button', { name: /Save standing/ }).click();
+  await expect(standing.getByText('Enter the student ID.', { exact: true })).toBeVisible();
+  await expect(standing.getByText('Choose a standing.', { exact: true })).toBeVisible();
+  await expect(standing.getByLabel('Student ID', { exact: true })).toBeFocused();
+  await standing.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await page.setViewportSize({width:390,height:844});
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
+  const dates = register.locator('td:nth-child(2)').first();
+  expect((await dates.boundingBox()).height).toBeLessThan(50);
 });
 
 test("Calendar commits both controlled financial filters and Cancel preserves them", async ({ page }) => {
@@ -367,8 +457,8 @@ test("retired Portal paths cannot serve design studies or alternate workflow scr
 
   await nav.getByRole("link", { name: "Academic terms", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Academic terms", exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Create term", exact: true }).click();
-  const termEditor = page.getByRole("dialog", { name: "Create academic term" });
+  await page.getByRole("button", { name: "Create term", exact: true }).first().click();
+  const termEditor = page.getByRole("dialog", { name: "Create term", exact: true });
   try {
     await termEditor.getByLabel("Academic year").fill("2041/2042");
     await termEditor.getByLabel("Season").selectOption("winter");
@@ -376,18 +466,17 @@ test("retired Portal paths cannot serve design studies or alternate workflow scr
       ["Term start", "2041-09-01"], ["Term end", "2042-01-31"],
       ["Teaching start", "2041-09-10"], ["Teaching end", "2042-01-15"],
       ["Registration start", "2041-08-15"], ["Registration end", "2041-08-31"],
-      ["Advising deadline", "2041-09-15"], ["Whole schedule swap deadline", "2041-09-20"],
+      ["Advising deadline", "2041-09-15"], ["Whole-schedule swap deadline", "2041-09-20"],
     ]) await termEditor.getByLabel(new RegExp(`^${label}$`, "i")).fill(date);
     await termEditor.getByRole("button", { name: "Create term" }).click();
     await expect(termEditor).toHaveCount(0);
-    await expect(page.getByRole("heading", { name: "Dates and deadlines" })).toBeVisible();
-    await expect(page.getByText("Inactive term", { exact: true })).toBeVisible();
-
-    await page.getByRole("button", { name: "Edit term", exact: true }).click();
-    const editTerm = page.getByRole("dialog", { name: "Edit academic term" });
+    const termRow = page.getByRole("row", { name: /Winter 2041\/2042/ });
+    await expect(termRow.getByText("Inactive", { exact: true })).toBeVisible();
+    await termRow.getByRole("button", { name: "Edit Winter 2041/2042" }).click();
+    const editTerm = page.getByRole("dialog", { name: "Edit term", exact: true });
     await expect(editTerm.getByLabel("Academic year")).toHaveValue("2041/2042");
     await editTerm.getByLabel("Advising deadline").fill("2041-09-16");
-    await editTerm.getByRole("button", { name: "Update term" }).click();
+    await editTerm.getByRole("button", { name: "Save changes" }).click();
     await expect(editTerm).toHaveCount(0);
     expect((await AcademicTerm.findOne({ code: "winter-20412042" })).advisingDeadline.toISOString()).toContain("2041-09-16");
   } finally {
