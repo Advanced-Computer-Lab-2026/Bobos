@@ -31,6 +31,7 @@ const workspaceAccountNameKey = 'portal-account-name';
 let liveStudent = { token: null, loading: false, error: '', data: null };
 let liveProfile;
 let liveInbox;
+let coordinatorSchedules;
 let liveAdvisor;
 const previewEmail = 'demo@portal.test';
 const signedIn = () => Boolean(localStorage.getItem(workspaceSessionKey));
@@ -60,14 +61,30 @@ async function accountRequest(path, token, method = 'GET') {
 
 function loadAccountData(refresh) {
   const token = localStorage.getItem(workspaceSessionKey);
-  if (!token || authPages.has(page)) { liveProfile = liveInbox = liveAdvisor = termDirectory = undefined; return; }
-  if (page === 'overview' && termDirectory?.token !== token) {
+  if (!token || authPages.has(page)) { liveProfile = liveInbox = liveAdvisor = termDirectory = coordinatorSchedules = undefined; return; }
+  if ((page === 'overview' || role === 'coordinator') && termDirectory?.token !== token) {
     const state = termDirectory = {token};
     accountRequest('academic-terms', token).then(data => {
       if (termDirectory !== state) return;
       state.data = data;
       if (page === 'overview') render();
-    }).catch(() => {});
+      else updateSidebarTerm();
+    }).catch(() => { if (termDirectory === state) { state.error = true; updateSidebarTerm(); } });
+  }
+  if (role === 'coordinator' && page === 'overview' && (refresh || coordinatorSchedules?.token !== token)) {
+    const state = coordinatorSchedules = {token};
+    accountRequest('schedules/students', token).then(data => { state.data = data; })
+      .catch(error => {
+        if (error.status === 404 && error.message.startsWith('No active academic term')) state.noTerm = true;
+        else state.error = error.message;
+      }).finally(() => {
+        if (coordinatorSchedules !== state || page !== 'overview') return;
+        const region = document.querySelector('[data-schedule-folders]');
+        if (region) {
+          region.innerHTML = scheduleReviewFiles();
+          region.dispatchEvent(new Event('schedule-folders-loaded', {bubbles:true}));
+        }
+      });
   }
   if (page === 'profile' && (refresh || liveProfile?.token !== token)) {
     const state = liveProfile = {token};
@@ -303,7 +320,7 @@ function calendarPage() {
 function deskCalendar() {
   const month = calendarDates().month.getMonth();
   return `<section class="desk-calendar teaching-pad${studentDashboard()?' student-overview-calendar':''}" aria-label="Academic calendar"
-    data-calendar-style="bellows" data-concertina="true" data-sketch="false" data-season-month="${month}"
+    data-calendar-style="bellows" data-concertina="true" ${role === 'coordinator' ? 'data-face-on' : ''} data-sketch="false" data-season-month="${month}"
     style="--season-sheet:${seasonalPaper[month][0]};--season-back:${seasonalPaper[month][1]}">
     <header class="calendar-heading"><h2 id="academic-calendar">Academic calendar</h2>${studentDashboard()?link('calendar-sync',icon('calendar')+'Calendar sync','btn calendar-sync-link'):''}</header>
     <div class="binder-body"><div class="calendar-feature">${binderRow('feet')}</div>
@@ -319,7 +336,7 @@ function workQueue(tasks) {
     <li class="queue-entry" data-tone="${tone}" data-icon="${symbol}" data-current="${index===0}">
       <span class="queue-icon">${queueIcon(symbol)}${queueSketch(symbol)}</span>
       <div class="queue-copy"><strong>${count == null ? '' : count + ' '}${phrase}</strong><p>${desc}</p></div>
-      ${link(target,cta+icon('chevron'),'queue-link')}
+      ${role === 'coordinator' ? `<a class="queue-link" href="${href(target)}" data-page="${target}" aria-label="${cta}: ${phrase}">${cta}${icon('chevron')}</a>` : link(target,cta+icon('chevron'),'queue-link')}
     </li>`).join('');
   const list = `<div class="queue-designer" data-direction="illustrated"><div class="queue-stage"><ul class="queue-entries" role="list">${entries}</ul></div></div>`;
   return list;
@@ -397,7 +414,6 @@ function sidebar(){
     <div class="brand">${link('overview',portalWordmark(),'wordmark')}<span>Academic workspace</span></div>
     <nav aria-label="Main navigation">${groups().map(([name,items],groupIndex)=>{
       const contents = `<ul>${items.map(id => {
-        if (id === 'extra-hours') return `<li>${navigationLink(id,`<span>${navigationLabel(id)}</span>`,'navlink')}</li>`;
         const current = page === id || parent[page] === id;
         return `<li><a class="navlink${current ? ' active' : ''}" href="${href(id)}" data-page="${id}" ${current ? 'aria-current="page"' : ''}>${study && groupIndex===0 ? icon(id==='overview'?'home':'inbox') : ''}<span>${navigationLabel(id)}</span></a></li>`;
       }).join('')}</ul>`;
@@ -408,7 +424,7 @@ function sidebar(){
       const isOpen = groupIndex === 0 || items.includes(page) || items.includes(parent[page]);
       return `<details class="navgroup" ${isOpen?'open':''}><summary>${icon(sectionIcons[groupIndex])}<span>${name}</span>${icon('down')}</summary>${contents}</details>`;
     }).join('')}</nav>
-    <div class="sidebar-foot"><span class="term-dot"></span><span>${escapeHtml(displayTerm(currentAcademicTerm()))}<span class="side-sub">German University in Cairo</span></span></div>
+    <div class="sidebar-foot"><span class="term-dot"></span><span>${role === 'coordinator' ? `<span data-sidebar-term>${escapeHtml(sidebarTerm())}</span>` : escapeHtml(displayTerm(currentAcademicTerm()))}<span class="side-sub">German University in Cairo</span></span></div>
   </aside>`;
 }
 
@@ -471,12 +487,40 @@ function workspaceSection(title, target, label, content, actionStyle='quiet-link
   return `<div class="section-head"><h2>${title}</h2>${link(target,label,actionStyle)}</div>${content}`;
 }
 
+const desktopFolder = '<svg class="desktop-folder" viewBox="0 0 96 72" aria-hidden="true"><path fill="#bdbaaf" d="M5 15q0-6 6-6h22l8 7h43q6 0 6 6v39H5z"/><g class="folder-sheet"><path class="folder-leaf-edge" fill="#fffdf6" stroke="#b8b4a7" stroke-width=".85" d="M12 21Q45 19 82 20L84 59Q50 60 11 60Z"/><path class="folder-writing" stroke="#989383" fill="none" stroke-linecap="round" stroke-width="1.65" d="M19 27q13-.6 35 0m-35 5q16-.8 48 0"/><path class="folder-third" stroke="#aaa396" fill="none" stroke-linecap="round" stroke-width="1.4" d="M19 36.7q11-.4 24 .1"/></g><path class="folder-cover" fill="var(--console-ivory,#f0eee6)" stroke="#c7c3b7" d="M5 31q0-5 5-5h75q5 0 5 5l-2 28q0 5-5 5H12q-5 0-5-5z"/></svg>';
+function scheduleReviewFiles() {
+  const state = coordinatorSchedules;
+  if (state?.error) return `<div class="review-placeholder" role="alert"><p>${escapeHtml(state.error)}</p>${button('Try again','retry-schedule-review','btn')}</div>`;
+  if (state?.noTerm) return `<div class="review-placeholder">${desktopFolder}<p>There is no active semester for schedule review.</p></div>`;
+  if (!state?.data) return '<p class="review-placeholder" role="status">Loading student folders…</p>';
+  const statuses = { readyForStudentReview: 'Ready for student review', draft: 'Draft' };
+  const priority = ['readyForStudentReview','draft',null];
+  const students = state.data.students.filter(s => s.isActive && s.studentType === 'advising' && s.scheduleStatus !== 'processed')
+    .sort((a,b) => priority.indexOf(a.scheduleStatus) - priority.indexOf(b.scheduleStatus)).slice(0,6);
+  if (!students.length) return `<div class="review-placeholder">${desktopFolder}<p>No advising schedules need work this term.</p></div>`;
+  return `<div class="draft-index">${students.map(s => {
+    const url = new URL(href('student-schedules'), location.href);
+    url.searchParams.set('student', s._id);
+    url.searchParams.set('term', state.data.term.code);
+    const label = statuses[s.scheduleStatus] || 'Not started';
+    return `<a class="draft-file" href="${escapeHtml(url.search)}" data-page="student-schedules">${desktopFolder}<strong>${escapeHtml(s.fullName || s.studentId)}</strong><small>${label} · <span class="folder-student-id">${escapeHtml(s.studentId)}</span></small></a>`;
+  }).join('')}</div>`;
+}
+
+function sidebarTerm() {
+  if (!termDirectory?.data) return termDirectory?.error ? 'Semester unavailable' : 'Loading semester…';
+  return displayTerm(currentAcademicTerm()) || 'No active semester';
+}
+function updateSidebarTerm() {
+  document.querySelectorAll('[data-sidebar-term]').forEach(label => { label.textContent = sidebarTerm(); });
+}
+
 function overview(){
   if(student()) return studentOverview();
   const queueDestination = role==='coordinator' ? 'pending-work' : role==='advisor' ? 'advising' : 'courses';
   const queueLabel = role==='coordinator' ? 'All work' : role==='advisor' ? 'Advising students' : 'Course catalogue';
-  const reviewFiles = `<div class="draft-index">${link('student-schedules',
-    `<svg class="desktop-folder" viewBox="0 0 96 72" aria-hidden="true"><path fill="#bdbaaf" d="M5 15q0-6 6-6h22l8 7h43q6 0 6 6v39H5z"/><g class="folder-sheet"><path class="folder-leaf-edge" fill="#fffdf6" stroke="#b8b4a7" stroke-width=".85" d="M12 21Q45 19 82 20L84 59Q50 60 11 60Z"/><path class="folder-writing" stroke="#989383" fill="none" stroke-linecap="round" stroke-width="1.65" d="M19 27q13-.6 35 0m-35 5q16-.8 48 0"/><path class="folder-third" stroke="#aaa396" fill="none" stroke-linecap="round" stroke-width="1.4" d="M19 36.7q11-.4 24 .1"/></g><path class="folder-cover" fill="var(--console-ivory,#f0eee6)" stroke="#c7c3b7" d="M5 31q0-5 5-5h75q5 0 5 5l-2 28q0 5-5 5H12q-5 0-5-5z"/></svg><strong>Student schedules</strong><small>Open schedules and drafts</small>`, 'draft-file')}</div>`;
+  const reviewFiles = role === 'coordinator' ? `<div data-schedule-folders aria-live="polite">${scheduleReviewFiles()}</div>` :
+    `<div class="draft-index">${link('student-schedules', desktopFolder + '<strong>Student schedules</strong><small>Open schedules and drafts</small>', 'draft-file')}</div>`;
   const removalsTask = ['course-removal','rose',null,'Course removals','Course removal requests','Credit load and scheduling decisions','mandatory-removals','Review'];
   const tasks = role==='coordinator' ? [
     removalsTask,
@@ -493,7 +537,7 @@ function overview(){
     columns: '1.5fr 1fr',
     rows: ['intro intro', 'queue queue', 'review calendar'],
   }, {
-    intro: head(studyGreeting(), termContext(`${roleNames[role]} workspace`)),
+    intro: head(studyGreeting(), role === 'coordinator' ? 'Coordinator workspace' : termContext(`${roleNames[role]} workspace`)),
     queue: workspaceSection('Work queue', queueDestination, queueLabel, workQueue(tasks)),
     review: workspaceSection('Schedule review', 'student-schedules', 'All schedules', reviewFiles),
     calendar: deskCalendar(),
@@ -636,7 +680,7 @@ function notifications(){
           ${isUnread ? button('Mark as read','read-one','btn desk-action', `data-notification="${id}"`) : '<small>Read</small>'}
         </div>
       </article>`;
-    }).join('')}</div>` : '<div class="empty"><h2>You’re all caught up.</h2><p>No unread notifications.</p></div>'))+'</section>';
+    }).join('')}</div>` : `<div class="empty">${role === 'coordinator' ? notificationScenes('tube',false) : ''}<h2>You’re all caught up.</h2><p>${tab === 'unread' ? 'No unread notifications.' : 'No notifications yet.'}</p></div>`))+'</section>';
 }
 
 async function markPortalNotifications(ids, control) {
@@ -1175,16 +1219,19 @@ function stageOverview(main){
   function reveal(el,order,scroll){
     const {kind,index}=units.get(el);
     el.removeAttribute('data-arriving');
-    const key=role+'-'+kind+'-'+index;
+    const key=kind==='folder' ? el.href : role+'-'+kind+'-'+index;
     if(revealedOverviewItems.has(key) || el.matches(':focus-within')) return;
-    revealedOverviewItems.add(key);
     if(kind==='folder'){
       el.style.setProperty('--folder-duration',`${590+index*24}ms`);
       el.dataset.paperReveal='folder';
       const label=el.querySelector('strong');
-      label.addEventListener('animationend',()=>finishArrival(el),{once:true});
+      label.addEventListener('animationend',()=>{
+        revealedOverviewItems.add(key);
+        finishArrival(el);
+      },{once:true});
       return;
     }
+    revealedOverviewItems.add(key);
     if(kind==='empty'){
       if(opening || scroll){
         el.classList.add('coffee-wait');
@@ -1220,12 +1267,22 @@ function stageOverview(main){
     });
   });
   let order=0;
-  for(const [el,{kind,index}] of units){
+  function stageUnit(el,{kind,index}){
+    const key=kind==='folder' ? el.href : role+'-'+kind+'-'+index;
+    if(revealedOverviewItems.has(key)) return;
     const rect=el.getBoundingClientRect();
-    if(revealedOverviewItems.has(role+'-'+kind+'-'+index)) continue;
     if(kind==='chrome'||(rect.top<innerHeight && rect.bottom>0)) reveal(el,order++,false);
     else {el.setAttribute('data-arriving','');arrivalObserver.observe(el);}
   }
+  units.forEach((unit,el)=>stageUnit(el,unit));
+  main.addEventListener('schedule-folders-loaded',event=>{
+    if(motionPreference.matches) return;
+    event.target.querySelectorAll('.draft-file').forEach((el,index)=>{
+      const unit={kind:'folder',index};
+      units.set(el,unit);
+      stageUnit(el,unit);
+    });
+  });
   if(opening) shell.querySelectorAll('.study-nav-group').forEach((group,i)=>{
     group.querySelectorAll('a').forEach((link,j)=>{
       link.animate([
@@ -1271,6 +1328,7 @@ function render(focus=false){
     history.replaceState(history.state,'',href(page));
   }
   const pageLabel = navigationLabel(page);
+  document.body.dataset.portalRole = authPages.has(page) ? '' : role;
   document.title = `Portal · ${pageLabel}`;
   document.body.classList.toggle('auth-screen',authPages.has(page));
   const body=authPages.has(page)?auth():`<div class="shell">${sidebar()}<div class="workspace"><header class="topbar">${link('overview',portalWordmark(),'mobile-nav wordmark')}<span class="term">${workspaces[lab.layout].name==='Claude Study'?'<small class="study-crumb">Academic workspace &nbsp; / &nbsp;</small>':''}${pageLabel}<span>${escapeHtml(displayTerm(currentAcademicTerm()))}</span></span><div class="topactions">${button(icon('menu')+'<span class="sr-only">Menu</span>','mobile-menu','mobile-menu')}${themeControl()}${accountControls()}</div></header><main class="content" data-screen="${page}" id="content" tabindex="-1">${renderers[page]()}</main></div></div>`;
@@ -1289,7 +1347,7 @@ function render(focus=false){
   const service = app.querySelector('[data-portal-service]');
   if (service) mountPortalService(service);
   observeNotificationPlate(app.querySelector('.notification-plate'));
-  drawInputEdges(app);
+  if (document.body.dataset.portalRole !== 'coordinator') drawInputEdges(app);
   const main = app.querySelector('main');
   if (main && !authPages.has(page)) {
     window.addStudentArt?.(page,main,role);
@@ -1388,7 +1446,7 @@ function modal(title,content,submit='Save changes',action='save-modal'){
   // Keep all form controls inside the form so native validation works.
   const fields=dialog.querySelectorAll(':scope > .modal-fields');
   fields.forEach(el=>dialog.querySelector('#modal-fields').replaceWith(el));
-  drawInputEdges(dialog);
+  if (document.body.dataset.portalRole !== 'coordinator') drawInputEdges(dialog);
   dialog.showModal();
 }
 function fields(content){return `<div class="modal-fields">${content}</div>`;}
@@ -1426,12 +1484,14 @@ function action(name,el){
       navigate('login');
       break;
     case 'quick-find':modal('Find a page',fields('<label>Search pages<input id="page-finder" type="search" placeholder="Schedule, students, courses…" autofocus></label>')+`<nav class="page-results">${groups().flatMap(([,ids])=>ids).map(id=>navigationLink(id,navigationLabel(id),'navlink')).join('')}</nav>`,'Close','close');break;
+    case 'retry-schedule-review': coordinatorSchedules = undefined; render(); break;
     case 'mobile-menu': {
       const sections = [...groups(), ['Account', ['profile']]];
       const menu = sections.map(([name,items])=>`<section><h3>${name}</h3><ul>${items.map(id=>
         `<li><a href="${href(id)}" data-page="${id}"${id===page?' aria-current="page"':''}>${navigationLabel(id)}</a></li>`
       ).join('')}</ul></section>`).join('');
-      modal('Menu',`<nav class="workspace-menu" aria-label="Main navigation">${menu}</nav>`,null,'navigation');
+      const semester = role === 'coordinator' ? `<p class="menu-semester">Current semester · <span data-sidebar-term>${escapeHtml(sidebarTerm())}</span></p>` : '';
+      modal('Menu',`<nav class="workspace-menu" aria-label="Main navigation">${semester}${menu}</nav>`,null,'navigation');
       break;
     }
     case 'read-all':void markPortalNotifications(notificationEntries().map(([id]) => id).filter(isNotificationUnread), el);break;

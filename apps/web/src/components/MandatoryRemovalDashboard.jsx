@@ -1,3 +1,6 @@
+import FilterDisclosure from "./FilterDisclosure.jsx";
+import PortalAvatar from "./PortalAvatar.jsx";
+import OfferingCourseIcon from "./OfferingCourseIcon.jsx";
 import { termLabel } from "../term-label.js";
 import { useCallback, useEffect, useState } from "react";
 import { api, explainApiError } from "../api.js";
@@ -154,6 +157,14 @@ export default function MandatoryRemovalDashboard({ token, role, notify }) {
   const canDecide = ["coordinator", "administrator"].includes(role);
   const canRequest = ["advisor", "coordinator", "administrator"].includes(role);
 
+  const filterChips = [
+    advisorFilter && {key:"advisor", label:advisors.find(advisor => advisor._id === advisorFilter)?.fullName || "Advisor", onRemove:() => setAdvisorFilter("")},
+    statusFilter && {key:"status", label:STATUS_OPTIONS.find(option => option.value === statusFilter)?.label, onRemove:() => setStatusFilter("")},
+    dateFrom && {key:"from", label:`From ${dateFrom}`, onRemove:() => setDateFrom("")},
+    dateTo && {key:"to", label:`Through ${dateTo}`, onRemove:() => setDateTo("")},
+  ].filter(Boolean);
+  const filtered = Boolean(search.trim() || filterChips.length);
+
   return (
     <div className="page-stack workspace-page removal-page">
       <div className="workspace-header">
@@ -180,8 +191,7 @@ export default function MandatoryRemovalDashboard({ token, role, notify }) {
       </div>
 
       <section className="panel directory-filters">
-        <div className="filter-grid">
-          <label className="field span-two">
+        <FilterDisclosure search={<label className="field filter-search">
             <span>Search student, ID, course, or advisor</span>
             <input
               type="search"
@@ -191,8 +201,8 @@ export default function MandatoryRemovalDashboard({ token, role, notify }) {
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Student ID, course or advisor…"
             />
-          </label>
-
+          </label>} chips={filterChips} onClear={clearFilters}>
+        <div className="filter-grid">
           <label className="field">
             <span>Advisor</span>
             <select
@@ -227,6 +237,7 @@ export default function MandatoryRemovalDashboard({ token, role, notify }) {
             <input
               type="date"
               value={dateFrom}
+              max={dateTo || undefined}
               onChange={(e) => setDateFrom(e.target.value)}
             />
           </label>
@@ -236,16 +247,13 @@ export default function MandatoryRemovalDashboard({ token, role, notify }) {
             <input
               type="date"
               value={dateTo}
+              min={dateFrom || undefined}
               onChange={(e) => setDateTo(e.target.value)}
             />
           </label>
         </div>
 
-        <div className="form-actions" style={{ marginTop: "12px", display: "flex", gap: "8px" }}>
-          <button className="outline-button" type="button" onClick={clearFilters}>
-            Clear filters
-          </button>
-        </div>
+        </FilterDisclosure>
       </section>
 
       {error && <div className="feedback error" role="alert">{error}</div>}
@@ -266,7 +274,7 @@ export default function MandatoryRemovalDashboard({ token, role, notify }) {
             Loading removal requests…
           </div>
         ) : requests.length === 0 ? (
-          <WorkspaceEmpty icon="document" title="No removal requests" description="Submitted requests will appear here for review. If you have filters applied, clear them to see all requests." />
+          <WorkspaceEmpty icon="document" title={filtered ? "No matching removal requests" : "No removal requests"} description={filtered ? "Try another student, course or advisor." : "Mandatory course removal requests will appear here for review."} action={filtered && <button className="outline-button" type="button" onClick={clearFilters}>Clear filters</button>} />
         ) : (
           <div className="table-scroll">
             <table>
@@ -302,12 +310,10 @@ export default function MandatoryRemovalDashboard({ token, role, notify }) {
                   return (
                     <tr key={item._id}>
                       <td>
-                        <strong>{studentName}</strong>
-                        <span className="secondary-text">{studentId}</span>
+                        <div className="portal-person-cell"><PortalAvatar name={studentName}/><div><strong>{studentName}</strong><span className="secondary-text">{studentId}</span></div></div>
                       </td>
                       <td>
-                        <strong>{courseCode}</strong>
-                        {courseName && <span className="secondary-text">{courseName}</span>}
+                        <div className="portal-person-cell"><OfferingCourseIcon code={courseCode}/><div><strong>{courseCode}</strong>{courseName && <span className="secondary-text">{courseName}</span>}</div></div>
                       </td>
                       <td>{termCode}</td>
                       <td>{advisorName}</td>

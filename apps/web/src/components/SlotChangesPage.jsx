@@ -1,3 +1,5 @@
+import PortalAvatar from "./PortalAvatar.jsx";
+import OfferingCourseIcon from "./OfferingCourseIcon.jsx";
 import { termLabel } from "../term-label.js";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api.js";
@@ -34,6 +36,7 @@ export default function SlotChangesPage({ token, role, onOpenSchedule }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const pageRef = useRef(null);
   const heading = useRef(null);
   const studentRequestHeading = useRef(null);
   const load = useCallback((signal) => api(mine ? `${path}/me` : path, { token, signal }), [mine, token]);
@@ -92,7 +95,7 @@ export default function SlotChangesPage({ token, role, onOpenSchedule }) {
   const eligibleSlots = (data?.slots || []).filter((slot) => !requests.some((request) =>
     request.status === "pending" && request.course?._id === slot.courseId && request.componentType === slot.type));
 
-  return <div className="page-stack scheduling-page slot-changes-page workspace-page">
+  return <div className="page-stack scheduling-page slot-changes-page workspace-page" ref={pageRef}>
     <div className="workspace-header"><div><h1>Slot change requests</h1>
       <p>{mine ? "Ask your advising team to change an assigned lecture, tutorial, or lab." : "Review advising students’ requests and compare replacement slots."}</p></div>
       {mine && <button type="button" className="outline-button" onClick={onOpenSchedule}>My schedule</button>}
@@ -136,8 +139,8 @@ export default function SlotChangesPage({ token, role, onOpenSchedule }) {
       {shown.length ? <div className="table-scroll"><table>
         <thead><tr>{!mine && <th>Student</th>}<th>Course and slot</th><th>Submitted</th><th>Status</th>{!mine && <th>Action</th>}{mine && <th>Details</th>}</tr></thead>
         <tbody>{shown.map((item) => <tr key={item._id}>
-          {!mine && <td><strong>{item.student?.user?.fullName}</strong><span className="secondary-text">{item.student?.studentId} · {item.student?.assignedAdvisor?.fullName || "Unassigned"}</span></td>}
-          <td><strong>{item.course?.code} · {item.componentType}</strong><span className="secondary-text">{item.currentSlotLabel || item.course?.name}</span></td>
+          {!mine && <td><div className="portal-person-cell"><PortalAvatar name={item.student?.user?.fullName}/><div><strong>{item.student?.user?.fullName}</strong><span className="secondary-text">{item.student?.studentId} · {item.student?.assignedAdvisor?.fullName || "Unassigned"}</span></div></div></td>}
+          <td><div className="portal-person-cell"><OfferingCourseIcon code={item.course?.code}/><div><strong>{item.course?.code} · {item.componentType}</strong><span className="secondary-text">{item.currentSlotLabel || item.course?.name}</span></div></div></td>
           <td>{date(item.createdAt)}<span className="secondary-text">{termLabel(item.term)}</span></td>
           <td><Status status={item.status} /></td>
           {!mine && <td><button type="button" className="text-button" disabled={busy} id={`slot-request-${item._id}`} aria-label={`View request for ${item.student?.studentId}, ${item.course?.code}`} onClick={() => open(item._id)}>View request</button></td>}
@@ -146,18 +149,18 @@ export default function SlotChangesPage({ token, role, onOpenSchedule }) {
             requestAnimationFrame(() => studentRequestHeading.current?.focus());
           }}>View details</button></td>}
         </tr>)}</tbody>
-      </table></div> : <WorkspaceEmpty icon="calendar" title={requests.length ? "No matching requests" : "No slot-change requests"} description={requests.length ? "Try another student or course, or clear your filters to see all requests." : mine ? "Requests you submit for a different lecture, tutorial or lab will appear here." : "Students’ slot-change requests will appear here with their current slot and preferences."} />}
+      </table></div> : <WorkspaceEmpty icon="calendar" action={requests.length > 0 && <button type="button" className="outline-button" onClick={() => setFilters(emptyFilters)}>Clear filters</button>} title={requests.length ? "No matching requests" : "No slot-change requests"} description={requests.length ? "Try another student or course, or clear your filters to see all requests." : mine ? "Requests you submit for a different lecture, tutorial or lab will appear here." : "Students’ slot-change requests will appear here with their current slot and preferences."} />}
     </section>}
     {selectedRequest && <div className="modal-backdrop slot-request-modal-backdrop" role="presentation" onClick={() => {
       const id = selectedRequestId;
       setSelectedRequestId(null);
-      requestAnimationFrame(() => document.getElementById(`student-slot-request-${id}`)?.focus());
+      requestAnimationFrame(() => pageRef.current?.getRootNode().getElementById(`student-slot-request-${id}`)?.focus());
     }}>
       <section className="modal-card wide-modal slot-request-card" role="dialog" aria-modal="true" aria-labelledby="student-slot-request-title" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => {
         if (event.key === "Escape") {
           const id = selectedRequestId;
           setSelectedRequestId(null);
-          requestAnimationFrame(() => document.getElementById(`student-slot-request-${id}`)?.focus());
+          requestAnimationFrame(() => pageRef.current?.getRootNode().getElementById(`student-slot-request-${id}`)?.focus());
         }
       }}>
         <div className="modal-heading">
@@ -165,7 +168,7 @@ export default function SlotChangesPage({ token, role, onOpenSchedule }) {
           <div className="slot-request-dialog-status"><Status status={selectedRequest.status} /><button type="button" className="icon-button" aria-label="Close request details" onClick={() => {
             const id = selectedRequestId;
             setSelectedRequestId(null);
-            requestAnimationFrame(() => document.getElementById(`student-slot-request-${id}`)?.focus());
+            requestAnimationFrame(() => pageRef.current?.getRootNode().getElementById(`student-slot-request-${id}`)?.focus());
           }}>×</button></div>
         </div>
         <p className="slot-request-submitted">Submitted {date(selectedRequest.createdAt)}</p>
@@ -186,7 +189,7 @@ export default function SlotChangesPage({ token, role, onOpenSchedule }) {
     {currentRequest && <section className="panel form-stack">
       <div className="form-actions"><button type="button" className="outline-button" disabled={busy} onClick={() => {
         setDetail(null); setError(""); setMessage("");
-        requestAnimationFrame(() => document.getElementById(`slot-request-${currentRequest._id}`)?.focus());
+        requestAnimationFrame(() => pageRef.current?.getRootNode().getElementById(`slot-request-${currentRequest._id}`)?.focus());
       }}>Back to requests</button></div>
       <div className="results-heading"><div>
         <h2 ref={heading} tabIndex={-1}>{currentRequest.course?.code} · {currentRequest.componentType}</h2>
@@ -207,6 +210,7 @@ export default function SlotChangesPage({ token, role, onOpenSchedule }) {
           {!detail.issue && !detail.alternatives.length && <p className="helper-text">No alternative slots are published for this component.</p>}
           {detail.alternatives.map((slot) => <label className="slot-alternative" key={slot.slotId} onDoubleClick={(event) => {
             event.preventDefault();
+            if (busy || !slot.remainingSeats || slot.clashes.length) return;
             setReplacement((selected) => selected === slot.slotId ? "" : selected);
           }}>
             <input type="radio" name="replacement" value={slot.slotId} checked={replacementSlotId === slot.slotId} onChange={() => setReplacement(slot.slotId)} disabled={busy || !slot.remainingSeats || !!slot.clashes.length} />

@@ -12,6 +12,7 @@
     "seed:advising-manual": "node --env-file-if-exists=../../.env src/seed/advising-manual.js",
     "seed:b1": "node --env-file-if-exists=../../.env src/seed/b1.js",
     "seed:evaluation": "node --env-file-if-exists=../../.env src/seed/evaluation.js",
+    "seed:coordinator-workspace": "node --env-file-if-exists=../../.env src/seed/coordinator-workspace.js",
     "seed:pending-requests": "node --env-file-if-exists=../../.env src/seed/pending-requests.js",
     "seed:academic-history": "node --env-file-if-exists=../../.env src/seed/academic-history.js",
     "seed:wallet-history": "node --env-file-if-exists=../../.env src/seed/wallet-history.js",

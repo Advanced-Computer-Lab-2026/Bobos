@@ -1,0 +1,108 @@
+/* A working desk of live student folders beneath the coordinator's greeting. */
+body.portal-studio[data-portal-role=coordinator][data-workspace=claude-study] .dashboard-edition[data-edition=teaching] {
+  .page-head, .illustrated-greeting, .page-head p {
+    justify-content: center;
+    text-align: center;
+  }
+  .page-head { min-height: 100px; padding-block: 8px; }
+  .page-head p { margin-top: 9px; }
+  .module-review, .module-calendar { border-top: 0; padding-top: 0; }
+  [data-direction=illustrated] .queue-entries {
+    grid-template-columns: repeat(3,minmax(0,1fr));
+    gap: 12px;
+  }
+  [data-direction=illustrated] .queue-entry {
+    grid-template: "art copy" auto "art action" auto / 54px minmax(0,1fr);
+    align-content: center;
+    align-items: center;
+    gap: 0 12px;
+    min-height: 88px;
+    padding: 10px 12px;
+    border-color: transparent;
+    background: transparent;
+  }
+  .queue-icon { grid-area: art; }
+  .queue-copy { grid-area: copy; }
+  .queue-icon .queue-sketch { width: 54px; }
+  .queue-entry .queue-link { position: static; grid-area: action; min-height: 27px; }
+  .queue-entry:is(:hover, :focus-within) { outline: none; }
+  [data-direction=illustrated] .queue-entry:has(a:hover) { background: var(--raised); border-color: var(--line); }
+  [data-direction=illustrated] .queue-entry:has(a:focus-visible) { outline: 2px solid var(--ink); outline-offset: -2px; }
+  .queue-link:focus-visible { outline: none; }
+  .queue-link::before { display: none; }
+  .draft-index { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 20px 10px; }
+  .draft-file {
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+    gap: 3px; padding: 8px 4px; text-align: center; border-radius: 8px;
+  }
+  .draft-file strong, .draft-file small { align-self: auto; }
+  .draft-file strong { font-size: 14px; }
+  .draft-file small { font-size: 12px; }
+  .folder-student-id { white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .desktop-folder { width: 80px; }
+  .draft-file:hover { background: var(--raised); }
+  .draft-file .folder-cover { transform-origin: 48px 64px; }
+  .draft-file .folder-sheet { transform-origin: 48px 53px; }
+  .draft-file:is(:hover,:focus-visible) .folder-cover { transform: skewX(-4deg) scaleY(.62); }
+  .draft-file:is(:hover,:focus-visible) .folder-sheet { transform: translateY(-14px) rotate(-2deg); }
+  @media (prefers-reduced-motion:no-preference) {
+    /* The folder opens once as it lands, then keeps the original graphite flutter on hover. */
+    .draft-file[data-paper-reveal=folder]:not(:hover,:focus-visible) :is(.folder-cover,.folder-sheet) {
+      animation: var(--folder-opening) calc(var(--folder-duration) / 2) steps(1,end) 2 alternate;
+    }
+    .folder-cover { --folder-opening: coordinator-folder-hinge; }
+    .folder-sheet { --folder-opening: coordinator-sheet-lift; }
+    .draft-file:is(:hover,:focus-visible) .folder-cover { animation-name: coordinator-folder-hinge,folder-contour; }
+    .draft-file:is(:hover,:focus-visible) .folder-sheet { animation-name: coordinator-sheet-lift; }
+  }
+  .binder-body { --binder-plane: none; margin-inline: 2%; }
+  .review-placeholder {
+    display: flex; align-items: center; gap: 14px; margin: 8px 0; color: var(--muted);
+  }
+  .review-placeholder .desktop-folder { width: 60px; }
+  @container workqueue (max-width: 700px) {
+    [data-direction=illustrated] .queue-entries { grid-template-columns: 1fr; gap: 2px; }
+    [data-direction=illustrated] .queue-entry {
+      grid-template: "art copy action" auto / 48px minmax(0,1fr) auto;
+      min-height: 62px; padding: 6px; gap: 10px;
+    }
+  }
+  @media (max-width: 600px) {
+    .draft-index { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    .page-head { min-height: 82px; }
+    .illustrated-greeting { flex-wrap: wrap; }
+  }
+}
+body[data-portal-role=coordinator] {
+  .sidebar nav { flex: 1; min-height: 0; overflow-y: auto; }
+  .sidebar-foot { flex: none; padding-top: 14px; }
+  #notice-results .empty .notification-plate { width: min(220px, 80%); height: auto; margin: 0 auto 16px; }
+  .menu-semester { margin: 0 9px 16px; color: var(--muted); font-size: 13px; }
+  :is(a,button,summary,input,textarea,select,[tabindex="0"]):focus-visible {
+    outline: 2px solid var(--ink); outline-offset: -2px;
+  }
+  #content:focus { outline: none; }
+}
+
+@keyframes coordinator-folder-hinge {
+  0% { transform: none; }
+  10% { transform: scaleY(1.02); }
+  22% { transform: skewX(-1deg) scaleY(.91); }
+  33% { transform: skewX(-2deg) scaleY(.82); }
+  44% { transform: skewX(-3.5deg) scaleY(.7); }
+  56% { transform: skewX(-5deg) scaleY(.57); }
+  70% { transform: skewX(-4.5deg) scaleY(.59); }
+  84%,100% { transform: skewX(-4deg) scaleY(.62); }
+}
+@keyframes coordinator-sheet-lift {
+  0%,8% { transform: none; }
+  16% { transform: translateY(1px) rotate(-.5deg); }
+  24% { transform: translateY(-2px) rotate(-1deg); }
+  33% { transform: translateY(-5px) rotate(-2deg); }
+  41% { transform: translateY(-10px) rotate(-3deg); }
+  49% { transform: translateY(-14px) rotate(-2.5deg); }
+  58% { transform: translateY(-17px) rotate(-1deg); }
+  68% { transform: translateY(-16px) rotate(.3deg); }
+  80% { transform: translateY(-13px) rotate(-.5deg); }
+  92%,100% { transform: translateY(-14px) rotate(-2deg); }
+}

@@ -9,11 +9,11 @@ import { MongoMemoryReplSet } from "mongodb-memory-server";
 import { SMTPServer } from "smtp-server";
 import api from "../../apps/api/src/app.js";
 import { FinancialReversalRequest, FinancialTransaction } from "../../apps/api/src/models/finance.js";
-import { ScheduleTemplate, StudentSchedule } from "../../apps/api/src/models/academics.js";
+import { ScheduleTemplate, SchedulingPreference, StudentSchedule } from "../../apps/api/src/models/academics.js";
 import { AcademicTerm, Course, CourseOffering } from "../../apps/api/src/models/catalogue.js";
-import { Notification } from "../../apps/api/src/models/communications.js";
+import { Notification, ScheduleActivity } from "../../apps/api/src/models/communications.js";
 import { StudentProfile, User } from "../../apps/api/src/models/identity.js";
-import { ExtraHoursRequest } from "../../apps/api/src/models/requests.js";
+import { ExtraHoursRequest, MandatoryCourseRemovalRequest } from "../../apps/api/src/models/requests.js";
 
 let database, server, smtp, baseURL, regressionStudent;
 const messages = [];
@@ -297,7 +297,6 @@ test("Req 29: the old template bookmark opens the live editor and saves to the d
   await signIn(page, coordinator.email, password);
   await expect(page).toHaveURL(/[?&]page=templates(?:&|$)/);
   await page.getByRole("combobox", { name: /academic term/i }).selectOption(term.code);
-  await page.getByRole("button", { name: "Load templates and offerings" }).click();
   await page.getByRole("button", { name: "Edit", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Update schedule template" })).toBeVisible();
   await page.getByLabel("Study group").fill("2");
@@ -457,4 +456,138 @@ test("Req 92, 94, 102, 120: confirm, download and cancel an installment charge t
   await expect(row.getByRole("button", { name: "Cancel charge" })).toHaveCount(0);
   await page.getByRole("link", { name: "Notifications", exact: true }).click();
   await expect(page.getByRole("main")).toContainText("Financial reversal requested");
+});
+
+test("Coordinator schedule folders open the selected student and term across reloads", async ({ page }) => {
+  const term = await auditTerm();
+  const passwordHash = await bcrypt.hash(password, 4);
+  const coordinator = await User.create({ role: "coordinator", email: "folders.coordinator@guc.edu.eg", fullName: "Folder Coordinator", passwordHash });
+  const student = await auditAdvisingStudent({ fullName: "Folder Student", email: "folders.student@student.guc.edu.eg", studentId: "45-00019", passwordHash });
+  await StudentSchedule.create({ student: student._id, term: term._id, scheduleType: "advising", status: "draft", createdBy: coordinator._id });
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.addInitScript(() => {
+    window.folderArrivals = [];
+    document.addEventListener("animationstart", event => {
+      if (event.animationName === "folder-shelve") {
+        window.folderArrivals.push(event.target.closest(".draft-file").href);
+      }
+    });
+  });
+  // Hold the roster until the shell has finished loading its independent account data.
+  let releaseRoster;
+  const rosterGate = new Promise(resolve => { releaseRoster = resolve; });
+  await page.route("**/api/schedules/students", async route => {
+    const response = await route.fetch();
+    await rosterGate;
+    await route.fulfill({ response });
+  });
+  await page.goto(baseURL);
+  await signIn(page, coordinator.email, password);
+  await expect(page.locator("[data-sidebar-term]")).toHaveText("Winter 2030/2031");
+  releaseRoster();
+  const folder = page.getByRole("link", { name: /Folder Student.*Draft.*45-00019/ });
+  await expect(folder).toBeVisible();
+  const folderUrl = await folder.evaluate(element => element.href);
+  await expect.poll(() => page.evaluate(() => window.folderArrivals)).toContain(folderUrl);
+  await folder.click();
+  expect(new URL(page.url()).searchParams.get("student")).toBe(String(student._id));
+  expect(new URL(page.url()).searchParams.get("term")).toBe(term.code);
+  await page.reload();
+  await expect(page.getByText("Folder Student · 45-00019", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: /Back to students/ }).click();
+  await expect(page.getByRole("heading", { name: "Student schedules", exact: true })).toBeVisible();
+  expect(new URL(page.url()).searchParams.has("student")).toBe(false);
+});
+
+test("Catalogue editing preserves filtered prerequisites, seasons and legacy major lines", async ({ page }) => {
+  const first = await Course.create({ code: "PRQ801", name: "First prerequisite", creditHours: 3, courseType: "core" });
+  const second = await Course.create({ code: "PRQ802", name: "Second prerequisite", creditHours: 3, courseType: "core" });
+  const course = await Course.create({
+    code: "CAT803", name: "Course for catalogue editing", creditHours: 5, courseType: "core",
+    facultyMajors: ["CS\\nDMET"], prerequisites: [first._id], offeringSeasons: ["winter"],
+  });
+  await page.goto(baseURL + "/portal-studio/index.html?page=courses");
+  await signIn(page, "regression@guc.edu.eg", password);
+  await page.getByRole("searchbox", {name:"Search courses"}).fill(course.code);
+  await page.getByRole("button", {name:"View", exact:true}).click();
+  const sheet = page.getByRole("dialog");
+  await expect(sheet).toContainText(first.name);
+  await sheet.getByRole("button", {name:"Edit course"}).click();
+  await expect(page.getByLabel("Majors (one per line)")).toHaveValue("CS\nDMET");
+  await page.getByRole("searchbox", {name:"Find a prerequisite"}).fill(second.code);
+  const prerequisite = page.getByRole("checkbox", {name:/PRQ802/});
+  await prerequisite.focus();
+  await page.keyboard.press("Space");
+  await sheet.getByRole("checkbox", {name:"Spring", exact:true}).check();
+  await page.getByRole("button", {name:"Save changes"}).click();
+  await expect(sheet).toHaveCount(0);
+  const saved = await Course.findById(course._id);
+  expect(saved.prerequisites.map(String)).toEqual([String(first._id), String(second._id)]);
+  expect(saved.facultyMajors).toEqual(["CS", "DMET"]);
+  expect(saved.offeringSeasons).toEqual(["winter", "spring"]);
+  await page.getByRole("button", {name:"Delete course CAT803"}).click();
+  await sheet.getByRole("button", {name:"Delete course", exact:true}).click();
+  await expect(sheet).toHaveCount(0);
+  expect(await Course.findById(course._id)).toBeNull();
+});
+
+test("Coordinator can read ranked preferences, change term and review a removal request", async ({page}) => {
+  const passwordHash = await bcrypt.hash(password, 4);
+  const [coordinator, advisor] = await User.create([
+    {fullName:"Schedule Review Coordinator", email:"schedule.review@guc.edu.eg", role:"coordinator", passwordHash},
+    {fullName:"Schedule Review Advisor", email:"schedule.advisor@guc.edu.eg", role:"advisor", passwordHash},
+  ]);
+  const student = await auditAdvisingStudent({fullName:"Schedule Review Student", email:"schedule.review@student.guc.edu.eg", studentId:"49-00805", assignedAdvisor:advisor._id, passwordHash});
+  const term = await auditTerm();
+  const alternate = await AcademicTerm.create({ ...term.toObject(), _id:new mongoose.Types.ObjectId(), code:"CATALT", season:"spring", isActive:false });
+  await SchedulingPreference.create({student:student._id, term:term._id, preferredDays:[{day:"Monday",priority:1},{day:"Thursday",priority:2}], note:"Please keep the morning lab."});
+  const course = await Course.create({code:"CAT805", name:"Research Methods", creditHours:3, courseType:"core"});
+  const removal = await MandatoryCourseRemovalRequest.create({student:student._id, advisor:advisor._id, term:term._id, course:course._id, reason:"other", explanation:"Review this requirement against the transfer record."});
+  await page.goto(baseURL + "/portal-studio/index.html?page=preferences");
+  await signIn(page, coordinator.email, password);
+  await page.getByLabel("Find advising student").fill(student.studentId);
+  await page.getByRole("button", {name:"Find student"}).click();
+  await expect(page.locator(".preference-student-selected")).toContainText(student.studentId);
+  await page.getByLabel("Academic term").selectOption(String(term._id));
+  await page.getByRole("button", {name:"Load saved preferences"}).click();
+  await expect(page.locator(".preference-reading")).toContainText("Please keep the morning lab.");
+  await expect(page.locator(".preference-facts li").first()).toHaveText("1Monday");
+  await page.getByLabel("Academic term").selectOption(String(alternate._id));
+  await page.getByRole("button", {name:"Load saved preferences"}).click();
+  await expect(page.getByRole("heading", {name:"No preferences submitted"})).toBeVisible();
+  await mainNavigation(page).getByRole("link", {name:"Course removals"}).click();
+  await page.getByRole("button", {name:"View Details"}).click();
+  await expect(page.getByRole("dialog")).toContainText(removal.explanation);
+  await page.getByRole("dialog").getByRole("button", {name:"Close",exact:true}).last().click();
+  await page.getByRole("button", {name:"Reject",exact:true}).click();
+  const decision = page.getByRole("dialog");
+  await expect(decision.getByRole("button", {name:"Reject Request"})).toBeDisabled();
+  await decision.getByRole("textbox").fill("The transfer record does not cover this course.");
+  await decision.getByRole("button", {name:"Reject Request"}).click();
+  await expect(decision).toHaveCount(0);
+  expect((await MandatoryCourseRemovalRequest.findById(removal._id)).status).toBe("rejected");
+});
+
+test("Populated schedule activity survives a temporary profile outage, sidebar navigation and reload", async ({page}) => {
+  const coordinator = await User.create({fullName:"Activity Coordinator",role:"coordinator",email:"activity.reader@guc.edu.eg",passwordHash:await bcrypt.hash(password,4)});
+  const term = await auditTerm();
+  const student = await auditAdvisingStudent({fullName:"Activity Student",studentId:"49-00806",email:"activity.row@student.guc.edu.eg",passwordHash:coordinator.passwordHash});
+  await ScheduleActivity.create({
+    student:student._id, term:term._id, schedule:new mongoose.Types.ObjectId(), action:"processed", scheduleVersion:4,
+    actor:coordinator._id, actorName:coordinator.fullName, actorEmail:coordinator.email, actorRole:coordinator.role,
+  });
+  await page.goto(baseURL);
+  await signIn(page, coordinator.email, password);
+  const nav = mainNavigation(page);
+  await nav.getByRole("link", { name:"Student schedules", exact:true }).click();
+  await expect(page.getByRole("heading", { name:"Student schedules",exact:true })).toBeVisible();
+  await page.route("**/api/identity/profile", route => route.fulfill({status:503,json:{message:"Service temporarily unavailable"}}), {times:1});
+  await nav.getByRole("link", { name:"Schedule activity", exact:true }).click();
+  await expect(page.locator(".activity-entry")).toContainText(coordinator.fullName);
+  await page.route("**/api/identity/profile", route => route.fulfill({status:503,json:{}}), {times:2});
+  await page.reload();
+  await page.getByRole("button", { name:"Try again" }).click();
+  await expect(page.locator(".activity-entry")).toContainText("Version 4");
+  await page.reload();
+  await expect(page.locator(".activity-entry")).toContainText("Schedule processed");
 });

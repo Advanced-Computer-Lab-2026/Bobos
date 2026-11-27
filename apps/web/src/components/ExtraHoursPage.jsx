@@ -2,8 +2,11 @@ import { termLabel } from "../term-label.js";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../api.js";
 import { WorkspaceHeader } from "./WorkspaceUI.jsx";
+import { StudentIdentity, RecordPages } from "./CoordinatorRecords.jsx";
+import FilterDisclosure from "./FilterDisclosure.jsx";
 import ExtraHoursRequestForm from "./ExtraHoursRequestForm.jsx";
 
+const emptyFilters = { studentId: "", advisorId: "", decisionStatus: "", settlementOption: "", settlementStatus: "" };
 const pretty = (value = "—") =>
   String(value || "—")
     .replace(/([a-z])([A-Z])/g, "$1 $2")
@@ -19,16 +22,13 @@ export default function ExtraHoursPage({
   notify,
   embedded = false,
 }) {
+  const coordinator = role === "coordinator";
   const student = role === "advisingStudent";
   const [composing, setComposing] = useState(false);
   const [rows, setRows] = useState([]);
-  const [filters, setFilters] = useState({
-    studentId: "",
-    advisorId: "",
-    decisionStatus: "",
-    settlementOption: "",
-    settlementStatus: "",
-  });
+  const [filters, setFilters] = useState(emptyFilters);
+  const [opened, setOpened] = useState(null);
+  const [page, setPage] = useState(1);
   const [advisors, setAdvisors] = useState([]);
   const [history, setHistory] = useState([]);
   const [walletBalance, setWalletBalance] = useState(0);
@@ -39,40 +39,43 @@ export default function ExtraHoursPage({
   const pendingCheckouts = new Set(history.filter((item) =>
     item.kind === "gatewayPayment" && item.status === "pending" && item.metadata?.stripeCheckout
   ).map((item) => String(item.extraHoursRequest?._id)));
-  const load = useCallback(async () => {
+  const load = useCallback(async (signal) => {
     setLoading(true);
     setError("");
     try {
       if (student) {
         const [requests, records, wallet] = await Promise.all([
-          api("/api/extra-hours/mine", { token }),
-          api("/api/extra-hours/mine/financial-history", { token }),
-          api("/api/extra-hours/mine/wallet", { token }),
+          api("/api/extra-hours/mine", { token, signal }),
+          api("/api/extra-hours/mine/financial-history", { token, signal }),
+          api("/api/extra-hours/mine/wallet", { token, signal }),
         ]);
         setRows(requests);
         setHistory(records);
         setWalletBalance(Number(wallet.balance || 0));
       } else if (role === "advisor") {
-        setRows(await api("/api/extra-hours/advisor/mine", { token }));
+        setRows(await api("/api/extra-hours/advisor/mine", { token, signal }));
       } else {
         const params = new URLSearchParams(
           Object.entries(filters).filter(([, value]) => value),
         );
         const [requests, advisorRows] = await Promise.all([
-          api(`/api/extra-hours?${params}`, { token }),
-          api("/api/extra-hours/requesting-advisors", { token }),
+          api(`/api/extra-hours?${params}`, { token, signal }),
+          api("/api/extra-hours/requesting-advisors", { token, signal }),
         ]);
         setRows(requests);
         setAdvisors(advisorRows);
       }
     } catch (e) {
-      setError(e.message || "Unable to load extra-hours requests.");
+      if (!signal?.aborted) setError(e.message || "Unable to load extra-hours requests.");
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   }, [token, student, role, filters]);
   useEffect(() => {
-    load();
+    const controller = new AbortController();
+    load(controller.signal);
+    setPage(1);
+    return () => controller.abort();
   }, [load]);
 
   const checkCheckout = useCallback(async (id, cancel, attemptId) => {
@@ -212,14 +215,14 @@ export default function ExtraHoursPage({
           New request
         </button>
       )}
-      <button
+      {role !== "coordinator" && <button
         className="outline-button"
         type="button"
         disabled={loading}
-        onClick={load}
+        onClick={() => load()}
       >
         {loading ? "Refreshing…" : "Refresh"}
-      </button>
+      </button>}
     </>
   );
 
@@ -230,10 +233,14 @@ export default function ExtraHoursPage({
     </dl>
   );
 
+  const filtered = Object.values(filters).some(Boolean);
+  const visibleRows = [...rows].sort((a, b) => Number(b.decisionStatus === "pending") - Number(a.decisionStatus === "pending"));
+  const size = 8;
+  const currentPage = Math.min(page, Math.max(1, Math.ceil(rows.length / size)));
   return (
     <div className="page-stack workspace-page extra-hours-page">
       {embedded ? (
-        <div className="extra-hours-toolbar">
+        <div className="extra-hours-toolbar" hidden={role === "coordinator"}>
           <div className="extra-hours-account">
             {walletSummary}
           </div>
@@ -267,8 +274,7 @@ export default function ExtraHoursPage({
       {!embedded && walletSummary}
       {role === "coordinator" && (
         <section className="extra-filters" aria-label="Filter requests">
-          <div className="filter-grid">
-            <label className="field">
+          <FilterDisclosure floating search={<label className="field filter-search">
               <span>Student ID</span>
               <input
                 name="extra-hours-student"
@@ -279,7 +285,14 @@ export default function ExtraHoursPage({
                 }
                 placeholder="e.g. 64-12345…"
               />
-            </label>
+            </label>} actions={<>
+            <button type="button" className="text-button" disabled={!filtered} onClick={() => setFilters(emptyFilters)}>Clear</button>
+            <button type="button" className="text-button" disabled={loading} onClick={() => load()}>Refresh</button></>}
+            chips={Object.entries(filters).filter(([key,value]) => key !== "studentId" && value).map(([key,value]) => ({
+              key, label: pretty(key === "advisorId" ? advisors.find(a => a._id === value)?.fullName || "Advisor" : value),
+              onRemove: () => setFilters({ ...filters, [key]: "" }),
+            }))}>
+          <div className="filter-grid">
             <label className="field">
               <span>Requesting advisor</span>
               <select
@@ -353,25 +366,7 @@ export default function ExtraHoursPage({
               </select>
             </label>
           </div>
-          <div className="filter-actions">
-            <p className="filter-hint">Results update as you filter.</p>
-            <button
-              type="button"
-              className="text-button"
-              disabled={!Object.values(filters).some(Boolean)}
-              onClick={() =>
-                setFilters({
-                  studentId: "",
-                  advisorId: "",
-                  decisionStatus: "",
-                  settlementOption: "",
-                  settlementStatus: "",
-                })
-              }
-            >
-              Clear filters
-            </button>
-          </div>
+          </FilterDisclosure>
         </section>
       )}
       {error && (
@@ -387,24 +382,22 @@ export default function ExtraHoursPage({
       ) : rows.length === 0 ? (
         <section className="extra-hours-empty" aria-labelledby="extra-empty-title">
           <img className="extra-empty-art" src="/portal-studio/images/extra-hours-inbox.svg" width="100" height="74" alt="" />
-          <h3 id="extra-empty-title">No extra-hours requests</h3>
-          <p>{student ? "Requests from your advisor will appear here." : "Requests will appear here when they’re ready for your review."}</p>
+          <h3 id="extra-empty-title">{filtered ? "No matching requests" : "No extra-hours requests"}</h3>
+          <p>{filtered ? "Try another student ID or clear your filters." : student ? "Requests from your advisor will appear here." : "Requests will appear here when they’re ready for your review."}</p>
         </section>
       ) : (
-        rows.map((row) => (
+        (coordinator ? visibleRows.slice((currentPage - 1) * size, currentPage * size) : rows).map((row) => (
           <article className="extra-request" key={row._id}>
             <header className="extra-request-row">
-              <div>
-                <h2>
-                  {row.student?.user?.fullName || "Your request"}{" "}
-                  {row.student?.studentId ? `· ${row.student.studentId}` : ""}
-                </h2>
+              {coordinator ? <>
+                <StudentIdentity name={row.student?.user?.fullName} id={row.student?.studentId} />
+                <div className="extra-request-subject"><strong>{row.requestedHours} extra credit {row.requestedHours === 1 ? "hour" : "hours"}</strong>
+                  <small>{row.courses?.map(item => item.course?.name || item.course?.code).filter(Boolean).join(", ")}</small></div>
+              </> : <div><h2>{row.student?.user?.fullName || "Your request"} {row.student?.studentId ? `· ${row.student.studentId}` : ""}</h2>
                 <p className="helper-text">{termLabel(row.term)} · Request {row._id.slice(-8)}</p>
-                <dl className="extra-request-meta">
-                  <div><dt>Advisor</dt><dd>{row.advisor?.fullName || "—"}</dd></div>
-                  <div><dt>Submitted</dt><dd>{date(row.createdAt)}</dd></div>
-                </dl>
-              </div>
+                <dl className="extra-request-meta"><div><dt>Advisor</dt><dd>{row.advisor?.fullName || "—"}</dd></div>
+                  <div><dt>Submitted</dt><dd>{date(row.createdAt)}</dd></div></dl>
+              </div>}
               <div className="extra-request-summary">
                 <span
                   className={`status-pill ${row.decisionStatus === "approved" ? "good" : row.decisionStatus === "rejected" ? "danger" : row.decisionStatus === "pending" ? "warning" : "muted"}`}
@@ -419,9 +412,17 @@ export default function ExtraHoursPage({
                   <dd>{money(row.totalCost)}</dd>
                 </dl>
               </div>
+              {coordinator && <button type="button" className="outline-button" aria-expanded={opened === row._id} aria-controls={"extra-detail-" + row._id}
+                onClick={() => setOpened(opened === row._id ? null : row._id)}>{opened === row._id ? "Close details" : row.decisionStatus === "pending" && role === "coordinator" ? "Review request" : "View request"}</button>}
             </header>
-            <div className="extra-record-desk">
+            {(!coordinator || opened === row._id) && <div className="extra-record-desk" id={"extra-detail-" + row._id}>
               <div className="extra-record-content">
+                {coordinator && <dl className="request-provenance">
+                  <div><dt>Request</dt><dd>{row._id}</dd></div>
+                  <div><dt>Term</dt><dd>{termLabel(row.term)}</dd></div>
+                  <div><dt>Advisor</dt><dd>{row.advisor?.fullName || "—"}</dd></div>
+                  <div><dt>Submitted</dt><dd>{date(row.createdAt)}</dd></div>
+                </dl>}
                 {row.decisionNote && (
                   <p className="feedback info">
                     Coordinator response: {row.decisionNote}
@@ -615,10 +616,11 @@ export default function ExtraHoursPage({
                   </svg>
                 </div>
               </details>
-            </div>
+            </div>}
           </article>
         ))
       )}
+      {coordinator && <RecordPages page={currentPage} size={size} total={rows.length} onChange={setPage} label="Requests" />}
       {student && (
         <section className="extra-financial">
           <h2>Payments and deferred charges</h2>

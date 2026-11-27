@@ -1,3 +1,4 @@
+import { standardStudents, standardAdvisors } from "./portal-names.js";
 import mongoose from "mongoose";
 import { User, StudentProfile } from "../models/identity.js";
 import { Course, AcademicTerm, CourseOffering } from "../models/catalogue.js";
@@ -39,7 +40,7 @@ async function seed() {
     for (let i = 1; i <= 5; i++) {
       const advisor = await User.create({
         email: `advisor${i}@guc.edu.eg`,
-        fullName: `Advisor ${i}`,
+        fullName: standardAdvisors[i - 1],
         passwordHash: "dummy_hash",
         role: "advisor"
       });
@@ -55,7 +56,7 @@ async function seed() {
       
       const user = await User.create({
         email: `student${i}@student.guc.edu.eg`,
-        fullName: `Advising Student ${i}`,
+        fullName: standardStudents[i - 1],
         passwordHash: "dummy_hash",
         role: "advisingStudent"
       });

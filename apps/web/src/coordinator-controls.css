@@ -1,0 +1,55 @@
+/* The control itself receives the ink edge, including inside dialogs and scrollers. */
+.service-surface[data-portal-role=coordinator] {
+  &[data-service="pending-work"] { --empty-art: url("/portal-studio/images/extra-hours-inbox.svg"); }
+  &[data-service="schedule-activity"] { --empty-art: url("/portal-studio/images/student-schedules-calendar.png"); }
+  :is(.outline-button, .primary-button, .text-button, .filter-toggle, .small-button) {
+    transform: none;
+    box-shadow: none;
+  }
+  :is(.outline-button, .filter-toggle):enabled:hover {
+    background-color: var(--raised);
+    border-color: var(--muted);
+    border-radius: 7px 8px 7px 6px;
+    color: var(--ink);
+    transform: none;
+  }
+  .academic-services-embedded :is(.field, .search-control) :is(input,select,textarea):focus:not(:focus-visible) {
+    outline: none;
+    border-color: var(--muted);
+  }
+  :is(a,button,input,select,textarea,summary,[tabindex="0"]):focus-visible {
+    outline: 2px solid var(--ink) !important;
+    outline-offset: -2px !important;
+    box-shadow: none;
+  }
+  .primary-button:focus-visible { outline: 2px solid var(--canvas) !important; outline-offset: -4px !important; }
+  .pagination-bar { gap: 10px; padding-top: 12px; font-variant-numeric: tabular-nums; }
+  .pagination-bar button { min-height: 34px; padding: 6px 10px; }
+  .workspace-empty-icon, .empty-state > span:first-child:not([role]) {
+    width: 82px; height: 64px; margin: 0 auto 9px; border: 0;
+    background: transparent var(--empty-art, url("/portal-studio/images/extra-hours-folder.svg")) center / contain no-repeat;
+    color: transparent; font-size: 0;
+  }
+  .workspace-empty-icon > svg { display: none; }
+  .workspace-empty, .empty-state { min-height: 0; padding-block: 22px; }
+  :is(.loading-state,.app-loading) { min-height: 72px; }
+  @media (forced-colors:active) {
+    :is(a,button,input,select,textarea,summary,[tabindex="0"]):focus-visible { outline-color: Highlight !important; }
+  }
+  @media (prefers-reduced-motion:reduce) {
+    .loader { animation: none; border-style: dotted; }
+  }
+}
+@supports (appearance:base-select) {
+  .service-surface[data-portal-role=coordinator] select:not([multiple]):is(:not([size]),[size="1"]) {
+    appearance: base-select; background-image: none; padding-inline-end: 12px;
+  }
+  .service-surface[data-portal-role=coordinator] select::picker(select) {
+    appearance: base-select; color: var(--ink); background: var(--paper); border: 1px solid var(--muted);
+    border-radius: 8px; padding: 4px;
+  }
+  .service-surface[data-portal-role=coordinator] select option:is(:checked,:hover,:focus,:focus-visible) {
+    color: var(--ink); background: var(--raised); box-shadow: none;
+  }
+  .service-surface[data-portal-role=coordinator] select option:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
+}
