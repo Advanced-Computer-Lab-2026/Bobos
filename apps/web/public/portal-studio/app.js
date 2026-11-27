@@ -42,7 +42,6 @@ let liveProfile;
 let liveInbox;
 let coordinatorSchedules;
 let liveAdvisor;
-const localDemoSignInAvailable = ['localhost','127.0.0.1'].includes(location.hostname);
 const signedIn = () => Boolean(localStorage.getItem(workspaceSessionKey));
 const pageKey = key => Object.hasOwn(pages,key) ? key : 'overview';
 const returnPage = key => {
@@ -951,7 +950,7 @@ function mountLiveCalendar(panel) {
   const state = panel.querySelector('.calendar-connection-state');
   const controls = panel.querySelector('.calendar-sync-actions');
   const syncLabel = 'Sync with Google Calendar';
-  let token = localStorage.getItem(workspaceSessionKey);
+  const token = localStorage.getItem(workspaceSessionKey);
   let working = false;
   let refreshing = false;
   let renderedConnection;
@@ -980,19 +979,11 @@ function mountLiveCalendar(panel) {
     returnAfterSignIn = 'calendar-sync';
     navigate('login');
   }
-  const localStudentDemo = ['localhost','127.0.0.1'].includes(location.hostname) && ['normalStudent','advisingStudent'].includes(role);
   const connectPath = 'connect?' + new URLSearchParams({ portalOrigin: location.origin });
-  async function request(path, method = 'GET', retry = true) {
+  async function request(path, method = 'GET') {
     const response = await fetch('../api/calendar/' + path, { method, headers: { Authorization: 'Bearer ' + token } });
     const data = await response.json();
     if (!response.ok) {
-      if (response.status === 401 && retry && localStudentDemo) {
-        localStorage.removeItem(workspaceSessionKey);
-        if (await signInDemoWorkspace(role)) {
-          token = localStorage.getItem(workspaceSessionKey);
-          return request(path, method, false);
-        }
-      }
       if ([401, 403].includes(response.status)) {
         if (response.status === 401) localStorage.removeItem(workspaceSessionKey);
         controls.replaceChildren();
@@ -1042,15 +1033,7 @@ function mountLiveCalendar(panel) {
   if (!token) {
     controls.replaceChildren();
     state.textContent = 'Not connected';
-    if (localStudentDemo) {
-      control(syncLabel, async () => {
-        if (!await signInDemoWorkspace(role)) { signIn(); return; }
-        token = localStorage.getItem(workspaceSessionKey);
-        const data = await request('connection');
-        if (data.connected) await refresh();
-        else location.assign((await request(connectPath)).authorizationUrl);
-      }, { primary: true, pending: 'Opening Google…' });
-    } else control(syncLabel, signIn, { primary: true });
+    control(syncLabel, signIn, { primary: true });
     return;
   }
   async function checkConnection(background = false) {
@@ -1138,11 +1121,6 @@ function auth(){
             ${page==='reset'?link('forgot','Request another code','auth-recovery'):''}
             ${link('login','Back to sign in','auth-recovery')}`}
         </form>
-        ${page==='login' && localDemoSignInAvailable ? `<fieldset class="preview-role-picker">
-          <legend>Quick demo sign-in</legend>
-          <div class="preview-role-options">${Object.entries(roleNames).map(([id,label])=>
-            button(label,'preview-sign-in','preview-role-button',`data-preview-role="${id}"`)).join('')}</div>
-        </fieldset>` : ''}
       </section>
     </div>
     <figure class="signin-print"><div class="desk-lamp-scene"><img src="images/borrowed-light.svg" alt="Desk lamp lighting a sheet of paper" fetchpriority="high"></div></figure>
@@ -1558,7 +1536,7 @@ function startPreview(destination){
   returnAfterSignIn = 'overview';
   navigate(destination, url, history.state || {});
 }
-async function signInWorkspace(credentials, expectedRole){
+async function signInWorkspace(credentials){
   const response = await fetch('../api/identity/login', {
     method:'POST',
     headers:{'Content-Type':'application/json'},
@@ -1568,40 +1546,12 @@ async function signInWorkspace(credentials, expectedRole){
   if (!response.ok || !data.token || !Object.hasOwn(roleNames,data.user?.role)) {
     throw new Error(data.message || 'Could not sign in to the workspace.');
   }
-  if (expectedRole && data.user.role !== expectedRole) throw new Error('The demo account has a different role.');
   localStorage.setItem(workspaceSessionKey,data.token);
   localStorage.setItem('portal-account-role', data.user.role);
   sessionStorage.setItem(workspaceAccountNameKey, data.user.fullName || roleNames[data.user.role]);
   return data.user.role;
 }
 
-async function signInDemoWorkspace(demoRole){
-  const response = await fetch(`../__bobos_local_demo?role=${encodeURIComponent(demoRole)}`);
-  if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) {
-    const accounts = { normalStudent:'karim.normal@student.guc.edu.eg', advisingStudent:'layla.advising@student.guc.edu.eg', coordinator:'nadia.coordinator@guc.edu.eg', advisor:'sherif.advisor@guc.edu.eg', administrator:'admin@guc.edu.eg' };
-    if (!['localhost','127.0.0.1'].includes(location.hostname) || !accounts[demoRole]) return false;
-    await signInWorkspace({email:accounts[demoRole], password:'Password123!'},demoRole);
-    return true;
-  }
-  await signInWorkspace(await response.json(),demoRole);
-  return true;
-}
-
-async function choosePreviewRole(el){
-  if (page !== 'login' || !Object.hasOwn(roleNames,el.dataset.previewRole)) return;
-  const selected = el.dataset.previewRole;
-  const picker = el.closest('.preview-role-picker');
-  picker.disabled = true;
-  try {
-    if (!(await signInDemoWorkspace(selected))) throw new Error('Sign in with your university account.');
-    role = selected;
-    startPreview(returnAfterSignIn);
-  } catch (error) {
-    toast(error.message, "error");
-  } finally {
-    picker.disabled = false;
-  }
-}
 function toast(text, tone = 'success', options) {
   document.querySelector('portal-action-feedback').show(tone, text, options);
 }
@@ -1629,9 +1579,6 @@ function action(name,el){
     return;
   }
   switch(name){
-    case 'preview-sign-in':
-      void choosePreviewRole(el);
-      break;
     case 'sign-out':
       document.querySelector('portal-action-feedback').clear();
       {

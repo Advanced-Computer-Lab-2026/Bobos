@@ -17,7 +17,7 @@ GitHub Actions runs the functional and browser suites on pushes and pull request
 | Requirement 121 startup test can time out | A slow API startup can fail the reminder test before it reaches the notification assertions. |
 | Checkout supports Stripe sandbox only | Card payments use test transactions in EGP. Checkout needs an `sk_test_` key and accepts one settlement method per request. |
 | SMTP and Google Calendar need separate configuration | Email password reset, probation emails and Calendar sync need provider credentials. Automated tests use local mail and controlled provider responses. Live provider availability needs a separate check. |
-| Optional advisor and administrator seeds require prepared fixtures | The advisor preview seed expects a published Scientific Methods offering and a future term. The administrator preview seed looks up student IDs that differ from those created by Quick demo sign-in. The installation steps use the base and timetable seeds. |
+| Optional advisor and administrator seeds require prepared fixtures | The advisor preview seed expects a published Scientific Methods offering and a future term. The administrator preview seed looks up student IDs that differ from those used by the standard sign-in fixtures. The installation steps use the base and timetable seeds. |
 | Assessment deployment needs its own accounts and data | Local seed fixtures are for development. The hosted portal needs provisioned university accounts and a smoke test of each role. See [production readiness](docs/production-readiness.md). |
 
 ## Code style
@@ -190,15 +190,15 @@ Install **Git, Node.js 22.12 or later with npm, MongoDB Community 8.x, and Mongo
 
    ~~~powershell
    mongosh --host 127.0.0.1 --eval "rs.initiate({_id:'rs0',members:[{_id:0,host:'127.0.0.1:27017'}]})"
-   $env:BOBOS_PORTAL_DEMO='standard'
    npm run dev
    ~~~
 
-   Open [the portal](http://localhost:5173/) and check [API health](http://localhost:3000/api/health). The health response should include `"database":"connected"`. The frontend proxies `/api` requests locally. Quick demo sign-in is available only on localhost; hosted deployments use university credentials. On macOS or Linux use `export BOBOS_PORTAL_DEMO=standard` before starting.
+   Open [the portal](http://localhost:5173/) and check [API health](http://localhost:3000/api/health). The health response should include `"database":"connected"`. The frontend proxies `/api` requests locally. Sign in with your university email and password.
 
 4. On a **fresh local demo database**, open a third terminal in Bobos to load sample academic data and create the demo accounts. Keep `ALLOW_DEMO_SEED=true` in your local `.env` for this step.
 
    ~~~powershell
+   $env:BOBOS_PORTAL_DEMO='standard'
    npm run seed --workspace @bobos/api
    Invoke-RestMethod -Method Post http://localhost:3000/api/identity/seed-demo | Out-Null
    npm run seed:group4 --workspace @bobos/api
@@ -206,7 +206,7 @@ Install **Git, Node.js 22.12 or later with npm, MongoDB Community 8.x, and Mongo
 
    The base seed clears user, student, course, term, and offering collections in the configured database. `seed:group4` replaces the active timetable of the two demo student accounts. Use the sample accounts and database for this recipe. See the [B1 fixture guide](docs/b1-seed.md) for more request-history scenarios and the [configuration template](.env.example) for SMTP, Stripe sandbox, and Google Calendar settings.
 
-   If you use Bash, run `curl -X POST http://localhost:3000/api/identity/seed-demo` in place of `Invoke-RestMethod`.
+   If you use Bash, set `export BOBOS_PORTAL_DEMO=standard` before the base seed and run `curl -X POST http://localhost:3000/api/identity/seed-demo` in place of `Invoke-RestMethod`.
 
 ### Optional integrations
 
@@ -216,7 +216,7 @@ Install **Git, Node.js 22.12 or later with npm, MongoDB Community 8.x, and Mongo
 | Stripe | Set `STRIPE_SECRET_KEY` to a sandbox key and `WEB_ORIGIN` to the portal origin. Use a Stripe test card through **Pay by card**. |
 | Google Calendar | Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `GOOGLE_REDIRECT_URI`. Register `http://localhost:3000/api/calendar/oauth/callback` in Google Cloud for the default ports. Generate a separate 32-byte hex value for `CALENDAR_TOKEN_ENCRYPTION_KEY`. Sign in as a student and open **Calendar sync**. |
 
-For more advising data, run `npm run seed:evaluation --workspace @bobos/api` on a separate local demo database. If you need the dedicated extra-hours payment scenarios, set `EXTRA_HOURS_DEMO_URI` to `mongodb://127.0.0.1:27017/extra_hours_manual?replicaSet=rs0` and run `node scripts/seed-extra-hours-demo.mjs`. To view these accounts, point the local API's `MONGODB_URI` at that database and restart with `BOBOS_PORTAL_DEMO=extra-hours`.
+For more advising data, run `npm run seed:evaluation --workspace @bobos/api` on a separate local demo database. If you need the dedicated extra-hours payment scenarios, set `EXTRA_HOURS_DEMO_URI` to `mongodb://127.0.0.1:27017/extra_hours_manual?replicaSet=rs0` and run `node scripts/seed-extra-hours-demo.mjs`. To view these accounts, point the local API's `MONGODB_URI` at that database and restart the API, then enter the fixture credentials on the sign-in screen.
 
 For a static frontend build, run `npm run build`. If frontend and API run on different hosts, set `VITE_API_BASE_URL` at build time to the API origin and `WEB_ORIGIN` on the server to the frontend origin. The API start command is `npm run start --workspace @bobos/api`.
 
@@ -263,7 +263,7 @@ npm run test:regression
 
 ## How to use
 
-On the local sign-in screen, open **Quick demo sign-in** and select a role after seeding. You can also sign in with these fixture accounts. They share the local-only password `Password123!`.
+Enter one of these seeded accounts on the local sign-in screen. They share the local-only password `Password123!`.
 
 | Role | Local demo email | Start here |
 | --- | --- | --- |
