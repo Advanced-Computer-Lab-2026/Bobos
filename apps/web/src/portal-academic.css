@@ -126,8 +126,8 @@
   letter-spacing: normal;
 }
 .academic-services-embedded table td { padding: 18px 14px; border-bottom: 1px solid var(--line); }
-.academic-services-embedded table:not(.catalogue-table) :is(th, td):first-child { padding-inline-start: 0; }
-.academic-services-embedded table:not(.catalogue-table) :is(th, td):last-child { padding-inline-end: 0; }
+.academic-services-embedded table:not(.catalogue-table):not(:where(.terms-table > table, .offering-register > table)) :is(th, td):first-child { padding-inline-start: 0; }
+.academic-services-embedded table:not(.catalogue-table):not(:where(.terms-table > table, .offering-register > table)) :is(th, td):last-child { padding-inline-end: 0; }
 .academic-services-embedded table td strong { font-weight: 500; }
 .academic-services-embedded tbody tr:hover { background: transparent; }
 .academic-services-embedded :is(.primary-button, .outline-button) {
