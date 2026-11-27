@@ -1243,11 +1243,11 @@ function AdvisingOverviewPanel({ overview, token, student, termQuery, canEdit, n
   useEffect(() => { setSeason(bachelor.selection?.season || "winter"); }, [bachelor.selection?.season]);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState("");
-  const projectPath = `/api/schedules/advising/${encodeURIComponent(student._id)}/bachelor-project${termQuery}`;
   async function changeProject(remove, nextSeason = season) {
     setBusy(remove ? "remove" : "save"); setProblem("");
     try {
       if (remove) await waitForPaperToss();
+      const projectPath = `/api/schedules/advising/${encodeURIComponent(student._id)}/bachelor-project${termQuery}`;
       const result = await api(projectPath, { token, method: remove ? "DELETE" : "PUT", body: remove ? undefined : { season: nextSeason } });
       notify?.("success", result.message);
       await onChanged?.();
