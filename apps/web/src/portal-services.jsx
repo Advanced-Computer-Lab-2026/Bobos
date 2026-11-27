@@ -19,8 +19,9 @@ import requestStyles from "./portal-requests.css?inline";
 import draftCourseStyles from "./draft-course-selection.css?inline";
 import draftStudentStyles from "./draft-student.css?inline";
 import tabsStyles from "../public/portal-studio/view-tabs.css?inline";
+import swapStyles from "./student-swap.css?inline";
 
-const styles = [tabsStyles, baseStyles, workspaceStyles, formStyles, serviceStyles, paperStyles, academicStyles, pickerStyles, statusStyles, coordinatorStyles, coordinatorControls, requestStyles, draftCourseStyles, draftStudentStyles, templateStyles].join("\n")
+const styles = [tabsStyles, baseStyles, workspaceStyles, formStyles, serviceStyles, paperStyles, academicStyles, pickerStyles, statusStyles, coordinatorStyles, coordinatorControls, requestStyles, draftCourseStyles, draftStudentStyles, templateStyles, swapStyles].join("\n")
   .replaceAll(":root", ".service-surface");
 
 export function mount(host) {

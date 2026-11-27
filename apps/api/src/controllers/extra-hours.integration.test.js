@@ -164,10 +164,26 @@ async function apiCall(endpoint, { method = "GET", userRole = "advisor", body = 
   return { status: res.status, body: data };
 }
 
+test("Req 120: extra-hours submission rolls back when coordinator alerts cannot be saved", async (t) => {
+  t.mock.method(Notification, "insertMany", async () => {
+    throw new Error("Coordinator alerts could not be saved.");
+  });
+  const response = await apiCall("/extra-hours", {
+    method: "POST",
+    body: {
+      studentId: String(profiles.regular._id),
+      termId: String(term._id),
+      courseIds: [String(courses[0]._id)],
+    },
+  });
+  assert.equal(response.status, 500);
+  assert.equal(await ExtraHoursRequest.countDocuments({ student: profiles.regular._id, term: term._id }), 0);
+});
+
 test("Req 83 and 120: advisor submits a priced request and the coordinator is notified", async () => {
   // c1 is 3 credits and repeated (1,000 EGP/hr -> 3,000 EGP)
   // Non-graduating student: max 3 hours allowed above standard
-  const res = await apiCall("/extra-hours", {
+  const submit = () => apiCall("/extra-hours", {
     method: "POST",
     userRole: "advisor",
     body: {
@@ -178,7 +194,12 @@ test("Req 83 and 120: advisor submits a priced request and the coordinator is no
     },
   });
 
-  assert.equal(res.status, 201, `Failed to create request: ${JSON.stringify(res.body)}`);
+  const submissions = await Promise.all(Array.from({ length: 8 }, submit));
+  assert.deepEqual(submissions.map(({ status }) => status).sort(), [201, 400, 400, 400, 400, 400, 400, 400]);
+  const res = submissions.find(({ status }) => status === 201);
+  for (const duplicate of submissions.filter(({ status }) => status === 400)) {
+    assert.equal(duplicate.body.existingRequestId, res.body._id);
+  }
   assert.equal(res.body.requestedHours, 3);
   assert.equal(res.body.decisionStatus, "pending");
   assert.equal(res.body.settlementStatus, "none");
@@ -195,6 +216,10 @@ test("Req 83 and 120: advisor submits a priced request and the coordinator is no
   const notice = await Notification.findOne({ type: "extraHoursRequested", relatedId: res.body._id });
   assert.ok(notice, "Submitting the request must create a coordinator notification");
   assert.ok(inbox.body.notifications.some(entry => entry._id === String(notice._id)));
+  assert.equal(await ExtraHoursRequest.countDocuments({
+    student: profiles.regular._id, term: term._id, decisionStatus: "pending",
+  }), 1);
+  assert.equal(await Notification.countDocuments({ type: "extraHoursRequested", recipient: users.coordinator._id }), 1);
 
 });
 

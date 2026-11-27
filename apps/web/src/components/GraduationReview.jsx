@@ -12,6 +12,7 @@ const labels = { pending: "Pending", approved: "Approved", rejected: "Rejected",
 const dateLabel = (value) => value ? new Date(value).toLocaleString() : "—";
 const studentDate = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "Africa/Cairo" });
 const orderedTerms = (plan) => [...plan.termPlans].sort((a, b) => (a.term?.termStart ?? "").localeCompare(b.term?.termStart ?? ""));
+const courseCount = (count) => `${count} ${count === 1 ? "course" : "courses"}`;
 const creditLabel = (hours) => `${hours} ${hours === 1 ? "credit" : "credits"}`;
 
 function Status({ status }) {
@@ -52,13 +53,15 @@ function AdvisorSubmissions({ rows }) {
       <div className="submission-body">
         <section className="submission-courses" aria-labelledby="submission-courses-title">
           <header className="submission-course-heading"><h3 id="submission-courses-title">Courses by term</h3>
-            <span>{courses.length} {courses.length === 1 ? "course" : "courses"} · {creditLabel(courses.reduce((sum, course) => sum + course.creditHours, 0))}</span>
+            <p>{plan.termPlans.length} {plan.termPlans.length === 1 ? "term" : "terms"} · {courseCount(courses.length)} · {creditLabel(courses.reduce((sum, course) => sum + course.creditHours, 0))}</p>
           </header>
-          {plan.termPlans.length ? <StudentPlanTerms plan={plan} /> : <p className="graduation-meta">No courses listed.</p>}
+          <div className="submission-term-list">
+            {plan.termPlans.length ? <StudentPlanTerms plan={plan} showCourseCount /> : <p className="graduation-meta">No courses listed.</p>}
+          </div>
           {plan.exitExamRequest && <div className="graduation-exam-course">
             <OfferingCourseIcon code={plan.exitExamRequest.course?.code} />
-            <div><strong>Approved exit exam</strong>
-              <p>{[plan.exitExamRequest.course?.name, plan.exitExamRequest.course?.code].filter(Boolean).join(" · ") || "Archived course"}</p>
+            <div><h4>Approved exit exam</h4>
+              <p className="graduation-meta">{[plan.exitExamRequest.course?.name, plan.exitExamRequest.course?.code].filter(Boolean).join(" · ") || "Archived course"}</p>
             </div>
           </div>}
         </section>
@@ -301,12 +304,12 @@ function GraduationResponse({ note }) {
   </div>;
 }
 
-function StudentPlanTerms({ plan }) {
+function StudentPlanTerms({ plan, showCourseCount = false }) {
   return orderedTerms(plan).map(({ term, courses }, index) => (
     <div className="graduation-term" key={term?._id ?? index}>
       <div className="graduation-term-heading">
         <h4>{term ? termLabel(term) : "Archived term"}</h4>
-        <span>{creditLabel(courses.reduce((sum, course) => sum + course.creditHours, 0))} total</span>
+        <span>{showCourseCount && <>{courseCount(courses.length)} · </>}{creditLabel(courses.reduce((sum, course) => sum + course.creditHours, 0))} total</span>
       </div>
       {courses.length ? <ul className="graduation-course-list" role="list">
         {courses.map((course) => <li key={course._id ?? course.code}>

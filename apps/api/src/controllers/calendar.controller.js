@@ -10,6 +10,16 @@ const GOOGLE_SCOPES = ["openid", "email", "https://www.googleapis.com/auth/calen
 const zone = () => process.env.UNIVERSITY_TIMEZONE || "Africa/Cairo";
 const frontendUrl = () => (process.env.WEB_ORIGIN || "http://localhost:5173").split(",")[0].trim();
 
+function localPortalOrigin(value) {
+  if (process.env.NODE_ENV === "production" || typeof value !== "string") return undefined;
+  try {
+    const url = new URL(value);
+    if (value === url.origin && url.protocol === "http:" &&
+        ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)) return url.origin;
+  } catch { /* Fall back to the configured Portal origin. */ }
+  return undefined;
+}
+
 function encryptionKey() {
   const value = process.env.CALENDAR_TOKEN_ENCRYPTION_KEY || "";
   if (!/^[\da-f]{64}$/i.test(value)) throw new Error("CALENDAR_TOKEN_ENCRYPTION_KEY must be a 32-byte hexadecimal key");
@@ -101,20 +111,24 @@ export async function startCalendarConnect(req, res) {
   if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_REDIRECT_URI) return res.status(503).json({ message: "Google Calendar is not configured yet" });
   if (!process.env.GOOGLE_CLIENT_SECRET) return res.status(503).json({ message: "Google Calendar is not configured yet" });
   try { encryptionKey(); } catch { return res.status(503).json({ message: "Calendar token encryption is not configured yet" }); }
-  const state = jwt.sign({ userId: String(req.user._id), purpose: "calendar-oauth", role: req.user.role }, JWT_SECRET, { expiresIn: "10m" });
+  const portalOrigin = localPortalOrigin(req.query?.portalOrigin);
+  const state = jwt.sign({ userId: String(req.user._id), purpose: "calendar-oauth", role: req.user.role, portalOrigin }, JWT_SECRET, { expiresIn: "10m" });
   const params = new URLSearchParams({ client_id: process.env.GOOGLE_CLIENT_ID, redirect_uri: process.env.GOOGLE_REDIRECT_URI, response_type: "code", scope: GOOGLE_SCOPES.join(" "), access_type: "offline", prompt: "select_account consent", include_granted_scopes: "true", state });
   res.json({ authorizationUrl: `https://accounts.google.com/o/oauth2/v2/auth?${params}` });
 }
 
 export async function completeCalendarConnect(req, res) {
   let role = "normalStudent";
-  const returnToPortal = result => `${frontendUrl()}/portal-studio/index.html?${new URLSearchParams({ page: "calendar-sync", role, preview: "live", calendar: result })}`;
+  let portalOrigin = frontendUrl();
+  const returnToPortal = result => `${portalOrigin}/portal-studio/index.html?${new URLSearchParams({ page: "calendar-sync", role, preview: "live", calendar: result })}`;
   try {
     const { code, state } = req.query;
     const payload = jwt.verify(state, JWT_SECRET, { algorithms: ["HS256"] });
-    if (payload.purpose !== "calendar-oauth" || !payload.userId || !code) throw new Error("Invalid authorization response");
+    if (payload.purpose !== "calendar-oauth" || !payload.userId) throw new Error("Invalid authorization response");
     if (payload.role === "advisingStudent") role = payload.role;
+    portalOrigin = localPortalOrigin(payload.portalOrigin) || portalOrigin;
     if (req.query.error) throw new Error("Google Calendar authorization was cancelled");
+    if (!code) throw new Error("Invalid authorization response");
     const body = new URLSearchParams({ code, client_id: process.env.GOOGLE_CLIENT_ID, client_secret: process.env.GOOGLE_CLIENT_SECRET, redirect_uri: process.env.GOOGLE_REDIRECT_URI, grant_type: "authorization_code" });
     const response = await fetch("https://oauth2.googleapis.com/token", { signal: AbortSignal.timeout(15000), method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body });
     const token = await response.json();

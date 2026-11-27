@@ -191,7 +191,24 @@ function swapGroups(groups) {
   return groups?.length ? groups.map(swapGroup).join(", ") : "—";
 }
 
+function SwapTimetable({ week, daysOff, title = "Complete weekly schedule", compact = true }) {
+  const [expanded, setExpanded] = useState(false);
+  const id = useId();
+  return <div className="swap-timetable">
+    <button className="swap-timetable-toggle" data-no-control-ink type="button" aria-expanded={expanded} aria-controls={id} onClick={() => setExpanded(value => !value)}>
+      <span>{title}</span><span className="swap-timetable-toggle-mark" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M4 10h12" />{!expanded && <path d="M10 4v12" />}</svg></span>
+    </button>
+    <div id={id} hidden={!expanded}><WeeklySchedule week={week} daysOff={daysOff} compact={compact} /></div>
+  </div>;
+}
+
+function SwapEmpty({ title, children, action, onAction }) {
+  return <div className="swap-empty"><img src="/portal-studio/images/schedule-exchange.svg" alt="" /><div><h3>{title}</h3><p>{children}</p>{action && <button className="outline-button" type="button" onClick={onAction}>{action}</button>}</div></div>;
+}
+
 export function SwapManagement({ token }) {
+  const historyRef = useRef(null);
+  const destinationsRef = useRef(null);
   const [data, setData] = useState(null);
   const [mine, setMine] = useState([]);
   const [open, setOpen] = useState([]);
@@ -240,9 +257,19 @@ export function SwapManagement({ token }) {
     setBusy(true);
     setError("");
     setNotice("");
+    const action = confirm?.action || "submit";
+    const fromGroup = data?.currentGroup?.studyGroup;
+    const toGroup = confirm?.request?.currentGroup;
+    const requestedGroups = [...(body?.desiredGroups || confirm?.request?.desiredGroups || [])];
     try {
-      const result = await api(path, { token, method: "POST", body });
-      setNotice(result.message);
+      await api(path, { token, method: "POST", body });
+      setNotice(action === "complete"
+        ? { action, title: "Your schedules have been swapped", fromGroup, toGroup,
+          message: `You’re now in ${swapGroup(toGroup)}. The other student has moved to ${swapGroup(fromGroup)}.`,
+          detail: "All lecture, tutorial and lab assignments have been exchanged. Your registered courses are unchanged." }
+        : action === "withdraw"
+          ? { action, title: "Swap request withdrawn", message: `Your request for ${swapGroups(requestedGroups)} is no longer open.`, detail: `You’re still in ${swapGroup(fromGroup)}. You can choose other groups and send a new request before the deadline.` }
+          : { action, title: "Your swap request has been sent", message: `You’ve requested ${swapGroups(requestedGroups)}.`, detail: `You’ll stay in ${swapGroup(fromGroup)} until an eligible student completes the exchange. Follow its status in My swap requests.` });
       setSelected([]);
       setConfirm(null);
       await refresh();
@@ -276,58 +303,50 @@ export function SwapManagement({ token }) {
     void perform(`/api/swaps/requests${query}`, { desiredGroups: selected });
   }
 
-  function refreshPage() {
-    setError("");
-    setNotice("");
-    void refresh();
-  }
-
-  return <div className="page-stack scheduling-page">
+  return <div className="page-stack scheduling-page student-swap-page" aria-busy={loading}>
     <div className="page-title-row">
-      <div><p className="eyebrow">SCHEDULE GROUPS</p><h1>Eligible schedule groups</h1></div>
-      <button className="outline-button" type="button" disabled={busy || loading} onClick={refreshPage}>Refresh</button>
+      <div className="swap-page-intro"><img src="/portal-studio/images/schedule-exchange.svg" alt="" /><div><h1>Eligible swap groups</h1><p className="page-description">Keep your courses. Find a better teaching week.</p></div></div>
     </div>
     {error && !confirm && <Feedback tone="error">{error}</Feedback>}
-    {notice && <Feedback tone="success">{notice}</Feedback>}
-    {!data && !loading && loadErrors.schedule && (
-      <Feedback tone={loadErrors.schedule.status === 404 ? "info" : "error"}>{loadErrors.schedule.message}</Feedback>
-    )}
-    {data?.currentGroup && (
-      <section className="panel" aria-labelledby="current-swap-schedule">
-        <div className="results-heading">
-          <h2 id="current-swap-schedule">Your current weekly schedule</h2>
-        </div>
-        <WeeklySchedule
-          week={data.currentGroup.week}
-          daysOff={data.currentGroup.daysOff}
-        />
-      </section>
-    )}
+    {notice && <Modal title={notice.title} className="swap-result-dialog" onClose={() => setNotice("")}>
+      <div className="swap-result-mark" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="13" /><path d="m10 16 4 4 8-9" /></svg><span>{notice.action === "complete" ? "Exchange complete" : notice.action === "withdraw" ? "Request closed" : "Request sent"}</span></div>
+      {notice.action === "complete" && <div className="swap-result-route" aria-label={`${swapGroup(notice.fromGroup)} to ${swapGroup(notice.toGroup)}`}><span><small>Previous group</small><strong>{swapGroup(notice.fromGroup)}</strong></span><img src="/portal-studio/images/schedule-exchange.svg" alt="" /><span><small>Your new group</small><strong>{swapGroup(notice.toGroup)}</strong></span></div>}
+      <div role="status" aria-live="polite"><p className="swap-exchange-copy">{notice.message}</p><p className="swap-exchange-note">{notice.detail}</p></div>
+      <div className="form-footer"><button className="outline-button" type="button" onClick={() => setNotice("")}>Done</button>
+        {notice.action === "complete" ? <a className="primary-button swap-result-link" href={(() => { const url = new URL(window.location.href); url.searchParams.set("page", "my-schedule"); return url.pathname + url.search; })()}>View my updated schedule</a>
+          : <button className="primary-button" type="button" onClick={() => { setNotice(""); historyRef.current?.scrollIntoView({ behavior: "instant", block: "start" }); }}>View my requests</button>}
+      </div>
+    </Modal>}
+    {loading && !data && <Loading />}
+    {!data && !loading && loadErrors.schedule && (loadErrors.schedule.status === 404
+      ? <section className="panel swap-unavailable"><img src="/portal-studio/images/schedule-exchange.svg" alt="" /><h2>Your schedule comes first</h2><p>Eligible groups will appear when your processed standard schedule is available. You can then compare complete teaching weeks and request an exchange.</p><p className="helper-text">{loadErrors.schedule.message}</p></section>
+      : <Feedback tone="error">{loadErrors.schedule.message}</Feedback>)}
     {data && <>
-      <section className="panel current-group-panel">
-        <div>
-          <p className="eyebrow">Your current group</p>
-          <h2>{swapGroup(data.currentGroup?.studyGroup)}</h2>
-          <p className="page-description">{data.currentGroup?.major} · semester {data.currentGroup?.semester} · {data.currentGroup?.totalCreditHours} credit hours</p>
+      <section className="panel swap-schedule-overview" aria-label="Your schedule and swap deadline">
+        {data.currentGroup && <div className="swap-current-week"><SwapTimetable title="Your current weekly schedule" week={data.currentGroup.week} daysOff={data.currentGroup.daysOff} compact={false} /></div>}
+        <div className="swap-context">
+          <h2 className="swap-context-group">{swapGroup(data.currentGroup?.studyGroup)}</h2>
+          <dl className="swap-context-facts"><div><dt>Major</dt><dd>{data.currentGroup?.major || "—"}</dd></div><div><dt>Semester</dt><dd>{data.currentGroup?.semester ?? "—"}</dd></div><div><dt>Credits</dt><dd>{data.currentGroup?.totalCreditHours ?? "—"}</dd></div></dl>
+          <div className="swap-context-deadline"><span>Swap deadline</span>{deadline ? <><time dateTime={deadline}>{new Date(deadline).toLocaleDateString("en-GB", { timeZone: "Africa/Cairo", dateStyle: "medium" })}</time><small>{new Date(deadline).toLocaleTimeString("en-GB", { timeZone: "Africa/Cairo", timeStyle: "short" })} · Cairo time</small></> : <strong>Not set</strong>}</div>
         </div>
-        <div className="swap-deadline"><small>Swap deadline</small><strong>{deadline ? new Date(deadline).toLocaleDateString() : "Not set"}</strong></div>
       </section>
-      <section className="panel">
+      <section className="panel" ref={destinationsRef}>
         <div className="results-heading"><div><p className="eyebrow">Destination groups</p><h2>Request a whole schedule swap</h2></div></div>
         <p className="page-description">Select one or more groups with exactly your registered courses. A student in a selected group can complete the exchange.</p>
         {active && <Feedback tone="info">Your request for {swapGroups(active.desiredGroups)} is open{active.term?.code ? ` in ${termLabel(active.term)}` : ""}. Withdraw it before making a different request.</Feedback>}
         {data.eligibleGroups?.length ? <div className="swap-group-grid">
-          {data.eligibleGroups.map(group => <section className="swap-option" key={group.templateId}>
+          {data.eligibleGroups.map(group => <section className={`swap-option ${selected.includes(group.studyGroup) ? "is-selected" : ""}`} key={group.templateId}>
             <label className="swap-option-heading">
               <input type="checkbox" checked={selected.includes(group.studyGroup)} disabled={submissionDisabled} onChange={() => toggle(group.studyGroup)} />
               <span><strong>{swapGroup(group.studyGroup)}</strong><small>{group.courseCodes.length} courses · {group.totalCreditHours} credit hours · {group.minRemainingCapacity ?? 0} seats available</small></span>
             </label>
-            <WeeklySchedule week={group.week} daysOff={group.daysOff} compact />
+            <SwapTimetable title={`${swapGroup(group.studyGroup)} teaching week`} week={group.week} daysOff={group.daysOff} />
           </section>)}
-        </div> : <Empty title="No eligible groups" text="The other published groups must contain exactly the same registered courses as your current schedule." />}
-        {deadlinePassed && <Feedback tone="warning">The swap deadline has passed.</Feedback>}
+        </div> : <SwapEmpty title="No matching groups yet">Eligible groups appear here when a published schedule has exactly your registered subjects.</SwapEmpty>}
+        {deadlinePassed && <Feedback tone="warning">{deadline ? "The swap deadline has passed." : "Swaps are unavailable until a deadline is set."}</Feedback>}
         <div className="form-footer">
-          <button className="primary-button" type="button" disabled={submissionDisabled || !selected.length} onClick={submitRequest}>Submit swap request</button>
+          <span className="swap-selection-summary" role="status">{selected.length ? `${selected.length} ${selected.length === 1 ? "group" : "groups"} selected · ${swapGroups(selected)}` : "Choose one or more destination groups"}</span>
+          <button className="primary-button" type="button" aria-busy={busy && !confirm && !notice} disabled={submissionDisabled || !selected.length} onClick={submitRequest}>{busy && !confirm && !notice ? <><span className="swap-button-spinner" aria-hidden="true" />Sending request…</> : "Submit swap request"}</button>
         </div>
       </section>
       <section className="panel">
@@ -343,61 +362,60 @@ export function SwapManagement({ token }) {
                 <p className="page-description">
                   <strong>Desired groups</strong> · {swapGroups(request.desiredGroups)}
                 </p>
-                <WeeklySchedule week={request.week} daysOff={request.daysOff} compact />
+                <SwapTimetable title={`${swapGroup(request.currentGroup)} teaching week`} week={request.week} daysOff={request.daysOff} />
                 <div className="form-footer">
                   <button className="primary-button" type="button" disabled={busy || deadlinePassed} onClick={() => openConfirmation("complete", request)}>
-                    Exchange schedules
+                    Swap with {swapGroup(request.currentGroup)}
                   </button>
                 </div>
               </section>
             ))}
           </div>
-        ) : <Empty title="No open swap requests" text="Requests for your group with the same registered courses in this term will appear here." />}
+        ) : <SwapEmpty title="No exchanges to join right now" action={active ? "View your open request" : data.eligibleGroups?.length ? "Explore destination groups" : undefined} onAction={() => active ? historyRef.current?.scrollIntoView({ behavior: "instant", block: "start" }) : destinationsRef.current?.scrollIntoView({ behavior: "instant", block: "start" })}>{active ? "Your own request is still open. A matching student can complete it before the swap deadline." : "When a student with the same subjects requests your group, their exchange will appear here. You can also start a request of your own."}</SwapEmpty>}
       </section>
     </>}
-    <section className="panel">
-      <div className="results-heading"><div><p className="eyebrow">Your activity</p><h2>My swap requests</h2></div></div>
+    <section className="panel swap-history" ref={historyRef}>
+      <div className="results-heading"><h2 id="swap-history-heading">My swap requests</h2></div>
       {loading ? <Loading /> : loadErrors.history ? <Feedback tone="error">{loadErrors.history}</Feedback> : mine.length ? (
-        <div className="table-scroll">
-          <table>
-            <thead><tr><th>Term</th><th>Activity</th><th>From</th><th>Requested groups</th><th>New group</th><th>Status</th><th>Last activity</th><th>Actions</th></tr></thead>
+        <div className="table-scroll swap-history-scroll" role="region" aria-label="Swap request history" tabIndex={0}>
+          <table className="swap-history-table" aria-labelledby="swap-history-heading">
+            <thead><tr>{["Term & activity", "Group change", "Requested groups", "Status", "Last update · Cairo", "Action"].map(label => <th scope="col" key={label}>{label}</th>)}</tr></thead>
             <tbody>{mine.map(request => {
               const isRequester = request.role !== "accepter";
               const status = swapStatuses[request.status];
               const lastActivity = request.completedAt || request.withdrawnAt || request.createdAt;
               return <tr key={request._id}>
-                <td>{termLabel(request.term)}</td>
-                <td>{isRequester ? "Submitted" : "Accepted"}</td>
-                <td>{swapGroup(request.fromGroup ?? (isRequester ? request.currentGroup : null))}</td>
-                <td>{swapGroups(request.desiredGroups)}</td>
-                <td>{swapGroup(request.toGroup)}</td>
+                <td><strong>{termLabel(request.term)}</strong><small>{isRequester ? "Request sent" : "Exchange accepted"}</small></td>
+                <td><div className="swap-history-movement"><span>{swapGroup(request.fromGroup ?? (isRequester ? request.currentGroup : null))}</span>{request.toGroup ? <><span aria-label="to">→</span><strong>{swapGroup(request.toGroup)}</strong></> : <small>No group change</small>}</div></td>
+                <td><div className="swap-history-groups">{request.desiredGroups?.map(group => <span key={group}>{swapGroup(group)}</span>)}</div></td>
                 <td><span className={`status-pill ${status?.tone || "muted"}`}>{status?.label || "—"}</span></td>
-                <td>{lastActivity ? new Date(lastActivity).toLocaleString() : "—"}</td>
-                <td>{isRequester && request.status === "open" && <button className="outline-button small-button" type="button" disabled={busy} onClick={() => openConfirmation("withdraw", request)}>Withdraw</button>}</td>
+                <td>{lastActivity ? <time dateTime={lastActivity}>{new Date(lastActivity).toLocaleDateString("en-GB", { timeZone: "Africa/Cairo", dateStyle: "medium" })}<small>{new Date(lastActivity).toLocaleTimeString("en-GB", { timeZone: "Africa/Cairo", timeStyle: "short" })}</small></time> : "—"}</td>
+                <td>{isRequester && request.status === "open" ? <button className="outline-button small-button" type="button" disabled={busy} onClick={() => openConfirmation("withdraw", request)}>Withdraw</button> : <span className="swap-history-closed">Closed</span>}</td>
               </tr>;
             })}</tbody>
           </table>
         </div>
-      ) : <Empty title="No requests yet" text="Requests you submit or accept will appear here." />}
+      ) : <SwapEmpty title="Your exchanges start here">Requests you send and swaps you complete will appear here, with their group details and latest status.</SwapEmpty>}
     </section>
-    {confirm && <div className="modal-backdrop" onMouseDown={event => event.target === event.currentTarget && !busy && closeConfirmation()}>
-      <section className="modal-card narrow-modal" role="dialog" aria-modal="true" aria-labelledby="swap-confirm-heading" onKeyDown={event => event.key === "Escape" && !busy && closeConfirmation()}>
-        <div className="modal-heading">
-          <h2 id="swap-confirm-heading">{confirmingWithdrawal ? "Withdraw swap request?" : "Exchange schedules?"}</h2>
-          <button className="icon-button" type="button" aria-label="Close" disabled={busy} onClick={closeConfirmation}>×</button>
-        </div>
-        <p className="page-description">{confirmingWithdrawal
-          ? `Withdraw your request for ${swapGroups(confirm.request.desiredGroups)}?`
-          : `Exchange your ${swapGroup(data?.currentGroup?.studyGroup)} timetable with the anonymous student in ${swapGroup(confirm.request.currentGroup)}. This exchanges all lecture, tutorial, and lab slots.`}</p>
+    {confirm && <Modal title={confirmingWithdrawal ? "Withdraw swap request?" : "Swap your schedules?"} className="swap-confirm-dialog" onClose={() => !busy && closeConfirmation()}>
+        {confirmingWithdrawal ? <p className="page-description">Withdraw your request for {swapGroups(confirm.request.desiredGroups)}?</p> : <>
+          <div className="swap-exchange-visual" aria-label={`Your schedule changes from ${swapGroup(data?.currentGroup?.studyGroup)} to ${swapGroup(confirm.request.currentGroup)}`}>
+            <div className="swap-exchange-group"><span>Your current group</span><strong>{swapGroup(data?.currentGroup?.studyGroup)}</strong><small>The other student moves here</small></div>
+            <img src="/portal-studio/images/schedule-exchange.svg" alt="" />
+            <div className="swap-exchange-group swap-exchange-destination"><span>Your new group</span><strong>{swapGroup(confirm.request.currentGroup)}</strong><small>You move here</small></div>
+          </div>
+          <p className="swap-exchange-copy">You’ll take the {swapGroup(confirm.request.currentGroup)} timetable. The other student will take your {swapGroup(data?.currentGroup?.studyGroup)} timetable.</p>
+          <p className="swap-exchange-note">All lecture, tutorial and lab times swap together. Your registered courses stay the same.</p>
+        </>}
         {error && <Feedback tone="error">{error}</Feedback>}
+        {busy && <p className="swap-action-progress" role="status"><span className="swap-button-spinner" aria-hidden="true" />{confirmingWithdrawal ? "Withdrawing your request…" : "Exchanging both schedules. Please wait…"}</p>}
         <div className="form-footer">
           <button className="outline-button" type="button" disabled={busy} onClick={closeConfirmation} autoFocus>Cancel</button>
-          <button className={confirmingWithdrawal ? "primary-button destructive-action" : "primary-button"} type="button" disabled={busy} onClick={() => perform(`/api/swaps/requests/${confirm.request._id}/${confirm.action}`)}>
-            {confirmingWithdrawal ? (busy ? "Withdrawing…" : "Confirm withdrawal") : (busy ? "Exchanging…" : "Confirm exchange")}
+          <button className={confirmingWithdrawal ? "primary-button destructive-action" : "primary-button"} type="button" disabled={busy} aria-busy={busy} onClick={() => perform(`/api/swaps/requests/${confirm.request._id}/${confirm.action}`)}>
+            {confirmingWithdrawal ? (busy ? "Withdrawing…" : "Confirm withdrawal") : (busy ? "Swapping schedules…" : `Confirm swap to ${swapGroup(confirm.request.currentGroup)}`)}
           </button>
         </div>
-      </section>
-    </div>}
+    </Modal>}
   </div>;
 }
 
@@ -1039,8 +1057,8 @@ function WeeklySchedule({ week = {}, daysOff = [], compact = false }) {
     {(week.Friday?.length ? [...WEEK, "Friday"] : WEEK).map(day => <section className={`schedule-day ${daysOff.includes(day) ? "day-off" : ""}`} key={day}>
       <h3>{day}</h3>
       {(week[day] || []).length ? week[day].map((slot, index) => {
-        const code = String(slot.courseCode || "").replace(/\s/g, "");
-        const symbol = globalThis.BobosCourseIcons?.[code]?.symbol || { CSEN703: "algorithms", CSEN704: "advanced-lab", DMET701: "graphics" }[code];
+        const code = String(slot.courseCode || "").replace(/\s/g, "").toUpperCase();
+        const symbol = globalThis.BobosCourseIcons?.[code]?.symbol;
         return <article className={`schedule-slot ${slot.type || ""}`} data-course-tone={globalThis.BobosCourseIcons?.[code]?.tone || knownTones[code] || tones[Math.max(0, codes.indexOf(slot.courseCode)) % tones.length]} key={`${slot.courseCode}-${slot.startTime}-${index}`}>
           {symbol ? <img className="schedule-course-art" src={`/portal-studio/images/symbols/${symbol}.svg`} alt="" /> : <svg className="schedule-course-art" viewBox="0 0 30 24" fill="none" stroke="currentColor" strokeWidth="1.25" aria-hidden="true"><path d="m9 6 11-.5.6 10.5-11 1z M12 9l5-.4.4 4.4-5 .4z M11 3v3m4-3v3m4-3v2m-8 12v3m4-3v3m4-4v3M6 9h3m-3 4h3m12-5h3m-3 5h3" /></svg>}
           <time className="schedule-meeting-time" dateTime={slot.startTime}>◷ {slot.startTime}–{slot.endTime}</time>

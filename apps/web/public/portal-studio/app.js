@@ -133,13 +133,6 @@ const href = (target, courseCode) => {
       if (current.has(key)) query.set(key, current.get(key));
     }
   }
-  if (target === 'preferences' && role === 'coordinator'
-    && ['localhost', '127.0.0.1'].includes(location.hostname)
-    && localStorage.getItem(previewSessionKey) === '1'
-    && !query.has('student')) {
-    query.set('student', '79-32001');
-    query.set('term', 'S2026');
-  }
   if (target === 'course-detail' && courseCode) query.set('course', courseCode);
   return '?' + query;
 };
@@ -654,25 +647,38 @@ function notificationTime(item) {
   return `<time datetime="${escapeHtml(item.createdAt)}">${escapeHtml(time)}</time>`;
 }
 
+function notificationRows(entries) {
+  return entries.map(item => {
+      const subject = item.subjectStudent;
+      // Older coordinator notices use this stock sentence in place of request details.
+      const queueAction = { graduationPlanSubmitted:'review', exitExamRequested:'review',
+        mandatoryCourseRemovalRequested:'review', financialReversalRequested:'process' }[item.type];
+      const stockMessage = subject && queueAction && item.message === `Student ${subject.studentId} has a request for you to ${queueAction}.`;
+      const emailStatus = item.channels?.includes('email') && item.deliveryStatus;
+      return `<article class="inbox-item ${item.isRead ? '' : 'unread'}">
+        ${subject ? avatar(subject.fullName) : `<span class="notice-symbol" data-kind="${escapeHtml(item.type)}" aria-hidden="true"></span>`}
+        <div class="inbox-text">${subject ? `<span class="notice-person">${escapeHtml(subject.fullName)}${subject.studentId ? ` <small>${escapeHtml(subject.studentId)}</small>` : ''}</span>` : ''}
+          <h3>${escapeHtml(item.title)}</h3>${stockMessage ? '' : `<p>${escapeHtml(item.message)}</p>`}${notificationTime(item)}</div>
+        <div class="notification-meta">
+          ${emailStatus ? `<small>Email: ${escapeHtml(emailStatus)}</small>` : ''}
+          ${item.isRead ? '<small>Read</small>' : button('Mark as read','read-one','btn desk-action', `data-notification="${escapeHtml(item._id)}"`)}
+      </article>`;
+    }).join('');
+}
+
 function studentNotificationPanel(){
   const unread = notificationEntries().filter(item => !item.isRead);
-  const expanded = app.querySelector('.student-inbox-list details[open]')?.dataset.notification;
-  const inboxStatus = liveInbox?.error ? 'Couldn’t load notifications.'
-    : liveInbox?.data ? 'No unread notifications.' : 'Loading notifications…';
-  return `<section class="student-inbox" aria-labelledby="student-inbox-heading">
+  const inboxStatus = liveInbox?.error ? 'Couldn’t load notifications.' : 'Loading notifications…';
+  return `<section class="home-notifications" aria-labelledby="home-notifications-heading">
     <div class="section-head">
-      <div class="student-inbox-title">${icon('inbox')}
-        <h2 id="student-inbox-heading">Notifications${unread.length ? ` <span class="student-inbox-count">${unread.length} unread</span>` : ''}</h2>
-      </div>
+      <h2 id="home-notifications-heading">Notifications${unread.length ? ` <span class="home-notification-count">${unread.length} unread</span>` : ''}</h2>
       ${link('notifications','Open inbox','quiet-link')}
     </div>
     ${unread.length
-      ? `<ul class="student-inbox-list" role="list">${unread.slice(0,3).map(item => `
-        <li><details name="home-notifications" data-notification="${escapeHtml(item._id)}"${item._id===expanded ? ' open' : ''}>
-          <summary><span>${escapeHtml(item.title)}</span>${icon('chevron')}</summary>
-          <div class="student-notice-detail"><p>${escapeHtml(item.message)}</p><small>${notificationTime(item)}</small></div>
-        </details></li>`).join('')}</ul>`
-      : `<p class="student-inbox-empty" role="status">${inboxStatus}</p>`}
+      ? `<div class="notification-list">${notificationRows(unread.slice(0,3))}</div>`
+      : liveInbox?.data && !liveInbox?.error
+        ? `<div class="notification-home-empty" role="status">${notificationScenes('coffee',false)}<h3>You’re all caught up.</h3><p>No unread notifications.</p></div>`
+        : `<p role="${liveInbox?.error ? 'alert' : 'status'}">${inboxStatus}</p>`}
   </section>`;
 }
 
@@ -732,22 +738,7 @@ function notifications(){
   return head('Notifications', '',
     (unread.length ? button('Mark all as read','read-all','btn primary') : ''), '')+strip+
     `<section id="notice-results" role="tabpanel" aria-labelledby="notice-view-${tab}">`+
-    (inboxStatus || (visible.length ? `<div class="notification-list">${visible.map(item => {
-      const subject = item.subjectStudent;
-      // Older coordinator notices use this stock sentence in place of request details.
-      const queueAction = { graduationPlanSubmitted:'review', exitExamRequested:'review',
-        mandatoryCourseRemovalRequested:'review', financialReversalRequested:'process' }[item.type];
-      const stockMessage = subject && queueAction && item.message === `Student ${subject.studentId} has a request for you to ${queueAction}.`;
-      const emailStatus = item.channels?.includes('email') && item.deliveryStatus;
-      return `<article class="inbox-item ${item.isRead ? '' : 'unread'}">
-        ${subject ? avatar(subject.fullName) : `<span class="notice-symbol" data-kind="${escapeHtml(item.type)}" aria-hidden="true"></span>`}
-        <div class="inbox-text">${subject ? `<span class="notice-person">${escapeHtml(subject.fullName)}${subject.studentId ? ` <small>${escapeHtml(subject.studentId)}</small>` : ''}</span>` : ''}
-          <h3>${escapeHtml(item.title)}</h3>${stockMessage ? '' : `<p>${escapeHtml(item.message)}</p>`}${notificationTime(item)}</div>
-        <div class="notification-meta">
-          ${emailStatus ? `<small>Email: ${escapeHtml(emailStatus)}</small>` : ''}
-          ${item.isRead ? '<small>Read</small>' : button('Mark as read','read-one','btn desk-action', `data-notification="${escapeHtml(item._id)}"`)}
-      </article>`;
-    }).join('')}</div>` : `<div class="empty">${notificationScenes('coffee',false)}<h2>You’re all caught up.</h2><p>${tab === 'unread' ? 'No unread notifications.' : 'No notifications yet.'}</p></div>`))+'</section>';
+    (inboxStatus || (visible.length ? `<div class="notification-list">${notificationRows(visible)}</div>` : `<div class="empty">${notificationScenes('coffee',false)}<h2>You’re all caught up.</h2><p>${tab === 'unread' ? 'No unread notifications.' : 'No notifications yet.'}</p></div>`))+'</section>';
 }
 
 async function markPortalNotifications(ids, control) {
@@ -760,10 +751,6 @@ async function markPortalNotifications(ids, control) {
     const updated = new Map(results.filter(result => result.status === 'fulfilled')
       .map(({value}) => [value.notification._id, value.notification]));
     state.data = state.data.map(entry => updated.has(entry._id) ? { ...entry, ...updated.get(entry._id) } : entry);
-    if (page !== 'notifications') {
-      updateNotificationBadge();
-      return;
-    }
     if (results.some(result => result.status === 'rejected')) {
       render();
       toast('Some notifications could not be marked as read.', 'error');
@@ -921,7 +908,7 @@ function registered(){
     `<div class="course-list">${studentCourses().map(([code,title,,credits]) =>
       `<article>${study?courseEmblem(code):''}<div class="registered-course-title"><h2>${title}</h2><small>${code} · ${credits} credits</small></div>
       ${courseLink(code,'View sections','btn schedule-sections-link')}</article>`).join('')}</div>
-    <div class="registered-course-actions">${button('Request course removal','request-removal','btn text')}</div>`;
+    ${role === 'advisingStudent' ? `<div class="registered-course-actions"><p>Need to remove a mandatory course? Your advisor can review your eligibility and submit a request.</p>${link('my-advisor','View my advisor','btn row-control')}</div>` : ''}`;
 }
 function pending(){
   return portalService('pending-work', 'academic-services');
@@ -961,20 +948,32 @@ function advisor(){
 }
 function mountLiveCalendar(panel) {
   const status = panel.querySelector('[role=status]');
+  const state = panel.querySelector('.calendar-connection-state');
+  const controls = panel.querySelector('.calendar-sync-actions');
+  const syncLabel = 'Sync with Google Calendar';
   let token = localStorage.getItem(workspaceSessionKey);
-  const controls = document.createElement('div');
-  controls.className = 'calendar-last-sync';
-  panel.append(controls);
-  function control(label, run) {
+  let working = false;
+  let refreshing = false;
+  let renderedConnection;
+  function control(label, run, { primary = false, pending = 'Working…' } = {}) {
     const el = document.createElement('button');
-    el.className = 'btn row-control';
+    el.type = 'button';
+    el.className = primary ? 'btn primary calendar-sync-primary' : 'btn row-control';
     el.textContent = label;
     controls.append(el);
     el.onclick = async () => {
+      working = true;
+      el.textContent = pending;
+      el.setAttribute('aria-busy', 'true');
       controls.querySelectorAll('button').forEach(button => button.disabled = true);
       try { await run(); }
       catch (error) { status.textContent = error.message; }
-      finally { controls.querySelectorAll('button').forEach(button => button.disabled = false); }
+      finally {
+        working = false;
+        el.textContent = label;
+        el.removeAttribute('aria-busy');
+        controls.querySelectorAll('button').forEach(button => button.disabled = false);
+      }
     };
   }
   function signIn() {
@@ -982,6 +981,7 @@ function mountLiveCalendar(panel) {
     navigate('login');
   }
   const localStudentDemo = ['localhost','127.0.0.1'].includes(location.hostname) && ['normalStudent','advisingStudent'].includes(role);
+  const connectPath = 'connect?' + new URLSearchParams({ portalOrigin: location.origin });
   async function request(path, method = 'GET', retry = true) {
     const response = await fetch('../api/calendar/' + path, { method, headers: { Authorization: 'Bearer ' + token } });
     const data = await response.json();
@@ -996,60 +996,127 @@ function mountLiveCalendar(panel) {
       if ([401, 403].includes(response.status)) {
         if (response.status === 401) localStorage.removeItem(workspaceSessionKey);
         controls.replaceChildren();
-        control('Sign in as a student', signIn);
+        panel.removeAttribute('data-connected');
+        control(syncLabel, signIn, { primary: true });
       }
       throw new Error(data.message || 'Calendar request failed.');
     }
     return data;
   }
-  async function refresh() {
+  async function refresh({ background = false } = {}) {
     const data = await request('connection');
+    if (!panel.isConnected || (background && working)) return;
+    const connectionKey = JSON.stringify([data.connected, data.configured, data.providerAccountId, data.lastSyncedAt, data.lastSyncError]);
+    if (background && (connectionKey === renderedConnection || controls.contains(document.activeElement))) return;
+    renderedConnection = connectionKey;
     controls.replaceChildren();
+    panel.toggleAttribute('data-connected', data.connected);
+    state.textContent = data.connected ? (data.lastSyncError ? 'Sync needs attention' : 'Connected') : 'Not connected';
+    panel.dataset.connection = data.connected ? (data.lastSyncError ? 'attention' : 'connected') : 'disconnected';
     if (data.connected) {
       status.textContent = 'Connected as ' + data.providerAccountId + '. ' +
-        (data.lastSyncError || (data.lastSyncedAt ? 'Last synced ' + new Date(data.lastSyncedAt).toLocaleString() : 'Waiting for the first sync.'));
-      control('Sync now', async () => { await request('sync', 'POST'); await refresh(); });
+        (data.lastSyncError || (data.lastSyncedAt ? 'Last synced ' + new Date(data.lastSyncedAt).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Africa/Cairo' }) + ' (Cairo time).' : 'Waiting for the first sync.'));
       if (data.lastSyncedAt) {
         const openCalendar = document.createElement('a');
-        openCalendar.className = 'btn row-control';
+        openCalendar.className = 'btn primary calendar-sync-primary';
         openCalendar.textContent = 'Open Google Calendar ↗';
         openCalendar.href = 'https://calendar.google.com/calendar/r' + (data.providerAccountId ? '?authuser=' + encodeURIComponent(data.providerAccountId) : '');
         openCalendar.target = '_blank';
         openCalendar.rel = 'noopener noreferrer';
         openCalendar.setAttribute('aria-label', 'Open Google Calendar in a new tab');
         controls.append(openCalendar);
+      } else {
+        control('Sync now', async () => {
+          const result = await request('sync', 'POST');
+          await refresh();
+          status.textContent = result.synced ? `Sync complete. ${result.synced} recurring class ${result.synced === 1 ? 'event is' : 'events are'} up to date. ${status.textContent}` : 'Sync complete. Your Google Calendar is up to date. ' + status.textContent;
+        }, { primary: true, pending: 'Syncing classes…' });
       }
-      control('Change Google account', async () => location.assign((await request('connect')).authorizationUrl));
-      control('Disconnect', async () => { await request('connection', 'DELETE'); await refresh(); });
+      control('Change Google account', async () => location.assign((await request(connectPath)).authorizationUrl), { pending: 'Opening Google…' });
+      control('Disconnect', async () => { await request('connection', 'DELETE'); await refresh(); }, { pending: 'Disconnecting…' });
     } else {
-      status.textContent = data.configured ? 'Choose the Google account for your classes.' : 'Google Calendar setup is incomplete.';
-      if (data.configured) control('Sign in with Google', async () => location.assign((await request('connect')).authorizationUrl));
+      status.textContent = data.configured ? '' : 'Google Calendar setup is incomplete.';
+      control(syncLabel, async () => location.assign((await request(connectPath)).authorizationUrl), { primary: true, pending: 'Opening Google…' });
     }
   }
   if (!token) {
-    status.textContent = 'Sign in with your Bobos student account to access your calendar.';
-    if (['localhost','127.0.0.1'].includes(location.hostname) && ['normalStudent','advisingStudent'].includes(role)) {
-      status.textContent = 'Choose your Google account to sync this student’s timetable.';
-      control('Sign in with Google', async () => {
+    controls.replaceChildren();
+    state.textContent = 'Not connected';
+    if (localStudentDemo) {
+      control(syncLabel, async () => {
         if (!await signInDemoWorkspace(role)) { signIn(); return; }
         token = localStorage.getItem(workspaceSessionKey);
         const data = await request('connection');
         if (data.connected) await refresh();
-        else location.assign((await request('connect')).authorizationUrl);
-      });
-    } else control('Sign in as a student', signIn);
+        else location.assign((await request(connectPath)).authorizationUrl);
+      }, { primary: true, pending: 'Opening Google…' });
+    } else control(syncLabel, signIn, { primary: true });
     return;
   }
-  refresh().catch(error => { status.textContent = error.message; });
+  async function checkConnection(background = false) {
+    refreshing = true;
+    try { await refresh({ background }); }
+    catch (error) {
+      if (!background || !working) {
+        status.textContent = error.message;
+        state.textContent = 'Connection unavailable';
+        panel.dataset.connection = 'attention';
+        renderedConnection = undefined;
+        if (!controls.querySelector('button:not(:disabled)') && !working) {
+          controls.replaceChildren();
+          control(syncLabel, () => checkConnection(), { primary: true });
+        }
+      }
+    }
+    finally { refreshing = false; }
+  }
+  void checkConnection();
   const timer = setInterval(() => {
     if (!panel.isConnected) { clearInterval(timer); return; }
-    if (!document.hidden && !controls.querySelector(':disabled')) refresh().catch(error => { status.textContent = error.message; });
+    if (!document.hidden && !working && !refreshing) void checkConnection(true);
   }, 15000);
 }
 function calendarSync() {
   if (!student()) return head('Calendar sync') + '<p>Sign in with a student account to access Calendar sync.</p>';
-  return head('Calendar sync', 'Keep your processed timetable in Google Calendar.') +
-    '<section class="student-calendar" data-live-calendar aria-label="Google Calendar"><h2>Google Calendar</h2><p role="status">Loading connection…</p></section>';
+  return `<section class="calendar-sync-account" data-live-calendar aria-label="Google Calendar sync">
+    <div class="calendar-sync-entry">
+      <img class="calendar-sync-logo" src="images/google-calendar.png" width="500" height="500" alt="Google Calendar">
+      <div class="calendar-sync-art">
+        <h1>Calendar sync</h1>
+        <p>Add your classes to Google Calendar as weekly events.</p>
+      </div>
+      <div class="calendar-sync-account-heading"><h1>Google Calendar connection</h1><span class="calendar-connection-state"></span></div>
+      <div class="calendar-sync-actions"><button type="button" class="btn primary calendar-sync-primary" disabled>Sync with Google Calendar</button></div>
+      <p role="status"></p>
+    </div>
+    <figure class="calendar-sync-preview" aria-labelledby="calendar-sync-preview-title">
+      <figcaption><strong id="calendar-sync-preview-title">Example week</strong><span>Cairo time</span></figcaption>
+      <div class="calendar-sync-preview-scroll" role="region" aria-label="Sample timetable, Sunday to Thursday" tabindex="0">
+        <div class="calendar-sync-week">
+          <div class="calendar-sync-day"><h2>Sun</h2>
+            <div class="calendar-sync-event"><strong>Database I</strong><span>09:00–10:30</span></div>
+            <div class="calendar-sync-event event-lab" data-period="late"><strong>Networks Lab</strong><span>13:00–14:30</span></div>
+          </div>
+          <div class="calendar-sync-day"><h2>Mon</h2>
+            <div class="calendar-sync-event event-tutorial" data-period="mid"><strong>Algorithms</strong><span>10:45–12:15</span></div>
+          </div>
+          <div class="calendar-sync-day"><h2>Tue</h2>
+            <div class="calendar-sync-event event-lab"><strong>Programming Lab</strong><span>09:00–10:30</span></div>
+            <div class="calendar-sync-event" data-period="mid"><strong>Computer Architecture</strong><span>10:45–12:15</span></div>
+          </div>
+          <div class="calendar-sync-day"><h2>Wed</h2>
+            <div class="calendar-sync-event" data-period="mid"><strong>Software Engineering</strong><span>10:45–12:15</span></div>
+            <div class="calendar-sync-event event-tutorial" data-period="late"><strong>Database Tutorial</strong><span>13:00–14:30</span></div>
+          </div>
+          <div class="calendar-sync-day"><h2>Thu</h2>
+            <div class="calendar-sync-event"><strong>Computer Networks</strong><span>09:00–10:30</span></div>
+            <div class="calendar-sync-event event-lab" data-period="late"><strong>Systems Lab</strong><span>13:00–14:30</span></div>
+          </div>
+        </div>
+      </div>
+      <p class="calendar-sync-scroll-hint">Scroll to see the full week</p>
+    </figure>
+  </section>`;
 }
 
 function auth(){
@@ -1402,6 +1469,9 @@ function mountPortalService(host) {
 }
 
 function render(focus=false){
+  const previousRole = document.body.dataset.portalRole;
+  const sidebarScroll = app.querySelector('.sidebar')?.scrollTop || 0;
+  const navigationScroll = app.querySelector('.sidebar nav')?.scrollTop || 0;
   closeDeadline();
   if (page === 'graduation-plans' && role === 'advisor' && new URLSearchParams(location.search).get('view') === 'submitted') {
     page = 'my-submitted-plans';
@@ -1445,6 +1515,12 @@ function render(focus=false){
   const lamp = app.querySelector('.desk-lamp-scene');
   if (lamp) mountDeskLamp(lamp);
   binderMotion.mount(app.querySelector('[data-concertina=true] .folio-stack'));
+  if (!authPages.has(page) && previousRole === role) {
+    const sidebar = app.querySelector('.sidebar');
+    const navigation = sidebar?.querySelector('nav');
+    if (sidebar) sidebar.scrollTop = sidebarScroll;
+    if (navigation) navigation.scrollTop = navigationScroll;
+  }
   if(focus)document.querySelector('#content')?.focus({preventScroll:true});
 }
 function navigate(target, url, state = {}) {

@@ -113,7 +113,7 @@ const notificationScenes = (() => {
   }
   const scenes = {tube,pigeon,lighthouse,press,line,coffee};
   return function draw(name,full) {
-    const key = Object.hasOwn(scenes,name) ? name : 'tube';
+    const key = !full && (!name || name === 'tube') ? 'coffee' : Object.hasOwn(scenes,name) ? name : 'tube';
     return `<svg class="notification-plate" data-scene="${key}" data-mail="${full?'unread':'empty'}"
       viewBox="${key === 'coffee' ? '0 0 320 210' : '0 0 460 202'}" aria-hidden="true" focusable="false" fill="none" stroke="${ink}" stroke-width="1.8"
       stroke-linecap="round" stroke-linejoin="round">${scenes[key](full)}</svg>`;

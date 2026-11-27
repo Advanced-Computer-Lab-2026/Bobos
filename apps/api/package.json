@@ -7,6 +7,7 @@
     "start": "node --env-file-if-exists=../../.env src/index.js",
     "seed": "node --env-file-if-exists=../../.env src/seed/index.js",
     "seed:c2": "node --env-file-if-exists=../../.env src/seed/c2.js",
+    "seed:student-swaps": "node --env-file-if-exists=../../.env src/seed/student-swaps.js",
     "seed:historical-offerings": "node --env-file-if-exists=../../.env src/seed/historical-offerings.js",
     "seed:group4": "node --env-file-if-exists=../../.env src/seed/group4.js",
     "seed:advising-manual": "node --env-file-if-exists=../../.env src/seed/advising-manual.js",

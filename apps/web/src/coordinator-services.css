@@ -277,7 +277,9 @@
   --column-4: "Payment status";
   --ledger-currency-width: 27px;
   --ledger-currency-gap: 8px;
+  --ledger-actions-width: 224px;
 }
+.finance-register:has(.ledger-reversal[data-request]) { --ledger-actions-width:272px; }
 .service-surface[data-staff-presentation] .academic-services-embedded .ledger-results .results-heading {
   justify-content:start;
   align-items:baseline;
@@ -307,8 +309,117 @@
 }
 .finance-register .ledger-currency { color:var(--muted); font-size:12px; text-align:start; }
 .finance-page .finance-register .ledger-actions { display:flex; justify-content:start; gap:8px; }
-.finance-register .ledger-actions > button { min-height:38px; padding-inline:10px; }
-.finance-register .ledger-reversal { width:136px; }
+.finance-register .ledger-actions > button { min-height:40px; padding-inline:12px; }
+.finance-register .ledger-reversal { min-width:72px; }
+
+.finance-page .academic-dialog {
+  --finance-summary:#efefed;
+  --paper:#fcfcfb;
+  --raised:#f3f3f1;
+  --line:#d9d9d6;
+  --muted:#60605d;
+  --ink:#272725;
+}
+[data-theme="dark"] .finance-page .academic-dialog {
+  --finance-summary:#292929;
+  --paper:#202020;
+  --raised:#303030;
+  --line:#414141;
+  --muted:#b9b9b7;
+  --ink:#f4f4f2;
+}
+.finance-page .academic-dialog::backdrop { background:rgb(10 10 10 / .63); backdrop-filter:none; }
+.academic-services-embedded .finance-page .academic-dialog > .modal-card {
+  --finance-inset:clamp(20px,3.1vw,48px);
+  padding:var(--finance-inset);
+  max-height:calc(100dvh - 48px);
+  overscroll-behavior:contain;
+}
+.academic-services-embedded .finance-detail-dialog > .modal-card { width:min(1160px,100%); }
+.academic-services-embedded .finance-reversal-dialog > .modal-card { width:min(920px,100%); }
+.academic-services-embedded .finance-page .academic-dialog .modal-heading {
+  align-items:center; margin:0 0 clamp(22px,3vw,36px);
+}
+.academic-services-embedded .finance-page .academic-dialog .modal-heading h2 {
+  font-size:clamp(25px,3.4vw,38px); line-height:1.13; letter-spacing:-.04em;
+}
+.finance-page .modal-heading button { flex:none; }
+.finance-dialog-content { display:grid; gap:clamp(24px,3vw,36px); min-width:0; }
+.finance-dialog-content :is(section,.finance-record-person,.finance-record-value) { min-width:0; }
+.finance-dialog-content h3 { margin:0 0 14px; font-size:21px; font-weight:550; line-height:1.24; }
+.finance-record-intro {
+  --finance-portrait-size:58px;
+  display:grid; grid-template-columns:minmax(0,1.35fr) minmax(0,1fr); align-items:center; gap:24px;
+  padding:clamp(20px,2.6vw,32px); border-radius:8px; background:var(--finance-summary);
+}
+.finance-record-person .register-person { display:flex; align-items:center; gap:14px; }
+.finance-record-person .register-person > span:last-child { min-width:0; }
+.finance-record-person .register-person strong {
+  display:block; font-size:clamp(20px,2vw,27px); line-height:1.25; letter-spacing:-.025em; overflow-wrap:anywhere;
+}
+.finance-record-person .register-person small,.finance-record-person p {
+  display:block; margin:4px 0 0; color:var(--muted); font-size:14px; line-height:1.45; overflow-wrap:anywhere;
+}
+.finance-record-person .portal-person-avatar {
+  width:var(--finance-portrait-size); height:var(--finance-portrait-size); flex:0 0 var(--finance-portrait-size);
+}
+.finance-record-person p { padding-inline-start:calc(var(--finance-portrait-size) + 14px); }
+.finance-record-value { display:grid; justify-items:end; gap:6px; text-align:end; }
+.finance-record-value > span:first-child { color:var(--muted); font-size:14px; }
+.finance-record-value > strong {
+  font-size:clamp(30px,3.8vw,46px); font-weight:550; letter-spacing:-.04em; line-height:1.06;
+  font-variant-numeric:tabular-nums; overflow-wrap:anywhere;
+}
+.finance-record-value > strong span { font-size:.43em; font-weight:500; letter-spacing:0; color:var(--muted); }
+.finance-dialog-content section > p { margin:0; font-size:15px; }
+.academic-services-embedded .finance-line-items { margin:0; }
+.academic-services-embedded .finance-line-items.table-scroll > table :is(th,td) { padding:16px clamp(18px,2.3vw,28px); }
+.academic-services-embedded .finance-line-items > table td { font-size:15px; }
+.academic-services-embedded .finance-line-items > table :is(th,td):not(:first-child) {
+  text-align:end; font-variant-numeric:tabular-nums;
+}
+.finance-line-items > table :is(th,td):first-child { overflow-wrap:anywhere; }
+.finance-record-context { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:24px clamp(22px,4vw,52px); }
+.finance-record-facts { display:grid; margin:0; }
+.finance-record-facts > div {
+  display:grid; grid-template-columns:minmax(90px,.8fr) minmax(0,1.3fr); gap:12px;
+  align-items:baseline; padding-block:10px; border-top:1px solid var(--line); line-height:1.45;
+}
+.finance-record-facts dt { color:var(--muted); font-size:14px; }
+.finance-record-facts dd { margin:0; font-size:15px; overflow-wrap:anywhere; }
+.finance-dialog-actions { justify-content:end; gap:10px; padding-block-start:18px; border-block-start:1px solid var(--line); }
+.finance-page .finance-dialog-actions button { min-height:42px; }
+.finance-reversal-dialog .finance-dialog-content { grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr); align-items:start; }
+.finance-reversal-dialog .finance-record-intro { grid-template-columns:minmax(0,1fr); gap:28px; }
+.finance-reversal-dialog .finance-record-value { justify-items:start; text-align:start; padding-top:20px; border-top:1px solid var(--line); }
+.finance-reversal-copy { margin:0; font-size:16px; line-height:1.55; }
+.finance-reversal-form { display:grid; gap:22px; min-width:0; }
+.finance-reversal-form .field { margin:0; }
+.finance-reversal-form .field > span { color:var(--ink); font-weight:550; font-size:15px; }
+.finance-reversal-form textarea { min-height:110px; }
+@media (max-width:720px) {
+  .finance-reversal-dialog .finance-dialog-content,.finance-record-context { grid-template-columns:minmax(0,1fr); }
+  .finance-reversal-dialog .finance-record-intro { grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); }
+  .finance-reversal-dialog .finance-record-value { padding:0; border:0; text-align:end; justify-items:end; }
+}
+@media (max-width:600px) {
+  .academic-services-embedded .finance-page .academic-dialog > .modal-card {
+    --finance-inset:18px; max-height:calc(100dvh - 24px);
+  }
+  .finance-page .modal-heading button { width:44px; height:44px; }
+  .finance-page .finance-record-intro { --finance-portrait-size:44px; grid-template-columns:minmax(0,1fr); gap:18px; }
+  .finance-page .finance-record-value { justify-items:start; text-align:start; }
+  .finance-page .finance-line-items.table-scroll > table { display:block; min-width:0; }
+  .finance-line-items > table > thead { position:absolute; clip-path:inset(50%); height:1px; width:1px; overflow:hidden; }
+  .finance-line-items tbody { display:block; }
+  .finance-line-items tbody tr {
+    display:grid; grid-template-columns:.7fr 1fr 1fr; gap:14px 10px; padding:18px; border-bottom:1px solid var(--line);
+  }
+  .finance-line-items tbody tr:last-child { border:0; }
+  .academic-services-embedded .finance-line-items.table-scroll > table td { padding:0; border:0; overflow-wrap:anywhere; }
+  .finance-line-items tbody td:first-child { grid-column:1 / -1; }
+  .finance-line-items td[data-label]::before { display:block; content:attr(data-label); font-size:12px; color:var(--muted); }
+}
 .schedule-register { --column-2: "Type"; --column-3: "Programme"; --column-4: "Schedule status"; }
 .schedule-register .schedule-student-type { text-transform:capitalize; }
 .service-surface[data-staff-presentation] .schedule-register .roster-actions {
@@ -387,11 +498,12 @@
   .directory-register th:nth-child(1) { width:27%; }
   .directory-register th:nth-child(2) { width:26%; }
   .directory-register th:nth-child(3) { width:29%; }
-  .service-surface[data-staff-presentation] .academic-services-embedded .directory-register.table-scroll > table :is(th,td):first-child { padding-inline-start:24px; }
-  .finance-register th:nth-child(1) { width:21%; }
-  .finance-register th:nth-child(2) { width:21%; }
-  .finance-register th:nth-child(3) { width:13%; }
-  .finance-register th:nth-child(4) { width:17%; }
+  .service-surface[data-staff-presentation] .academic-services-embedded :is(.directory-register,.finance-register).table-scroll > table :is(th,td):first-child { padding-inline-start:24px; }
+  .service-surface[data-staff-presentation] .academic-services-embedded .finance-register.table-scroll > table :is(th,td):last-child { padding-inline:24px; }
+  .finance-register th:nth-child(1) { width:calc((100cqi - var(--ledger-actions-width)) * .27); }
+  .finance-register th:nth-child(2) { width:calc((100cqi - var(--ledger-actions-width)) * .28); }
+  .finance-register th:nth-child(3) { width:max(130px,calc((100cqi - var(--ledger-actions-width)) * .19)); }
+  .finance-register th:last-child { width:var(--ledger-actions-width); }
   .schedule-register th:nth-child(1) { width:22%; }
   .schedule-register th:nth-child(2) { width:10%; }
   .schedule-register th:nth-child(3) { width:15%; }
@@ -464,6 +576,7 @@
 }
 .advising-register .advising-student-row time { font-variant-numeric:tabular-nums; }
 .student-register .advising-student-row .student-register-actions { justify-content:start; gap:8px; }
+.service-surface[data-portal-role="coordinator"] .advising-register { --advising-actions-width:172px; }
 .service-surface[data-staff-presentation] .academic-services-embedded .advising-register.register-with-actions.table-scroll > table > thead > tr > th:last-child:not([colspan]) {
   text-align:start;
 }
@@ -484,6 +597,14 @@
   .advising-register th:nth-child(2) { width:20%; }
   .advising-register th:nth-child(4) { width:16%; }
   .advising-register th:last-child { width:244px; }
+  .service-surface[data-portal-role="coordinator"] .academic-services-embedded .advising-register:not(.graduation-plan-register).table-scroll > table {
+    & :is(th,td):first-child { padding-inline-start:24px; }
+    & :is(th,td):last-child { padding-inline:24px; }
+    & th:nth-child(1) { width:calc((100cqi - var(--advising-actions-width)) * .27); }
+    & th:nth-child(2) { width:calc((100cqi - var(--advising-actions-width)) * .24); }
+    & th:nth-child(4) { width:max(124px,calc((100cqi - var(--advising-actions-width)) * .18)); }
+    & th:last-child { width:var(--advising-actions-width); }
+  }
   .graduation-plan-register > table { table-layout:auto; }
   .graduation-plan-register th:last-child { width:1%; white-space:nowrap; }
   .graduation-plan-register .student-register-actions > button { white-space:nowrap; }

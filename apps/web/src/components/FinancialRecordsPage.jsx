@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api, explainApiError } from "../api.js";
 import { StudentIdentity, RegisterEmpty, RecordPages } from "./CoordinatorRecords.jsx";
 import FilterDisclosure from "./FilterDisclosure.jsx";
+import { Modal } from "./AcademicWorkspace.jsx";
 
 const TYPE_OPTIONS = [
   { value: "", label: "All types" },
@@ -62,12 +63,18 @@ function formatStatusClass(status = "") {
 }
 
 function DetailItem({ label, value }) {
-  return (
-    <div className="detail-item">
-      <span className="secondary-text">{label}</span>
-      <strong>{value || "—"}</strong>
-    </div>
-  );
+  return <div><dt>{label}</dt><dd>{value === "" || value == null ? "—" : value}</dd></div>;
+}
+
+function RecordAmount({ amount, currency }) {
+  return <strong>{formatAmount(amount)} <span>{currency ?? "EGP"}</span></strong>;
+}
+
+function recordRequestLabel(request) {
+  if (request && typeof request === "object") {
+    return [request._id, request.decisionStatus && ledgerLabel(request.decisionStatus)].filter(Boolean).join(" · ") || "—";
+  }
+  return request;
 }
 
 export default function FinancialRecordsPage({ token, notify }) {
@@ -95,6 +102,7 @@ export default function FinancialRecordsPage({ token, notify }) {
   const [viewRecord, setViewRecord] = useState(null);
   const [viewLoading, setViewLoading] = useState(false);
   const [viewError, setViewError] = useState("");
+  const viewRequest = useRef(null);
 
   const [refundTarget, setRefundTarget] = useState(null);
   const [refundReason, setRefundReason] = useState("");
@@ -204,18 +212,28 @@ export default function FinancialRecordsPage({ token, notify }) {
     return () => controller.abort();
   }, [loadRecords]);
 
+  useEffect(() => () => viewRequest.current?.abort(), []);
+
+  const closeDetails = () => {
+    viewRequest.current?.abort();
+    setViewRecord(null);
+  };
+
   // Open details modal and fetch complete record metadata
   const openDetails = async (record) => {
+    viewRequest.current?.abort();
+    const controller = new AbortController();
+    viewRequest.current = controller;
     setViewRecord(record);
     setViewLoading(true);
     setViewError("");
     try {
-      const fullRecord = await api(`/api/finance/records/${record._id}`, { token });
-      setViewRecord(fullRecord);
+      const fullRecord = await api(`/api/finance/records/${record._id}`, { token, signal: controller.signal });
+      if (!controller.signal.aborted) setViewRecord(fullRecord);
     } catch (err) {
-      setViewError(explainApiError(err, "Record details"));
+      if (!controller.signal.aborted) setViewError(explainApiError(err, "Record details"));
     } finally {
-      setViewLoading(false);
+      if (!controller.signal.aborted) setViewLoading(false);
     }
   };
 
@@ -290,6 +308,7 @@ export default function FinancialRecordsPage({ token, notify }) {
   };
 
   const recordTerm = viewRecord && terms.find(item => [viewRecord.term, viewRecord.term?._id, viewRecord.term?.code, viewRecord.extraHoursRequest?.term?.code].some(key => item._id === key || item.code === key));
+  const cancelledCharge = viewRecord?.kind === "deferredChargeCancellation" || (viewRecord?.kind === "deferredCharge" && viewRecord?.status?.toLowerCase() === "cancelled");
   const searchField = <label className="field filter-search">
             <span>Search records</span>
             <input
@@ -448,6 +467,7 @@ export default function FinancialRecordsPage({ token, notify }) {
                             <button
                               type="button"
                               className="outline-button danger-button ledger-reversal"
+                              data-request={r.availableReversal ? undefined : true}
                               onClick={() => openRefundModal(r)}
                             >
                               {r.availableReversal ? (r.availableReversal === "cancelDeferredCharge" ? "Cancel charge" : "Refund") : r.requestableReversal === "cancelDeferredCharge" ? "Request cancellation" : "Request refund"}
@@ -467,302 +487,113 @@ export default function FinancialRecordsPage({ token, notify }) {
       </section>
 
       {/* Details Modal (Req 100) */}
-      {viewRecord && (
-        <div className="modal-backdrop" role="presentation" onClick={() => setViewRecord(null)}>
-          <section
-            className="modal-card wide-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="financial-details-title"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="modal-heading">
-              <div>
-                <p className="eyebrow">TRANSACTION BREAKDOWN</p>
-                <h2 id="financial-details-title">Transaction details</h2>
+      {viewRecord && <Modal title="Transaction details" className="finance-detail-dialog" wide onClose={closeDetails}>
+        {viewLoading ? <div className="loading-state" role="status"><span className="loader" />Loading record breakdown…</div>
+          : viewError ? <div className="feedback error" role="alert">{viewError}</div>
+          : <div className="finance-dialog-content">
+            <div className="finance-record-intro">
+              <div className="finance-record-person">
+                <StudentIdentity name={viewRecord.student?.name || viewRecord.student?.user?.fullName} id={viewRecord.student?.studentId}
+                  email={viewRecord.student?.email || viewRecord.student?.user?.email} />
+                {(viewRecord.student?.faculty || viewRecord.student?.major) && <p>{[viewRecord.student.faculty, viewRecord.student.major].filter(Boolean).join(" / ")}</p>}
               </div>
-              <button
-                className="icon-button"
-                type="button"
-                onClick={() => setViewRecord(null)}
-                aria-label="Close"
-              >
-                ×
-              </button>
+              <div className="finance-record-value">
+                <span>{ledgerLabel(viewRecord.type || viewRecord.kind)}</span>
+                <RecordAmount amount={viewRecord.amount} currency={viewRecord.currency} />
+                <span className={`status-pill ${formatStatusClass(viewRecord.status)}`}>{ledgerLabel(viewRecord.status)}</span>
+              </div>
             </div>
 
-            {viewLoading ? (
-              <div className="loading-state">
-                <span className="loader" />
-                Loading record breakdown…
-              </div>
-            ) : viewError ? (
-              <div className="feedback error" role="alert">{viewError}</div>
-            ) : (
-              <>
-                <div className="detail-grid modal-details">
+            <section aria-labelledby="finance-line-items">
+              <h3 id="finance-line-items">Line items</h3>
+              {Array.isArray(viewRecord.lineItems) && viewRecord.lineItems.length > 0 ? <div className="table-scroll modal-table finance-line-items">
+                <table role="table" aria-labelledby="finance-line-items">
+                  <thead><tr><th scope="col">Description</th><th scope="col">Quantity</th><th scope="col">Rate</th><th scope="col">Subtotal</th></tr></thead>
+                  <tbody>{viewRecord.lineItems.map((item, index) => <tr key={index}>
+                    <td>{item.description || "Charge item"}</td>
+                    <td data-label="Quantity">{item.quantity ?? 1}</td>
+                    <td data-label="Rate">{item.rate != null ? formatCurrency(item.rate, viewRecord.currency) : "—"}</td>
+                    <td data-label="Subtotal"><strong>{formatCurrency(item.amount ?? item.subtotal ?? 0, viewRecord.currency)}</strong></td>
+                  </tr>)}</tbody>
+                </table>
+              </div> : <p className="secondary-text">No itemized charges recorded for this transaction.</p>}
+            </section>
+
+            <div className="finance-record-context">
+              <section aria-labelledby="finance-payment-information">
+                <h3 id="finance-payment-information">Payment information</h3>
+                <dl className="finance-record-facts">
+                  <DetailItem label="Settlement" value={SETTLEMENT_LABELS[viewRecord.settlementOption] || viewRecord.settlementOption || "—"} />
+                  <DetailItem label="Academic term" value={recordTerm ? termLabel(recordTerm) : viewRecord.term?.code ||
+                    viewRecord.extraHoursRequest?.term?.code || (typeof viewRecord.term === "string" ? viewRecord.term : "—")} />
+                  <DetailItem label="Occurred" value={formatDate(viewRecord.occurredAt)} />
+                  <DetailItem label="Created" value={formatDate(viewRecord.createdAt || viewRecord.occurredAt)} />
+                </dl>
+              </section>
+              <section aria-labelledby="finance-references">
+                <h3 id="finance-references">References</h3>
+                <dl className="finance-record-facts">
+                  <DetailItem label="Receipt ID" value={viewRecord.receiptId} />
+                  <DetailItem label="Reference number" value={viewRecord.referenceNumber || viewRecord.transactionReference} />
                   <DetailItem label="Transaction ID" value={viewRecord._id} />
-                  <DetailItem
-                    label="Reference Number"
-                    value={viewRecord.referenceNumber || viewRecord.transactionReference || "—"}
-                  />
-                  {viewRecord.deferredChargeReference && <DetailItem label="Deferred charge reference" value={viewRecord.deferredChargeReference} />}
-                  <DetailItem label="Receipt ID" value={viewRecord.receiptId || "—"} />
-                  <DetailItem
-                    label="Student Name"
-                    value={viewRecord.student?.name || viewRecord.student?.user?.fullName || "—"}
-                  />
-                  <DetailItem label="Student ID" value={viewRecord.student?.studentId || "—"} />
-                  <DetailItem label="Student Email" value={viewRecord.student?.email || viewRecord.student?.user?.email || "—"} />
-                  <DetailItem label="Faculty / Major" value={`${viewRecord.student?.faculty || "—"} / ${viewRecord.student?.major || "—"}`} />
-                  <DetailItem label="Transaction Type" value={ledgerLabel(viewRecord.type || viewRecord.kind)} />
-                  <DetailItem
-                    label="Total Amount"
-                    value={formatCurrency(viewRecord.amount, viewRecord.currency)}
-                  />
-                  <DetailItem
-                    label="Status"
-                    value={
-                      <span className={`status-pill ${formatStatusClass(viewRecord.status)}`}>
-                        {ledgerLabel(viewRecord.status)}
-                      </span>
-                    }
-                  />
-                  <DetailItem
-                    label="Settlement Option"
-                    value={viewRecord.settlementOption || "—"}
-                  />
-                  <DetailItem
-                    label="Academic Term"
-                    value={recordTerm
-                      ? termLabel(recordTerm)
-                      : viewRecord.term?.code ||
-                      viewRecord.extraHoursRequest?.term?.code ||
-                      (typeof viewRecord.term === "string" ? viewRecord.term : "—")
-                    }
-                  />
-                  <DetailItem
-                    label="Linked Request"
-                    value={
-                      typeof (viewRecord.linkedRequest || viewRecord.extraHoursRequest) === "object" && (viewRecord.linkedRequest || viewRecord.extraHoursRequest)
-                        ? `${(viewRecord.linkedRequest || viewRecord.extraHoursRequest)._id}${
-                            (viewRecord.linkedRequest || viewRecord.extraHoursRequest).decisionStatus
-                              ? ` (${(viewRecord.linkedRequest || viewRecord.extraHoursRequest).decisionStatus})`
-                              : ""
-                          }`
-                        : viewRecord.linkedRequest || viewRecord.extraHoursRequest || "—"
-                    }
-                  />
-                  {viewRecord.installmentId && <DetailItem label="Installment reference" value={`INST-${viewRecord.installmentId}`} />}
-                  <DetailItem
-                    label="Created Date"
-                    value={formatDate(viewRecord.createdAt || viewRecord.occurredAt)}
-                  />
-                  <DetailItem
-                    label="Occurred Date"
-                    value={formatDate(viewRecord.occurredAt)}
-                  />
-                </div>
+                  <DetailItem label="Linked request" value={recordRequestLabel(viewRecord.linkedRequest || viewRecord.extraHoursRequest)} />
+                  {viewRecord.deferredChargeReference && <DetailItem label="Deferred charge" value={viewRecord.deferredChargeReference} />}
+                  {viewRecord.installmentId && <DetailItem label="Installment" value={`INST-${viewRecord.installmentId}`} />}
+                </dl>
+              </section>
+            </div>
 
-                {/* Line Items Breakdown */}
-                <div style={{ marginTop: "20px" }}>
-                  <p className="eyebrow">ITEMIZED CHARGES</p>
-                  <h3>Line Items</h3>
-                  {Array.isArray(viewRecord.lineItems) && viewRecord.lineItems.length > 0 ? (
-                    <div className="table-scroll modal-table">
-                      <table>
-                        <thead>
-                          <tr>
-                            <th>Description</th>
-                            <th>Quantity</th>
-                            <th>Rate</th>
-                            <th>Subtotal</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {viewRecord.lineItems.map((item, idx) => (
-                            <tr key={idx}>
-                              <td>{item.description || "Charge item"}</td>
-                              <td>{item.quantity ?? 1}</td>
-                              <td>{item.rate != null ? formatCurrency(item.rate, viewRecord.currency) : "—"}</td>
-                              <td>
-                                <strong>
-                                  {formatCurrency(item.amount ?? item.subtotal ?? 0, viewRecord.currency)}
-                                </strong>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <p className="secondary-text" style={{ padding: "8px 0" }}>
-                      No itemized line items recorded for this transaction. Total amount:{" "}
-                      <strong>{formatCurrency(viewRecord.amount, viewRecord.currency)}</strong>
-                    </p>
-                  )}
-                </div>
+            {(String(viewRecord.status).toUpperCase() === "REFUNDED" || viewRecord.refundedAt) && <section aria-labelledby="finance-refund-audit">
+              <h3 id="finance-refund-audit">{cancelledCharge ? "Cancellation details" : "Refund details"}</h3>
+              <dl className="finance-record-facts">
+                <DetailItem label={cancelledCharge ? "Cancelled at" : "Refunded at"} value={formatDate(viewRecord.refundedAt)} />
+                <DetailItem label={cancelledCharge ? "Cancelled by" : "Refunded by"} value={viewRecord.refundedBy?.fullName || viewRecord.refundedBy?.email} />
+                <DetailItem label={cancelledCharge ? "Cancellation reason" : "Refund reason"} value={viewRecord.refundReason} />
+              </dl>
+            </section>}
+            <div className="form-actions finance-dialog-actions">
+              <button type="button" className="outline-button" onClick={closeDetails}>Close</button>
+              {(viewRecord.availableReversal || viewRecord.requestableReversal) && <button type="button" className="primary-button"
+                onClick={() => { closeDetails(); openRefundModal(viewRecord); }}>
+                {viewRecord.availableReversal ? (viewRecord.availableReversal === "cancelDeferredCharge" ? "Cancel charge" : "Process refund") :
+                  viewRecord.requestableReversal === "cancelDeferredCharge" ? "Request cancellation" : "Request refund"}
+              </button>}
+            </div>
+          </div>}
+      </Modal>}
 
-                {/* Refund Audit Information if applicable */}
-                {(viewRecord.status === "REFUNDED" || viewRecord.refundedAt) && (
-                  <div
-                    style={{
-                      marginTop: "16px",
-                      padding: "14px 16px",
-                      background: "var(--ready-bg)",
-                      borderRadius: "8px",
-                      border: "1px solid #e3e9ed",
-                    }}
-                  >
-                    <p className="eyebrow" style={{ color: "var(--ready-ink)" }}>
-                      AUDIT TRAIL · REFUND LOG
-                    </p>
-                    <div className="detail-grid" style={{ marginTop: "8px" }}>
-                      <DetailItem
-                        label="Refunded At"
-                        value={formatDate(viewRecord.refundedAt)}
-                      />
-                      <DetailItem
-                        label="Refunded By"
-                        value={viewRecord.refundedBy?.fullName || viewRecord.refundedBy?.email || "Administrator"}
-                      />
-                      <DetailItem
-                        label="Refund Reason"
-                        value={viewRecord.refundReason || "Administrative refund"}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                <div className="form-actions" style={{ marginTop: "20px" }}>
-                  {(viewRecord.availableReversal || viewRecord.requestableReversal) && (
-                    <button
-                      type="button"
-                      className="primary-button danger-button"
-                      onClick={() => {
-                        const target = viewRecord;
-                        setViewRecord(null);
-                        openRefundModal(target);
-                      }}
-                    >
-                      {viewRecord.availableReversal ? (viewRecord.availableReversal === "cancelDeferredCharge" ? "Cancel charge" : "Process refund") : viewRecord.requestableReversal === "cancelDeferredCharge" ? "Request cancellation" : "Request refund"}
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    className="outline-button push-right"
-                    onClick={() => setViewRecord(null)}
-                  >
-                    Close
-                  </button>
-                </div>
-              </>
-            )}
-          </section>
-        </div>
-      )}
-
-      {/* Refund Confirmation Modal (Req 101 & 102) */}
-      {refundTarget && (
-        <div className="modal-backdrop" role="presentation" onClick={() => setRefundTarget(null)}>
-          <section
-            className="modal-card"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="refund-modal-title"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="modal-heading">
-              <div>
-                <p className="eyebrow" style={{ color: "var(--red)" }}>
-                  ADMINISTRATIVE REVERSAL
-                </p>
-                <h2 id="refund-modal-title">{requestingReversal ? (cancellingCharge ? "Request charge cancellation" : "Request refund") : cancellingCharge ? "Cancel deferred charge" : "Confirm refund"}</h2>
-              </div>
-              <button
-                className="icon-button"
-                type="button"
-                onClick={() => setRefundTarget(null)}
-                aria-label="Close"
-              >
-                ×
+      {refundTarget && <Modal title={requestingReversal ? (cancellingCharge ? "Request charge cancellation" : "Request refund") :
+        cancellingCharge ? "Cancel deferred charge" : "Confirm refund"} className="finance-reversal-dialog"
+        onClose={() => { if (!refundSubmitting) setRefundTarget(null); }}>
+        <div className="finance-dialog-content">
+          <div className="finance-record-intro">
+            <div className="finance-record-person">
+              <StudentIdentity name={refundTarget.student?.name || refundTarget.student?.user?.fullName} id={refundTarget.student?.studentId} />
+              {refundTarget.receiptId ? <p>Receipt {refundTarget.receiptId}</p> :
+                refundTarget.referenceNumber && <p>Reference {refundTarget.referenceNumber}</p>}
+            </div>
+            <div className="finance-record-value">
+              <span>{cancellingCharge ? "Amount to cancel" : "Refund amount"}</span>
+              <RecordAmount amount={refundTarget.amount} currency={refundTarget.currency} />
+            </div>
+          </div>
+          <form className="finance-reversal-form" onSubmit={handleRefundSubmit}>
+            <p className="finance-reversal-copy">{requestingReversal ? "The coordinator will receive this reversal request for review."
+            : cancellingCharge ? "This removes the charge from the student’s next installment and revokes the related extra hours."
+            : "This returns the payment to the student’s wallet."}</p>
+            {refundError && <div className="feedback error" role="alert">{refundError}</div>}
+            <label className="field"><span>Reason (required)</span>
+              <textarea required rows={3} value={refundReason} onChange={(event) => setRefundReason(event.target.value)} maxLength={500} disabled={refundSubmitting} />
+            </label>
+            <div className="form-actions finance-dialog-actions">
+              <button type="button" className="outline-button" onClick={() => setRefundTarget(null)} disabled={refundSubmitting}>Cancel</button>
+              <button type="submit" className="primary-button destructive-action" disabled={refundSubmitting || !refundReason.trim()}>
+                {refundSubmitting ? "Saving…" : requestingReversal ? "Submit request" : cancellingCharge ? "Confirm cancellation" : "Confirm refund"}
               </button>
             </div>
-
-            <p className="page-description">
-              {requestingReversal
-                ? "This adds a reversal to the coordinator’s work queue for processing."
-                : cancellingCharge
-                ? "This removes the charge from the student’s next installment and revokes the related extra hours."
-                : "This returns the payment to the student’s wallet."}
-            </p>
-
-            <div
-              style={{
-                background: "var(--raised)",
-                border: "1px solid var(--line)",
-                borderRadius: "8px",
-                padding: "12px 14px",
-                margin: "14px 0",
-              }}
-            >
-              <div className="detail-grid">
-                <DetailItem
-                  label="Student"
-                  value={`${refundTarget.student?.name || "Student"} (${refundTarget.student?.studentId || "—"})`}
-                />
-                <DetailItem
-                  label={cancellingCharge ? "Amount to cancel" : "Refund amount"}
-                  value={
-                    <strong style={{ color: "var(--red)", fontSize: "12px" }}>
-                      {formatCurrency(refundTarget.amount, refundTarget.currency)}
-                    </strong>
-                  }
-                />
-                <DetailItem
-                  label="Receipt ID"
-                  value={refundTarget.receiptId || refundTarget.referenceNumber || "—"}
-                />
-              </div>
-            </div>
-
-            {refundError && <div className="feedback error" role="alert">{refundError}</div>}
-
-            <form onSubmit={handleRefundSubmit}>
-              <label className="field" style={{ marginTop: "12px" }}>
-                <span>
-                  Reason <strong style={{ color: "var(--red)" }}>*</strong>
-                </span>
-                <textarea
-                  required
-                  rows={3}
-                  value={refundReason}
-                  onChange={(e) => setRefundReason(e.target.value)}
-                  maxLength={500}
-                />
-              </label>
-
-              <div className="form-actions" style={{ marginTop: "18px" }}>
-                <button
-                  type="button"
-                  className="outline-button"
-                  onClick={() => setRefundTarget(null)}
-                  disabled={refundSubmitting}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="primary-button danger-button push-right"
-                  disabled={refundSubmitting || !refundReason.trim()}
-                >
-                  {refundSubmitting ? "Saving…" : requestingReversal ? "Submit request" : cancellingCharge ? "Confirm cancellation" : "Confirm refund"}
-                </button>
-              </div>
-            </form>
-          </section>
+          </form>
         </div>
-      )}
+      </Modal>}
     </div>
   );
 }

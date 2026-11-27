@@ -114,16 +114,17 @@ export async function createExtraHoursRequest(req, res) {
       return res.status(404).json({ message: "Academic term not found." });
     }
 
-    // Check if there is already an active/pending extra-hours request for this student in this term
-    const existingPending = await ExtraHoursRequest.findOne({
+    const pendingRequestQuery = {
       student: student._id,
       term: term._id,
       decisionStatus: "pending",
-    });
+    };
+    const duplicateMessage = "A pending extra-hours request already exists for this student in the selected term.";
+    const existingPending = await ExtraHoursRequest.findOne(pendingRequestQuery).select("_id").lean();
 
     if (existingPending) {
       return res.status(400).json({
-        message: "A pending extra-hours request already exists for this student in the selected term.",
+        message: duplicateMessage,
         existingRequestId: existingPending._id,
       });
     }
@@ -187,59 +188,58 @@ export async function createExtraHoursRequest(req, res) {
     const requestedHours = itemizedCourses.reduce((sum, item) => sum + item.hours, 0);
     const totalCost = itemizedCourses.reduce((sum, item) => sum + item.subtotal, 0);
 
-    // Hours before and after
-    const hoursBeforeRequest = await creditHoursBefore(student._id, term._id, standardAllowance);
-    const hoursAfterRequest = hoursBeforeRequest + requestedHours;
+    const requestId = await mongoose.connection.transaction(async (session) => {
+      // Submissions and approvals for the same student share this write lock.
+      const locked = await StudentProfile.updateOne({ _id: student._id }, { $inc: { __v: 1 } }, { session, timestamps: false });
+      if (!locked.matchedCount) throw Object.assign(new Error("Student profile not found."), { status: 404 });
+      const pending = await ExtraHoursRequest.findOne(pendingRequestQuery).select("_id").session(session).lean();
+      if (pending) {
+        throw Object.assign(new Error(duplicateMessage), { status: 400, existingRequestId: pending._id });
+      }
 
-    // Rule 4: Total hours and graduation caps
-    if (hoursAfterRequest > 34) {
-      return res.status(400).json({
-        message: `Total credit hours (${hoursAfterRequest}) cannot exceed the 34-hour university maximum.`,
-      });
-    }
+      const hoursBeforeRequest = await creditHoursBefore(student._id, term._id, standardAllowance, { session });
+      const hoursAfterRequest = hoursBeforeRequest + requestedHours;
+      if (hoursAfterRequest > 34) {
+        throw Object.assign(new Error(`Total credit hours (${hoursAfterRequest}) cannot exceed the 34-hour university maximum.`), { status: 400 });
+      }
+      if (!isGraduating && hoursAfterRequest > standardAllowance + 3) {
+        throw Object.assign(new Error(`A student not graduating within one year may add at most 3 hours above standard allowance (${standardAllowance} standard + 3 max extra = ${standardAllowance + 3}). This request would bring the total to ${hoursAfterRequest} hours.`), { status: 400 });
+      }
 
-    if (!isGraduating && hoursAfterRequest > standardAllowance + 3) {
-      return res.status(400).json({
-        message: `A student not graduating within one year may add at most 3 hours above standard allowance (${standardAllowance} standard + 3 max extra = ${standardAllowance + 3}). This request would bring the total to ${hoursAfterRequest} hours.`,
-      });
-    }
+      const [request] = await ExtraHoursRequest.create([{
+        student: student._id,
+        advisor: req.user._id,
+        term: term._id,
+        courses: itemizedCourses,
+        requestedHours,
+        totalCost,
+        currency: "EGP",
+        eligibilitySnapshot: {
+          standardAllowance,
+          hoursBeforeRequest,
+          hoursAfterRequest,
+          isProbation: false,
+          graduatingWithinOneYear: isGraduating,
+        },
+        decisionStatus: "pending",
+        settlementStatus: "none",
+        history: [{ action: "submitted", actor: req.user._id, note: "Extra-hours request submitted." }],
+      }], { session });
 
-    // Create the extra-hours request
-    const extraHoursRequest = await ExtraHoursRequest.create({
-      student: student._id,
-      advisor: req.user._id,
-      term: term._id,
-      courses: itemizedCourses,
-      requestedHours,
-      totalCost,
-      currency: "EGP",
-      eligibilitySnapshot: {
-        standardAllowance,
-        hoursBeforeRequest,
-        hoursAfterRequest,
-        isProbation: false,
-        graduatingWithinOneYear: isGraduating,
-      },
-      decisionStatus: "pending",
-      settlementStatus: "none",
-      history: [{ action: "submitted", actor: req.user._id, note: "Extra-hours request submitted." }],
-    });
-
-    // Notify Coordinators (Req 120: receive notifications when extra-hours requires action)
-    const coordinators = await User.find({ role: "coordinator", isActive: true }).select("_id");
-    if (coordinators.length > 0) {
-      const notifications = coordinators.map((coord) => ({
-        recipient: coord._id,
+      // Keep the review request and its coordinator alerts in the same transaction.
+      const coordinators = await User.distinct("_id", { role: "coordinator", isActive: true }).session(session);
+      await Notification.insertMany(coordinators.map((recipient) => ({
+        recipient,
         type: "extraHoursRequested",
         title: "Extra Credit Hours Request",
         message: `Advisor submitted an extra credit hours request (${requestedHours} hrs, ${totalCost} EGP) for student ${student.studentId}.`,
         relatedModel: "ExtraHoursRequest",
-        relatedId: String(extraHoursRequest._id),
-      }));
-      await Notification.insertMany(notifications).catch(() => {});
-    }
+        relatedId: String(request._id),
+      })), { session });
+      return request._id;
+    });
 
-    const populated = await ExtraHoursRequest.findById(extraHoursRequest._id)
+    const populated = await ExtraHoursRequest.findById(requestId)
       .populate("student")
       .populate("advisor", "fullName email")
       .populate("term", "code season academicYear")
@@ -247,7 +247,10 @@ export async function createExtraHoursRequest(req, res) {
 
     return res.status(201).json(populated);
   } catch (err) {
-    return res.status(500).json({ message: err.message || "Unable to submit extra-hours request." });
+    return res.status(err.status || 500).json({
+      message: err.message || "Unable to submit extra-hours request.",
+      existingRequestId: err.existingRequestId,
+    });
   }
 }
 
