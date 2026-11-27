@@ -79,7 +79,7 @@ Select a single date or a range. Click the month heading to choose a different m
 | **PDFKit and CSV** | Generate transcripts, timetables, receipts, confirmations, and tabular exports. |
 | **Node Test Runner, Playwright, and GitHub Actions** | Check policy functions, API behavior, and browser workflows in CI. |
 
-The repo uses npm workspaces. `apps/web` contains the live frontend and `apps/api` contains the Express API. See the [data model](docs/data-model.md) and the [requirement-to-test map](tests/functional-coverage.json).
+The repo uses npm workspaces. `apps/web` contains the live frontend and `apps/api` contains the Express API. See the [data model](docs/data-model.md).
 
 ## Features
 
@@ -95,6 +95,8 @@ The repo uses npm workspaces. `apps/web` contains the live frontend and `apps/ap
 | Graduation | Draft and review term-by-term graduation plans, record decisions, and submit and review exit-exam requests. |
 | Financial administration | Search financial records, filter by settlement status and date, export matching rows, and handle cancellation or refund requests. |
 | Calendar and reminders | View deadlines, connect or disconnect Google Calendar, sync processed timetable changes, receive workflow notifications and deadline reminders, and trigger probation warnings from semester standings. |
+
+For the numbered Sprint 2 requirements, use the [requirement-to-test map](tests/functional-coverage.json). It links all 128 requirements to named checks and their source files.
 
 ## Code examples
 
