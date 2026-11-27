@@ -322,12 +322,14 @@ export function SwapManagement({ token }) {
       ? <section className="panel swap-unavailable"><img src="/portal-studio/images/schedule-exchange.svg" alt="" /><h2>Your schedule comes first</h2><p>Eligible groups will appear when your processed standard schedule is available. You can then compare complete teaching weeks and request an exchange.</p><p className="helper-text">{loadErrors.schedule.message}</p></section>
       : <Feedback tone="error">{loadErrors.schedule.message}</Feedback>)}
     {data && <>
-      <section className="panel swap-context" aria-label="Your schedule and swap deadline">
-        <div className="swap-context-group"><span>Your current schedule</span><h2>You’re in <span className="swap-group-name">{swapGroup(data.currentGroup?.studyGroup)}</span></h2><p>Compare groups before requesting a swap.</p></div>
-        <dl className="swap-context-facts"><div><dt>Major</dt><dd>{data.currentGroup?.major || "—"}</dd></div><div><dt>Semester</dt><dd>{data.currentGroup?.semester ?? "—"}</dd></div><div><dt>Credits</dt><dd>{data.currentGroup?.totalCreditHours ?? "—"}</dd></div></dl>
-        <div className="swap-context-deadline"><span>Swap deadline</span>{deadline ? <><time dateTime={deadline}>{new Date(deadline).toLocaleDateString("en-GB", { timeZone: "Africa/Cairo", dateStyle: "medium" })}</time><small>{new Date(deadline).toLocaleTimeString("en-GB", { timeZone: "Africa/Cairo", timeStyle: "short" })} · Cairo time</small></> : <strong>Not set</strong>}</div>
+      <section className="panel swap-schedule-overview" aria-label="Your schedule and swap deadline">
+        {data.currentGroup && <div className="swap-current-week"><SwapTimetable title="Your current weekly schedule" week={data.currentGroup.week} daysOff={data.currentGroup.daysOff} compact={false} /></div>}
+        <div className="swap-context">
+          <h2 className="swap-context-group">{swapGroup(data.currentGroup?.studyGroup)}</h2>
+          <dl className="swap-context-facts"><div><dt>Major</dt><dd>{data.currentGroup?.major || "—"}</dd></div><div><dt>Semester</dt><dd>{data.currentGroup?.semester ?? "—"}</dd></div><div><dt>Credits</dt><dd>{data.currentGroup?.totalCreditHours ?? "—"}</dd></div></dl>
+          <div className="swap-context-deadline"><span>Swap deadline</span>{deadline ? <><time dateTime={deadline}>{new Date(deadline).toLocaleDateString("en-GB", { timeZone: "Africa/Cairo", dateStyle: "medium" })}</time><small>{new Date(deadline).toLocaleTimeString("en-GB", { timeZone: "Africa/Cairo", timeStyle: "short" })} · Cairo time</small></> : <strong>Not set</strong>}</div>
+        </div>
       </section>
-      {data.currentGroup && <section className="panel swap-current-week"><SwapTimetable title="Your current weekly schedule" week={data.currentGroup.week} daysOff={data.currentGroup.daysOff} compact={false} /></section>}
       <section className="panel" ref={destinationsRef}>
         <div className="results-heading"><div><p className="eyebrow">Destination groups</p><h2>Request a whole schedule swap</h2></div></div>
         <p className="page-description">Select one or more groups with exactly your registered courses. A student in a selected group can complete the exchange.</p>
@@ -372,12 +374,11 @@ export function SwapManagement({ token }) {
         ) : <SwapEmpty title="No exchanges to join right now" action={active ? "View your open request" : data.eligibleGroups?.length ? "Explore destination groups" : undefined} onAction={() => active ? historyRef.current?.scrollIntoView({ behavior: "instant", block: "start" }) : destinationsRef.current?.scrollIntoView({ behavior: "instant", block: "start" })}>{active ? "Your own request is still open. A matching student can complete it before the swap deadline." : "When a student with the same subjects requests your group, their exchange will appear here. You can also start a request of your own."}</SwapEmpty>}
       </section>
     </>}
-    <section className="panel" ref={historyRef}>
-      <div className="results-heading"><div><p className="eyebrow">Your activity</p><h2>My swap requests</h2></div></div>
+    <section className="panel swap-history" ref={historyRef}>
+      <div className="results-heading"><h2 id="swap-history-heading">My swap requests</h2></div>
       {loading ? <Loading /> : loadErrors.history ? <Feedback tone="error">{loadErrors.history}</Feedback> : mine.length ? (
         <div className="table-scroll swap-history-scroll" role="region" aria-label="Swap request history" tabIndex={0}>
-          <table className="swap-history-table">
-            <caption>Requests you sent and exchanges you completed. Times are shown in Cairo time.</caption>
+          <table className="swap-history-table" aria-labelledby="swap-history-heading">
             <thead><tr>{["Term & activity", "Group change", "Requested groups", "Status", "Last update · Cairo", "Action"].map(label => <th scope="col" key={label}>{label}</th>)}</tr></thead>
             <tbody>{mine.map(request => {
               const isRequester = request.role !== "accepter";

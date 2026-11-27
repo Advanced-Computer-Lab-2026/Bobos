@@ -908,7 +908,7 @@ function registered(){
     `<div class="course-list">${studentCourses().map(([code,title,,credits]) =>
       `<article>${study?courseEmblem(code):''}<div class="registered-course-title"><h2>${title}</h2><small>${code} · ${credits} credits</small></div>
       ${courseLink(code,'View sections','btn schedule-sections-link')}</article>`).join('')}</div>
-    <div class="registered-course-actions">${button('Request course removal','request-removal','btn text')}</div>`;
+    ${role === 'advisingStudent' ? `<div class="registered-course-actions"><p>Need to remove a mandatory course? Your advisor can review your eligibility and submit a request.</p>${link('my-advisor','View my advisor','btn row-control')}</div>` : ''}`;
 }
 function pending(){
   return portalService('pending-work', 'academic-services');
@@ -948,20 +948,32 @@ function advisor(){
 }
 function mountLiveCalendar(panel) {
   const status = panel.querySelector('[role=status]');
+  const state = panel.querySelector('.calendar-connection-state');
+  const controls = panel.querySelector('.calendar-sync-actions');
+  const syncLabel = 'Sync with Google Calendar';
   let token = localStorage.getItem(workspaceSessionKey);
-  const controls = document.createElement('div');
-  controls.className = 'calendar-last-sync';
-  panel.append(controls);
-  function control(label, run) {
+  let working = false;
+  let refreshing = false;
+  let renderedConnection;
+  function control(label, run, { primary = false, pending = 'Working…' } = {}) {
     const el = document.createElement('button');
-    el.className = 'btn row-control';
+    el.type = 'button';
+    el.className = primary ? 'btn primary calendar-sync-primary' : 'btn row-control';
     el.textContent = label;
     controls.append(el);
     el.onclick = async () => {
+      working = true;
+      el.textContent = pending;
+      el.setAttribute('aria-busy', 'true');
       controls.querySelectorAll('button').forEach(button => button.disabled = true);
       try { await run(); }
       catch (error) { status.textContent = error.message; }
-      finally { controls.querySelectorAll('button').forEach(button => button.disabled = false); }
+      finally {
+        working = false;
+        el.textContent = label;
+        el.removeAttribute('aria-busy');
+        controls.querySelectorAll('button').forEach(button => button.disabled = false);
+      }
     };
   }
   function signIn() {
@@ -969,6 +981,7 @@ function mountLiveCalendar(panel) {
     navigate('login');
   }
   const localStudentDemo = ['localhost','127.0.0.1'].includes(location.hostname) && ['normalStudent','advisingStudent'].includes(role);
+  const connectPath = 'connect?' + new URLSearchParams({ portalOrigin: location.origin });
   async function request(path, method = 'GET', retry = true) {
     const response = await fetch('../api/calendar/' + path, { method, headers: { Authorization: 'Bearer ' + token } });
     const data = await response.json();
@@ -983,19 +996,31 @@ function mountLiveCalendar(panel) {
       if ([401, 403].includes(response.status)) {
         if (response.status === 401) localStorage.removeItem(workspaceSessionKey);
         controls.replaceChildren();
-        control('Sign in as a student', signIn);
+        panel.removeAttribute('data-connected');
+        control(syncLabel, signIn, { primary: true });
       }
       throw new Error(data.message || 'Calendar request failed.');
     }
     return data;
   }
-  async function refresh() {
+  async function refresh({ background = false } = {}) {
     const data = await request('connection');
+    if (!panel.isConnected || (background && working)) return;
+    const connectionKey = JSON.stringify([data.connected, data.configured, data.providerAccountId, data.lastSyncedAt, data.lastSyncError]);
+    if (background && (connectionKey === renderedConnection || controls.contains(document.activeElement))) return;
+    renderedConnection = connectionKey;
     controls.replaceChildren();
+    panel.toggleAttribute('data-connected', data.connected);
+    state.textContent = data.connected ? (data.lastSyncError ? 'Sync needs attention' : 'Connected') : 'Not connected';
+    panel.dataset.connection = data.connected ? (data.lastSyncError ? 'attention' : 'connected') : 'disconnected';
     if (data.connected) {
       status.textContent = 'Connected as ' + data.providerAccountId + '. ' +
-        (data.lastSyncError || (data.lastSyncedAt ? 'Last synced ' + new Date(data.lastSyncedAt).toLocaleString() : 'Waiting for the first sync.'));
-      control('Sync now', async () => { await request('sync', 'POST'); await refresh(); });
+        (data.lastSyncError || (data.lastSyncedAt ? 'Last synced ' + new Date(data.lastSyncedAt).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Africa/Cairo' }) + ' (Cairo time).' : 'Waiting for the first sync.'));
+      control('Sync now', async () => {
+        const result = await request('sync', 'POST');
+        await refresh();
+        status.textContent = result.synced ? `Sync complete. ${result.synced} recurring class ${result.synced === 1 ? 'event is' : 'events are'} up to date. ${status.textContent}` : 'Sync complete. Your Google Calendar is up to date. ' + status.textContent;
+      }, { primary: true, pending: 'Syncing classes…' });
       if (data.lastSyncedAt) {
         const openCalendar = document.createElement('a');
         openCalendar.className = 'btn row-control';
@@ -1006,37 +1031,91 @@ function mountLiveCalendar(panel) {
         openCalendar.setAttribute('aria-label', 'Open Google Calendar in a new tab');
         controls.append(openCalendar);
       }
-      control('Change Google account', async () => location.assign((await request('connect')).authorizationUrl));
-      control('Disconnect', async () => { await request('connection', 'DELETE'); await refresh(); });
+      control('Change Google account', async () => location.assign((await request(connectPath)).authorizationUrl), { pending: 'Opening Google…' });
+      control('Disconnect', async () => { await request('connection', 'DELETE'); await refresh(); }, { pending: 'Disconnecting…' });
     } else {
-      status.textContent = data.configured ? 'Choose the Google account for your classes.' : 'Google Calendar setup is incomplete.';
-      if (data.configured) control('Sign in with Google', async () => location.assign((await request('connect')).authorizationUrl));
+      status.textContent = data.configured ? '' : 'Google Calendar setup is incomplete.';
+      control(syncLabel, async () => location.assign((await request(connectPath)).authorizationUrl), { primary: true, pending: 'Opening Google…' });
     }
   }
   if (!token) {
-    status.textContent = 'Sign in with your Bobos student account to access your calendar.';
-    if (['localhost','127.0.0.1'].includes(location.hostname) && ['normalStudent','advisingStudent'].includes(role)) {
-      status.textContent = 'Choose your Google account to sync this student’s timetable.';
-      control('Sign in with Google', async () => {
+    controls.replaceChildren();
+    state.textContent = 'Not connected';
+    if (localStudentDemo) {
+      control(syncLabel, async () => {
         if (!await signInDemoWorkspace(role)) { signIn(); return; }
         token = localStorage.getItem(workspaceSessionKey);
         const data = await request('connection');
         if (data.connected) await refresh();
-        else location.assign((await request('connect')).authorizationUrl);
-      });
-    } else control('Sign in as a student', signIn);
+        else location.assign((await request(connectPath)).authorizationUrl);
+      }, { primary: true, pending: 'Opening Google…' });
+    } else control(syncLabel, signIn, { primary: true });
     return;
   }
-  refresh().catch(error => { status.textContent = error.message; });
+  async function checkConnection(background = false) {
+    refreshing = true;
+    try { await refresh({ background }); }
+    catch (error) {
+      if (!background || !working) {
+        status.textContent = error.message;
+        state.textContent = 'Connection unavailable';
+        panel.dataset.connection = 'attention';
+        renderedConnection = undefined;
+        if (!controls.querySelector('button:not(:disabled)') && !working) {
+          controls.replaceChildren();
+          control(syncLabel, () => checkConnection(), { primary: true });
+        }
+      }
+    }
+    finally { refreshing = false; }
+  }
+  void checkConnection();
   const timer = setInterval(() => {
     if (!panel.isConnected) { clearInterval(timer); return; }
-    if (!document.hidden && !controls.querySelector(':disabled')) refresh().catch(error => { status.textContent = error.message; });
+    if (!document.hidden && !working && !refreshing) void checkConnection(true);
   }, 15000);
 }
 function calendarSync() {
   if (!student()) return head('Calendar sync') + '<p>Sign in with a student account to access Calendar sync.</p>';
-  return head('Calendar sync', 'Keep your processed timetable in Google Calendar.') +
-    '<section class="student-calendar" data-live-calendar aria-label="Google Calendar"><h2>Google Calendar</h2><p role="status">Loading connection…</p></section>';
+  return `<section class="calendar-sync-account" data-live-calendar aria-label="Google Calendar sync">
+    <div class="calendar-sync-entry">
+      <div class="calendar-sync-art">
+        <img class="calendar-sync-logo" src="images/google-calendar.png" width="500" height="500" alt="Google Calendar">
+        <h1>Calendar sync</h1>
+        <p>Add your classes to Google Calendar as weekly events.</p>
+      </div>
+      <div class="calendar-sync-account-heading"><h1>Google Calendar connection</h1><span class="calendar-connection-state"></span></div>
+      <div class="calendar-sync-actions"><button type="button" class="btn primary calendar-sync-primary" disabled>Sync with Google Calendar</button></div>
+      <p role="status"></p>
+    </div>
+    <figure class="calendar-sync-preview" aria-labelledby="calendar-sync-preview-title">
+      <figcaption><strong id="calendar-sync-preview-title">Example week</strong><span>Cairo time</span></figcaption>
+      <div class="calendar-sync-preview-scroll" role="region" aria-label="Sample timetable, Sunday to Thursday" tabindex="0">
+        <div class="calendar-sync-week">
+          <div class="calendar-sync-day"><h2>Sun</h2>
+            <div class="calendar-sync-event"><strong>Database I</strong><span>09:00–10:30</span></div>
+            <div class="calendar-sync-event event-lab" data-period="late"><strong>Networks Lab</strong><span>13:00–14:30</span></div>
+          </div>
+          <div class="calendar-sync-day"><h2>Mon</h2>
+            <div class="calendar-sync-event event-tutorial" data-period="mid"><strong>Algorithms</strong><span>10:45–12:15</span></div>
+          </div>
+          <div class="calendar-sync-day"><h2>Tue</h2>
+            <div class="calendar-sync-event event-lab"><strong>Programming Lab</strong><span>09:00–10:30</span></div>
+            <div class="calendar-sync-event" data-period="mid"><strong>Computer Architecture</strong><span>10:45–12:15</span></div>
+          </div>
+          <div class="calendar-sync-day"><h2>Wed</h2>
+            <div class="calendar-sync-event" data-period="mid"><strong>Software Engineering</strong><span>10:45–12:15</span></div>
+            <div class="calendar-sync-event event-tutorial" data-period="late"><strong>Database Tutorial</strong><span>13:00–14:30</span></div>
+          </div>
+          <div class="calendar-sync-day"><h2>Thu</h2>
+            <div class="calendar-sync-event"><strong>Computer Networks</strong><span>09:00–10:30</span></div>
+            <div class="calendar-sync-event event-lab" data-period="late"><strong>Systems Lab</strong><span>13:00–14:30</span></div>
+          </div>
+        </div>
+      </div>
+      <p class="calendar-sync-scroll-hint">Scroll to see the full week</p>
+    </figure>
+  </section>`;
 }
 
 function auth(){

@@ -4,13 +4,13 @@
   --inverse: var(--canvas);
   --green: var(--ink);
   --green-dark: var(--ink);
-  gap: 20px;
+  gap: 16px;
 }
 .student-swap-page .swap-page-intro { display:flex; align-items:center; gap:22px; }
 .student-swap-page .swap-page-intro > img { width:100px; height:86px; object-fit:contain; }
 .student-swap-page .page-title-row h1 { font:500 28px/1.2 Styrene,system-ui,sans-serif; letter-spacing:-.035em; }
 .student-swap-page .page-description { max-width:68ch; line-height:1.65; }
-.student-swap-page .panel { background:transparent; border:0; border-radius:0; box-shadow:none; padding:0 0 22px; border-bottom:1px solid var(--line); }
+.student-swap-page .panel { background:transparent; border:0; border-radius:0; box-shadow:none; padding:0 0 16px; border-bottom:1px solid var(--line); }
 .student-swap-page .panel h2 { font-size:22px; font-weight:500; letter-spacing:-.025em; }
 .student-swap-page .eyebrow { text-transform:none; letter-spacing:0; font-size:13px; }
 .student-swap-page .current-group-panel { order:0; padding:20px 24px; border:1px solid var(--line); border-radius:10px; background:var(--raised); }
@@ -36,21 +36,18 @@
 .student-swap-page .swap-unavailable p { max-width:55ch; margin:12px auto 0; color:var(--muted); line-height:1.7; }
 .student-swap-page :is(button,input,summary):focus-visible { outline:2px solid var(--ink); outline-offset:4px; }
 .student-swap-page .table-scroll { max-width:100%; }
-.student-swap-page .swap-context { display:flex; align-items:center; flex-wrap:wrap; gap:24px 36px; padding:10px 0 4px; background:transparent; border:0; border-radius:0; }
-.swap-context-group { flex:none; }
-.swap-context-group > span,.swap-context-deadline > span { display:block; color:var(--muted); font-size:12px; margin-bottom:9px; }
-.student-swap-page .swap-context-group h2 { font-size:32px; line-height:1.2; letter-spacing:-.035em; margin:0; }
-.swap-context-group p { color:var(--muted); font-size:13px; line-height:1.6; margin:10px 0 0; }
-.swap-group-name { white-space:nowrap; }
-.swap-context-facts { display:flex; flex:0 0 auto; gap:24px; margin:0; padding:0; }
-.swap-context-facts div { min-width:50px; }
+.student-swap-page .swap-context { display:grid; grid-template-columns:minmax(max-content,1fr) minmax(0,2.5fr) minmax(max-content,1.4fr); align-items:center; gap:clamp(12px,2vw,24px); }
+.student-swap-page .swap-context .swap-context-group { justify-self:start; margin:0; padding:10px 16px; border:1px solid color-mix(in srgb,#a7c3bc 28%,var(--line)); border-radius:8px; background:color-mix(in srgb,#a7c3bc 13%,var(--paper)); color:var(--ink); font-size:clamp(18px,2vw,26px); line-height:1.2; letter-spacing:-.03em; white-space:nowrap; }
+.swap-context-facts { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); margin:0; padding:0; }
+.swap-context-facts div { min-width:0; padding-inline:clamp(8px,1.7vw,22px); border-inline-start:1px solid var(--line); }
+.swap-context-facts dd { overflow-wrap:anywhere; }
 .swap-context-facts dt { color:var(--muted); font-size:13px; margin-bottom:8px; }
 .swap-context-facts dd { color:var(--ink); font-size:19px; margin:0; font-weight:500; }
-.swap-context-deadline { --deadline-ink:#dfa196; padding-left:24px; border-left:1px solid color-mix(in srgb,var(--deadline-ink) 35%,var(--line)); }
+.swap-context-deadline { --deadline-ink:#dfa196; padding-inline-start:clamp(12px,2vw,24px); border-inline-start:1px solid color-mix(in srgb,var(--deadline-ink) 35%,var(--line)); }
 .service-surface[data-theme="light"] .swap-context-deadline { --deadline-ink:#a14b42; }
-.swap-context-deadline > span { color:var(--deadline-ink); font-size:14px; font-weight:500; margin-bottom:8px; }
+.swap-context-deadline > span { display:block; color:var(--deadline-ink); font-size:14px; font-weight:500; margin-bottom:3px; }
 .swap-context-deadline time { display:block; color:var(--deadline-ink); font-size:26px; line-height:1.2; letter-spacing:-.025em; font-weight:500; }
-.swap-context-deadline small { display:block; color:var(--muted); font-size:14px; margin-top:8px; }
+.swap-context-deadline small { display:block; color:var(--muted); font-size:14px; margin-top:4px; }
 .swap-empty { display:flex; align-items:center; gap:26px; padding:28px 0; max-width:720px; }
 .swap-empty > img { width:104px; height:92px; object-fit:contain; flex:none; }
 .swap-empty h3 { margin:0 0 9px; font-size:18px; font-weight:500; letter-spacing:-.02em; }
@@ -63,13 +60,16 @@
 .swap-timetable-toggle-mark { margin-left:auto; display:grid; place-items:center; width:40px; height:40px; border-radius:50%; background:color-mix(in srgb,#a7c3bc 18%,var(--canvas)); color:var(--ink); flex:none; }
 .swap-timetable-toggle-mark svg { width:22px; height:22px; }
 .swap-timetable-toggle:hover .swap-timetable-toggle-mark,.swap-timetable-toggle:focus-visible .swap-timetable-toggle-mark { background:color-mix(in srgb,#a7c3bc 32%,var(--canvas)); }
-.student-swap-page .swap-current-week .swap-timetable-toggle { font-size:18px; padding-block:14px; }
-.student-swap-page .swap-current-week { border:0; padding-bottom:0; }
+.student-swap-page .swap-current-week .swap-timetable-toggle { font-size:16px; width:fit-content; max-width:100%; min-height:44px; padding:0; }
+.student-swap-page .swap-current-week .swap-timetable-toggle-mark { width:34px; height:34px; }
+.student-swap-page .swap-current-week { margin-bottom:12px; }
+.service-surface .student-swap-page .swap-schedule-overview { border-bottom:0; padding-bottom:0; }
+.service-surface .student-swap-page .swap-schedule-overview + .panel { padding-top:14px; }
 .swap-timetable > div:not([hidden]) { margin-top:18px; }
 .student-swap-page .swap-history-scroll { border:1px solid color-mix(in srgb,var(--ink) 28%,var(--canvas)); border-radius:10px; overflow:auto; }
 .service-surface .student-swap-page .swap-history-table { width:100%; min-width:850px; border-collapse:collapse; background:transparent; table-layout:auto; }
-.service-surface .student-swap-page .swap-history-table caption { text-align:left; caption-side:top; color:var(--muted); font-size:12px; line-height:1.6; padding:14px 18px; border-bottom:1px solid var(--line); background:var(--canvas); }
-.service-surface .student-swap-page .swap-history-table :is(th,td) { position:static; text-align:left; padding:17px 18px; vertical-align:middle; border:0; border-right:1px solid var(--line); white-space:normal; }
+.student-swap-page .swap-history .results-heading { margin-bottom:10px; }
+.service-surface .student-swap-page .swap-history-table :is(th,td) { position:static; text-align:left; padding:12px 18px; vertical-align:middle; border:0; border-right:1px solid var(--line); white-space:normal; }
 .service-surface .student-swap-page .swap-history-table th { color:var(--ink); font-size:12px; font-weight:500; background:color-mix(in srgb,#a6c8e6 12%,var(--raised)); border-bottom:1px solid color-mix(in srgb,var(--ink) 20%,var(--canvas)); }
 .service-surface .student-swap-page .swap-history-table td { font-size:13px; background:var(--canvas); border-bottom:1px solid var(--line); }
 .service-surface .student-swap-page .swap-history-table tbody tr:nth-child(even) td { background:color-mix(in srgb,#a6c8e6 4%,var(--canvas)); }
@@ -89,11 +89,11 @@
 .student-swap-page .swap-history-table .status-pill.good { background:color-mix(in srgb,#a7c3bc 14%,var(--canvas)); }
 .student-swap-page .swap-history-table .status-pill.warning { background:color-mix(in srgb,#e2bf83 14%,var(--canvas)); }
 @media(max-width:700px) {
- .student-swap-page .swap-context { display:grid; grid-template-columns:1fr 1fr; gap:24px 16px; }
- .student-swap-page .swap-context-group h2 { font-size:26px; }
- .swap-context-group { min-width:0; }
- .swap-context-facts { grid-column:1 / -1; grid-row:2; gap:32px; }
- .swap-context-deadline { padding-left:16px; }
+ .student-swap-page .swap-context { grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:14px 12px; }
+ .swap-context-facts { grid-column:1 / -1; grid-row:2; }
+ .swap-context-facts div:first-child { padding-inline-start:0; border-inline-start:0; }
+ .swap-context-deadline time { font-size:clamp(18px,5.5vw,24px); }
+ .swap-context-deadline small { font-size:12px; }
  .swap-empty { gap:16px; align-items:flex-start; padding:24px 0; }
  .swap-empty > img { width:70px; height:70px; }
  .swap-empty h3 { font-size:17px; }

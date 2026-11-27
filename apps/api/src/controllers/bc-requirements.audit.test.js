@@ -137,6 +137,20 @@ test("B1 Req 116: OAuth requires student auth/config; invalid state cannot creat
   const failed = await call("/calendar/oauth/callback?state=invalid&code=bad", { role: null });
   assert.equal(failed.status, 302);
   assert.match(failed.headers.get("location"), /calendar=error/);
+  const fallbackOrigin = new URL(failed.headers.get("location")).origin;
+  for (const [origin, expected] of [
+    ["http://localhost:5174", "http://localhost:5174"],
+    ["http://127.0.0.1:5174", "http://127.0.0.1:5174"],
+    ["https://other.example", fallbackOrigin],
+  ]) {
+    const start = await call(`/calendar/connect?${new URLSearchParams({ portalOrigin: origin })}`, { role: "advisingStudent" });
+    const state = new URL(start.body.authorizationUrl).searchParams.get("state");
+    const cancelled = await call(`/calendar/oauth/callback?${new URLSearchParams({ state, error: "access_denied" })}`, { role: null });
+    const target = new URL(cancelled.headers.get("location"));
+    assert.equal(target.origin, expected);
+    assert.equal(target.searchParams.get("role"), "advisingStudent");
+    assert.equal(target.searchParams.get("calendar"), "error");
+  }
   assert.equal(await CalendarConnection.countDocuments(), 0);
 });
 
@@ -160,10 +174,11 @@ test("B1 Req 116: OAuth encrypts tokens; recurring sync includes all slot types,
     throw new Error(`Unexpected external request ${address}`);
   };
   try {
-    const start = await call("/calendar/connect", { role: "advisingStudent" });
+    const start = await call("/calendar/connect?portalOrigin=http%3A%2F%2Flocalhost%3A5174", { role: "advisingStudent" });
     const state = new URL(start.body.authorizationUrl).searchParams.get("state");
     const callback = await call(`/calendar/oauth/callback?state=${encodeURIComponent(state)}&code=valid`, { role: null });
     assert.match(callback.headers.get("location"), /calendar=connected/);
+    assert.equal(new URL(callback.headers.get("location")).origin, "http://localhost:5174");
     const stored = await CalendarConnection.findOne().select("+encryptedAccessToken +encryptedRefreshToken").lean();
     assert.ok(stored.encryptedAccessToken && !stored.encryptedAccessToken.includes("secret-access"));
     assert.ok(stored.encryptedRefreshToken && !stored.encryptedRefreshToken.includes("secret-refresh"));
