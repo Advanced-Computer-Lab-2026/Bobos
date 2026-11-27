@@ -16,7 +16,7 @@ export function WorkspaceEmpty({ title, description, icon = "inbox", action }) {
 
 export function GraduationEmpty({ title, description, heading: Heading = "h3", submitted = false }) {
   return <div className={submitted ? "graduation-empty graduation-empty-submitted" : "graduation-empty"}>
-    <img src={submitted ? "/portal-studio/images/submitted-plan.svg" : "/portal-studio/variants/05-operations/assets/extra-hours-folder.svg"} alt="" width="76" height="60" />
+    <img src={submitted ? "/portal-studio/images/submitted-plan.svg" : "/portal-studio/images/extra-hours-folder.svg"} alt="" width="76" height="60" />
     <div><Heading>{title}</Heading><p>{description}</p></div>
   </div>;
 }

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
-import { readFileSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join, relative, resolve } from "node:path";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
@@ -68,34 +68,27 @@ function localPortalDemo() {
   };
 }
 
-// Portal Studio is served from public/ as classic scripts. Give its production
-// script and stylesheet URLs the same cache isolation Vite gives React chunks.
-const studyPages = [
-  "delete-options.html",
-  "feedback-studies.html",
-  "portal-studio/coming-up-notifications-study.html",
-  "portal-studio/logo-study.html",
-  "portal-studio/notification-study.html",
-  "portal-studio/student-overview-study.html",
-  "portal-studio/variants/01-front-desk/logos/comparison.html",
-];
+// Keep compatibility entry files and one actual Portal document in the build.
+const portalPage = "portal-studio/index.html";
+const htmlEntries = ["index.html", "workspace.html", "academic-services.html", portalPage];
+
 
 function portalSite() {
   return {
     name: "portal-site",
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
-        const path = new URL(req.url, "http://localhost").pathname;
-        if (studyPages.includes(path.slice(1))) {
-          res.writeHead(302, { Location: "/" }).end();
-          return;
-        }
         if (req.url === "/portal-services.js") req.url = "/src/portal-services.jsx";
         next();
       });
     },
     writeBundle({ dir }, bundle) {
       const out = resolve(dir);
+      const extraPages = readdirSync(out, { recursive: true, withFileTypes: true })
+        .filter(entry => entry.isFile() && /\.html?$/i.test(entry.name))
+        .map(entry => relative(out, join(entry.parentPath, entry.name)).replaceAll("\\", "/"))
+        .filter(path => !htmlEntries.includes(path));
+      if (extraPages.length) this.error(`Only Portal and its compatibility entries may ship. Remove: ${extraPages.join(", ")}`);
       const service = Object.values(bundle).find((file) => file.type === "chunk" && file.name === "portal-services");
       if (!service) this.error("The Portal services bundle is missing.");
       const versioned = new Map();
@@ -111,8 +104,7 @@ function portalSite() {
         versioned.set(path, target);
         return target;
       };
-      const shell = "portal-studio/index.html";
-      for (const page of ["index.html", "workspace.html", "academic-services.html", shell]) {
+      for (const page of htmlEntries) {
         const file = join(out, page);
         const html = readFileSync(file, "utf8").replace(/(src|href)="([^"?]+\.(?:js|css))(?:\?[^"]*)?"/g, (original, attr, url) => {
           const path = url.startsWith("/") ? url.slice(1) : join(dirname(page), url);
@@ -121,9 +113,6 @@ function portalSite() {
         });
         writeFileSync(file, html);
       }
-      // Keep old study bookmarks from opening a second interface.
-      const redirect = readFileSync(join(out, "index.html"));
-      for (const page of studyPages) writeFileSync(join(out, page), redirect);
     },
   };
 }

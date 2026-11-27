@@ -137,72 +137,6 @@ export function GroupAssignmentsPage({ token, canAssign = false, notify }) {
   </div>;
 }
 
-export function StudentSchedulingPage({ token, section, onOpenSlotChanges }) {
-  const [schedule, setSchedule] = useState(null);
-  const [courses, setCourses] = useState(null);
-  const [courseDetails, setCourseDetails] = useState(null);
-  const [selectedCourse, setSelectedCourse] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [downloadBusy, setDownloadBusy] = useState(false);
-
-  const loadSchedule = useCallback(() => api("/api/schedules/me", { token }), [token]);
-  useEffect(() => {
-    if (section === "schedule-swap") return;
-    let alive = true;
-    setLoading(true); setError("");
-    const tasks = section === "my-courses"
-      ? api("/api/schedules/me/courses", { token }).then((data) => { if (alive) setCourses(data); })
-      : loadSchedule().then((data) => { if (alive) setSchedule(data); });
-    tasks.catch((err) => alive && setError(err.message)).finally(() => alive && setLoading(false));
-    return () => { alive = false; };
-  }, [token, section, loadSchedule]);
-
-  useEffect(() => {
-    if (section !== "my-courses" || !selectedCourse) { setCourseDetails(null); return; }
-    let alive = true;
-    api(`/api/schedules/me/courses/${encodeURIComponent(selectedCourse)}${courses?.term?._id ? `?termId=${courses.term._id}` : ""}`, { token })
-      .then((data) => alive && setCourseDetails(data))
-      .catch((err) => alive && setError(err.message));
-    return () => { alive = false; };
-  }, [token, section, selectedCourse, courses?.term?._id]);
-
-  async function downloadPdf() {
-    setDownloadBusy(true);
-    try {
-      const { data, response } = await api(`/api/schedules/me/download${schedule?.term?._id ? `?termId=${schedule.term._id}` : ""}`, { token, responseType: "blob" });
-      const disposition = response.headers.get("content-disposition") || "";
-      const name = disposition.match(/filename="?([^";]+)"?/i)?.[1] || "my-schedule.pdf";
-      const url = URL.createObjectURL(data);
-      const anchor = document.createElement("a"); anchor.href = url; anchor.download = name; anchor.click(); URL.revokeObjectURL(url);
-    } catch (err) { setError(err.message); }
-    finally { setDownloadBusy(false); }
-  }
-
-  if (section === "schedule-swap") return <SwapManagement token={token} />;
-  if (loading) return <Loading />;
-  const titles = { "my-schedule": ["MY SCHEDULE", "My weekly schedule"], "my-courses": ["REGISTERED COURSES", "Registered courses"] };
-  const [eyebrow, title] = titles[section] || titles["my-schedule"];
-  const scheduleNotReleased = section === "my-schedule" && error === "No schedule is available to view yet.";
-  return <div className="page-stack scheduling-page">
-    <div className="page-title-row"><div><p className="eyebrow">{eyebrow} · {schedule?.term ? `${schedule.term.season} ${schedule.term.academicYear}` : courses?.term ? `${courses.term.season} ${courses.term.academicYear}` : ""}</p><h1>{title}</h1></div>
-      {section === "my-schedule" && <div className="form-actions">{onOpenSlotChanges && schedule?.schedule?.status === "readyForStudentReview" && Date.now() < Date.parse(schedule.term.advisingDeadline) && <button type="button" className="outline-button" onClick={onOpenSlotChanges}>Request a slot change</button>}<button type="button" className="outline-button" onClick={() => window.print()} disabled={schedule?.schedule?.status !== "processed"}>Print</button><button type="button" className="primary-button" onClick={downloadPdf} disabled={downloadBusy || schedule?.schedule?.status !== "processed"}>{downloadBusy ? "Preparing…" : "Download PDF"}</button></div>}
-    </div>
-    {error && <Feedback tone={scheduleNotReleased ? "info" : "error"}>{scheduleNotReleased ? "No schedule has been released for this term yet. Advising drafts appear after staff send them for student review; final schedules appear after processing." : error}</Feedback>}
-    {section === "my-schedule" && schedule && <>
-      <div className="stat-grid schedule-stats"><Stat label="Study group" value={schedule.schedule?.studyGroup ? `Group ${schedule.schedule.studyGroup}` : "Not assigned"} /><Stat label="Registered courses" value={schedule.schedule?.courses?.length ?? 0} /><Stat label="Credit hours" value={schedule.schedule?.totalCreditHours ?? 0} /><Stat label="Status" value={prettyStatus(schedule.schedule?.status)} /></div>
-      {schedule.schedule ? <WeeklySchedule week={schedule.schedule.week} daysOff={schedule.schedule.daysOff} /> : <Empty title="No schedule yet" text="Your schedule will appear here once it has been assigned or prepared by your advisor." />}
-    </>}
-    {section === "my-courses" && courses && <>
-      <div className="stat-grid schedule-stats"><Stat label="Courses" value={courses.courseCount} /><Stat label="Credit hours" value={courses.totalCreditHours} /><Stat label="Study group" value={courses.studyGroup ? `Group ${courses.studyGroup}` : "—"} /><Stat label="Status" value={prettyStatus(courses.status)} /></div>
-      <section className="panel"><div className="results-heading"><div><p className="eyebrow">COURSE LOAD</p><h2>Registered courses and credit hours</h2></div></div>
-        {courses.courses?.length ? <div className="table-scroll"><table><thead><tr><th>Course</th><th>Type</th><th>Credit hours</th><th /></tr></thead><tbody>{courses.courses.map((course) => <tr key={course.courseId}><td><strong>{course.courseCode}</strong><span className="secondary-text">{course.courseName}</span></td><td>{course.courseType || "—"}</td><td>{course.creditHours}</td><td><button className="text-button" type="button" onClick={() => setSelectedCourse(course.courseId)}>{selectedCourse === course.courseId ? "Selected" : "View lecture / tutorial / lab"}</button></td></tr>)}</tbody><tfoot><tr><th colSpan="2">Total credit hours</th><th>{courses.totalCreditHours}</th><th /></tr></tfoot></table></div> : <Empty title="No registered courses" text="Your course list appears after a schedule is available." />}
-      </section>
-      {courseDetails && <CourseDetailPanel details={courseDetails} />}
-    </>}
-  </div>;
-}
-
 const swapStatuses = {
   open: { label: "Open", tone: "good" },
   completed: { label: "Completed", tone: "good" },
@@ -218,7 +152,7 @@ function swapGroups(groups) {
   return groups?.length ? groups.map(swapGroup).join(", ") : "—";
 }
 
-function SwapManagement({ token }) {
+export function SwapManagement({ token }) {
   const [data, setData] = useState(null);
   const [mine, setMine] = useState([]);
   const [open, setOpen] = useState([]);
@@ -493,7 +427,7 @@ export function StaffSchedulesPage({ token, role, notify, initialStudent = null,
       <label className="field roster-search"><span>Search students</span><input type="search" name="roster-search" autoComplete="off" value={search} onChange={(event) => setSearch(event.target.value)} maxLength={100} placeholder="Student ID, name or email…" /></label>
       {loading ? <Loading /> : students.length ? <div className="table-scroll"><table><thead><tr><th>Student</th><th>Type</th><th>Major / semester</th><th>Schedule status</th><th /></tr></thead><tbody>{students.map((student) => <tr key={student._id}><td><div className="portal-person-cell"><PortalAvatar name={student.fullName} /><div><strong>{student.fullName}</strong><span className="secondary-text">{student.studentId}</span></div></div></td><td>{student.studentType}</td><td>{student.major} · {student.currentSemester}</td><td><span className={`status-pill ${{
         readyForStudentReview: "ready", draft: "draft", processed: "completed",
-      }[student.scheduleStatus] || "muted"}`}>{prettyStatus(student.scheduleStatus)}</span></td><td><div className="table-actions">{student.studentType === "advising" && (["advisor", "coordinator"].includes(role) || (role === "administrator" && ["readyForStudentReview", "processed"].includes(student.scheduleStatus))) && <button className="small-button primary-button" type="button" onClick={() => { setSelected(null); setSchedule(null); setDraftStudent(student); }}>{role === "administrator" ? "Manage schedule" : student.scheduleStatus === "draft" ? "Edit draft" : !student.scheduleStatus ? "Create draft" : student.scheduleStatus === "readyForStudentReview" ? "Review & Process" : "Manage schedule"}</button>}{student.scheduleStatus && <button className="small-button outline-button" type="button" onClick={() => openStudent(student)}>View schedule</button>}{role === "administrator" && student.studentType === "advising" && <button className="small-button outline-button" type="button" onClick={() => openOverview(student)}>Advising overview</button>}</div></td></tr>)}</tbody></table></div> : <div className="student-roster-empty" role="status"><img src="/portal-studio/variants/05-operations/assets/extra-hours-folder.svg" alt="" width="104" height="80" /><h3>{search.trim() ? "No matching students" : "No students in this term"}</h3><p>{search.trim() ? "Check the student ID, name or email, or clear your search to see the roster." : "Choose another academic term to view its students."}</p>{search.trim() && <button className="outline-button" type="button" onClick={() => setSearch("")}>Clear search</button>}</div>}
+      }[student.scheduleStatus] || "muted"}`}>{prettyStatus(student.scheduleStatus)}</span></td><td><div className="table-actions">{student.studentType === "advising" && (["advisor", "coordinator"].includes(role) || (role === "administrator" && ["readyForStudentReview", "processed"].includes(student.scheduleStatus))) && <button className="small-button primary-button" type="button" onClick={() => { setSelected(null); setSchedule(null); setDraftStudent(student); }}>{role === "administrator" ? "Manage schedule" : student.scheduleStatus === "draft" ? "Edit draft" : !student.scheduleStatus ? "Create draft" : student.scheduleStatus === "readyForStudentReview" ? "Review & Process" : "Manage schedule"}</button>}{student.scheduleStatus && <button className="small-button outline-button" type="button" onClick={() => openStudent(student)}>View schedule</button>}{role === "administrator" && student.studentType === "advising" && <button className="small-button outline-button" type="button" onClick={() => openOverview(student)}>Advising overview</button>}</div></td></tr>)}</tbody></table></div> : <div className="student-roster-empty" role="status"><img src="/portal-studio/images/extra-hours-folder.svg" alt="" width="104" height="80" /><h3>{search.trim() ? "No matching students" : "No students in this term"}</h3><p>{search.trim() ? "Check the student ID, name or email, or clear your search to see the roster." : "Choose another academic term to view its students."}</p>{search.trim() && <button className="outline-button" type="button" onClick={() => setSearch("")}>Clear search</button>}</div>}
     </section>
     {overviewStudent && overview && <div ref={overviewRef} aria-label={`${overviewStudent.fullName} advising overview`}><AdvisingOverviewPanel overview={overview} token={token} student={overviewStudent} termQuery={termId ? `?termId=${encodeURIComponent(termId)}` : ""} canEdit={false} notify={notify} onChanged={() => openOverview(overviewStudent)} /></div>}
     {selected && schedule?.schedule && <section className="panel staff-schedule-result" ref={scheduleResultRef} tabIndex={-1} aria-label={`${schedule.student?.fullName ?? "Student"} schedule`}><div className="results-heading"><div><p className="eyebrow">{schedule.student?.studentId} · {schedule.term?.season} {schedule.term?.academicYear}</p><h2>{schedule.student?.fullName}’s schedule</h2></div><span className="status-pill">{prettyStatus(schedule.schedule.status)}</span></div>{schedule.schedule.courses?.length ? <WeeklySchedule week={schedule.schedule.week} daysOff={schedule.schedule.daysOff} /> : <Feedback tone="info">{schedule.schedule.status === "readyForStudentReview" ? "This schedule is empty and is not processed, so it cannot be reopened. Select a schedule marked Processed, or complete a valid schedule and process it first." : schedule.schedule.status === "processed" ? "This processed schedule has no course details." : "This draft is empty. Choose “Edit draft” in the student list to add course groups."}</Feedback>}</section>}
@@ -998,15 +932,6 @@ function findDraftSelectionConflict(selections, offerings) {
 }
 
 function draftMinutes(value) { const [hours, minutes] = value.split(":").map(Number); return hours * 60 + minutes; }
-
-function CourseDetailPanel({ details }) {
-  const labels = [["lecture", "Lecture"], ["tutorial", "Tutorial"], ["lab", "Lab"]];
-  return <section className="panel"><div className="results-heading"><div><p className="eyebrow">COURSE DETAILS</p><h2>{details.course.courseCode} · {details.course.courseName}</h2></div><span className="status-pill">{details.course.courseType || "Course"}</span></div>
-    <p className="helper-text">Instructor{details.instructors?.length === 1 ? "" : "s"}: {details.instructors?.map((person) => person.fullName).filter(Boolean).join(", ") || "Not listed"}</p>
-    <div className="component-grid">{labels.map(([key, label]) => { const slot = details.components?.[key]; return <div className="component-card" key={key}><small>{label}</small><strong>{slot ? `Group ${slot.groupNumber}` : "Not scheduled"}</strong><span>{slot ? `${slot.day}, ${slot.startTime}–${slot.endTime} · ${slot.room}` : "This course has no assigned component."}</span></div>; })}</div>
-    {details.sessions?.length > 3 && <p className="helper-text">This course has {details.sessions.length} scheduled sessions across its components.</p>}
-  </section>;
-}
 
 function WeeklySchedule({ week = {}, daysOff = [], compact = false }) {
   const codes = [...new Set(Object.values(week).flat().map(slot => slot.courseCode))].sort();

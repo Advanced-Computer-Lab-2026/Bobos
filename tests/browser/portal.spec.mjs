@@ -9,6 +9,8 @@ import { MongoMemoryReplSet } from "mongodb-memory-server";
 import { SMTPServer } from "smtp-server";
 import api from "../../apps/api/src/app.js";
 import { FinancialTransaction } from "../../apps/api/src/models/finance.js";
+import { ScheduleTemplate } from "../../apps/api/src/models/academics.js";
+import { AcademicTerm, Course, CourseOffering } from "../../apps/api/src/models/catalogue.js";
 import { Notification } from "../../apps/api/src/models/communications.js";
 import { StudentProfile, User } from "../../apps/api/src/models/identity.js";
 
@@ -220,4 +222,85 @@ test("Req 15: My advisor uses the illustrated page for navigation, bookmarks, an
   await page.reload();
   await expect(main.getByRole("alert")).toHaveText(/could not load your advisor/i);
   await expect(main.locator(".advisor-callout .student-desk-art")).toBeVisible();
+
+  await FinancialTransaction.create({ student: profile._id, kind: "walletTopUp", status: "succeeded", amount: 1234.56 });
+  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Academic records" }).click();
+  await page.getByRole("tab", { name: "Wallet" }).click();
+  await expect(main).toContainText("1,234.56");
+  await page.goto(baseURL + "/workspace.html?screen=records");
+  await expect(page).toHaveURL(/[?&]page=records(?:&|$)/);
+  await page.getByRole("tab", { name: "Wallet" }).click();
+  await expect(main).toContainText("1,234.56");
+  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Extra-hours requests" }).click();
+  await expect(main.getByRole("heading", { name: "No extra-hours requests" })).toBeVisible();
+  await expect(main.getByRole("button", { name: /sample requests/i })).toHaveCount(0);
+});
+
+test("retired Portal paths cannot serve design studies or alternate workflow screens", async ({ page, request }) => {
+  for (const path of ["/feedback-studies.html", "/portal-studio/logo-study.html", "/portal-studio/variants/01-front-desk/logos/comparison.html"]) {
+    expect((await request.get(baseURL + path)).status()).toBe(404);
+  }
+
+  await page.goto(baseURL);
+  await signIn(page, "regression@guc.edu.eg", password);
+  const calendar = page.getByRole("region", { name: "Academic calendar" });
+  await expect(calendar).toBeVisible();
+  const firstMonth = await calendar.locator(".folio-month .sr-only").first().textContent();
+  await calendar.getByRole("button", { name: "Next month" }).click();
+  await expect(calendar.locator(".folio-paper:not(.binder-waiting-sheet) .folio-month .sr-only")).not.toHaveText(firstMonth);
+
+  const nav = page.getByRole("navigation", { name: "Main navigation" });
+  await nav.getByRole("link", { name: "Course catalogue", exact: true }).click();
+  const file = {
+    name: "portal-audit.csv", mimeType: "text/csv",
+    buffer: Buffer.from("Course Code,Course Name,Credit Hours,Course Type,Faculty/Major,Recommended Semester,Offering Season,Prerequisites\nAUD910,Live Audit Course,3,core,CS,5,winter,"),
+  };
+  await page.getByLabel("CSV file").setInputFiles(file);
+  await page.getByRole("button", { name: "Validate and import" }).click();
+  await expect(page.getByRole("button", { name: /AUD910.*Live Audit Course/ })).toBeVisible();
+  await page.goto(baseURL + "/portal-studio/index.html?page=manage-courses");
+  await expect(page).toHaveURL(/[?&]page=courses(?:&|$)/);
+  await expect(page.getByRole("button", { name: /AUD910.*Live Audit Course/ })).toBeVisible();
+
+  await nav.getByRole("link", { name: "Academic terms", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Academic terms", exact: true })).toBeVisible();
+  await page.goto(baseURL + "/portal-studio/index.html?page=student-detail&student=0");
+  await expect(page).toHaveURL(/[?&]page=directory(?:&|$)/);
+  await expect(page.getByRole("heading", { name: "Student directory", exact: true })).toBeVisible();
+});
+
+test("Req 29: the old template bookmark opens the live editor and saves to the database", async ({ page }) => {
+  const coordinator = await User.create({
+    fullName: "Template Coordinator", role: "coordinator", email: "template.coordinator@guc.edu.eg",
+    passwordHash: await bcrypt.hash(password, 4),
+  });
+  const term = await AcademicTerm.create({
+    code: "AUD27", academicYear: "2026/2027", season: "spring",
+    termStart: "2027-03-01", termEnd: "2027-08-01", teachingStart: "2027-03-07", teachingEnd: "2027-07-01",
+    registrationStart: "2027-02-01", registrationEnd: "2027-03-07",
+    advisingDeadline: "2027-03-10", wholeScheduleSwapDeadline: "2027-03-20",
+  });
+  const course = await Course.create({ code: "CSEN992", name: "Template Audit Course", creditHours: 3, courseType: "core" });
+  const offering = await CourseOffering.create({
+    course: course._id, term: term._id, isPublished: true, instructors: [{ fullName: "Dr. Audit" }],
+    eligibleGroups: [{ major: "CS", semester: 5 }],
+    slots: [{ componentType: "lecture", groupNumber: "1", day: "Monday", room: "R1", startMinute: 540, endMinute: 600, capacity: 20 }],
+  });
+  const template = await ScheduleTemplate.create({
+    term: term._id, major: "CS", semester: 5, studyGroup: "1",
+    courses: [{ course: course._id, courseOffering: offering._id, slots: [
+      { componentType: "lecture", courseOffering: offering._id, slotGroupId: offering.slots[0]._id },
+    ] }],
+  });
+  await page.goto(baseURL + "/portal-studio/index.html?page=template-detail&group=1");
+  await signIn(page, coordinator.email, password);
+  await expect(page).toHaveURL(/[?&]page=templates(?:&|$)/);
+  await page.getByRole("combobox", { name: /academic term/i }).selectOption(term.code);
+  await page.getByRole("button", { name: "Load templates and offerings" }).click();
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Update schedule template" })).toBeVisible();
+  await page.getByLabel("Study group").fill("2");
+  await page.getByRole("button", { name: /save changes/i }).click();
+  await expect(page.getByText("Semester 5 · Group 2", { exact: true })).toBeVisible();
+  expect((await ScheduleTemplate.findById(template._id)).studyGroup).toBe("2");
 });

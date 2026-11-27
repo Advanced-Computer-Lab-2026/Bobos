@@ -6,7 +6,6 @@ const workspaces = [{
   rows: ['queue queue', 'week week', 'review activity'],
   inlineDates: true,
 }];
-const productionPreview = true;
 const lab = { layout: 0, dark: true };
 
 function restoreLook() {

@@ -41,7 +41,7 @@ test("new illustrated details, service variants, and calendar callbacks retain t
   const genericOverview = new URLSearchParams("page=academic-services");
   normalize(genericOverview);
   assert.equal(genericOverview.get("page"), "overview");
-  assert.equal(siteEntry(new URL("/workspace.html?screen=records", origin)).searchParams.get("page"), "official-records");
+  assert.equal(siteEntry(new URL("/workspace.html?screen=records", origin)).searchParams.get("page"), "records");
 });
 
 test("advisor bookmarks resolve to the single illustrated page", () => {

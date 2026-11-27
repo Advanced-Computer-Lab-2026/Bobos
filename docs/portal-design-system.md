@@ -1,6 +1,6 @@
 # Portal design system
 
-The visual reference is Portal Studio’s **Claude Study** workspace and **Concertina** calendar. The staff overview opens with a full-width work queue, followed by schedule review and the academic calendar. On narrow screens the sections stack in the same reading order. Students see their teaching week. Staff can open student schedules from Schedule review, and the activity log remains a separate page. Keep the information, navigation, actions and permissions appropriate to each role. The design editions under `variants/` are explorations. Their presence in the repository does not make every treatment a house convention.
+The visual reference is Portal Studio’s **Claude Study** workspace and **Concertina** calendar. The staff overview opens with a full-width work queue, followed by schedule review and the academic calendar. On narrow screens the sections stack in the same reading order. Students see their teaching week. Staff can open student schedules from Schedule review, and the activity log remains a separate page. Keep the information, navigation, actions and permissions appropriate to each role. Superseded screens and design studies are available in Git history.
 
 ## See it in motion
 
@@ -15,7 +15,7 @@ My advisor uses the illustrated contact layout and office drawing. The sidebar, 
 
 ## Surface, type and composition
 
-Normal and advising students see a centered greeting above the illustrated teaching week, with schedule actions next to the timetable heading. Coming up reuses the Schedule preferences course emblems and takes its next two classes from the teaching week in Cairo time. The notification illustration sits between the section heading and its messages. Pneumatic post is the default. The five scenes in `notification-study.html` each have an unread and a caught-up drawing. Motion plays on arrival and reduced motion shows the resting pose. The academic calendar puts Calendar sync in its heading and gives upcoming deadlines their own dated rows. See `student-overview-study.html` for ten Coming up and Notifications layouts. Coordinators see assignments and requests, advisors see advising work, and administrators see academic setup in the work queue.
+Normal and advising students see a centered greeting above the illustrated teaching week, with schedule actions next to the timetable heading. Coming up reuses the Schedule preferences course emblems and takes its next two classes from the teaching week in Cairo time. The notification illustration sits between the section heading and its messages. Pneumatic post is the default. Motion plays on arrival and reduced motion shows the resting pose. The academic calendar puts Calendar sync in its heading and gives upcoming deadlines their own dated rows. Coordinators see assignments and requests, advisors see advising work, and administrators see academic setup in the work queue.
 
 The console palette uses charcoal canvas (#151515), a slightly deeper sidebar (#0f0f0f), warm white ink (#efeee9), muted copy (#bdbbb0) and quiet rules (#303030). Light mode uses a muted ground (#f0eee6), paper (#f8f6ef) and dark brown ink (#302d28). Read the applied tokens in `studio.js`, `base.css` and `studio.css`; theme-specific overrides matter. Use semantic tokens for controls and text. Save sky blue, clay, sage and warm cream for recognizable objects, course identities and useful distinctions. The Computer Graphics sheet is a good cream reference.
 
@@ -86,10 +86,10 @@ Portal Studio carries the academic workspace sun/moon control in its header and 
 Calendar authorization always requests Google account selection and consent. Connected students can choose Change Google account. Google Cloud remains in Testing mode and accepts approved test users.
 Action feedback uses a content-sized Action Dock for general results and failures. Successful draft, preference and bookmark saves use the Bookmark ribbon. Both wrap at a viewport-safe maximum and preserve seven-second idle dismissal and persistent errors. Delete confirmations use the paper-toss control from the supplied motion reference, with a 130px Delete draft and label-sized alternatives. Permanent deletes retain existing confirmation and API guards. Restore appears only when a restore operation exists.
 Feedback result headings use descriptive labels such as Decision saved and Sections saved. Saved/restored results use sage green. Deleted and failed results use coral/red, warnings use amber and information uses blue. Body copy remains neutral. The label and icon accompany the color, including for screen-reader announcements.
-Preference saving in Portal Studio uses an explicit saved/unsaved toggle. Saved restores the prior preview snapshot, keeps visible edits, and retracts the sage ribbon to muted grey. Editing a field makes the current form unsaved. Save again returns the ribbon to sage. Motion respects reduced motion and aria-pressed exposes the saved state.
+Schedule preferences uses the live form and its sage bookmark. Saving persists changes through the API and respects the advising deadline.
 
 
-The extra-hours empty state uses the existing folder illustration style and All clear for now copy. Preview sample requests shows read-only Pending, Approved and Paid examples, with a toggle back to the real empty state. Sample records never enter the database.
+The extra-hours empty state uses the folder illustration and All clear for now copy.
 
 Live academic service pages use `apps/web/src/portal-academic.css` inside the service shadow root to match Schedule templates: 22px medium sans-serif operational headings, open canvas sections, ruled records, and the shared Portal palette and controls. Keep this styling scoped to academic services; changes to presentation must retain the existing component data and actions.
 

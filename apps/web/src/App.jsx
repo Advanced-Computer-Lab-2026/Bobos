@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { api } from "./api.js";
-import { NotificationsPage, PreferencesPage, ProfilePage, StudentRecordsPage } from "./components/BasicPages.jsx";
+import { PreferencesPage, StudentRecordsPage } from "./components/BasicPages.jsx";
 import StudentDirectoryPage from "./components/StudentDirectoryPage.jsx";
 import FinancialRecordsPage from "./components/FinancialRecordsPage.jsx";
 import AdvisingPage from "./components/AdvisingPage.jsx";
 import SlotChangesPage from "./components/SlotChangesPage.jsx";
 import AcademicWorkspace from "./components/AcademicWorkspace.jsx";
-import { GroupAssignmentsPage, StaffSchedulesPage, StudentSchedulingPage } from "./components/SchedulingPages.jsx";
-import { CalendarSyncPage, PendingWorkPage, ScheduleActivityPage } from "./components/B1Pages.jsx";
+import { GroupAssignmentsPage, StaffSchedulesPage, SwapManagement } from "./components/SchedulingPages.jsx";
+import { PendingWorkPage, ScheduleActivityPage } from "./components/B1Pages.jsx";
 import MandatoryRemovalDashboard from "./components/MandatoryRemovalDashboard.jsx";
 import ExtraHoursPage from "./components/ExtraHoursPage.jsx";
 import GraduationReview, { StudentGraduation } from "./components/GraduationReview.jsx";
@@ -21,14 +21,11 @@ const navGroups = (role) => {
     { title: "Home", items: [{ id: "overview", label: "Overview" }, { id: "notifications", label: "Notifications" }, ...(role === "coordinator" ? [{ id: "pending-work", label: "Pending work" }] : [])] },
     ...(student ? [{ title: "Student services", items: [
       ...(role === "advisingStudent" ? [{ id: "records", label: "Academic records" }] : []),
-      { id: "my-schedule", label: "My schedule" },
-      { id: "my-courses", label: "Registered courses" },
       ...(role === "advisingStudent" ? [{ id: "my-graduation", label: "My graduation" }] : []),
       ...(role === "advisingStudent" ? [{ id: "extra-hours", label: "Extra-hours requests" }] : []),
       ...(role === "advisingStudent" ? [{ id: "slot-changes", label: "Slot change requests" }] : []),
       ...(role === "normalStudent" ? [{ id: "schedule-swap", label: "Eligible swap groups" }] : []),
       ...(role === "advisingStudent" ? [{ id: "preferences", label: "Schedule preferences" }] : []),
-      { id: "calendar-sync", label: "Calendar sync" },
     ] }] : []),
     ...(staff ? [{ title: "Student services", items: [
       ...(["coordinator", "administrator"].includes(role) ? [
@@ -58,15 +55,10 @@ export default function App({ service }) {
   const workspaceParams = new URLSearchParams(service);
   const requestedScreen = workspaceParams.get("screen");
   const embeddedServices = workspaceParams.get("section") === "academic-services";
-  const embeddedCalendar = !embeddedServices && requestedScreen === "calendar-sync";
   const embeddedExtraHours = !embeddedServices && requestedScreen === "extra-hours";
   const embeddedGraduation = !embeddedServices && requestedScreen === "graduation-plans";
   const embeddedPage = embeddedServices ? "academic-services" : embeddedGraduation ? "graduation-plans" : embeddedExtraHours ? "extra-hours" : null;
   const [token, setToken] = useState(() => window.localStorage.getItem("bobos.token"));
-  const [previewExtraHours] = useState(() =>
-    embeddedExtraHours && !token && workspaceParams.get("role") === "advisingStudent"
-    && window.localStorage.getItem("portal-studio-preview-session") === "1"
-  );
   const [profile, setProfile] = useState(null);
   const [profileLoading, setProfileLoading] = useState(Boolean(token));
   const [activeScreen, setActiveScreen] = useState(null);
@@ -85,7 +77,7 @@ export default function App({ service }) {
       .then((data) => {
         if (!alive) return;
         setProfile(data.profile);
-        if (requestedScreen === "profile" || navGroups(data.profile.role).some(group => group.items.some(item => item.id === requestedScreen))) {
+        if (navGroups(data.profile.role).some(group => group.items.some(item => item.id === requestedScreen))) {
           setActiveScreen(requestedScreen);
         }
       })
@@ -115,11 +107,6 @@ export default function App({ service }) {
   if (embeddedPage && embeddedProfileError) {
     return <div className="feedback error" role="alert">{embeddedProfileError}</div>;
   }
-  if (previewExtraHours) {
-    return <div className="extra-hours-shell extra-hours-embedded">
-      <ExtraHoursPage role="advisingStudent" notify={notify} embedded preview />
-    </div>;
-  }
   if (!token || !profile) {
     const signIn = new URL("/portal-studio/index.html", window.location.href);
     const isSubmittedView = embeddedGraduation && workspaceParams.get("view") === "submitted";
@@ -131,13 +118,6 @@ export default function App({ service }) {
     });
     if (signIn.searchParams.get("next") === "academic-services" && requestedScreen) signIn.searchParams.set("screen", requestedScreen);
     return <p className="feedback error">Your session has ended. <a href={signIn.href}>Sign in to Portal</a>.</p>;
-  }
-
-  if (embeddedCalendar) {
-    if (!["normalStudent", "advisingStudent"].includes(profile.role)) {
-      return <p role="alert">Sign in with a Bobos student account to connect Google Calendar.</p>;
-    }
-    return <div className="extra-hours-embedded"><CalendarSyncPage token={token} /></div>;
   }
 
   if (embeddedGraduation) {
@@ -171,8 +151,6 @@ export default function App({ service }) {
 
   const workspaceContent = (
     <div className="page-content" id="workspace-content" tabIndex={-1}>
-      {activeScreen === "profile" && <ProfilePage profile={profile} />}
-      {activeScreen === "notifications" && <NotificationsPage token={token} notify={report} />}
       {activeScreen === "records" && <StudentRecordsPage token={token} profile={profile} notify={report} />}
       {activeScreen === "preferences" && <PreferencesPage token={token} profile={profile} profileId={screenContext?.id || screenContext?._id || profile.studentProfileId} studentTarget={screenContext?._id ? screenContext : undefined} notify={report} onOpenDraftSchedule={(student, selectedTermId) => openScreen("student-schedules", { draftStudent: student, termId: selectedTermId })} />}
       {activeScreen === "directory" && <StudentDirectoryPage token={token} role={profile.role} notify={report} />}
@@ -180,7 +158,6 @@ export default function App({ service }) {
       {activeScreen === "advising" && <AdvisingPage token={token} role={profile.role} notify={report} onOpenPreferences={(student) => openScreen("preferences", student)} />}
       {activeScreen === "graduation-review" && ["advisor", "coordinator"].includes(profile.role) && <GraduationReview token={token} role={profile.role} />}
       {activeScreen === "my-graduation" && profile.role === "advisingStudent" && <StudentGraduation token={token} />}
-      {activeScreen === "calendar-sync" && <CalendarSyncPage token={token} />}
       {activeScreen === "pending-work" && profile.role === "coordinator" && <PendingWorkPage token={token} />}
       {activeScreen === "schedule-activity" && ["coordinator", "administrator"].includes(profile.role) && <ScheduleActivityPage token={token} />}
       {activeScreen === "mandatory-removals" && ["coordinator", "administrator", "advisor"].includes(profile.role) && <MandatoryRemovalDashboard token={token} role={profile.role} notify={report} />}
@@ -188,7 +165,7 @@ export default function App({ service }) {
       {activeScreen === "group-assignments" && <GroupAssignmentsPage token={token} canAssign={profile.role === "coordinator"} notify={report} />}
       {activeScreen === "student-schedules" && <StaffSchedulesPage token={token} role={profile.role} notify={report} initialStudent={screenContext?.draftStudent} initialTermId={screenContext?.termId} />}
       {activeScreen === "slot-changes" && <SlotChangesPage token={token} role={profile.role} onOpenSchedule={() => openScreen("my-schedule")} />}
-      {["my-schedule", "my-courses", "schedule-swap"].includes(activeScreen) && <StudentSchedulingPage token={token} section={activeScreen} onOpenSlotChanges={profile.role === "advisingStudent" ? () => openScreen("slot-changes") : undefined} />}
+      {activeScreen === "schedule-swap" && <SwapManagement token={token} />}
       {["courses", "terms", "offerings", "templates"].includes(activeScreen) && <AcademicWorkspace token={token} role={profile.role} section={activeScreen} onNavigate={openScreen} notify={report} />}
 
     </div>

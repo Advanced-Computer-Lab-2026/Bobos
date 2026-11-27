@@ -12,36 +12,16 @@ const money = (amount) =>
   `${Number(amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EGP`;
 const date = (value) => (value ? new Date(value).toLocaleString() : "—");
 
-const sampleRequest = {
-  _id: "demo-001",
-  term: { code: "Winter 2026" },
-  advisor: { fullName: "Dr. Salma Adel" },
-  createdAt: "2026-11-24T08:00:00Z",
-  decisionStatus: "approved",
-  settlementStatus: "awaitingChoice",
-  totalCost: 2400,
-  requestedHours: 3,
-  eligibilitySnapshot: { hoursBeforeRequest: 19, hoursAfterRequest: 22, standardAllowance: 19, graduatingWithinOneYear: true },
-  courses: [{
-    course: { _id: "demo-course", code: "DMET 502", name: "Computer Graphics" },
-    hours: 3, pricePerHour: 800, subtotal: 2400,
-  }],
-  history: [{ _id: "demo-approved", action: "approved", occurredAt: "2026-11-24T09:00:00Z" }],
-};
-const sampleBalance = 5000;
-
 export default function ExtraHoursPage({
   token,
   role,
   advisorId,
   notify,
   embedded = false,
-  preview = false,
 }) {
-  const [sampleView, setSampleView] = useState(false);
   const student = role === "advisingStudent";
   const [composing, setComposing] = useState(false);
-  const [rows, setRows] = useState(() => preview ? [sampleRequest] : []);
+  const [rows, setRows] = useState([]);
   const [filters, setFilters] = useState({
     studentId: "",
     advisorId: "",
@@ -51,8 +31,8 @@ export default function ExtraHoursPage({
   });
   const [advisors, setAdvisors] = useState([]);
   const [history, setHistory] = useState([]);
-  const [walletBalance, setWalletBalance] = useState(preview ? sampleBalance : 0);
-  const [loading, setLoading] = useState(!preview);
+  const [walletBalance, setWalletBalance] = useState(0);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState("");
   const [notes, setNotes] = useState({});
@@ -60,7 +40,6 @@ export default function ExtraHoursPage({
     item.kind === "gatewayPayment" && item.status === "pending" && item.metadata?.stripeCheckout
   ).map((item) => String(item.extraHoursRequest?._id)));
   const load = useCallback(async () => {
-    if (preview) return;
     setLoading(true);
     setError("");
     try {
@@ -91,7 +70,7 @@ export default function ExtraHoursPage({
     } finally {
       setLoading(false);
     }
-  }, [token, student, role, filters, preview]);
+  }, [token, student, role, filters]);
   useEffect(() => {
     load();
   }, [load]);
@@ -115,7 +94,7 @@ export default function ExtraHoursPage({
   }, [load, notify, token]);
 
   useEffect(() => {
-    if (preview || !student) return;
+    if (!student) return;
     const url = new URL(window.location.href);
     const id = url.searchParams.get("stripeRequest");
     const attemptId = url.searchParams.get("stripeAttempt");
@@ -126,7 +105,7 @@ export default function ExtraHoursPage({
     url.searchParams.delete("stripeReturn");
     window.history.replaceState(window.history.state, "", url);
     void checkCheckout(id, result === "cancel", attemptId);
-  }, [checkCheckout, preview, student]);
+  }, [checkCheckout, student]);
 
   const decision = async (row, value) => {
     setBusyId(row._id);
@@ -168,22 +147,6 @@ export default function ExtraHoursPage({
     }
   };
   const settle = async (row, option, method) => {
-    if (preview) {
-      const deferred = option === "deferred";
-      const settlementStatus = deferred ? "deferred" : "paid";
-      const settlementOption = method || option;
-      const occurredAt = new Date().toISOString();
-      const entry = { _id: occurredAt, action: settlementStatus, settlementStatus, occurredAt };
-      setRows([{ ...row, settlementStatus, settlementOption, history: [...row.history, entry] }]);
-      if (method === "wallet") setWalletBalance(balance => balance - row.totalCost);
-      setHistory(records => [...records, {
-        _id: occurredAt, extraHoursRequest: row,
-        kind: deferred ? "deferredCharge" : "extraHoursWalletPayment",
-        settlementOption, amount: row.totalCost, occurredAt, status: deferred ? "pending" : "succeeded",
-      }]);
-      setError("");
-      return;
-    }
     setBusyId(row._id);
     setError("");
     try {
@@ -253,15 +216,9 @@ export default function ExtraHoursPage({
         className="outline-button"
         type="button"
         disabled={loading}
-        onClick={preview ? () => {
-          setRows([sampleRequest]);
-          setHistory([]);
-          setWalletBalance(sampleBalance);
-          setGateway({});
-          setError("");
-        } : load}
+        onClick={load}
       >
-        {preview ? "Reset demo" : loading ? "Refreshing…" : "Refresh"}
+        {loading ? "Refreshing…" : "Refresh"}
       </button>
     </>
   );
@@ -279,7 +236,6 @@ export default function ExtraHoursPage({
         <div className="extra-hours-toolbar">
           <div className="extra-hours-account">
             {walletSummary}
-            {preview && <p className="helper-text">Demo · Payments are simulated</p>}
           </div>
           <div className="extra-hours-toolbar-actions">{toolbar}</div>
         </div>
@@ -423,17 +379,7 @@ export default function ExtraHoursPage({
           {error}
         </div>
       )}
-      {sampleView ? <section className="extra-sample-list" aria-label="Sample extra-hours requests">
-        <div className="results-heading"><p className="helper-text">Sample requests for layout review</p><button type="button" className="outline-button" onClick={() => setSampleView(false)}>Show empty state</button></div>
-        {[
-          {name:"Omar Hassan",id:"70-71577",course:"CSEN 701 · Embedded Systems",hours:3,cost:2400,status:"Pending",note:"Awaiting coordinator review",tone:"muted"},
-          {name:"Mariam Adel",id:"70-71578",course:"CSEN 703 · Algorithms",hours:2,cost:1600,status:"Approved",note:"Awaiting payment choice",tone:"good"},
-          {name:"Youssef Karim",id:"70-71579",course:"CSEN 704 · Advanced Computer Lab",hours:3,cost:2400,status:"Paid",note:"Paid through wallet",tone:"good"}
-        ].map(row => <article className="extra-request" key={row.id}>
-          <header className="extra-request-row"><div><h2>{row.name} <small>· {row.id}</small></h2><p className="helper-text">Winter 2026 / 2027 · Advisor Dr. Salma Adel</p></div><span className={`status-pill ${row.tone}`}>{row.status}</span></header>
-          <div className="detail-grid"><div className="detail-item"><span>Course</span><strong>{row.course}</strong></div><div className="detail-item"><span>Requested hours</span><strong>{row.hours} credit hours</strong></div><div className="detail-item"><span>Total cost</span><strong>{money(row.cost)}</strong></div><div className="detail-item"><span>Next step</span><strong>{row.note}</strong></div></div>
-        </article>)}
-      </section> : loading ? (
+      {loading ? (
         <section className="panel loading-state" role="status">
           <span className="loader" />
           Loading requests…
@@ -443,7 +389,6 @@ export default function ExtraHoursPage({
           <img className="extra-empty-art" src="/portal-studio/images/extra-hours-inbox.svg" width="100" height="74" alt="" />
           <h3 id="extra-empty-title">No extra-hours requests</h3>
           <p>{student ? "Requests from your advisor will appear here." : "Requests will appear here when they’re ready for your review."}</p>
-          <button type="button" className="outline-button" onClick={() => setSampleView(true)}>Preview sample requests</button>
         </section>
       ) : (
         rows.map((row) => (
@@ -547,7 +492,7 @@ export default function ExtraHoursPage({
                       <div className="inline-controls extra-gateway">
                         <button
                           className="outline-button"
-                          disabled={preview || busyId === row._id}
+                          disabled={busyId === row._id}
                           onClick={() => settle(row, "now", "gateway")}
                         >
                           {pendingCheckouts.has(row._id) ? "Resume card payment" : row.history?.some(
@@ -568,13 +513,13 @@ export default function ExtraHoursPage({
                 {student && row.settlementStatus === "paid" && (
                   <div className="feedback success">
                     Paid receipt · {pretty(row.settlementOption)} ·{" "}
-                    {money(row.totalCost)}. {!preview && "Download the receipt from financial history below."}
+                    {money(row.totalCost)}. Download the receipt from financial history below.
                   </div>
                 )}
                 {student && row.settlementStatus === "deferred" && (
                   <div className="feedback info">
                     Deferred-payment confirmation · {money(row.totalCost)} due with
-                    your next university installment. {!preview && "Download its confirmation below."}
+                    your next university installment. Download its confirmation below.
                   </div>
                 )}
                 {!student &&
@@ -715,7 +660,7 @@ export default function ExtraHoursPage({
                       </td>
                       <td>{date(item.occurredAt)}</td>
                       <td>
-                        {!preview && ((item.kind === "deferredCharge" &&
+                        {((item.kind === "deferredCharge" &&
                           item.status === "pending") ||
                         (["extraHoursWalletPayment", "gatewayPayment"].includes(
                           item.kind,
